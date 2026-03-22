@@ -74,10 +74,6 @@ ehthumbs.db
 Desktop.ini
 
 # IDEs (VS Code, PyCharm, Cursor)
-.vscode/*
-!.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/launch.json
-!.vscode/extensions.json
+.vscode/
 .idea/
 *.swp
