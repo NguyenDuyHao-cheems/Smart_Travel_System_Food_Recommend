@@ -13,6 +13,7 @@ frontend/.vercel/
 frontend/npm-debug.log*
 frontend/yarn-debug.log*
 frontend/yarn-error.log*
+frontend/build.log
 
 # ==========================================
 # 2. BACKEND & DATA PIPELINE (Python & FastAPI)
