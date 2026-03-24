@@ -13,6 +13,7 @@ frontend/.vercel/
 frontend/npm-debug.log*
 frontend/yarn-debug.log*
 frontend/yarn-error.log*
+frontend/build.log
 
 # ==========================================
 # 2. BACKEND & DATA PIPELINE (Python & FastAPI)
@@ -74,10 +75,6 @@ ehthumbs.db
 Desktop.ini
 
 # IDEs (VS Code, PyCharm, Cursor)
-.vscode/*
-!.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/launch.json
-!.vscode/extensions.json
+.vscode/
 .idea/
 *.swp
