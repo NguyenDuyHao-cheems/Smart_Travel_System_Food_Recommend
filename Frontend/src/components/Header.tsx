@@ -1,9 +1,12 @@
 "use client";
 import React from "react";
-import { BrainCircuit, Search, Menu, User } from "lucide-react";
+import { Search, Menu, User, ChefHat } from "lucide-react";
 import { motion } from "motion/react";
+import { Playfair_Display } from "next/font/google";
 
-export function Header() {
+const playfair = Playfair_Display({ subsets: ["latin"], weight: ["400", "600", "700"] });
+
+export function Header({ onLogoClick }: { onLogoClick?: () => void }) {
   return (
     <motion.header
       initial={{ y: -50, opacity: 0 }}
@@ -11,18 +14,14 @@ export function Header() {
       transition={{ duration: 0.6, ease: "easeOut" }}
       className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 py-4 lg:px-12 backdrop-blur-xl border-b border-white/5 bg-[#0B0F19]/60"
     >
-      <div className="flex items-center gap-2">
-        <div className="relative flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 shadow-[0_0_20px_rgba(245,158,11,0.4)]">
-          <BrainCircuit className="w-5 h-5 text-white absolute" />
+      <div className="flex items-center gap-2 cursor-pointer" onClick={onLogoClick}>
+        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 via-orange-500 to-red-600 flex items-center justify-center shadow-[0_0_20px_rgba(245,158,11,0.3)]">
+          <ChefHat className="text-white w-6 h-6" />
         </div>
-        <span className="text-xl font-bold tracking-tight bg-gradient-to-r from-white to-white/70 bg-clip-text text-transparent ml-2">
-          TASTE
-          <span className="text-amber-500 font-extrabold">
-            &
-          </span>
-          TRAVEL{" "}
-          <span className="text-cyan-400 font-medium">AI</span>
-        </span>
+        <div className={`text-2xl font-bold tracking-tight ${playfair.className} ml-2`}>
+          <span className="bg-gradient-to-r from-amber-500 to-orange-400 bg-clip-text text-transparent">Vibe</span>
+          <span className="text-white">Food</span>
+        </div>
       </div>
 
       <nav className="hidden md:flex items-center gap-8">
