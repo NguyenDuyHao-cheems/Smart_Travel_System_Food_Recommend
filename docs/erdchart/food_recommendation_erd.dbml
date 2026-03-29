@@ -1,0 +1,129 @@
+Table admins {
+  id int [pk, increment]
+  full_name varchar [not null]
+  email varchar [not null, unique]
+  phone varchar
+  avatar varchar
+  account varchar [not null, unique]
+  password varchar [not null]
+  status varchar [not null, note: 'active | deactive']
+  created_at timestamp [not null]
+  updated_at timestamp [not null]
+}
+
+Table users {
+  id int [pk, increment]
+  full_name varchar [not null]
+  email varchar [not null, unique]
+  phone varchar
+  avatar varchar
+  account varchar [not null, unique]
+  password varchar [not null]
+  coin int [not null, default: 0]
+  reputation decimal(5,2) [not null, default: 0, note: 'Độ uy tín của user']
+  location varchar
+  status varchar [not null, note: 'active | deactive']
+  created_at timestamp [not null]
+  updated_at timestamp [not null]
+}
+
+Table restaurants {
+  id int [pk, increment]
+  name varchar [not null]
+  address varchar [not null]
+  location varchar [not null]
+  open_time time [not null]
+  close_time time [not null]
+  description text
+  image varchar
+  avg_rating decimal(2,1) [default: 0]
+  status varchar [not null, note: 'active | deactive']
+  created_at timestamp [not null]
+  updated_at timestamp [not null]
+}
+
+Table food_categories {
+  id int [pk, increment]
+  name varchar [not null, unique]
+  created_at timestamp [not null]
+}
+
+Table foods {
+  id int [pk, increment]
+  restaurant_id int [not null]
+  category_id int [not null]
+  name varchar [not null]
+  price decimal(10,2) [not null]
+  description text
+  image varchar
+  is_available boolean [not null, default: true]
+  created_at timestamp [not null]
+  updated_at timestamp [not null]
+}
+
+Table reviews {
+  id int [pk, increment]
+  user_id int [not null]
+  restaurant_id int [not null]
+  rating int [not null]
+  comment text
+  created_at timestamp [not null]
+  updated_at timestamp [not null]
+
+  indexes {
+    (user_id, restaurant_id) [unique]
+  }
+}
+
+Table coin_histories {
+  id int [pk, increment]
+  user_id int [not null]
+  review_id int [not null]
+  coins_added int [not null]
+  reason varchar [not null]
+  created_at timestamp [not null]
+
+  indexes {
+    (review_id) [unique]
+  }
+}
+
+Table restaurant_categories {
+  id int [pk, increment]
+  name varchar [not null, unique]
+  created_at timestamp [not null]
+}
+
+Table restaurant_category_map {
+  restaurant_id int [not null]
+  category_id int [not null]
+
+  indexes {
+    (restaurant_id, category_id) [pk]
+  }
+}
+
+Table food_recommend_logs {
+  id int [pk, increment]
+  user_id int [not null]
+  food_id int [not null]
+  restaurant_id int [not null]
+  action_type varchar [not null]
+  created_at timestamp [not null]
+}
+
+Ref: reviews.user_id > users.id
+Ref: reviews.restaurant_id > restaurants.id
+
+Ref: coin_histories.user_id > users.id
+Ref: coin_histories.review_id > reviews.id
+
+Ref: foods.restaurant_id > restaurants.id
+Ref: foods.category_id > food_categories.id
+
+Ref: restaurant_category_map.restaurant_id > restaurants.id
+Ref: restaurant_category_map.category_id > restaurant_categories.id
+
+Ref: food_recommend_logs.user_id > users.id
+Ref: food_recommend_logs.food_id > foods.id
+Ref: food_recommend_logs.restaurant_id > restaurants.id

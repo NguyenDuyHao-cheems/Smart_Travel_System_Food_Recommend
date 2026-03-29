@@ -78,3 +78,7 @@ Desktop.ini
 .vscode/
 .idea/
 *.swp
+.venv/
+venv/
+Backend/.venv/
+Frontend/node_modules/
