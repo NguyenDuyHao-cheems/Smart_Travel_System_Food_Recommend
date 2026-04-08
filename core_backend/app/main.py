@@ -23,6 +23,10 @@ def get_health_status():
         "message": "Both backend and database systems reached" if db_status else "Backend ok, Database connection failed"
     }
 
+from app.domains.search.router import router as search_router
+
+app.include_router(search_router, prefix="/api/v1", tags=["Search"])
+
 @app.get("/")
 def read_root():
-    return {"message": "Welcome to Smart Travel System Food Recommend API"}
+    return {"message": "Welcome to Smart Travel System Food Recommend API - Core Backend"}
