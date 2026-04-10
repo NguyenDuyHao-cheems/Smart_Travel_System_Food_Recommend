@@ -1,14 +1,22 @@
 from sqlalchemy import Column, String, Integer, Text, JSON, DateTime, event, DDL
 from sqlalchemy.orm import DeclarativeBase
 from pgvector.sqlalchemy import Vector
+from sqlalchemy.ext.compiler import compiles
 import datetime
 
 
 class Base(DeclarativeBase):
     pass
 
-event.listen(Base.metadata, "before_create", DDL("CREATE EXTENSION IF NOT EXISTS vector"))
+@compiles(Vector, "sqlite")
+def compile_vector(type_, compiler, **kw):
+    return "JSON"
 
+def _create_extension(target, connection, **kw):
+    if connection.dialect.name == "postgresql":
+        connection.execute(DDL("CREATE EXTENSION IF NOT EXISTS vector"))
+
+event.listen(Base.metadata, "before_create", _create_extension)
 
 class UserOnboarding(Base):
     """
