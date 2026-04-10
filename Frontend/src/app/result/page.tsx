@@ -19,6 +19,7 @@ export default function ResultPage() {
   }, [getLocation]);
 
   const [results, setResults] = useState<any[]>([]);
+  const [apiError, setApiError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!location) return;
@@ -43,12 +44,13 @@ export default function ResultPage() {
           const data = await res.json();
           if (data && data.results) {
             setResults(data.results);
+            setApiError(null);
           }
         } else {
-          console.error("Backend error:", await res.text());
+          setApiError("Hệ thống Neural Engine đang gặp sự cố. Vui lòng thử lại sau.");
         }
       } catch (error) {
-        console.error("Lỗi khi kết nối đến backend API:", error);
+        setApiError("Không thể kết nối đến máy chủ. Hãy đảm bảo Backend đã được khởi động.");
       } finally {
         setIsLoading(false);
       }
@@ -136,9 +138,29 @@ export default function ResultPage() {
               </motion.div>
 
               <div className="flex flex-col gap-6">
-                {results.map((item, index) => (
-                  <ResultCard key={item.id} item={item} index={index} />
-                ))}
+                {apiError ? (
+                  <motion.div 
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="p-10 border border-red-500/20 bg-red-950/10 rounded-[2rem] text-center"
+                  >
+                    <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                      <Brain className="w-8 h-8 text-red-500" />
+                    </div>
+                    <h2 className="text-xl font-bold text-red-400 mb-2">Neural Link Severed</h2>
+                    <p className="text-red-300/60 max-w-sm mx-auto mb-6">{apiError}</p>
+                    <button 
+                      onClick={() => window.location.reload()} 
+                      className="px-6 py-2 bg-red-500/20 hover:bg-red-500/40 text-red-300 rounded-full transition-all"
+                    >
+                      Thử kết nối lại
+                    </button>
+                  </motion.div>
+                ) : (
+                  results.map((item, index) => (
+                    <ResultCard key={item.id} item={item} index={index} />
+                  ))
+                )}
               </div>
             </motion.div>
           )}
