@@ -1,5 +1,5 @@
 """
-conftest.py – shared pytest fixtures for all onboarding tests.
+conftest.py – shared pytest fixtures for all tests.
 
 Sets up:
 - A minimal FastAPI test client backed by an in-memory SQLite database.
