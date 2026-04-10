@@ -6,3 +6,4 @@ asyncpg
 python-dotenv
 httpx
 pydantic>=2.0.0
+pgvector

@@ -18,7 +18,8 @@ export default function Home() {
   useEffect(() => {
     async function checkHealth() {
       try {
-        const response = await fetch('http://127.0.0.1:8000/api/health');
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+        const response = await fetch(`${apiUrl}/api/health`);
         if (!response.ok) throw new Error('Backend failed to respond');
         const data = await response.json();
         setStatus({
@@ -78,7 +79,7 @@ export default function Home() {
         )}
 
         <div className="mt-8 text-xs text-gray-500 text-center">
-          Monitoring API status at 127.0.0.1:8000
+          Monitoring API status at {process.env.NEXT_PUBLIC_API_URL || '127.0.0.1:8000'}
         </div>
       </div>
     </div>
