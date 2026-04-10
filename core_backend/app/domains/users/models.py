@@ -1,10 +1,13 @@
-from sqlalchemy import Column, String, Integer, Text, JSON, DateTime
+from sqlalchemy import Column, String, Integer, Text, JSON, DateTime, event, DDL
 from sqlalchemy.orm import DeclarativeBase
+from pgvector.sqlalchemy import Vector
 import datetime
 
 
 class Base(DeclarativeBase):
     pass
+
+event.listen(Base.metadata, "before_create", DDL("CREATE EXTENSION IF NOT EXISTS vector"))
 
 
 class UserOnboarding(Base):
@@ -35,5 +38,5 @@ class UserOnboarding(Base):
     budget = Column(String, nullable=False)
     location = Column(String, nullable=False)
     age = Column(Integer, nullable=False)
-    preferences_vector = Column(JSON, nullable=True)
+    preferences_vector = Column(Vector(773), nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
