@@ -1,6 +1,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.core.database import check_db_connection
+from app.core.database import check_db_connection, engine
+from app.domains.users.models import Base as UserBase
+
+# ── Create tables on startup (SQLite / Postgres compatible) ──────────────────
+UserBase.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Smart Travel System - Food Recommend")
 
@@ -24,8 +28,10 @@ def get_health_status():
     }
 
 from app.domains.search.router import router as search_router
+from app.domains.users.router import router as users_router
 
 app.include_router(search_router, prefix="/api/v1", tags=["Search"])
+app.include_router(users_router, prefix="/api/v1/users", tags=["Users"])
 
 @app.get("/")
 def read_root():
