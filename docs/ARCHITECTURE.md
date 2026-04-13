@@ -21,16 +21,10 @@ AI Engine (:8001)            [FastAPI + PhoBERT + LambdaMART]
 - **Origin**: `http://localhost:3000` (Next.js App Router)
 - **Protocol**: HTTP/1.1 REST, JSON body
 - **CORS**: Core Backend cho phép origin `http://localhost:3000` với mọi method và header.
-- **Các endpoint chính**:
 
-| Method | Endpoint | Mô tả |
-|--------|----------|-------|
-| `GET`  | `/api/health` | Kiểm tra trạng thái backend + database |
-| `POST` | `/api/v1/search/process` | Nhận query thô, forward sang AI Engine lấy vector |
-| `POST` | `/api/v1/search/recommend` | Nhận query + GPS (lat, lng), trả danh sách quán đề xuất |
-| `POST` | `/api/v1/users/...` | CRUD user, đăng ký, onboarding |
+> 📄 **Danh sách endpoint đầy đủ, request/response mẫu**: xem [`docs/API_CONTRACT.md`](./API_CONTRACT.md#core-backend-api)
 
-**Luồng request điển hình (search):**
+**Luồng call điển hình (search):**
 ```
 POST /api/v1/search/process  { "query": "mì cay gần đây dưới 50k" }
         │
@@ -50,23 +44,12 @@ POST /api/v1/search/process  { "query": "mì cay gần đây dưới 50k" }
 
 ### Tầng 2 — Core Backend → AI Engine (Port 8001)
 
-- **Client**: `AIServiceClient` (module `core_backend/app/services/ai_client.py`)
+- **Client**: `AIServiceClient` (`core_backend/app/services/ai_client.py`)
 - **Library**: `httpx.AsyncClient` — non-blocking, không block event loop FastAPI.
-- **Endpoint được gọi**: `POST {AI_ENGINE_BASE_URL}/api/v1/nlp/process`
-- **Payload gửi đi**:
-  ```json
-  { "text": "<user query string>" }
-  ```
-- **Response nhận về**:
-  ```json
-  {
-    "vector": [0.12, -0.34, ...],   // PhoBERT embedding (768 dims)
-    "intent": "mì cay",
-    "extracted_budget": 50000
-  }
-  ```
 - **Error handling**: Nếu AI Engine không phản hồi (`HTTPError`), `AIServiceClient` trả `None` và Core Backend ném `HTTP 503 Service Unavailable`.
-- **Config**: URL của AI Engine được cấu hình qua env var `AI_ENGINE_BASE_URL` (đọc bởi `app.core.config.settings`).
+- **Config**: URL cấu hình qua env var `AI_ENGINE_BASE_URL` (đọc bởi `app.core.config.settings`).
+
+> 📄 **Chi tiết payload nội bộ Core Backend ↔ AI Engine**: xem [`docs/API_CONTRACT.md`](./API_CONTRACT.md#ai-engine-api)
 
 > **Ghi chú triển khai**: Trong Docker Compose, cả hai service chạy trong cùng Docker network. `AI_ENGINE_BASE_URL` được set thành `http://ai_engine:8001` (service name resolution).
 
