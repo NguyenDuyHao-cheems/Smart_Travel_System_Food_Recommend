@@ -1,9 +1,9 @@
 <!-- BEGIN:nextjs-agent-rules -->
- 
+
 # Next.js: ALWAYS read docs before coding
- 
+
 Before any Next.js work, find and read the relevant doc in `node_modules/next/dist/docs/`. Your training data is outdated — the docs are the source of truth.
- 
+
 <!-- END:nextjs-agent-rules -->
 
 <!-- BEGIN:folder-description -->
@@ -73,56 +73,33 @@ Smart_Travel_System_Food_Recommend/
 
 <!-- END:folder-description -->
 
-<!-- BEGIN:UI-system-design -->
+<!-- BEGIN:tech-stack-mapping -->
 
-# UI Design System
+# Tech Stack Mapping
 
-> **Source of truth**: `docs/UI_System_Design.md`. Read that file for full specifications.
+## Frontend (Next.js 16 + React 19)
 
-## Theme
+- **Core**: `next`, `react`, `react-dom`
+- **Styling**: `tailwindcss` (v4), `tailwind-merge`, `clsx`, `class-variance-authority`
+- **Animation**: `motion` (Framer Motion v12)
+- **UI Components**: `@radix-ui/*` (Primitives), `@mui/material` (Complex components)
+- **Form Handling**: `react-hook-form`
+- **State/Data**: `recharts` (Charts), `sonner` (Toasts), `lucide-react` (Icons)
+- **Utilities**: `date-fns`, `canvas-confetti`
 
-Premium Dark Mode · Cinematic Glassmorphism · AI-Powered Culinary Discovery
+## Core Backend (FastAPI)
 
-## Color Tokens
+- **Framework**: `fastapi`, `uvicorn`
+- **Database**: `sqlalchemy`, `psycopg2-binary`, `asyncpg`, `pgvector`
+- **Validation/Env**: `pydantic`, `python-dotenv`
+- **HTTP Client**: `httpx`
 
-| Role | Value | Usage |
-|------|-------|-------|
-| **Background** | `#0B0F19` | Main page background |
-| **Card Surface** | `#121A2A` + `/40`~`/80` opacity | Glass cards, panels |
-| **Primary Text** | `white` | Headings, emphasis |
-| **Muted Text** | `white/70`, `white/60`, `white/50` | Body text hierarchy |
-| **Borders** | `white/5` (subtle), `white/10` (active) | Card edges, dividers |
-| **Culinary Accent** | `amber-500 → orange-500 → red-600` | CTAs, warmth gradient |
-| **AI Accent** | `cyan-400`, `cyan-500` | Tech badges, glows |
-| **Mystery Accent** | `purple-400`, `purple-500` | Trending, ambient glow |
+## AI Engine (FastAPI + Machine Learning)
 
-## Typography
-
-- **Headings**: `Playfair Display` (serif) — `font-black tracking-tighter leading-[1.1]`
-- **Body/UI**: `Inter` (sans-serif) — `font-light` for text, `font-bold` for interactive elements
-
-## Core Effects
-
-- **Glassmorphism**: `bg-[#121A2A]/40 backdrop-blur-2xl border border-white/5`
-- **Neon Glow**: `shadow-[0_0_30px_rgba(245,158,11,0.4)]` (amber), `shadow-[0_0_30px_rgba(6,182,212,0.2)]` (cyan)
-- **Card Shadow**: `shadow-[0_8px_32px_rgba(0,0,0,0.5)]`
-- **Hover Scale**: `hover:scale-[1.02]` with `transition-all duration-500`
-
-## Component Patterns
-
-- **Buttons**: `rounded-full h-12` + gradient background + neon shadow
-- **Inputs**: `rounded-[2rem]` + `focus-within:ring-2 focus-within:ring-cyan-500/50`
-- **Cards**: `rounded-3xl overflow-hidden` + glassmorphism + `group-hover:` reveals
-- **Animations**: `motion/react` — `initial={{ opacity: 0, y: 50 }}` → `animate={{ opacity: 1, y: 0 }}`
-
-## Tech Stack
-
-| Layer | Technology |
-|-------|-----------|
-| Framework | Next.js 16 (App Router) + React 19 |
-| Styling | Tailwind CSS v4 (oklch tokens in `globals.css`) |
-| Animation | `motion` (Framer Motion v12) |
-| Icons | `lucide-react` (`w-5 h-5` default) |
-| Fonts | `next/font/google` (Inter, Playfair Display) |
-
-<!-- END:UI-system-design -->
+- **Framework**: `fastapi`, `uvicorn`
+- **ML/Deep Learning**: `torch`, `transformers` (Hugging Face)
+- **Recommendation**: `lightgbm`
+- **NLP (Vietnamese)**: `underthesea`
+- **Validation**: `pydantic`
+- **Vectorize**: `PhoBERT`
+<!-- END:tech-stack-mapping -->
