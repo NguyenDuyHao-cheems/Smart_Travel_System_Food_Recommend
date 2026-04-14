@@ -5,6 +5,7 @@ from .service import RankingService
 router = APIRouter()
 service = RankingService()
 
+
 @router.post("/ml/rank-candidates", response_model=RankResponse)
 def rank_candidates(request: RankRequest):
     top_ids = service.rank(request.pref_vector, request.candidates)
