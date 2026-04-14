@@ -1,0 +1,77 @@
+Table users {
+  id uuid [pk]
+  username varchar
+  password_hash varchar
+  preferences_vector vector
+  allergic_to jsonb
+}
+
+Table user_interactions {
+  id uuid [pk]
+  user_id uuid
+  res_id uuid
+  menu_id uuid
+  action_type varchar
+  duration_sec int
+  created_at timestamptz
+}
+
+Table res_tags {
+  id uuid [pk]
+  res_id uuid
+  tag_id uuid
+}
+
+Table tags {
+  id uuid [pk]
+  name varchar
+}
+
+Table reviews {
+  id uuid [pk]
+  res_id uuid
+  reviewer_name varchar
+  rating int
+  text text
+  date timestamptz
+}
+
+Table dishes {
+  id uuid [pk]
+  res_id uuid
+  name varchar
+  price int
+  image_url text
+  ingredients jsonb
+  allergens jsonb
+  is_vegetarian bool
+  embedding_vector vector
+  is_active bool
+}
+
+Table restaurants {
+  id uuid [pk]
+  name varchar
+  address text
+  lat float
+  lng float
+  price_range varchar
+  opening_hours varchar
+  image_url text
+  rating_avg float
+  sentiment_score float
+  top_review_text text
+  is_active bool
+}
+
+// Relationships
+Ref: user_interactions.user_id > users.id
+Ref: user_interactions.res_id > restaurants.id
+Ref: user_interactions.menu_id > dishes.id
+
+Ref: res_tags.res_id > restaurants.id
+Ref: res_tags.tag_id > tags.id
+
+Ref: reviews.res_id > restaurants.id
+
+Ref: dishes.res_id > restaurants.id
