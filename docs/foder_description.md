@@ -1,71 +1,66 @@
-## Root
-smart-travel-system/
-├── frontend/           # Next.js & Tailwind CSS application
-├── backend/            # FastAPI application
-├── data_pipeline/      # ETL, Web Scraping & AI pre-processing
-├── docs/               # ERD, Sequence Diagrams, API Contracts
-├── .gitignore          # Ignore node_modules, venv, .env
-├── README.md           # Project overview & setup instructions
-└── CONTRIBUTING.md     # Git workflow rules for the 8-person team
-## Frontend
-frontend/
-├── src/
-│   ├── app/            # Next.js App Router (Pages & Layouts)
-│   │   ├── (auth)/     # Login/Register pages
-│   │   ├── search/     # Search results page
-│   │   ├── detail/     # Restaurant detail page
-│   │   └── page.tsx    # Home page
-│   │
-│   ├── components/     # Reusable UI elements
-│   │   ├── ui/         # Buttons, Inputs, Modals (Tailwind styled)
-│   │   └── shared/     # Header, Footer, RestaurantCard
-│   │
-│   ├── services/       # API call functions (fetch JSON from Backend)
-│   ├── store/          # Global state management
-│   └── types/          # Data interfaces 
-│
-├── public/             # Static assets (images, icons)
-├── tailwind.config.ts  # Tailwind CSS configuration
-└── package.json        # Frontend dependencies
-## Backend
-backend/
-├── app/
-│   ├── core/                   # Security, configs, DB connection
-│   │   ├── config.py           # Environment variables loader
-│   │   ├── database.py         # PostgreSQL connection setup
-│   │   └── security.py         # JWT Token & Hashing
-│   │
-│   ├── domains/                # Business logic separated by features
-│   │   ├── users/              # User management domain
-│   │   │   ├── router.py       # API Endpoints (e.g., POST /users)
-│   │   │   ├── schemas.py      # Pydantic models (Data validation)
-│   │   │   ├── models.py       # SQLAlchemy models (PostgreSQL tables)
-│   │   │   ├── repository.py   # DB operations (CRUD)
-│   │   │   └── service.py      # Core business logic
-│   │   │
-│   │   ├── restaurants/        # Restaurant domain
-│   │   │   └── ...             # Same 5-file structure as users/
-│   │   │
-│   │   └── recommendations/    # AI ranking & LambdaMART domain
-│   │       ├── router.py
-│   │       ├── service.py      # Logic to call LightGBM
-│   │       └── schemas.py
-│   │
-│   └── main.py                 # FastAPI application instance & Router registration
-│
-├── requirements.txt            # Python dependencies list
-└── .env.example                # Example environment variables (No real passwords)
+<!-- BEGIN:folder-description -->
 
-## Data Pipeline
-data_pipeline/
-├── scrapers/           # Python scripts to fetch Google Maps data
-├── ai_processing/      # Scripts for Sentiment Analysis via Hugging Face
-├── notebooks/          # Jupyter notebooks for testing ML models (LightGBM)
-├── raw_data/           # CSV/JSON files temporarily stored before DB insertion
-└── seed.py             # Main script to push clean data to PostgreSQL
+# Project Structure
 
-## Docs
-docs/
-├── ERD.png             # Entity Relationship Diagram (PostgreSQL schema)
-├── sequence_diagrams/  # Sequence diagrams for user flows
-└── api_contract.md     # API documentation (OpenAPI/Swagger spec)
+```
+Smart_Travel_System_Food_Recommend/
+├── Frontend/                    # Next.js 16 + React 19 + Tailwind CSS v4
+│   └── src/
+│       ├── app/                 # App Router pages & layouts
+│       │   ├── page.tsx         # Homepage (HeroSection + BentoGrid → redirects to /result)
+│       │   ├── result/          # AI recommendation results page
+│       │   ├── search/          # Search flow page
+│       │   ├── detail/          # Restaurant detail page
+│       │   ├── auth/            # Login / Register pages
+│       │   ├── layout.tsx       # Root layout (fonts, metadata)
+│       │   └── globals.css      # Design tokens (oklch variables, dark mode)
+│       ├── components/          # Reusable UI components
+│       │   ├── Header.tsx       # Global navigation bar
+│       │   ├── HeroSection.tsx  # Homepage hero with search input
+│       │   ├── BentoGrid.tsx    # Feature showcase grid
+│       │   ├── ui/              # Atomic UI primitives (ResultCard, LoadingState)
+│       │   ├── shared/          # Cross-page components (Footer, RestaurantCard)
+│       │   └── figma/           # Figma-exported components
+│       ├── hooks/               # Custom React hooks (useGeolocation)
+│       ├── services/            # API client functions
+│       ├── store/               # Global state management
+│       └── types/               # TypeScript interfaces
+│
+├── core_backend/                # FastAPI microservice (Port 8000)
+│   ├── app/
+│   │   ├── main.py              # FastAPI instance, CORS, router registration
+│   │   ├── core/                # Config, database connection, security
+│   │   ├── domains/             # DDD business logic (router → service → repository)
+│   │   │   ├── users/           # User management & onboarding
+│   │   │   ├── restaurants/     # Restaurant CRUD
+│   │   │   └── search/          # GPS search & AI recommendation endpoints
+│   │   └── services/            # Shared application services
+│   ├── tests/                   # Pytest test suite
+│   ├── requirements.txt         # Python dependencies (incl. pgvector)
+│   └── Dockerfile
+│
+├── ai_engine/                   # AI/ML microservice (Port 8001)
+│   ├── app/                     # Recommendation engine (LightGBM, embeddings)
+│   ├── requirements.txt
+│   └── Dockerfile
+│
+├── Data_Pipeline/               # ETL & data ingestion
+│   ├── scrapers/                # Google Maps data scrapers
+│   ├── AI_processing/           # Sentiment analysis (Hugging Face)
+│   ├── notebooks/               # Jupyter notebooks for ML experiments
+│   ├── raw_data/                # Temporary CSV/JSON storage
+│   └── seed.py                  # Database seeding script
+│
+├── docs/                        # Project documentation
+│   ├── ERD/                     # Entity Relationship Diagrams
+│   ├── Sequence/                # Sequence diagrams
+│   ├── Kiến trúc/               # Architecture diagrams
+│   └── UI_System_Design.md      # Full UI design system specification
+│
+├── docker-compose.yml           # Orchestrates core_backend + ai_engine
+├── AGENTS.md                    # This file — AI agent context
+├── README.md                    # Project overview & setup guide
+└── CONTRIBUTING.md              # Git workflow rules
+```
+
+<!-- END:folder-description -->
