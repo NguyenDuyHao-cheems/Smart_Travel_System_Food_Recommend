@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.database import check_db_connection
+from app.domains.recomendations.router import router as recomendations_router
 
 app = FastAPI(title="Smart Travel System - Food Recommend")
 
@@ -12,6 +13,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Register domain routers
+app.include_router(recomendations_router)
 
 @app.get("/api/health")
 def get_health_status():
