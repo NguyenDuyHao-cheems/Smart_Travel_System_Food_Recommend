@@ -4,32 +4,30 @@ from .schemas import Candidate
 
 
 class RankingService:
-    @staticmethod
-    def cosine_similarity(a: List[float], b: List[float]) -> float:
-        a_arr = np.asarray(a, dtype=float)
-        b_arr = np.asarray(b, dtype=float)
-
-        if a_arr.shape != b_arr.shape:
-            raise ValueError(f"Vector size mismatch: {a_arr.shape} != {b_arr.shape}")
-
-        norm_a = np.linalg.norm(a_arr)
-        norm_b = np.linalg.norm(b_arr)
-
-        if norm_a == 0.0 or norm_b == 0.0:
-            return 0.0
-
-        return float(np.dot(a_arr, b_arr) / (norm_a * norm_b))
-
     def rank(
         self,
         pref_vector: List[float],
         candidates: List[Candidate],
+        top_k: int = 5,  # Default value for top_k
     ) -> List[int]:
-        scored = []
+        if not candidates:
+            return []
 
-        for candidate in candidates:
-            score = self.cosine_similarity(pref_vector, candidate.vector)
-            scored.append((candidate.res_id, score))
+        pref = np.array(pref_vector, dtype=float)
+        matrix = np.array([c.vector for c in candidates], dtype=float)  # Convert candidates to numpy array
 
-        scored.sort(key=lambda item: item[1], reverse=True)
-        return [res_id for res_id, _ in scored[:5]]
+        norm_pref = np.linalg.norm(pref)  # Calculate the norm of the preference vector
+        if norm_pref == 0:
+            return [c.res_id for c in candidates[:top_k]]
+
+        norm_matrix = np.linalg.norm(matrix, axis=1)  # Calculate the norm of each candidate vector
+
+        # Vectorized cosine similarity for all candidates in one shot
+        with np.errstate(invalid="ignore"):  # silence zero-norm candidate warning
+            similarities = np.dot(matrix, pref) / (norm_matrix * norm_pref)
+        similarities = np.nan_to_num(similarities)  # guard NaN from zero-norm candidates
+
+        actual_k = min(top_k, len(candidates))
+        top_indices = np.argsort(similarities)[-actual_k:][::-1]  # Get the indices of the top k candidates
+
+        return [candidates[int(i)].res_id for i in top_indices]
