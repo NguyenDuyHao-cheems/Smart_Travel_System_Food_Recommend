@@ -2,7 +2,7 @@ Table users {
   id uuid [pk]
   username varchar
   password_hash varchar
-  preferences_vector vector
+  preferences_vector vector(773)
   allergic_to jsonb
 }
 
