@@ -43,6 +43,55 @@ const initialData: OnboardingData = {
   age: '',
 };
 
+// ==========================================
+// CONSTANTS & STATIC DATA
+// ==========================================
+const FAV_DISH_CATEGORIES = [
+  {
+    name: "Đặc sản Việt Nam",
+    items: ["Cơm Tấm", "Phở", "Bún Bò Huế", "Bánh Mì", "Hủ Tiếu", "Bún Chả", "Bún Đậu Mắm Tôm", "Bánh Xèo", "Mì Quảng", "Gỏi Cuốn"]
+  },
+  {
+    name: "Ẩm thực Á Âu",
+    items: ["Sushi", "Dimsum", "Lẩu Thái", "Kimbap", "Sashimi", "Pizza", "Bò Bít Tết", "Mì Ý", "Burger"]
+  },
+  {
+    name: "Chuyên Ăn Vặt",
+    items: ["Gà Rán", "Mì Cay", "Mực Nướng", "Đồ Nướng BBQ", "Khoai Tây Chiên", "Bánh Tráng Trộn"]
+  },
+  {
+    name: "Tráng miệng & Nước",
+    items: ["Trà Sữa", "Cà Phê", "Bingsu", "Chè Mâm"]
+  }
+];
+
+const SPICY_OPTIONS: { id: SpicyLevel, label: string }[] = [
+  { id: 'none', label: '0% Cay' },
+  { id: 'mild', label: '25% Cay' },
+  { id: 'medium', label: '50% Cay' },
+  { id: 'hot', label: '75% Cay' },
+  { id: 'extra_hot', label: 'MAX LEVEL' },
+];
+
+const DIETARY_OPTS = [
+  { id: 'vegan', label: 'Thuần chay' },
+  { id: 'vegetarian', label: 'Ăn chay' },
+  { id: 'halal', label: 'Halal' }
+];
+
+const ALLERGY_OPTS = [
+  { id: 'peanut', label: 'Đậu phộng' },
+  { id: 'seafood', label: 'Hải sản' },
+  { id: 'dairy', label: 'Sữa/Trứng' },
+  { id: 'gluten', label: 'Gluten' }
+];
+
+const BUDGET_OPTIONS: { id: BudgetLevel, label: string, desc: string }[] = [
+  { id: 'low', label: 'Bình dân', desc: 'Dưới 50k - Học sinh/Sinh viên' },
+  { id: 'medium', label: 'Tầm trung', desc: '50k - 200k - Ăn ngon, view ổn' },
+  { id: 'high', label: 'Cao cấp', desc: 'Trên 200k - Sang trọng, Fine dining' },
+];
+
 export default function OnboardingPage() {
   const router = useRouter();
   const [formData, setFormData] = useState<OnboardingData>(initialData);
@@ -54,14 +103,14 @@ export default function OnboardingPage() {
   useEffect(() => {
     let stored = localStorage.getItem('food_recsys_userid');
     if (!stored) {
-      stored = `user_${Math.random().toString(36).substring(2, 11)}`;
+      stored = `user_${crypto.randomUUID()}`;
       localStorage.setItem('food_recsys_userid', stored);
     }
     setUserId(stored);
   }, []);
 
   // Helpers
-  const toggleArrayItem = (field: keyof OnboardingData, value: string) => {
+  const toggleArrayItem = React.useCallback((field: keyof OnboardingData, value: string) => {
     setFormData((prev) => {
       const array = prev[field] as string[];
       if (field === 'favorite_dishes' && !array.includes(value) && array.length >= 5) {
@@ -72,11 +121,11 @@ export default function OnboardingPage() {
       }
       return { ...prev, [field]: [...array, value] };
     });
-  };
+  }, []);
 
-  const setSingleItem = (field: keyof OnboardingData, value: any) => {
+  const setSingleItem = React.useCallback((field: keyof OnboardingData, value: OnboardingData[typeof field]) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
-  };
+  }, []);
 
   const handleSubmit = async () => {
     setErrorMsg('');
@@ -104,7 +153,8 @@ export default function OnboardingPage() {
 
     setIsSubmitting(true);
     try {
-      const response = await fetch(`http://127.0.0.1:8000/api/v1/users/${userId || 'user_123'}/onboarding`, {
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://127.0.0.1:8000';
+      const response = await fetch(`${API_BASE}/api/v1/users/${userId}/onboarding`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
@@ -131,7 +181,7 @@ export default function OnboardingPage() {
     hidden: { opacity: 0 },
     show: {
       opacity: 1,
-      transition: { staggerChildren: 0.1 }
+      transition: { staggerChildren: 0.05 }
     }
   };
 
@@ -301,31 +351,12 @@ function BasicInfoSection({ formData, setSingleItem }: { formData: OnboardingDat
 }
 
 function FavoriteDishes({ selected, onChange }: { selected: string[], onChange: (val: string) => void }) {
-  const categories = [
-    {
-      name: "Đặc sản Việt Nam",
-      items: ["Cơm Tấm", "Phở", "Bún Bò Huế", "Bánh Mì", "Hủ Tiếu", "Bún Chả", "Bún Đậu Mắm Tôm", "Bánh Xèo", "Mì Quảng", "Gỏi Cuốn"]
-    },
-    {
-      name: "Ẩm thực Á Âu",
-      items: ["Sushi", "Dimsum", "Lẩu Thái", "Kimbap", "Sashimi", "Pizza", "Bò Bít Tết", "Mì Ý", "Burger"]
-    },
-    {
-      name: "Chuyên Ăn Vặt",
-      items: ["Gà Rán", "Mì Cay", "Mực Nướng", "Đồ Nướng BBQ", "Khoai Tây Chiên", "Bánh Tráng Trộn"]
-    },
-    {
-      name: "Tráng miệng & Nước",
-      items: ["Trà Sữa", "Cà Phê", "Bingsu", "Chè Mâm"]
-    }
-  ];
-
   return (
     <Section title="Món ăn yêu thích (*)" icon={<IconMeat size={20} />} subtitle={`Đã chọn ${selected.length}/5 (Yêu cầu 3-5 món)`}>
       <div className="text-[14px] text-zinc-400 mb-6 mt-1 font-light">Chọn ngẫu nhiên 3 đến 5 đồ ăn khoái khẩu nhất của bạn:</div>
 
       <div className="space-y-4">
-        {categories.map((cat, idx) => {
+        {FAV_DISH_CATEGORIES.map((cat, idx) => {
           let themeClasses = "";
           let DotColor = "";
           if (idx === 0) { themeClasses = "from-orange-900/10 border-orange-500/20 hover:border-orange-500/40 text-orange-400/80 shadow-[inset_0_0_20px_rgba(249,115,22,0.02)]"; DotColor = "bg-orange-500/80 shadow-[0_0_8px_rgba(249,115,22,0.8)]"; } // Đặc sản VN
@@ -368,14 +399,6 @@ function FavoriteDishes({ selected, onChange }: { selected: string[], onChange: 
 }
 
 function SpicyLevelPicker({ selected, onChange }: { selected: SpicyLevel, onChange: (val: SpicyLevel) => void }) {
-  const options: { id: SpicyLevel, label: string }[] = [
-    { id: 'none', label: '0% Cay' },
-    { id: 'mild', label: '25% Cay' },
-    { id: 'medium', label: '50% Cay' },
-    { id: 'hot', label: '75% Cay' },
-    { id: 'extra_hot', label: 'MAX LEVEL' },
-  ];
-
   return (
     <Section title="Mức độ ăn cay (*)" icon={<IconFlame size={20} />}>
       <div className="bg-gradient-to-br from-orange-900/10 to-transparent p-5 sm:p-6 rounded-3xl border border-orange-500/20 shadow-[inset_0_0_20px_rgba(249,115,22,0.02)] relative overflow-hidden group hover:border-orange-500/40 transition-colors mt-2">
@@ -387,7 +410,7 @@ function SpicyLevelPicker({ selected, onChange }: { selected: SpicyLevel, onChan
           Kháng Hỏa Tùy Chỉnh
         </div>
         <div className="flex flex-wrap gap-3 relative z-10 transition-all">
-          {options.map((opt) => {
+          {SPICY_OPTIONS.map((opt) => {
             const isActive = selected === opt.id;
             return (
               <button
@@ -409,19 +432,6 @@ function SpicyLevelPicker({ selected, onChange }: { selected: SpicyLevel, onChan
 }
 
 function DietaryAndAllergies({ dietary, allergies, toggleDietary, toggleAllergy }: { dietary: string[], allergies: string[], toggleDietary: (val: string) => void, toggleAllergy: (val: string) => void }) {
-  const dietaryOpts = [
-    { id: 'vegan', label: 'Thuần chay' },
-    { id: 'vegetarian', label: 'Ăn chay' },
-    { id: 'halal', label: 'Halal' }
-  ];
-
-  const allergyOpts = [
-    { id: 'peanut', label: 'Đậu phộng' },
-    { id: 'seafood', label: 'Hải sản' },
-    { id: 'dairy', label: 'Sữa/Trứng' },
-    { id: 'gluten', label: 'Gluten' }
-  ];
-
   return (
     <Section title="Chế độ ăn & Dị ứng" icon={<IconLeaf size={20} />} subtitle="Tuỳ chọn">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mt-2">
@@ -435,7 +445,7 @@ function DietaryAndAllergies({ dietary, allergies, toggleDietary, toggleAllergy 
             Chế Độ Đặc Biệt
           </div>
           <div className="flex flex-wrap gap-2.5 relative z-10 transition-all">
-            {dietaryOpts.map(opt => (
+            {DIETARY_OPTS.map(opt => (
               <Badge key={opt.id} label={opt.label} isActive={dietary.includes(opt.id)} onClick={() => toggleDietary(opt.id)} theme="emerald" />
             ))}
           </div>
@@ -451,7 +461,7 @@ function DietaryAndAllergies({ dietary, allergies, toggleDietary, toggleAllergy 
             Khai Báo Dị Ứng
           </div>
           <div className="flex flex-wrap gap-2.5 relative z-10 transition-all">
-            {allergyOpts.map(opt => (
+            {ALLERGY_OPTS.map(opt => (
               <Badge key={opt.id} label={opt.label} isActive={allergies.includes(opt.id)} onClick={() => toggleAllergy(opt.id)} theme="red" />
             ))}
           </div>
@@ -462,16 +472,10 @@ function DietaryAndAllergies({ dietary, allergies, toggleDietary, toggleAllergy 
 }
 
 function BudgetPicker({ selected, onChange }: { selected: BudgetLevel, onChange: (val: BudgetLevel) => void }) {
-  const options: { id: BudgetLevel, label: string, desc: string }[] = [
-    { id: 'low', label: 'Bình dân', desc: 'Dưới 50k - Học sinh/Sinh viên' },
-    { id: 'medium', label: 'Tầm trung', desc: '50k - 200k - Ăn ngon, view ổn' },
-    { id: 'high', label: 'Cao cấp', desc: 'Trên 200k - Sang trọng, Fine dining' },
-  ];
-
   return (
     <Section title="Mức chi tiêu trung bình (*)" icon={<IconCoin size={20} />}>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mt-2">
-        {options.map((opt) => {
+        {BUDGET_OPTIONS.map((opt) => {
           const isActive = selected === opt.id;
           return (
             <motion.div
@@ -537,7 +541,7 @@ function Section({ title, icon, subtitle, children }: { title: string, icon: Rea
   );
 }
 
-function Badge({ label, isActive, onClick, theme = 'cyan', disabled = false }: { label: string, isActive: boolean, onClick: () => void, theme?: 'cyan' | 'red' | 'emerald', disabled?: boolean }) {
+const Badge = React.memo(({ label, isActive, onClick, theme = 'cyan', disabled = false }: { label: string, isActive: boolean, onClick: () => void, theme?: 'cyan' | 'red' | 'emerald', disabled?: boolean }) => {
   let activeStyle = '';
   if (theme === 'red') activeStyle = 'bg-red-500/20 border-red-500/50 text-red-400 shadow-[0_0_15px_rgba(239,68,68,0.2)]';
   else if (theme === 'emerald') activeStyle = 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.2)]';
@@ -556,4 +560,6 @@ function Badge({ label, isActive, onClick, theme = 'cyan', disabled = false }: {
       {label}
     </motion.button>
   );
-}
+});
+
+Badge.displayName = 'Badge';
