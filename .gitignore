@@ -87,3 +87,8 @@ Desktop.ini
 .idea/
 *.swp
 docs/PLAN.md
+
+# Specialized build & test files
+*.tsbuildinfo
+.vitest/
+coverage/
