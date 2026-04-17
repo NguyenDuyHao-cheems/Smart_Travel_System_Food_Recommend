@@ -2,18 +2,18 @@
 # 1. FRONTEND (Next.js & Node.js)
 # ==========================================
 # Dependencies
-frontend/node_modules/
+Frontend/node_modules/
 # Next.js build output
-frontend/.next/
-frontend/out/
-frontend/build/
+Frontend/.next/
+Frontend/out/
+Frontend/build/
 # Vercel local output
-frontend/.vercel/
+Frontend/.vercel/
 # Debug logs
-frontend/npm-debug.log*
-frontend/yarn-debug.log*
-frontend/yarn-error.log*
-frontend/build.log
+Frontend/npm-debug.log*
+Frontend/yarn-debug.log*
+Frontend/yarn-error.log*
+Frontend/build.log
 
 # ==========================================
 # 2. BACKEND & DATA PIPELINE (Python & FastAPI)
@@ -24,13 +24,18 @@ __pycache__/
 *$py.class
 
 # Virtual Environments
-backend/venv/
-backend/env/
-data_pipeline/venv/
-data_pipeline/env/
+venv/
+.venv/
+env/
+**/venv/
+**/env/
+**/pyvenv.cfg
+core_backend/venv/
+ai_engine/venv/
 
 # Jupyter Notebook checkpoints
 .ipynb_checkpoints/
+*/.ipynb_checkpoints/
 
 # Pytest / Coverage logs
 .pytest_cache/
@@ -41,15 +46,18 @@ coverage.xml
 # ==========================================
 # 3. DATABASE & LOCAL DATA
 # ==========================================
-# Local SQLite databases (if used for testing)
+# Local SQLite databases
 *.sqlite3
 *.db
 
-# Scraped raw data (Avoid committing large files to Git)
-data_pipeline/raw_data/*.csv
-data_pipeline/raw_data/*.json
+# Scraped raw data/local files (Avoid committing large files)
+Data_Pipeline/raw_data/*.csv
+Data_Pipeline/raw_data/*.json
+local_files/
+**/__pycache__/
+
 # Keep the folder structure but ignore the content
-!data_pipeline/raw_data/.gitkeep
+!Data_Pipeline/raw_data/.gitkeep
 
 # ==========================================
 # 4. ENVIRONMENT VARIABLES & SECRETS (CRITICAL)
@@ -78,3 +86,4 @@ Desktop.ini
 .vscode/
 .idea/
 *.swp
+docs/PLAN.md
