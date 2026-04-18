@@ -12,8 +12,9 @@ from app.core.database import SessionLocal
 class RankingService:  #Lightfm
     
     def __init__(self):
-        # cache: {user_id: [top 50 res_id]}
-        self.cache: Dict[Any, List[int]] = {}
+        from cachetools import TTLCache
+        # Cache 1000 entries, expire sau 5 phút
+        self.cache = TTLCache(maxsize=1000, ttl=300)
 
     def get_key(self, pref_vector: List[float]) -> Any:
         # hash với độ chính xác 3 chữ số thập phân
@@ -82,8 +83,7 @@ class RankingService:  #Lightfm
     # xóa cache khi cần (ví dụ khi có update về restaurant)
     def clear_cache(self, pref_vector: List[float]) -> None:
         key = self.get_key(pref_vector)
-        if key in self.cache:
-            del self.cache[key]
+        self.cache.pop(key, None)
 
 class RetrievalService:
     def __init__(self, db: Session):

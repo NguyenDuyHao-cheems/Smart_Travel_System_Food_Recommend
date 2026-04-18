@@ -9,19 +9,22 @@ from app.core.database import SessionLocal
 
 router = APIRouter()
 
-# Khởi tạo Service một lần để dùng chung Cache (Singleton)
-ranking_service = RankingService()
+from functools import lru_cache
+from app.core.dependencies import get_db
+import logging
 
-# Dependency để lấy DB Session
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+logger = logging.getLogger(__name__)
+
+@lru_cache(maxsize=1)
+def get_ranking_service() -> RankingService:
+    return RankingService()
 
 @router.post("/ml/rank-candidates", response_model=RankResponse)
-def rank_candidates(request: RankRequest, db: Session = Depends(get_db)):
+def rank_candidates(
+    request: RankRequest,
+    db: Session = Depends(get_db),
+    service: RankingService = Depends(get_ranking_service)
+):
     """
     Endpoint thực hiện Pipeline:
     1. Retrieval: Lọc thô từ Postgres (tags, budget, location, is_open)
@@ -29,14 +32,13 @@ def rank_candidates(request: RankRequest, db: Session = Depends(get_db)):
     """
     try:
         # Gọi hàm điều phối chính trong RankingService
-        top_ids = ranking_service.get_recommendations(db, request)
+        top_ids = service.get_recommendations(db, request)
         # Trả về kết quả theo đúng Schema RankResponse
         return RankResponse(top_ids=top_ids)
         
     except Exception as e:
-        # Log lỗi ra console để Bảo dễ debug khi chạy
-        print(f"--- [RANKING ERROR] ---: {e}")
+        logger.exception("Ranking pipeline failed for user_id=%s", request.user_id)
         raise HTTPException(
             status_code=500, 
-            detail=f"Lỗi hệ thống khi xử lý gợi ý: {str(e)}"
+            detail="Internal server error. Please try again later."
         )
