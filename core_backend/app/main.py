@@ -38,3 +38,7 @@ app.include_router(ml_router, prefix="/api/v1", tags=["ML"])
 @app.get("/")
 def read_root():
     return {"message": "Welcome to Smart Travel System Food Recommend API - Core Backend"}
+
+# ranking
+from app.domains.ranking.router import router as ml_router
+app.include_router(ml_router, prefix="/api/v1", tags=["ML"])

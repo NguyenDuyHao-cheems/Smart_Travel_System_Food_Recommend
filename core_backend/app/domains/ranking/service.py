@@ -1,13 +1,10 @@
 import numpy as np
 from typing import List, Dict, Any
 from .schemas import Candidate, RankRequest
-import numpy as np
 import json
 from sqlalchemy.orm import Session
 from .models import RestaurantModel, RestaurantTagModel, TagModel 
 from app.core.database import SessionLocal
-
-
 
 class RankingService:  #Lightfm
     
@@ -24,7 +21,6 @@ class RankingService:  #Lightfm
     def build_cache(self, key: Any, pref_vector: List[float], candidates: List[Candidate]) -> None:
         pref = np.array(pref_vector, dtype=np.float32)
         norm_pref = np.linalg.norm(pref)
-
 
         if norm_pref == 0 or not candidates:
             self.cache[key] = []
@@ -61,6 +57,7 @@ class RankingService:  #Lightfm
         if key not in self.cache:
             self.build_cache(key, pref_vector, candidates)
         return self.cache[key][offset:offset+k]
+        
     def get_recommendations(self, db: Session, request: RankRequest) -> List[int]:
         # 1. Retrieval: Lọc thô từ Postgres (tags, budget, location, is_open)
         retrieval_service = RetrievalService(db)
@@ -151,4 +148,3 @@ class RetrievalService:
             return []
         except Exception:
             return []
-    
