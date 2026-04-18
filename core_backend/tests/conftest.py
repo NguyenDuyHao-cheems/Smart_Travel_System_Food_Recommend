@@ -13,6 +13,17 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
+import sys
+import types
+if "pgvector" not in sys.modules:
+    pgvector_mock = types.ModuleType("pgvector")
+    pgvector_sa_mock = types.ModuleType("pgvector.sqlalchemy")
+    # Stub Vector class as a generic SQLAlchemy type for testing
+    from sqlalchemy.types import String
+    pgvector_sa_mock.Vector = String 
+    sys.modules["pgvector"] = pgvector_mock
+    sys.modules["pgvector.sqlalchemy"] = pgvector_sa_mock
+
 from app.main import app
 from app.core.database import SessionLocal
 from app.domains.users.models import Base as UserBase
@@ -51,7 +62,7 @@ def db_session():
 def client(db_session):
     """Test client with the DB session overridden to use SQLite."""
     from app.core.database import SessionLocal as _SessionLocal
-    from app.domains.users.router import get_db
+    from app.core.dependencies import get_db
 
     def override_get_db():
         yield db_session
