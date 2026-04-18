@@ -11,13 +11,7 @@ router = APIRouter()
 
 # ── Dependency providers ──────────────────────────────────────────────────────
 
-def get_db():
-    """Yield a SQLAlchemy session and guarantee cleanup."""
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+from app.core.dependencies import get_db
 
 
 def get_onboarding_service(db: Session = Depends(get_db)) -> OnboardingService:
