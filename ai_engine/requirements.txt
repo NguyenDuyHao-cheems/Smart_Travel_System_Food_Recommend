@@ -6,3 +6,7 @@ lightgbm>=4.0.0
 underthesea>=6.6.0
 pydantic>=2.0.0
 python-dotenv
+# Testing
+pytest>=7.0.0
+httpx>=0.24.0
+pytest-cov>=4.0.0
