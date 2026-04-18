@@ -1,9 +1,16 @@
 import numpy as np
 from typing import List, Dict, Any
-from .schemas import Candidate
+from .schemas import Candidate, RankRequest
+import numpy as np
+import json
+from sqlalchemy.orm import Session
+from .models import RestaurantModel, RestaurantTagModel, TagModel 
+from app.core.database import SessionLocal
 
-class RankingService:
 
+
+class RankingService:  #Lightfm
+    
     def __init__(self):
         # cache: {user_id: [top 50 res_id]}
         self.cache: Dict[Any, List[int]] = {}
@@ -53,9 +60,95 @@ class RankingService:
         if key not in self.cache:
             self.build_cache(key, pref_vector, candidates)
         return self.cache[key][offset:offset+k]
+    def get_recommendations(self, db: Session, request: RankRequest) -> List[int]:
+        # 1. Retrieval: Lọc thô từ Postgres (tags, budget, location, is_open)
+        retrieval_service = RetrievalService(db)
+        candidates = retrieval_service.get_candidates(
+            tags=request.tags,
+            budget=request.budget,
+            user_location=request.user_location,
+            radius=request.radius
+        )
 
+        # 2. Ranking: Xếp hạng bằng NumPy Cosine Similarity với Cache
+        top_ids = self.rank(
+            pref_vector=request.pref_vector,
+            candidates=candidates,
+            k=request.k,
+            offset=request.offset
+        )
+        return top_ids
+    
     # xóa cache khi cần (ví dụ khi có update về restaurant)
     def clear_cache(self, pref_vector: List[float]) -> None:
         key = self.get_key(pref_vector)
         if key in self.cache:
             del self.cache[key]
+
+class RetrievalService:
+    def __init__(self, db: Session):
+        self.db = db
+
+    def get_candidates(self, tags: List[str], budget: float, user_location: List[float], radius: float) -> List[Candidate]:
+        """
+        Thực hiện lọc thô (Retrieval) từ Database:
+        1. is_open == True
+        2. price_level <= budget
+        3. Vị trí trong bán kính cho phép
+        4. Có chứa các tags yêu cầu
+        """
+        # 1. Khởi tạo query lọc các điều kiện cơ bản
+        query = self.db.query(RestaurantModel).filter(
+            RestaurantModel.is_open == True,
+            RestaurantModel.price_level <= budget
+        )
+
+        # 2. Lọc theo vị trí (Bounding Box để tối ưu tốc độ)
+        # 1km xấp xỉ 0.01 độ lat/lng
+        lat, lng = user_location
+        deg_radius = radius / 111.0
+        query = query.filter(
+            RestaurantModel.lat.between(lat - deg_radius, lat + deg_radius),
+            RestaurantModel.lng.between(lng - deg_radius, lng + deg_radius)
+        )
+
+        # 3. Lọc theo Tags (Many-to-Many join)
+        if tags:
+            query = query.join(RestaurantTagModel).join(TagModel).filter(
+                TagModel.tag_name.in_(tags)
+            )
+
+        # 4. Thực thi truy vấn với .distinct() để tránh trùng lặp khi join tags
+        # Giới hạn 500 để bước Ranking không bị quá tải
+        results = query.distinct().limit(500).all()
+
+        # 5. Chuyển đổi sang List[Candidate] cho RankingService
+        candidates = []
+        for r in results:
+            # Dùng getattr để lấy giá trị thực tế, Pylance sẽ coi nó là 'Any' 
+            # nên sẽ không bắt bẻ việc ép kiểu nữa
+            raw_id = getattr(r, 'id', 0)
+            raw_vec = getattr(r, 'vector', "")
+
+            vec = self._parse_vector(raw_vec)
+            if vec:
+                candidates.append(Candidate(
+                    res_id=int(raw_id), # Bây giờ ép kiểu thoải mái
+                    vector=vec
+                ))
+        
+        return candidates
+
+    def _parse_vector(self, vector_data: Any) -> List[float]:
+        """Chuyển đổi dữ liệu vector từ DB sang List[float]"""
+        try:
+            if not vector_data:
+                return []
+            if isinstance(vector_data, str):
+                return json.loads(vector_data)
+            if isinstance(vector_data, list):
+                return [float(x) for x in vector_data]
+            return []
+        except Exception:
+            return []
+    
