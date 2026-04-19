@@ -4,12 +4,16 @@ import math
 from typing import List, Optional
 
 from app.core.config import settings
+from app.core.security import hash_password, verify_password
 from .schemas import (
     OnboardingRequest,
     OnboardingResponse,
     MockRestaurant,
+    SignInRequest,
+    SignUpRequest,
+    AuthResponse
 )
-from .repository import UserOnboardingRepository
+from .repository import UserOnboardingRepository, UserAccountRepository
 
 # ── Mock fallback data ────────────────────────────────────────────────────────
 POPULAR_RESTAURANTS: List[MockRestaurant] = [
@@ -166,3 +170,32 @@ class OnboardingService:
         ]
 
         return base + structured
+class AuthService:
+    def __init__(self, repository: UserAccountRepository) -> None:
+        self._repo = repository
+
+    def sign_up(self, payload: SignUpRequest) -> AuthResponse:
+        existing = self._repo.get_by_username(payload.username)
+        if existing:
+            raise ValueError("Username already exists.")
+
+        user = self._repo.create_user(
+            username=payload.username,
+            password_hash=hash_password(payload.password),
+        )
+        return AuthResponse(
+            message="Sign up successful",
+            user_id=user.id,
+            username=user.username,
+        )
+
+    def sign_in(self, payload: SignInRequest) -> AuthResponse:
+        user = self._repo.get_by_username(payload.username)
+        if not user or not verify_password(payload.password, user.password_hash):
+            raise PermissionError("Invalid username or password.")
+
+        return AuthResponse(
+            message="Sign in successful",
+            user_id=user.id,
+            username=user.username,
+        )

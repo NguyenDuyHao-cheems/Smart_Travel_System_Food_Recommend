@@ -1,5 +1,7 @@
 from sqlalchemy.orm import Session
-from .models import UserOnboarding
+from sqlalchemy.exc import IntegrityError
+
+from .models import UserOnboarding, UserAccount
 from typing import Optional, List
 
 
@@ -70,3 +72,25 @@ class UserOnboardingRepository:
         self._db.commit()
         self._db.refresh(record)
         return record
+class UserAccountRepository:
+    def __init__(self, db: Session) -> None:
+        self._db = db
+
+    def get_by_username(self, username: str) -> Optional[UserAccount]:
+        return (
+            self._db.query(UserAccount)
+            .filter(UserAccount.username == username)
+            .first()
+        )
+
+    def create_user(self, username: str, password_hash: str) -> UserAccount:
+        user = UserAccount(username=username, password_hash=password_hash)
+        self._db.add(user)
+        try:
+            self._db.commit()
+        except IntegrityError:
+            self._db.rollback()
+            raise ValueError("Username already exists.")
+        self._db.refresh(user)
+        return user
+

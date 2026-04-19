@@ -48,3 +48,10 @@ class UserOnboarding(Base):
     age = Column(Integer, nullable=False)
     preferences_vector = Column(Vector(773), nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
+class UserAccount(Base):
+    __tablename__ = "user_accounts"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    username = Column(String, unique=True, nullable=False, index=True)
+    password_hash = Column(String, nullable=False)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
