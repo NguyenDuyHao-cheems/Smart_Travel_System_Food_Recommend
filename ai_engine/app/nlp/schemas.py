@@ -18,6 +18,10 @@ class ExtractIntentRequest(BaseModel):
     text: str = Field(..., max_length=1000, description="Natural language food query")
     lat: Optional[float] = Field(None, description="Optional user latitude")
     lng: Optional[float] = Field(None, description="Optional user longitude")
+    allergies: List[str] = Field(
+        default_factory=list,
+        description="User allergen list used to filter candidates before ranking (e.g. ['peanut', 'milk']).",
+    )
 
 
 class ExtractIntentResponse(BaseModel):
@@ -27,3 +31,11 @@ class ExtractIntentResponse(BaseModel):
     query_vector: List[float]
     lat: Optional[float] = None
     lng: Optional[float] = None
+    allergies: List[str] = Field(
+        default_factory=list,
+        description="Normalised allergen list echoed back for downstream pipeline use.",
+    )
+    filtered_count: int = Field(
+        0,
+        description="Number of candidates removed by the allergy filter (0 when no candidates provided).",
+    )

@@ -14,6 +14,10 @@ class SearchRecommendRequest(BaseModel):
     query: str = Field(..., description="The user's required food and context")
     lat: float = Field(..., description="Current user latitude")
     lng: float = Field(..., description="Current user longitude")
+    allergies: List[str] = Field(
+        default_factory=list,
+        description="User allergen list. Candidates containing these ingredients are removed before ranking.",
+    )
 
 class RecommendResult(BaseModel):
     """
