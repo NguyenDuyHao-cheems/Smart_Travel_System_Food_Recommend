@@ -7,6 +7,33 @@ class SearchRequest(BaseModel):
     """
     query: str = Field(..., description="The user's raw text search query")
 
+class SearchRecommendRequest(BaseModel):
+    """
+    Schema này dùng để hứng kết quả từ việc bắt GPS bên Frontend đẩy xuống qua API.
+    """
+    query: str = Field(..., description="The user's required food and context")
+    lat: float = Field(..., description="Current user latitude")
+    lng: float = Field(..., description="Current user longitude")
+
+class RecommendResult(BaseModel):
+    """
+    Schema này định dạng đầu ra bắt buộc của 1 quán ăn để thẻ UI hiển thị trên Frontend không bị vỡ.
+    """
+    id: int
+    name: str
+    match: str
+    dist: str
+    price: str
+    rating: str
+    reason: str
+    img: str
+
+class SearchRecommendResponse(BaseModel):
+    """
+    Kết quả trả về dạng danh sách (List) đẩy về cho UI Next.js Render.
+    """
+    results: List[RecommendResult]
+
 class AISearchPayload(BaseModel):
     """
     Schema representing the payload sent to the ai_engine for processing.

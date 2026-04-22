@@ -2,18 +2,18 @@
 # 1. FRONTEND (Next.js & Node.js)
 # ==========================================
 # Dependencies
-frontend/node_modules/
+Frontend/node_modules/
 # Next.js build output
-frontend/.next/
-frontend/out/
-frontend/build/
+Frontend/.next/
+Frontend/out/
+Frontend/build/
 # Vercel local output
-frontend/.vercel/
+Frontend/.vercel/
 # Debug logs
-frontend/npm-debug.log*
-frontend/yarn-debug.log*
-frontend/yarn-error.log*
-frontend/build.log
+Frontend/npm-debug.log*
+Frontend/yarn-debug.log*
+Frontend/yarn-error.log*
+Frontend/build.log
 
 # ==========================================
 # 2. BACKEND & DATA PIPELINE (Python & FastAPI)
@@ -30,6 +30,8 @@ env/
 **/venv/
 **/env/
 **/pyvenv.cfg
+core_backend/venv/
+ai_engine/venv/
 
 # Jupyter Notebook checkpoints
 .ipynb_checkpoints/
@@ -84,3 +86,9 @@ Desktop.ini
 .vscode/
 .idea/
 *.swp
+docs/PLAN.md
+
+# Specialized build & test files
+*.tsbuildinfo
+.vitest/
+coverage/
