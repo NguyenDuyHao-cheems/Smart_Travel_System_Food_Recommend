@@ -19,8 +19,8 @@ if "pgvector" not in sys.modules:
     pgvector_mock = types.ModuleType("pgvector")
     pgvector_sa_mock = types.ModuleType("pgvector.sqlalchemy")
     # Stub Vector class as a generic SQLAlchemy type for testing
-    from sqlalchemy.types import String
-    pgvector_sa_mock.Vector = String 
+    from sqlalchemy.types import JSON
+    pgvector_sa_mock.Vector = JSON 
     sys.modules["pgvector"] = pgvector_mock
     sys.modules["pgvector.sqlalchemy"] = pgvector_sa_mock
 
