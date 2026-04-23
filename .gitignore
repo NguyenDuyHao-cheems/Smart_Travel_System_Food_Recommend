@@ -93,4 +93,3 @@ docs/PLAN.md
 .vitest/
 coverage/
 core_backend/*.sqlite
-/.agent/
