@@ -1,6 +1,6 @@
 from fastapi import APIRouter 
 from .schemas import ExtractIntentRequest, ExtractIntentResponse
-from .query_parser import extract_budget, extract_tags
+from .llm_parser import parse_query_with_gemini
 from .service import generate_mean_pooled_embedding
 
 router = APIRouter()
@@ -10,14 +10,13 @@ router = APIRouter()
 @router.post("/extract-intent", response_model=ExtractIntentResponse)
 def extract_intent(request: ExtractIntentRequest):
     """
-    Unified endpoint to extract tags, budget, intent and generate embeddings.
+    Unified endpoint to extract tags, budget, intent using Gemini API and generate embeddings.
     """
-    tags = extract_tags(request.text)
-    budget = extract_budget(request.text)
-    vector = generate_mean_pooled_embedding(request.text)
+    # Dùng Gemini phân tích query để hiểu tâm trạng và ngữ cảnh
+    tags, budget, intent = parse_query_with_gemini(request.text)
     
-    # Tạm thời sử dụng hard code , có thể cải tiến sau
-    intent = "search_food"
+    # Tạo vector embedding cho search thông thường
+    vector = generate_mean_pooled_embedding(request.text)
 
     return ExtractIntentResponse(
         raw_text=request.text,

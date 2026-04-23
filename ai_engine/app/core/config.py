@@ -16,4 +16,8 @@ class Settings:
         os.getenv("LAMBDAMART_MIN_TRAIN_SAMPLES", "10")
     )
 
+    # Gemini API settings for NLP parsing
+    GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
+    GEMINI_MODEL_NAME: str = os.getenv("GEMINI_MODEL_NAME", "gemini-flash-latest")
+
 settings = Settings()
