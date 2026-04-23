@@ -53,3 +53,23 @@ class SearchService:
             ),
         ]
         return SearchRecommendResponse(results=fake_results)
+def generate_candidates(query: str):
+    """
+    Temporary mock function để dùng cho recommendation pipeline
+    Sau này sẽ thay bằng SearchService + AI + DB
+    """
+
+    return [
+        {
+            "id": 1,
+            "name": "Mì cay",
+            "ingredients": ["tôm", "ớt", "mì"],
+            "vector": [0.1] * 128
+        },
+        {
+            "id": 2,
+            "name": "Phở bò",
+            "ingredients": ["thịt bò", "hành"],
+            "vector": [0.2] * 128
+        }
+    ]
