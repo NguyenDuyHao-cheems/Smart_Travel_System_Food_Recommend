@@ -14,10 +14,14 @@ class RestaurantModel(Base):
     lng = Column(Float)
     price_level = Column(Integer)
     is_open = Column(Boolean, default=True)
-    
-    # Cột này Bảo tự thêm vào Postgres (kiểu float8[]) để chạy Ranking
-    # Nếu trong DB chưa có, bạn nhớ thêm cột này vào bảng restaurants nhé
+
+    # Cột vector cho Cosine Similarity fallback
     vector = Column(ARRAY(Float), nullable=True)
+
+    # --- LambdaMART feature columns (nullable để tương thích DB cũ) ---
+    rating = Column(Float, nullable=True)           # điểm đánh giá TB (0–5)
+    sentiment_score = Column(Float, nullable=True)  # tổng hợp sentiment review (−1 đến 1)
+    review_count = Column(Integer, nullable=True)   # tổng số lượt đánh giá
 
     # Thiết lập mối quan hệ với bảng tags thông qua bảng trung gian
     tags = relationship("TagModel", secondary="restaurant_tags", back_populates="restaurants")

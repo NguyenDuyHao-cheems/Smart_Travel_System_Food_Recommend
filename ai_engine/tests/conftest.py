@@ -78,3 +78,45 @@ def client(mock_embedding):
     with TestClient(app) as c:
         yield c
 
+
+@pytest.fixture(scope="session")
+def tmp_ranker(tmp_path_factory):
+    """
+    Session-scoped LambdaMARTRanker using a temp model path.
+    Trains once on heuristic synthetic data — reused across all ranking tests.
+    """
+    model_path = tmp_path_factory.mktemp("models") / "test_lambdamart.lgb"
+    from app.ranking.lambdamart import LambdaMARTRanker
+    return LambdaMARTRanker(model_path=str(model_path))
+
+
+@pytest.fixture(scope="session")
+def ranking_client(mock_embedding, tmp_ranker):
+    """
+    FastAPI TestClient with the ranking dependency overridden to use tmp_ranker.
+    Depends on mock_embedding so NLP stubs are active.
+    """
+    from app.main import app
+    from app.ranking.router import get_ranker
+
+    app.dependency_overrides[get_ranker] = lambda: tmp_ranker
+    with TestClient(app) as c:
+        yield c
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def sample_candidates():
+    """10 candidates with ascending similarity scores for deterministic tests."""
+    return [
+        {
+            "res_id": i,
+            "similarity_score": round(i * 0.09, 2),
+            "rating": 3.0 + (i % 3) * 0.5,
+            "sentiment_score": round((i % 5) * 0.1 - 0.2, 1),
+            "distance_km": float(i),
+            "price_normalized": round(0.5 + i * 0.05, 2),
+            "review_count": i * 10,
+        }
+        for i in range(1, 11)
+    ]
