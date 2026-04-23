@@ -337,13 +337,13 @@ function BasicInfoSection({ formData, setSingleItem }: { formData: OnboardingDat
           <IconMapPin className="text-cyan-500 dark:text-cyan-400/80 group-focus-within:text-cyan-600 dark:group-focus-within:text-cyan-300 transition-colors" size={18} /> Khu vực hiện tại (*)
         </label>
         <div className="relative">
-          <input
-            type="text"
-            value={formData.location}
-            onChange={(e) => setSingleItem('location', e.target.value)}
-            className="w-full px-5 py-3.5 bg-slate-50 dark:bg-white/[0.03] border border-slate-900/10 dark:border-white/10 rounded-2xl outline-none text-slate-800 dark:text-white focus:border-cyan-400 focus:bg-white dark:focus:bg-[#080B13]/90 focus:ring-4 focus:ring-cyan-500/10 transition-all duration-300 font-medium placeholder-slate-400 dark:placeholder-white/20 shadow-sm dark:shadow-[inset_0_2px_10px_rgba(0,0,0,0.2)] dark:focus:shadow-[0_0_15px_rgba(6,182,212,0.15)] focus:shadow-[0_4px_20px_rgba(6,182,212,0.1)]"
-            placeholder="Khu dân cư, địa chỉ..."
-          />
+            <input
+              type="text"
+              value={formData.location}
+              onChange={(e) => setSingleItem('location', e.target.value)}
+              className="w-full px-5 py-3.5 bg-slate-50 dark:bg-white/[0.03] border border-slate-900/10 dark:border-white/10 rounded-2xl outline-none text-slate-800 dark:text-white focus:border-cyan-400 focus:bg-white dark:focus:bg-[#080B13]/90 focus:ring-4 focus:ring-cyan-500/10 transition-all duration-300 font-medium placeholder-slate-400 dark:placeholder-white/20 shadow-sm dark:shadow-[inset_0_2px_10px_rgba(0,0,0,0.2)] dark:focus:shadow-[0_0_15px_rgba(6,182,212,0.1)] focus:shadow-[0_4px_20px_rgba(6,182,212,0.1)]"
+              placeholder="Nhập địa chỉ của bạn"
+            />
         </div>
       </div>
     </div>
