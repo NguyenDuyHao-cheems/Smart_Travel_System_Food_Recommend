@@ -151,11 +151,11 @@ _See [RankRequest](#schemas)_
 
 Schema representing the structured response returned by the ai_engine.
 
-| Field              | Type              | Required | Description                                              |
-| ------------------ | ----------------- | -------- | -------------------------------------------------------- |
-| `vector`           | array of `number` | ✓        | The generated embedded vector representation of the text |
-| `extracted_budget` | `any`             |          | The budget extracted from the text, if any               |
-| `intent`           | `any`             |          | The extracted intent of the user search                  |
+| Field    | Type              | Required | Description                                              |
+| -------- | ----------------- | -------- | -------------------------------------------------------- |
+| `vector` | array of `number` | ✓        | The generated embedded vector representation of the text |
+| `budget` | `any`             |          | The budget extracted from the text, if any               |
+| `intent` | `any`             |          | The extracted intent of the user search                  |
 
 ### HTTPValidationError
 

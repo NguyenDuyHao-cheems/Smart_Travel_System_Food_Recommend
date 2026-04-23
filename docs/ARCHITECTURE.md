@@ -35,7 +35,7 @@ POST /api/v1/search/process  { "query": "mì cay gần đây dưới 50k" }
         ▼  AIServiceClient.extract_intent_and_vectorize(text)
                 │  httpx.AsyncClient().post(...)
                 ▼
-        AI Engine → trả { vector: [...], intent: ..., budget: ... }
+        AI Engine → trả { vector: [...], intent: ..., budget: ..., tags: [...] }
         │
         ▼  (FUTURE) repository.search_restaurants(vector) → pgvector
         │
@@ -119,12 +119,12 @@ User gõ: "mì cay không gian đẹp dưới 50k gần tôi"
          ▼ [AI Engine :8001]
          │
          ├─ underthesea.tokenize()     → tách từ tiếng Việt
-         ├─ extract_intent_and_budget() → { intent: "mì cay", budget: 50000 }
-         └─ PhoBERT(text) → mean pooling → query_vector [768 dims]
+         ├─ extract_intent()           → { intent: "search_food", budget: 50000, tags: [...] }
+         └─ PhoBERT(text) → mean pooling → vector [768 dims]
          │
          ▼ [Core Backend :8000]
          │
-         ├─ pgvector: SELECT ... ORDER BY embedding <=> query_vector LIMIT 20
+         ├─ pgvector: SELECT ... ORDER BY embedding <=> vector LIMIT 20
          ├─ PostGIS:  WHERE ST_Distance(location, user_gps) < radius
          └─ Filter:   WHERE price_avg <= budget
          │

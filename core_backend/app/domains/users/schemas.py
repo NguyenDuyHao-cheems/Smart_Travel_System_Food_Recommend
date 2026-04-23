@@ -40,7 +40,7 @@ class OnboardingRequest(BaseModel):
 
 # ── Payload sent to AI Engine ─────────────────────────────────────────────────
 class OnboardingAIPayload(BaseModel):
-    """Payload forwarded to the AI engine's /nlp/process endpoint."""
+    """Payload forwarded to the AI engine's /nlp/extract-intent endpoint."""
 
     text: str = Field(..., description="Serialised onboarding context for NLP processing.")
 

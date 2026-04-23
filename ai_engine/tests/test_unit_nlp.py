@@ -11,7 +11,6 @@ They test the logic of:
 import pytest
 
 from app.nlp.query_parser import extract_budget, extract_tags
-from app.nlp.extractor import extract_intent_and_budget
 
 
 # ---------------------------------------------------------------------------
@@ -112,50 +111,5 @@ class TestExtractTags:
 
 
 # ---------------------------------------------------------------------------
-# extract_intent_and_budget()
+# End of tests
 # ---------------------------------------------------------------------------
-
-
-class TestExtractIntentAndBudget:
-    """Unit tests for the extract_intent_and_budget() function."""
-
-    def test_always_returns_search_food_intent(self):
-        """Intent should always be 'search_food' in current implementation."""
-        result = extract_intent_and_budget("phở bò Hà Nội")
-        assert result["intent"] == "search_food"
-
-    def test_rẻ_keyword_sets_budget_50000(self):
-        """'rẻ' keyword → budget = 50000."""
-        result = extract_intent_and_budget("quán ăn rẻ")
-        assert result["extracted_budget"] == 50000.0
-
-    def test_cheap_keyword_sets_budget_50000(self):
-        """'cheap' keyword → budget = 50000."""
-        result = extract_intent_and_budget("cheap food near me")
-        assert result["extracted_budget"] == 50000.0
-
-    def test_sang_trong_keyword_sets_budget_500000(self):
-        """'sang trọng' keyword → budget = 500000."""
-        result = extract_intent_and_budget("nhà hàng sang trọng Hà Nội")
-        assert result["extracted_budget"] == 500000.0
-
-    def test_luxury_keyword_sets_budget_500000(self):
-        """'luxury' keyword → budget = 500000."""
-        result = extract_intent_and_budget("luxury dining experience")
-        assert result["extracted_budget"] == 500000.0
-
-    def test_no_budget_keyword_returns_none(self):
-        """Text without budget keywords → extracted_budget = None."""
-        result = extract_intent_and_budget("bún bò Huế")
-        assert result["extracted_budget"] is None
-
-    def test_returns_dict_with_correct_keys(self):
-        """Result must contain both 'intent' and 'extracted_budget' keys."""
-        result = extract_intent_and_budget("quán cơm")
-        assert "intent" in result
-        assert "extracted_budget" in result
-
-    def test_case_insensitive_rẻ_detection(self):
-        """'RẺ' in uppercase should also match."""
-        result = extract_intent_and_budget("quán ăn RẺ")
-        assert result["extracted_budget"] == 50000.0
