@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -269,7 +269,7 @@ function FeatureBar() {
 /* ═════════════════════════════════════════════════════════════
    MAIN RESULT PAGE
    ═════════════════════════════════════════════════════════════ */
-export default function ResultPage() {
+function ResultPageContent() {
   const searchParams = useSearchParams();
   const queryFromUrl = searchParams.get('q') || '';
   const [isLoading, setIsLoading] = useState(true);
@@ -432,3 +432,18 @@ export default function ResultPage() {
     </div>
   );
 }
+
+/* ══════════════════════════════════════════════════════════
+    MAIN RESULT PAGE (wraps client component in Suspense)
+    ══════════════════════════════════════════════════════════ */
+export default function ResultPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-[#F7F8FA] dark:bg-gray-900 flex items-center justify-center">
+        <div className="text-gray-500 dark:text-gray-400 animate-pulse font-medium">Đang tải dữ liệu...</div>
+      </div>
+    }>
+      <ResultPageContent />
+    </Suspense>
+  );
+}
