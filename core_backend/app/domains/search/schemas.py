@@ -26,7 +26,7 @@ class RecommendResult(BaseModel):
     dist: str
     price: str
     rating: str
-    reason: str
+    reason: str 
     img: str
 
 class SearchRecommendResponse(BaseModel):
