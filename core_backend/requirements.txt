@@ -9,3 +9,4 @@ pydantic>=2.0.0
 pgvector
 cachetools
 numpy
+python-jose[cryptography]

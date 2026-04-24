@@ -23,7 +23,7 @@ def get_onboarding_service(db: Session = Depends(get_db)) -> OnboardingService:
 def get_auth_service(db: Session = Depends(get_db)) -> AuthService:
     repository = UserAccountRepository(db=db)
     return AuthService(repository=repository)
-# ── Endpoints ─────────────────────────────────────────────────────────────────
+
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 

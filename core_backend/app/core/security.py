@@ -2,6 +2,10 @@ import base64
 import hashlib
 import hmac
 import secrets
+from datetime import datetime, timedelta, timezone
+from typing import Any, Dict
+from jose import jwt
+from app.core.config import settings
 
 _ITERATIONS = 100_000
 
@@ -18,3 +22,11 @@ def verify_password(password: str, stored_hash: str) -> bool:
     expected = base64.b64decode(hash_b64)
     actual = hashlib.pbkdf2_hmac("sha256", password.encode(), salt, int(iterations))
     return hmac.compare_digest(actual, expected)
+
+def create_access_token(data: Dict[str, Any], expires_delta: timedelta | None = None) -> str:
+    to_encode = data.copy()
+    expire = datetime.now(timezone.utc) + (
+        expires_delta or timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    )
+    to_encode.update({"exp": expire})
+    return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)

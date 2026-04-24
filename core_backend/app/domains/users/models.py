@@ -1,8 +1,10 @@
+import datetime
+import uuid
+
 from sqlalchemy import Column, String, Integer, Text, JSON, DateTime, event, DDL
 from sqlalchemy.orm import DeclarativeBase
 from pgvector.sqlalchemy import Vector
 from sqlalchemy.ext.compiler import compiles
-import datetime
 
 
 class Base(DeclarativeBase):
@@ -51,7 +53,7 @@ class UserOnboarding(Base):
 class UserAccount(Base):
     __tablename__ = "user_accounts"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     username = Column(String, unique=True, nullable=False, index=True)
     password_hash = Column(String, nullable=False)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)

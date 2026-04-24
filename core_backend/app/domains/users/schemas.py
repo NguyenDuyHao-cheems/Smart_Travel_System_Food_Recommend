@@ -84,5 +84,8 @@ class SignInRequest(BaseModel):
 class AuthResponse(BaseModel):
     status: str = "success"
     message: str
-    user_id: int
+    user_id: str
     username: str
+    access_token: str
+    token_type: str = "bearer"
+

@@ -4,7 +4,7 @@ import math
 from typing import List, Optional
 
 from app.core.config import settings
-from app.core.security import hash_password, verify_password
+from app.core.security import hash_password, verify_password, create_access_token
 from .schemas import (
     OnboardingRequest,
     OnboardingResponse,
@@ -183,19 +183,36 @@ class AuthService:
             username=payload.username,
             password_hash=hash_password(payload.password),
         )
+        access_token = create_access_token(
+            data={
+                "sub": str(user.id),
+                "username": user.username,
+            }
+        )
+
         return AuthResponse(
             message="Sign up successful",
             user_id=user.id,
             username=user.username,
+            access_token=access_token,
+            token_type="bearer",
         )
 
     def sign_in(self, payload: SignInRequest) -> AuthResponse:
         user = self._repo.get_by_username(payload.username)
         if not user or not verify_password(payload.password, user.password_hash):
             raise PermissionError("Invalid username or password.")
+        access_token = create_access_token(
+            data={
+                "sub": str(user.id),
+                "username": user.username,
+            }
+        )
 
         return AuthResponse(
             message="Sign in successful",
             user_id=user.id,
             username=user.username,
+            access_token=access_token,
+            token_type="bearer",
         )
