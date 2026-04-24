@@ -26,7 +26,7 @@ def recommend(query: str, user_id: str):
     if not safe_raw:
         fallback = handle_fallback(raw_candidates)
         return {
-            "results": fallback["results"],
+            "results": fallback["re sults"],
             "filtered_out_count": len(removed),
             "fallback_applied": True
         }
