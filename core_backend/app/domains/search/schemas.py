@@ -30,9 +30,28 @@ class RecommendResult(BaseModel):
 
 class SearchRecommendResponse(BaseModel):
     """
-    Kết quả trả về dạng danh sách (List) đẩy về cho UI Next.js Render.
+    Kết quả trả về cho UI, kèm metadata để Frontend biết
+    backend có đang dùng cơ chế fallback hay không.
     """
     results: List[RecommendResult]
+    fallback_applied: bool = Field(
+        default=False,
+        description="True nếu backend đã tự động nới điều kiện tìm kiếm."
+    )
+    fallback_reason: Optional[str] = Field(
+        default=None,
+        description="Mô tả lý do backend áp dụng fallback."
+    )
+    applied_radius_km: float = Field(
+        ...,
+        description="Bán kính thực tế backend dùng để tìm kiếm."
+    )
+    applied_budget: Optional[int] = Field(
+        default=None,
+        description="Ngân sách thực tế backend dùng để lọc."
+    )
+
+
 
 class AISearchPayload(BaseModel):
     """
