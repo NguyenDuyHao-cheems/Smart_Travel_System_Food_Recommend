@@ -92,3 +92,5 @@ docs/PLAN.md
 *.tsbuildinfo
 .vitest/
 coverage/
+
+*.pkl

@@ -1,42 +1,40 @@
-from sqlalchemy import Column, Integer, String, Float, Boolean, ForeignKey
-from sqlalchemy.orm import relationship
-# Import Base từ file database.py trong core
+from sqlalchemy import Column, Integer, String, Float, Boolean, ForeignKey, Text
+from sqlalchemy.dialects.postgresql import UUID
 from app.core.database import Base
-from sqlalchemy.dialects.postgresql import ARRAY
 
 class RestaurantModel(Base):
     __tablename__ = "restaurants"
-
-    # Giữ đúng tên cột 'id' và 'lng' như trong ảnh ERD của Bảo
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(UUID(as_uuid=True), primary_key=True) 
     name = Column(String)
     lat = Column(Float)
     lng = Column(Float)
-    price_level = Column(Integer)
-    is_open = Column(Boolean, default=True)
-    
-    # Cột này Bảo tự thêm vào Postgres (kiểu float8[]) để chạy Ranking
-    # Nếu trong DB chưa có, bạn nhớ thêm cột này vào bảng restaurants nhé
-    vector = Column(ARRAY(Float), nullable=True)
-
-    # Thiết lập mối quan hệ với bảng tags thông qua bảng trung gian
-    tags = relationship("TagModel", secondary="restaurant_tags", back_populates="restaurants")
-
+    price_range = Column(String) 
+    is_active = Column(Boolean, default=True)
+    embedding_vector = Column(Text)
 
 class TagModel(Base):
     __tablename__ = "tags"
-
-    id = Column(Integer, primary_key=True, index=True)
-    tag_name = Column(String)
-
-    restaurants = relationship("RestaurantModel", secondary="restaurant_tags", back_populates="tags")
-
+    id = Column(Integer, primary_key=True)
+    name = Column(String)
 
 class RestaurantTagModel(Base):
-    __tablename__ = "restaurant_tags"
-
-    # Bảng trung gian nối n-n giữa Restaurant và Tag
-    restaurant_id = Column(Integer, ForeignKey("restaurants.id"), primary_key=True)
+    __tablename__ = "res_tags"
+    res_id = Column(UUID(as_uuid=True), ForeignKey("restaurants.id"), primary_key=True)
     tag_id = Column(Integer, ForeignKey("tags.id"), primary_key=True)
 
-
+class UserModel(Base):
+    __tablename__ = "users"
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String)
+    budget_limit = Column(Float)
+    preferences_vector = Column(Text)
+    
+class DishModel(Base):
+    __tablename__ = "dishes"
+    id = Column(UUID(as_uuid=True), primary_key=True)
+    res_id = Column(UUID(as_uuid=True), ForeignKey("restaurants.id"))
+    name = Column(String)
+    price = Column(Integer)
+    image_url = Column(Text)
+    embedding_vector = Column(Text) 
+    is_active = Column(Boolean, default=True)
