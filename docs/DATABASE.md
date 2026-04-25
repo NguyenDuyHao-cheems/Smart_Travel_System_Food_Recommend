@@ -4,9 +4,15 @@ Cơ sở dữ liệu của **wander bite** được thiết kế để hỗ tr�
 
 ### A. Các bảng chính và thuộc tính
 
-- **`users` (Người dùng):** Lưu trữ thông tin định danh và hồ sơ sở thích.
+- **`users` (Người dùng):** Lưu trữ thông tin định danh, thông tin đăng nhập và hồ sơ sở thích.
+  - `id`: UUID string dùng thống nhất cho authentication, onboarding và các service khác.
+  - `username`: Tên đăng nhập duy nhất của người dùng.
+  - `password_hash`: Mật khẩu đã được hash bằng `passlib`.
   - `preferences_vector`: Vector đặc trưng cho sở thích dài hạn của người dùng.
   - `allergy_tags`: Dữ liệu JSONB lưu các thành phần gây dị ứng để lọc kết quả.
+- **`user_onboardings` (Phiên onboarding):** Lưu dữ liệu onboarding ban đầu và vector preference do AI sinh ra.
+  - `user_id`: Khóa chính đồng thời là khóa ngoại tham chiếu tới `users.id`.
+  - `preferences_vector`: Vector kết hợp giữa embedding AI và structured features từ form onboarding.
 - **`restaurants` (Nhà hàng):** Thông tin thực thể địa điểm.
   - `lat`/`lng`: Tọa độ địa lý để tính khoảng cách.
   - `sentiment_score`: Điểm số cảm xúc tổng hợp từ các bài đánh giá (xử lý offline).
@@ -19,6 +25,7 @@ Cơ sở dữ liệu của **wander bite** được thiết kế để hỗ tr�
 
 - **One-to-Many (`restaurants` -> `dishes`):** Một nhà hàng có thể có nhiều món ăn trong menu.
 - **Many-to-Many (`users` <-> `restaurants` thông qua `reviews`):** Người dùng đánh giá nhiều nhà hàng và một nhà hàng nhận đánh giá từ nhiều người.
+- **One-to-One (`users` -> `user_onboardings`):** Mỗi người dùng có tối đa một bản ghi onboarding, được liên kết qua `user_onboardings.user_id`.
 - **Relationship Link:** `dishes` là đơn vị nhỏ nhất để thực hiện tìm kiếm vector, sau đó kết quả được nhóm theo `res_id` để hiển thị thông tin quán ăn.
 
 ---

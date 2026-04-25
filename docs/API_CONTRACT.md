@@ -41,6 +41,82 @@ Kiểm tra trạng thái của Core Backend và kết nối Database.
 
 ---
 
+### `POST /api/v1/users/sign_up`
+
+Tạo tài khoản người dùng mới và trả về access token để frontend sử dụng ngay.
+
+**Request Body**:
+```json
+{
+  "username": "hao123",
+  "password": "strongpass123"
+}
+```
+
+| Field | Type | Bắt buộc | Mô tả |
+|-------|------|----------|-------|
+| `username` | `string` | ✅ | Tên đăng nhập duy nhất, 3–50 ký tự |
+| `password` | `string` | ✅ | Mật khẩu, 8–128 ký tự |
+
+**Response `200 OK`**:
+```json
+{
+  "status": "success",
+  "message": "Sign up successful",
+  "user_id": "550e8400-e29b-41d4-a716-446655440000",
+  "username": "hao123",
+  "access_token": "<jwt>",
+  "token_type": "bearer"
+}
+```
+
+**Response `409 Conflict`**:
+```json
+{
+  "detail": "Username already exists."
+}
+```
+
+---
+
+### `POST /api/v1/users/sign_in`
+
+Xác thực người dùng bằng username/password và trả về access token.
+
+**Request Body**:
+```json
+{
+  "username": "hao123",
+  "password": "strongpass123"
+}
+```
+
+| Field | Type | Bắt buộc | Mô tả |
+|-------|------|----------|-------|
+| `username` | `string` | ✅ | Tên đăng nhập đã đăng ký |
+| `password` | `string` | ✅ | Mật khẩu của người dùng |
+
+**Response `200 OK`**:
+```json
+{
+  "status": "success",
+  "message": "Sign in successful",
+  "user_id": "550e8400-e29b-41d4-a716-446655440000",
+  "username": "hao123",
+  "access_token": "<jwt>",
+  "token_type": "bearer"
+}
+```
+
+**Response `401 Unauthorized`**:
+```json
+{
+  "detail": "Invalid username or password."
+}
+```
+
+---
+
 ### `POST /api/v1/search/process`
 
 Nhận query thô từ Frontend, forward sang AI Engine để trích xuất intent + sinh vector embedding.

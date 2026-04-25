@@ -1,5 +1,4 @@
 import httpx
-import json
 import math
 from typing import List, Optional
 
@@ -170,15 +169,13 @@ class OnboardingService:
         ]
 
         return base + structured
+
+
 class AuthService:
     def __init__(self, repository: UserAccountRepository) -> None:
         self._repo = repository
 
     def sign_up(self, payload: SignUpRequest) -> AuthResponse:
-        existing = self._repo.get_by_username(payload.username)
-        if existing:
-            raise ValueError("Username already exists.")
-
         user = self._repo.create_user(
             username=payload.username,
             password_hash=hash_password(payload.password),

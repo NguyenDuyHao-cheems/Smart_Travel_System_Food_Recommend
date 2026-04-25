@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.core.database import SessionLocal
 from .schemas import OnboardingRequest, OnboardingResponse, SignUpRequest, SignInRequest, AuthResponse
 from .service import OnboardingService, AuthService
 from .repository import UserOnboardingRepository, UserAccountRepository
@@ -20,7 +19,9 @@ def get_onboarding_service(db: Session = Depends(get_db)) -> OnboardingService:
     repository = UserOnboardingRepository(db=db)
     return OnboardingService(repository=repository)
 
+
 def get_auth_service(db: Session = Depends(get_db)) -> AuthService:
+    """Compose the auth service with its repository dependency."""
     repository = UserAccountRepository(db=db)
     return AuthService(repository=repository)
 
@@ -47,8 +48,6 @@ def sign_in(
         return service.sign_in(payload)
     except PermissionError as exc:
         raise HTTPException(status_code=401, detail=str(exc))
-
-    
 
 @router.post(
     "/{user_id}/onboarding",

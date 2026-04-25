@@ -72,6 +72,8 @@ class UserOnboardingRepository:
         self._db.commit()
         self._db.refresh(record)
         return record
+
+
 class UserAccountRepository:
     def __init__(self, db: Session) -> None:
         self._db = db
