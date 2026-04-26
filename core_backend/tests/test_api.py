@@ -20,6 +20,10 @@ class TestOnboardingHappyPath:
                 json=make_payload(),
             )
         assert resp.status_code == 200
+
+
+
+
         body = resp.json()
         assert body["status"] == "success"
         assert len(body["preferences_vector"]) == 773
