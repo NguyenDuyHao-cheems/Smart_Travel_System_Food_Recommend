@@ -1,3 +1,4 @@
+from sqlalchemy.orm import Session
 from services.user_services import get_user_allergies
 from services.allergy_filter import filter_allergy, handle_fallback
 from services.candidate_mapper import to_candidates
@@ -5,11 +6,11 @@ from app.domains.ranking.service import RankingService
 from app.domains.search.service import generate_candidates
 
 
-def recommend(query: str, user_id: str):
+def recommend(query: str, user_id: str, db: Session):
 
     ranking_service = RankingService()
 
-    user_allergies = get_user_allergies(user_id)
+    user_allergies = get_user_allergies(db, user_id)
 
     raw_candidates = generate_candidates(query)
 
