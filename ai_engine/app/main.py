@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from app.nlp.embeddings import router as nlp_router
-from app.ranking.engine.router import router as ranking_router
+from app.ranking.router import router as ranking_router
 app = FastAPI(title="Smart Travel System - AI Engine")
 
 # Register the NLP router
