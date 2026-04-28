@@ -40,8 +40,7 @@ class SearchService:
         if not ai_response:
             raise HTTPException(status_code=503, detail="AI engine is currently unavailable.")
 
-        await asyncio.sleep(0.2)
-
+        # TODO: Use request.lat and request.lng for real distance calculation instead of mock data
         all_results = self._build_mock_results()
         strict_budget = ai_response.budget or self.DEFAULT_BUDGET_VND
 
@@ -86,7 +85,7 @@ class SearchService:
             fallback_applied=True,
             fallback_reason="No results after relaxed filters, backend returned nearest restaurants as a safe fallback.",
             applied_radius_km=self.FALLBACK_RADIUS_KM,
-            applied_budget=relaxed_budget,
+            applied_budget=None,
         )
 
     def _build_mock_results(self) -> list[RecommendResult]:
@@ -161,10 +160,20 @@ class SearchService:
 
     @staticmethod
     def _extract_min_price(item: RecommendResult) -> int:
-        raw = item.price.lower().replace("k", "").split("-")[0].strip()
-        return int(raw) * 1000
+        try:
+            # Expected format: "49k - 89k"
+            raw = item.price.lower().replace("k", "").split("-")[0].strip()
+            return int(raw) * 1000
+        except (ValueError, IndexError, AttributeError):
+            # Fallback to a very high price so it gets filtered out if invalid
+            return 999_999_999
 
     @staticmethod
     def _extract_distance_km(item: RecommendResult) -> float:
-        raw = item.dist.lower().replace("km", "").strip()
-        return float(raw)
+        try:
+            # Expected format: "1.1 km"
+            raw = item.dist.lower().replace("km", "").strip()
+            return float(raw)
+        except (ValueError, AttributeError):
+            # Fallback to a very large distance
+            return 9999.0
