@@ -27,4 +27,19 @@
 - **NLP (Vietnamese)**: `underthesea`
 - **Validation**: `pydantic`
 - **Vectorize**: `PhoBERT`
+
+## Database (PostgreSQL)
+
+- **Core**: `psycopg2-binary`, `asyncpg`, `pgvector`
+- **ORM**: `sqlalchemy`
+- **Migration**: `alembic`
+- **Data Services**: `Suppabase`
+## Validation/Env
+
+- **pydantic**: Data validation and configuration management.
+- **python-dotenv**: Environment variable management.
+
+## HTTP Client
+
+- **httpx**: Modern HTTP client for Python.
 <!-- END:tech-stack-mapping -->

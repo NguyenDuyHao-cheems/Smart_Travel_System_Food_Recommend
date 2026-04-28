@@ -77,4 +77,22 @@ class OnboardingResponse(BaseModel):
     popular_restaurants: Optional[List[MockRestaurant]] = Field(
         None,
         description="Only present when fallback=True.",
-    )
+    )
+class SignUpRequest(BaseModel):
+    username: str = Field(..., min_length=3, max_length=50)
+    password: str = Field(..., min_length=8, max_length=128)
+
+
+class SignInRequest(BaseModel):
+    username: str = Field(..., min_length=3, max_length=50)
+    password: str = Field(..., min_length=8, max_length=128)
+
+
+class AuthResponse(BaseModel):
+    status: str = "success"
+    message: str
+    user_id: str
+    username: str
+    access_token: str
+    token_type: str = "bearer"
+
