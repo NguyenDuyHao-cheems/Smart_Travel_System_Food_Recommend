@@ -10,4 +10,4 @@ pgvector
 cachetools
 numpy
 python-jose[cryptography]
-passlib[bcrypt]
+bcrypt
