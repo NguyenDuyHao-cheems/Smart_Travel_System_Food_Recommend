@@ -193,7 +193,7 @@
         <mxCell id="rAxt_bek5EyyumxauOvi-39" parent="1" style="fillColor=#ffff88;strokeColor=#9E916F;fontColor=light-dark(#333333,#cccccc);fontSize=15;fontStyle=1" value="Input: raw_query (String), user_gps (Float)" vertex="1">
           <mxGeometry height="48" width="311" x="743" y="393" as="geometry" />
         </mxCell>
-        <mxCell id="rAxt_bek5EyyumxauOvi-40" parent="1" style="fillColor=#ffff88;strokeColor=#9E916F;fontColor=light-dark(#333333,#cccccc);" value="Thuật toán: PhoBERT, Undersea&#xa;Input: raw_query (String)&#xa;Output: tags (Array), budget (Integer), query_vector" vertex="1">
+        <mxCell id="rAxt_bek5EyyumxauOvi-40" parent="1" style="fillColor=#ffff88;strokeColor=#9E916F;fontColor=light-dark(#333333,#cccccc);" value="Thuật toán: PhoBERT, Undersea&#xa;Input: raw_query (String)&#xa;Output: tags (Array), budget (Integer), vector" vertex="1">
           <mxGeometry height="85" width="283" x="1326" y="515" as="geometry" />
         </mxCell>
         <mxCell id="rAxt_bek5EyyumxauOvi-41" parent="1" style="fillColor=#ffff88;strokeColor=#9E916F;fontColor=light-dark(#333333,#cccccc);" value="Thuật toán: Cosine Similarity (&lt;=&gt;)&#xa;Input: tags, budget, user_vector&#xa;Output: 50 Candidates (Array of Objects)" vertex="1">
@@ -273,7 +273,7 @@
             <mxPoint x="-149.5" y="-7" as="offset" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="cjsH0P0c9PkqRJop-qQ5-18" edge="1" parent="1" source="cjsH0P0c9PkqRJop-qQ5-4" style="verticalAlign=bottom;edgeStyle=elbowEdgeStyle;elbow=vertical;curved=0;rounded=0;endArrow=block;" target="cjsH0P0c9PkqRJop-qQ5-5" value="Gọi NLP Process (Text)">
+        <mxCell id="cjsH0P0c9PkqRJop-qQ5-18" edge="1" parent="1" source="cjsH0P0c9PkqRJop-qQ5-4" style="verticalAlign=bottom;edgeStyle=elbowEdgeStyle;elbow=vertical;curved=0;rounded=0;endArrow=block;" target="cjsH0P0c9PkqRJop-qQ5-5" value="Gọi Extract Intent (Text)">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
               <mxPoint x="871" y="365" />

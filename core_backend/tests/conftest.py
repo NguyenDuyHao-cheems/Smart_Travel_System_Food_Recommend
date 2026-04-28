@@ -9,33 +9,58 @@ Sets up:
 
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+import os
+from sqlalchemy import event
+from sqlalchemy.engine import Engine
+
+@event.listens_for(Engine, "connect")
+def set_sqlite_pragma(dbapi_connection, connection_record):
+    if os.environ.get("DATABASE_URL", "").startswith("sqlite"):
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA foreign_keys=OFF")
+        cursor.close()
+
+
+# Set dummy DATABASE_URL and SECRET_KEY before any imports from app
+os.environ["DATABASE_URL"] = "sqlite:///./test_temp.db"
+
+os.environ["SECRET_KEY"] = "test_secret_key_123"
+
 
 import sys
 import types
+
+# ── Mock pgvector ─────────────────────────────────────────────────────────────
 if "pgvector" not in sys.modules:
     pgvector_mock = types.ModuleType("pgvector")
     pgvector_sa_mock = types.ModuleType("pgvector.sqlalchemy")
     # Stub Vector class as a generic SQLAlchemy type for testing
-    from sqlalchemy.types import String
-    pgvector_sa_mock.Vector = String 
+    from sqlalchemy.types import JSON
+    pgvector_sa_mock.Vector = JSON 
     sys.modules["pgvector"] = pgvector_mock
     sys.modules["pgvector.sqlalchemy"] = pgvector_sa_mock
 
-from app.main import app
-from app.core.database import SessionLocal
-from app.domains.users.models import Base as UserBase
+from sqlalchemy import create_engine as real_create_engine
+
+def mocked_create_engine(url, *args, **kwargs):
+    if str(url).startswith("sqlite"):
+        kwargs["connect_args"] = {"check_same_thread": False}
+    return real_create_engine(url, *args, **kwargs)
+
+# Patch create_engine before any app imports
+with patch("sqlalchemy.create_engine", side_effect=mocked_create_engine):
+    from app.main import app
+    from app.core.database import SessionLocal, engine as engine_test
+    from app.domains.users.models import Base as UserBase, UserAccount, UserOnboarding
 
 
-# ── In-memory SQLite database ─────────────────────────────────────────────────
-SQLITE_URL = "sqlite:///./test_onboarding.db"
+from fastapi.testclient import TestClient
+from sqlalchemy.orm import sessionmaker
 
-engine_test = create_engine(
-    SQLITE_URL, connect_args={"check_same_thread": False}
-)
+# ── Database Session Setup ───────────────────────────────────────────────────
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine_test)
+
+
 
 
 @pytest.fixture(scope="session", autouse=True)

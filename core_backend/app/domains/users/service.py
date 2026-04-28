@@ -1,15 +1,18 @@
 import httpx
-import json
 import math
 from typing import List, Optional
 
 from app.core.config import settings
+from app.core.security import hash_password, verify_password, create_access_token
 from .schemas import (
     OnboardingRequest,
     OnboardingResponse,
     MockRestaurant,
+    SignInRequest,
+    SignUpRequest,
+    AuthResponse
 )
-from .repository import UserOnboardingRepository
+from .repository import UserOnboardingRepository, UserAccountRepository
 
 # ── Mock fallback data ────────────────────────────────────────────────────────
 POPULAR_RESTAURANTS: List[MockRestaurant] = [
@@ -87,7 +90,7 @@ class OnboardingService:
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:
                 response = await client.post(
-                    f"{settings.AI_ENGINE_BASE_URL}/api/v1/nlp/process",
+                    f"{settings.AI_ENGINE_BASE_URL}/api/v1/nlp/extract-intent",
                     json={"text": text},
                 )
                 response.raise_for_status()
@@ -166,3 +169,47 @@ class OnboardingService:
         ]
 
         return base + structured
+
+
+class AuthService:
+    def __init__(self, repository: UserAccountRepository) -> None:
+        self._repo = repository
+
+    def sign_up(self, payload: SignUpRequest) -> AuthResponse:
+        user = self._repo.create_user(
+            username=payload.username,
+            password_hash=hash_password(payload.password),
+        )
+        access_token = create_access_token(
+            data={
+                "sub": str(user.id),
+                "username": user.username,
+            }
+        )
+
+        return AuthResponse(
+            message="Sign up successful",
+            user_id=str(user.id),
+            username=user.username,
+            access_token=access_token,
+            token_type="bearer",
+        )
+
+    def sign_in(self, payload: SignInRequest) -> AuthResponse:
+        user = self._repo.get_by_username(payload.username)
+        if not user or not verify_password(payload.password, user.password_hash):
+            raise PermissionError("Invalid username or password.")
+        access_token = create_access_token(
+            data={
+                "sub": str(user.id),
+                "username": user.username,
+            }
+        )
+
+        return AuthResponse(
+            message="Sign in successful",
+            user_id=str(user.id),
+            username=user.username,
+            access_token=access_token,
+            token_type="bearer",
+        )

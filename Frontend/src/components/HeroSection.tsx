@@ -32,8 +32,8 @@ export function HeroSection({ state, query, setQuery, onSearch, loadingMsgIdx }:
           alt="Cinematic cooking flame"
           className="w-full h-full object-cover object-center scale-105"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0B0F19] via-[#0B0F19]/80 to-transparent mix-blend-multiply" />
-        <div className="absolute inset-0 bg-[#0B0F19]/60 backdrop-blur-[2px]" />
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-100/90 via-white/30 dark:from-[#0B0F19] dark:via-[#0B0F19]/80 to-transparent dark:mix-blend-multiply" />
+        <div className="absolute inset-0 bg-white/30 dark:bg-[#0B0F19]/60" />
       </div>
 
       <div className="relative z-10 w-full max-w-5xl mx-auto py-4">
@@ -47,19 +47,19 @@ export function HeroSection({ state, query, setQuery, onSearch, loadingMsgIdx }:
               transition={{ duration: 0.8 }}
               className="flex flex-col items-center text-center gap-4"
             >
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-purple-500/30 bg-purple-900/20 text-purple-300 text-sm font-semibold tracking-wide backdrop-blur-md mb-2 shadow-[0_0_15px_rgba(168,85,247,0.2)]">
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-purple-900/10 dark:border-purple-500/30 bg-white/80 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 text-sm font-semibold tracking-wide backdrop-blur-md mb-2 shadow-[0_0_15px_rgba(168,85,247,0.15)] dark:shadow-[0_0_15px_rgba(168,85,247,0.2)]">
                 <Sparkles className="w-4 h-4 text-amber-500" />
                 <span>AI-Powered Culinary Recommendations</span>
               </div>
               
-              <h1 className={`text-5xl md:text-7xl lg:text-8xl font-black tracking-tighter leading-[1.1] text-transparent bg-clip-text bg-gradient-to-br from-white via-white/90 to-amber-200 drop-shadow-[0_0_25px_rgba(251,191,36,0.3)] ${playfair.className}`}>
+              <h1 className={`text-5xl md:text-7xl lg:text-8xl font-black tracking-tighter leading-[1.1] text-transparent bg-clip-text bg-gradient-to-br from-slate-900 via-slate-900/90 to-amber-900 drop-shadow-[0_0_25px_rgba(251,191,36,0.2)] dark:from-white dark:via-white/90 dark:to-amber-200 dark:drop-shadow-[0_0_25px_rgba(251,191,36,0.3)] ${playfair.className}`}>
                 What's your <br className="hidden md:block" />
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-500 to-red-600 drop-shadow-[0_0_40px_rgba(239,68,68,0.5)] italic pr-2">
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-500 to-red-600 drop-shadow-[0_0_40px_rgba(239,68,68,0.4)] dark:drop-shadow-[0_0_40px_rgba(239,68,68,0.5)] italic pr-2">
                   Culinary Vibe
                 </span> today?
               </h1>
               
-              <p className="mt-4 text-lg md:text-xl text-white/70 max-w-2xl mx-auto font-light leading-relaxed">
+              <p className="mt-4 text-lg md:text-xl text-black/80 drop-shadow-[0_1px_2px_rgba(255,255,255,0.4)] dark:text-white/70 max-w-2xl mx-auto font-semibold leading-relaxed">
                 Tell us what you're craving, how you feel, or who you're with. 
                 Our hyper-intelligent system will curate the perfect dining experience.
               </p>
@@ -72,15 +72,15 @@ export function HeroSection({ state, query, setQuery, onSearch, loadingMsgIdx }:
                 className="w-full max-w-3xl mt-8"
               >
                 <form onSubmit={onSearch} className="w-full relative group">
-                  <div className="absolute -inset-1 bg-gradient-to-r from-amber-500/30 to-red-600/30 rounded-full blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
-                  <div className="relative flex items-center bg-[#121A2A]/80 backdrop-blur-2xl border-[1px] border-white/10 rounded-full p-2 pl-4 sm:pl-8 shadow-2xl transition-all hover:border-white/20 focus-within:ring-2 focus-within:ring-amber-500/50 flex-col sm:flex-row gap-2 sm:gap-0">
-                    <Search className="w-6 h-6 text-white/40 hidden sm:block" />
+                  <div className="absolute -inset-1 bg-gradient-to-r from-amber-500/20 to-red-600/20 rounded-full blur-xl opacity-100 dark:opacity-0 dark:group-hover:opacity-100 transition-opacity duration-700" />
+                  <div className="relative flex items-center bg-white/90 dark:bg-[#121A2A]/80 backdrop-blur-2xl border border-slate-900/10 dark:border-white/10 rounded-full p-2 pl-4 sm:pl-8 shadow-[0_8px_30px_rgba(245,158,11,0.15)] hover:shadow-[0_8px_30px_rgba(245,158,11,0.25)] dark:shadow-2xl transition-all dark:hover:border-white/20 focus-within:ring-2 focus-within:ring-amber-500/50 focus-within:shadow-[0_8px_30px_rgba(245,158,11,0.3)] flex-col sm:flex-row gap-2 sm:gap-0">
+                    <Search className="w-6 h-6 text-slate-500 dark:text-white/40 hidden sm:block" />
                     <input
                       type="text"
                       value={query}
                       onChange={(e) => setQuery(e.target.value)}
                       placeholder="e.g. Mì cay 7 cấp độ ở Làng Đại học..."
-                      className="flex-1 w-full bg-transparent border-none outline-none sm:px-4 py-3 sm:py-0 text-lg md:text-xl text-white placeholder:text-white/30 h-14"
+                      className="flex-1 w-full bg-transparent border-none outline-none sm:px-4 py-3 sm:py-0 text-lg md:text-xl font-medium text-slate-800 dark:text-white placeholder:text-slate-400 dark:placeholder:text-white/30 h-14"
                     />
                     <button
                       type="submit"
@@ -93,14 +93,14 @@ export function HeroSection({ state, query, setQuery, onSearch, loadingMsgIdx }:
                   </div>
                 </form>
 
-                <div className="flex flex-wrap items-center justify-center gap-3 mt-6 text-sm text-white/50">
+                <div className="flex flex-wrap items-center justify-center gap-3 mt-6 text-sm text-black/70 font-bold drop-shadow-[0_1px_2px_rgba(255,255,255,0.3)] dark:text-white/50 dark:drop-shadow-none dark:font-medium">
                   <span>Try:</span>
                   {["Romantic rooftop dinner", "High-protein vegan spots", "Spicy noodles at midnight"].map((prompt) => (
                     <button 
                       key={prompt} 
                       type="button"
                       onClick={() => setQuery(prompt)}
-                      className="px-3 py-1.5 rounded-full border border-white/10 bg-white/5 hover:bg-white/10 hover:text-white transition-colors"
+                      className="px-3 py-1.5 rounded-full border border-slate-900/10 dark:border-white/10 bg-white/60 dark:bg-white/5 hover:bg-white hover:shadow-md hover:text-amber-600 dark:hover:bg-white/10 dark:text-white transition-all backdrop-blur-sm"
                     >
                       "{prompt}"
                     </button>
@@ -134,7 +134,7 @@ export function HeroSection({ state, query, setQuery, onSearch, loadingMsgIdx }:
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -20 }}
                     transition={{ duration: 0.4 }}
-                    className={`text-3xl md:text-4xl text-white/90 text-center absolute ${playfair.className}`}
+                    className={`text-3xl md:text-4xl text-slate-800 dark:text-white/90 text-center absolute ${playfair.className}`}
                   >
                     {loadingMessages[loadingMsgIdx]}
                   </motion.h2>
