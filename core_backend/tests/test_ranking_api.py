@@ -13,8 +13,9 @@ def test_rank_candidates_success():
     app.dependency_overrides[get_ranking_service] = lambda: MockService()
     
     payload = {
-        "user_id": 1,
+        "user_id": "1",
         "pref_vector": [0.1, 0.2, 0.3],
+
         "k": 5,
         "offset": 0,
         "tags": ["Phở", "Bún"],
@@ -37,7 +38,7 @@ def test_rank_candidates_default_params():
     app.dependency_overrides[get_ranking_service] = lambda: MockService()
     
     payload = {
-        "user_id": 1,
+        "user_id": "1",
         "pref_vector": [0.1, 0.2, 0.3]
     }
     
@@ -50,7 +51,7 @@ def test_rank_candidates_default_params():
 
 def test_rank_candidates_validation_error():
     payload = {
-        "user_id": 1,
+        "user_id": "1",
         # missing pref_vector which is required
     }
     response = client.post("/api/v1/ml/rank-candidates", json=payload)
@@ -64,7 +65,7 @@ def test_rank_candidates_internal_error():
     app.dependency_overrides[get_ranking_service] = lambda: MockErrorService()
     
     payload = {
-        "user_id": 1,
+        "user_id": "1",
         "pref_vector": [0.1, 0.2, 0.3]
     }
     

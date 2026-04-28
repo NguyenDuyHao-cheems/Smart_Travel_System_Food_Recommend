@@ -1,22 +1,28 @@
-from sqlalchemy import Column, String, Integer, Text, JSON, DateTime, event, DDL
+from datetime import datetime, timezone
+import uuid
+
+from sqlalchemy import Column, String, Integer, JSON, DateTime, event, DDL, ForeignKey
 from sqlalchemy.orm import DeclarativeBase
 from pgvector.sqlalchemy import Vector
 from sqlalchemy.ext.compiler import compiles
-import datetime
 
 
 class Base(DeclarativeBase):
     pass
 
+
 @compiles(Vector, "sqlite")
 def compile_vector(type_, compiler, **kw):
     return "JSON"
+
 
 def _create_extension(target, connection, **kw):
     if connection.dialect.name == "postgresql":
         connection.execute(DDL("CREATE EXTENSION IF NOT EXISTS vector"))
 
+
 event.listen(Base.metadata, "before_create", _create_extension)
+
 
 class UserOnboarding(Base):
     """
@@ -38,7 +44,7 @@ class UserOnboarding(Base):
 
     __tablename__ = "user_onboardings"
 
-    user_id = Column(String, primary_key=True, index=True)
+    user_id = Column(String, ForeignKey("users.id"), primary_key=True, index=True)
     favorite_dishes = Column(JSON, nullable=False)
     spicy_level = Column(String, nullable=False)
     dietary_restrictions = Column(JSON, nullable=True)
@@ -47,4 +53,24 @@ class UserOnboarding(Base):
     location = Column(String, nullable=False)
     age = Column(Integer, nullable=False)
     preferences_vector = Column(Vector(773), nullable=True)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+
+class UserAccount(Base):
+    """
+    Stores account credentials used for sign up and sign in.
+
+    Columns
+    -------
+    id            – UUID string identifier of the user.
+    username      – unique username used for authentication.
+    password_hash – hashed password.
+    created_at    – UTC timestamp of when the account was created.
+    """
+
+    __tablename__ = "users"
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    username = Column(String, unique=True, nullable=False, index=True)
+    password_hash = Column(String, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
