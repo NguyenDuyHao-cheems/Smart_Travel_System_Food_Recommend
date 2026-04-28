@@ -77,4 +77,4 @@ class OnboardingResponse(BaseModel):
     popular_restaurants: Optional[List[MockRestaurant]] = Field(
         None,
         description="Only present when fallback=True.",
-    )
+    )
