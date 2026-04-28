@@ -1,22 +1,45 @@
 from pydantic import BaseModel, Field
-from typing import List
+from typing import List, Optional
 
-class Candidate(BaseModel):
-    res_id: int = Field(..., description="ID định danh của nhà hàng")
-    vector: List[float] = Field(..., description="Vector đặc trưng (embedding) của nhà hàng cần xếp hạng")
+class CandidateWithFeatures(BaseModel):
+    """
+    Dữ liệu ứng viên đã được sơ chế thành số nguyên để gửi sang AI Engine.
+    Lưu ý: res_id để str để tương thích tốt với UUID/String ID.
+    """
+    res_id: str = Field(..., description="ID định danh của nhà hàng")
+    rating: int = Field(0, description="Rating nhân 100 (Ví dụ: 4.5 -> 450)")
+    sentiment_score: int = Field(0, description="Sentiment nhân 100 (Ví dụ: 0.8 -> 80)")
+    distance_m: int = Field(0, description="Khoảng cách tính bằng mét (Số nguyên)")
+    price_normalized: int = Field(0, description="% ngân sách (0-100)")
+    review_count: int = Field(0, ge=0)
+    similarity_score: int = Field(0, description="Điểm LightFM (Sẽ được AI Engine điền)")
 
-class RankRequest(BaseModel):
+
+class UserRankRequest(BaseModel):
+    """
+    Request đầu vào từ Client gọi đến Core Backend.
+    """
     user_id: str = Field(..., description="ID định danh của người dùng")
-    pref_vector: List[float] = Field(..., description="Vector sở thích của người dùng để tính độ tương đồng")
-
-    k: int = Field(default=5, ge=1, le=50, description="Số lượng kết quả nhà hàng tối đa cần trả về")
-    offset: int = Field(default=0, ge=0, description="Vị trí bắt đầu của danh sách kết quả (dùng cho phân trang)")
-
-    tags: List[str] = Field(default_factory=list, description="Danh sách các thẻ phân loại (ví dụ: 'đồ ăn chay', 'không gian ngoài trời')")
-    budget: float = Field(default=100.0, ge=0.0, description="Mức chi phí tối đa dự kiến của người dùng")
-
-    user_location: List[float] = Field(default_factory=lambda: [0.0, 0.0], description="Tọa độ vị trí người dùng dạng [kinh độ, vĩ độ]")
-    radius: float = Field(default=1.0, ge=0.0, description="Bán kính (km) được cho phép tìm kiếm xung quanh vị trí người dùng")
     
+    # Sửa lỗi Pydantic V2: Dùng min_length và max_length cho List
+    user_location: List[float] = Field(
+        ..., 
+        min_length=2, 
+        max_length=2, 
+        description="Tọa độ người dùng [vĩ độ, kinh độ]"
+    )
+    
+    k: int = Field(default=10, ge=1, le=50, description="Số lượng kết quả cần trả về")
+    offset: int = Field(default=0, ge=0)
+    
+    tags: List[str] = Field(default_factory=list)
+    budget: int = Field(default=100000, ge=0, description="Ngân sách tối đa (VNĐ)")
+    radius: float = Field(default=5.0, ge=0.0, description="Bán kính tìm kiếm (km)")
+
+
 class RankResponse(BaseModel):
-    top_ids: List[int] = Field(..., description="Danh sách ID các nhà hàng được gợi ý xếp hạng từ cao xuống thấp thông qua AI")
+    """
+    Kết quả trả về danh sách ID đã được AI xếp hạng.
+    """
+    ranked_ids: List[str] = Field(..., description="Danh sách ID nhà hàng từ cao xuống thấp")
+    scores: Optional[List[float]] = None
