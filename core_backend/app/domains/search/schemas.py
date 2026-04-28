@@ -48,11 +48,10 @@ class SearchRecommendResponse(BaseModel):
         description="Bán kính thực tế backend dùng để tìm kiếm."
     )
     applied_budget: Optional[int] = Field(
-        default=None,
+        ...,
         ge=0,
         description="Ngân sách thực tế backend dùng để lọc."
     )
-
 
 
 class AISearchPayload(BaseModel):
