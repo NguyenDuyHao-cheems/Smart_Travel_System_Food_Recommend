@@ -2,19 +2,22 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Dict
 
 from jose import jwt
-from passlib.context import CryptContext
+import bcrypt
 
 from app.core.config import settings
 
-_PWD_CONTEXT = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
 
 def hash_password(password: str) -> str:
-    return _PWD_CONTEXT.hash(password)
+    pwd_bytes = password.encode('utf-8')[:72]
+    salt = bcrypt.gensalt()
+    hashed_password = bcrypt.hashpw(pwd_bytes, salt)
+    return hashed_password.decode('utf-8')
 
 
 def verify_password(password: str, stored_hash: str) -> bool:
-    return _PWD_CONTEXT.verify(password, stored_hash)
+    pwd_bytes = password.encode('utf-8')[:72]
+    hash_bytes = stored_hash.encode('utf-8')
+    return bcrypt.checkpw(pwd_bytes, hash_bytes)
 
 
 def create_access_token(data: Dict[str, Any], expires_delta: timedelta | None = None) -> str:
