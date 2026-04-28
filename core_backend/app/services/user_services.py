@@ -1,6 +1,10 @@
+import logging
+from typing import List, Optional
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError
 from app.domains.users.repository import UserOnboardingRepository
-from typing import List
+
+logger = logging.getLogger(__name__)
 
 
 def get_user_allergies(db: Session, user_id: str) -> List[str]:
@@ -23,6 +27,30 @@ def get_user_allergies(db: Session, user_id: str) -> List[str]:
 
         return allergies
 
+    except SQLAlchemyError as e:
+        logger.error(f"Database error in get_user_allergies for user {user_id}: {e}")
+        raise
     except Exception as e:
-        print(f"[ERROR] get_user_allergies: {e}")
+        logger.exception(f"Unexpected error in get_user_allergies for user {user_id}: {e}")
         return []
+
+
+def get_user_preferences_vector(db: Session, user_id: str) -> Optional[List[float]]:
+    """
+    Lấy vector sở thích của user từ bảng user_onboardings.
+    """
+    try:
+        repo = UserOnboardingRepository(db)
+        record = repo.get_by_user_id(user_id)
+
+        if not record:
+            return None
+
+        return record.preferences_vector
+
+    except SQLAlchemyError as e:
+        logger.error(f"Database error in get_user_preferences_vector for user {user_id}: {e}")
+        raise
+    except Exception as e:
+        logger.exception(f"Unexpected error in get_user_preferences_vector for user {user_id}: {e}")
+        return None
