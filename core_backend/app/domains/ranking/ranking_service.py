@@ -14,6 +14,33 @@ class RankingService:
             cls._instance = super(RankingService, cls).__new__(cls)
         return cls._instance
 
+    def rank(self, pref_vector: list[float], candidates: list, k: int = 5) -> list[int]:
+        import numpy as np
+        if not candidates:
+            return []
+        pref = np.array(pref_vector, dtype=np.float32)
+        norm_pref = np.linalg.norm(pref)
+        if norm_pref == 0:
+            return [c.res_id for c in candidates[:k]]
+            
+        matrix = np.array([c.vector for c in candidates], dtype=np.float32)
+        matrix_norms = np.linalg.norm(matrix, axis=1)
+        valid_mask = matrix_norms > 1e-8
+        
+        if not np.any(valid_mask):
+            return [c.res_id for c in candidates[:k]]
+            
+        matrix = matrix[valid_mask]
+        matrix_norms = matrix_norms[valid_mask]
+        valid_candidates = [c for c, v in zip(candidates, valid_mask) if v]
+        
+        similarities = (matrix @ pref) / (matrix_norms * norm_pref)
+        k = min(k, len(similarities))
+        top_idx = np.argpartition(similarities, -k)[-k:]
+        top_idx = top_idx[np.argsort(similarities[top_idx])[::-1]]
+        
+        return [valid_candidates[i].res_id for i in top_idx]
+
     async def get_recommendations(self, db, request):
         # Bước 1: Lọc thô
         retrieval = RetrievalService(db)
