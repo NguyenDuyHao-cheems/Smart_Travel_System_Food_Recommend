@@ -28,5 +28,17 @@ class AIServiceClient:
                 print(f"Error communicating with AI engine at {url}: {exc}")
                 return None
 
+    async def check_health(self) -> bool:
+        """
+        Check if the AI engine is reachable and returning a healthy status.
+        """
+        url = f"{settings.AI_ENGINE_BASE_URL}/api/health"
+        async with httpx.AsyncClient(timeout=2.0) as client:
+            try:
+                response = await client.get(url)
+                return response.status_code == 200
+            except httpx.HTTPError:
+                return False
+
 def get_ai_client() -> AIServiceClient:
     return AIServiceClient()
