@@ -1,9 +1,31 @@
 from sqlalchemy.orm import Session
-from services.user_services import get_user_allergies
-from services.allergy_filter import filter_allergy, handle_fallback
-from services.candidate_mapper import to_candidates
+from app.services.user_services import get_user_allergies, get_user_preferences_vector
+from app.services.allergy_filter import filter_allergy, handle_fallback
+from app.services.candidate_mapper import to_candidates
 from app.domains.ranking.service import RankingService
-from app.domains.search.service import generate_candidates
+
+
+# TODO: Replace with real implementation that queries the database.
+def generate_candidates(query: str):
+    """
+    Temporary mock function để dùng cho recommendation pipeline.
+    Sau này sẽ thay bằng SearchService + AI + DB.
+    """
+
+    return [
+        {
+            "id": 1,
+            "name": "Mì cay",
+            "ingredients": ["tôm", "ớt", "mì"],
+            "vector": [0.1] * 128
+        },
+        {
+            "id": 2,
+            "name": "Phở bò",
+            "ingredients": ["thịt bò", "hành"],
+            "vector": [0.2] * 128
+        }
+    ]
 
 
 def recommend(query: str, user_id: str, db: Session):
@@ -11,6 +33,11 @@ def recommend(query: str, user_id: str, db: Session):
     ranking_service = RankingService()
 
     user_allergies = get_user_allergies(db, user_id)
+    user_vector = get_user_preferences_vector(db, user_id)
+
+    # Nếu user chưa có vector (chưa onboarding hoặc lỗi), dùng vector mặc định
+    if user_vector is None:
+        user_vector = [0.0] * 128
 
     raw_candidates = generate_candidates(query)
 
@@ -35,9 +62,6 @@ def recommend(query: str, user_id: str, db: Session):
     # 🔥 convert
     candidates = to_candidates(safe_raw)
 
-    # 🔥 vector user (mock)
-    user_vector = [0.1] * 128
-
     ranked_ids = ranking_service.rank(
         pref_vector=user_vector,
         candidates=candidates,
@@ -49,3 +73,4 @@ def recommend(query: str, user_id: str, db: Session):
         "filtered_out_count": len(removed),
         "fallback_applied": False
     }
+
