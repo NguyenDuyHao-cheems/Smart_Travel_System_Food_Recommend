@@ -31,11 +31,36 @@ class RecommendResult(BaseModel):
 
 class SearchRecommendResponse(BaseModel):
     """
-    Kết quả trả về dạng danh sách (List) đẩy về cho UI Next.js Render.
+    Kết quả trả về cho UI, kèm metadata để Frontend biết
+    backend có đang dùng cơ chế fallback hay không.
     """
     results: List[RecommendResult]
-    filtered_out_count: Optional[int] = Field(None, description="Number of items filtered out due to allergies")
-    warning: Optional[str] = Field(None, description="Warning message, e.g. when fallback is applied")
+    fallback_applied: bool = Field(
+        default=False,
+        description="True nếu backend đã tự động nới điều kiện tìm kiếm."
+    )
+    fallback_reason: Optional[str] = Field(
+        default=None,
+        description="Mô tả lý do backend áp dụng fallback."
+    )
+    applied_radius_km: float = Field(
+        ...,
+        ge=0,
+        description="Bán kính thực tế backend dùng để tìm kiếm."
+    )
+    applied_budget: Optional[int] = Field(
+        None,
+        ge=0,
+        description="Ngân sách thực tế backend dùng để lọc."
+    )
+    filtered_out_count: Optional[int] = Field(
+        None, 
+        description="Number of items filtered out due to allergies"
+    )
+    warning: Optional[str] = Field(
+        None, 
+        description="Warning message, e.g. when fallback is applied"
+    )
 
 class AISearchPayload(BaseModel):
     """
