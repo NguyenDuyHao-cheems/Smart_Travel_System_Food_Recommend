@@ -5,6 +5,7 @@ from sqlalchemy import Column, String, Integer, JSON, DateTime, event, DDL, Fore
 from sqlalchemy.orm import DeclarativeBase
 from pgvector.sqlalchemy import Vector
 from sqlalchemy.ext.compiler import compiles
+from app.core.config import settings
 
 
 class Base(DeclarativeBase):
@@ -52,7 +53,7 @@ class UserOnboarding(Base):
     budget = Column(String, nullable=False)
     location = Column(String, nullable=False)
     age = Column(Integer, nullable=False)
-    preferences_vector = Column(Vector(773), nullable=True)
+    preferences_vector = Column(Vector(settings.VECTOR_DIM), nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
