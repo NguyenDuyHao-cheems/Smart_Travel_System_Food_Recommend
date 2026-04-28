@@ -189,7 +189,7 @@ class AuthService:
 
         return AuthResponse(
             message="Sign up successful",
-            user_id=user.id,
+            user_id=str(user.id),
             username=user.username,
             access_token=access_token,
             token_type="bearer",
@@ -208,7 +208,7 @@ class AuthService:
 
         return AuthResponse(
             message="Sign in successful",
-            user_id=user.id,
+            user_id=str(user.id),
             username=user.username,
             access_token=access_token,
             token_type="bearer",
