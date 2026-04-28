@@ -3,7 +3,6 @@ import os
 import sys
 import logging
 from lightfm import LightFM
-from core_backend.app.core.config import settings
 
 # Tự động cấu hình PYTHONPATH để nhận diện module 'app'
 CURRENT_FILE_PATH = os.path.abspath(__file__)

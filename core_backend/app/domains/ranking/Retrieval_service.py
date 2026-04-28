@@ -10,10 +10,11 @@ class RetrievalService:
         lat, lng = user_location
         deg_radius = radius / 111.0 
         
-        # Sửa query: Sử dụng cast để ép kiểu price_range từ String sang Integer
+        # I7: Unsafe SQL cast fix - Use NULLIF and cast safely
+        from sqlalchemy import text
         query = self.db.query(RestaurantModel).filter(
             RestaurantModel.is_active == True,
-            cast(RestaurantModel.price_range, Integer) <= budget
+            text("NULLIF(price_range, '')::integer <= :budget").bindparams(budget=budget)
         )
 
         # Lọc theo khung tọa độ

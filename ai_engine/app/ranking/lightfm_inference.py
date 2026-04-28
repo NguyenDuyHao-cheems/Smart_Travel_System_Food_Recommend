@@ -54,9 +54,9 @@ class LightFMInference:
             # Dot product giữa vector người dùng và nhà hàng
             u_vec = model.user_embeddings[uid]
             i_vec = model.item_embeddings[iid]
+            # I4: Better normalization using Sigmoid
             score = float(np.dot(u_vec, i_vec))
-            
-            # Chuẩn hóa về 0-100 (Integer)
-            return int(max(0, min(1, score)) * 100)
+            prob = 1 / (1 + np.exp(-score))
+            return int(prob * 100)
         except Exception:
             return 0

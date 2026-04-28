@@ -5,10 +5,11 @@ class CandidateWithFeatures(BaseModel):
     res_id: str
     rating: int = 0
     sentiment_score: int = 0
-    distance_km: int = 0
+    distance_m: int = 0
     price_normalized: int = 0
     review_count: int = 0
     similarity_score: int = 0
+    is_open: int = 0
 
 class RankRequestPayload(BaseModel):
     user_id: str

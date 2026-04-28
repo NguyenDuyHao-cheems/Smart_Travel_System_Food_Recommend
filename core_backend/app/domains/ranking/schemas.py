@@ -9,7 +9,7 @@ class CandidateWithFeatures(BaseModel):
     res_id: str = Field(..., description="ID định danh của nhà hàng")
     rating: int = Field(0, description="Rating nhân 100 (Ví dụ: 4.5 -> 450)")
     sentiment_score: int = Field(0, description="Sentiment nhân 100 (Ví dụ: 0.8 -> 80)")
-    distance_km: int = Field(0, description="Khoảng cách tính bằng mét (Số nguyên)")
+    distance_m: int = Field(0, description="Khoảng cách tính bằng mét (Số nguyên)")
     price_normalized: int = Field(0, description="% ngân sách (0-100)")
     review_count: int = Field(0, ge=0)
     similarity_score: int = Field(0, description="Điểm LightFM (Sẽ được AI Engine điền)")

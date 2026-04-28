@@ -16,4 +16,10 @@ async def rank_restaurants(
         ranked_ids = await service.get_recommendations(db, request)
         return RankResponse(ranked_ids=ranked_ids)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        # I6: Error leaking fix - log details internally, return generic message to client
+        import logging
+        logging.getLogger(__name__).error(f"Ranking failed: {str(e)}")
+        raise HTTPException(
+            status_code=500, 
+            detail="Internal server error. Please try again later."
+        )

@@ -7,6 +7,13 @@ from app.core.config import settings
 logger = logging.getLogger(__name__)
 
 class RankingService:
+    _instance = None
+
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super(RankingService, cls).__new__(cls)
+        return cls._instance
+
     async def get_recommendations(self, db, request):
         # Bước 1: Lọc thô
         retrieval = RetrievalService(db)
@@ -31,14 +38,17 @@ class RankingService:
                     "top_k": request.k
                 }
                 # AI_ENGINE_BASE_URL: ví dụ http://ai-engine:8001
-                response = await client.post(f"{settings.AI_ENGINE_BASE_URL}/ml/rank", json=payload)
+                response = await client.post(f"{settings.AI_ENGINE_BASE_URL}/api/v1/ml/rank", json=payload)
                 
                 if response.status_code == 200:
                     result = response.json()
                     return result.get("ranked_ids", [])
+                else:
+                    logger.error(f"AI Engine returned error {response.status_code}: {response.text}")
         except Exception as e:
             logger.error(f"AI Engine connection failed: {e}")
 
+
         # Bước 4: Fallback (Xếp theo khoảng cách mét nếu AI sập)
-        featured.sort(key=lambda x: x['distance_km'])
+        featured.sort(key=lambda x: x['distance_m'])
         return [c['res_id'] for c in featured[:request.k]]

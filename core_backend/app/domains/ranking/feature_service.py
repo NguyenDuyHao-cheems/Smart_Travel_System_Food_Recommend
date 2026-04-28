@@ -30,11 +30,11 @@ class FeatureService:
                 "res_id": str(r.id),
                 "rating": rating_int,
                 "sentiment_score": sentiment_int,
-                "distance_km": int(dist_m), # Thực tế là mét, giữ tên distance_km theo schema cũ
+                "distance_m": int(dist_m), 
                 "price_normalized": price_norm,
                 "review_count": int(getattr(r, "total_reviews", 0) or 0),
-                "is_open": is_open_int, # Thêm signal này để AI Engine biết quán đang mở hay đóng
-                "similarity_score": 0   # Sẽ được AI Engine lấp đầy bằng LightFM
+                "is_open": is_open_int, 
+                "similarity_score": 0   
             })
         return result
 

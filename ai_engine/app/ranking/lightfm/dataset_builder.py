@@ -18,8 +18,13 @@ class LightFMDatasetBuilder:
             # 1. Lấy dữ liệu tương tác từ bảng interactions
             df_inter = pd.read_sql("SELECT user_id, res_id, rating FROM interactions", self.engine)
             
-            # 2. Lấy Tags nhà hàng từ bảng restaurant_tags (Xử lý Cold Start)
-            df_items = pd.read_sql("SELECT res_id, tag_name FROM restaurant_tags WHERE tag_name IS NOT NULL", self.engine)
+            # 2. Lấy Tags nhà hàng từ bảng res_tags (Xử lý Cold Start)
+            df_items = pd.read_sql("""
+                SELECT rt.res_id, t.name as tag_name 
+                FROM res_tags rt 
+                JOIN tags t ON rt.tag_id = t.id 
+                WHERE t.name IS NOT NULL
+            """, self.engine)
 
             if df_inter.empty:
                 logger.warning("Không tìm thấy dữ liệu tương tác trong Database.")

@@ -1,4 +1,5 @@
 from sqlalchemy import Column, String, Integer, Float, Boolean, ForeignKey
+from sqlalchemy.orm import relationship
 from app.core.database import Base
 
 class RestaurantModel(Base):
@@ -22,12 +23,23 @@ class RestaurantModel(Base):
     image_url = Column(String)
     opening_hours = Column(String)
 
+    # Restoring ORM relationship
+    tags = relationship("TagModel", secondary="res_tags", back_populates="restaurants")
+
 class TagModel(Base):
     __tablename__ = "tags"
     id = Column(Integer, primary_key=True)
     name = Column(String)
+    restaurants = relationship("RestaurantModel", secondary="res_tags", back_populates="tags")
 
 class RestaurantTagModel(Base):
     __tablename__ = "res_tags"
     res_id = Column(String, ForeignKey("restaurants.id"), primary_key=True)
     tag_id = Column(Integer, ForeignKey("tags.id"), primary_key=True)
+
+class InteractionModel(Base):
+    __tablename__ = "interactions"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String, index=True)
+    res_id = Column(String, ForeignKey("restaurants.id"), index=True)
+    rating = Column(Float)
