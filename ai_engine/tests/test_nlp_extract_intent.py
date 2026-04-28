@@ -3,7 +3,7 @@ test_nlp_extract_intent.py – Integration tests for POST /api/v1/nlp/extract-in
 
 Endpoint contract (from schemas.py):
   Request:  ExtractIntentRequest { text: str (max_length=1000), lat: float|None, lng: float|None }
-  Response: ExtractIntentResponse { raw_text, tags, budget, query_vector, lat, lng }
+  Response: ExtractIntentResponse { raw_text, tags, budget, vector, intent, lat, lng }
 """
 
 import pytest
@@ -63,15 +63,25 @@ class TestExtractIntentHappyPath:
         assert isinstance(data["tags"], list)
         assert all(isinstance(t, str) for t in data["tags"])
 
-    def test_response_contains_query_vector(self, client):
-        """Should return a float list as query_vector."""
+    def test_response_contains_vector(self, client):
+        """Should return a float list as vector."""
         # Arrange & Act
         data = post_extract(client, "bánh xèo ngon").json()
 
         # Assert
-        assert "query_vector" in data
-        assert isinstance(data["query_vector"], list)
-        assert len(data["query_vector"]) == EMBEDDING_DIM
+        assert "vector" in data
+        assert isinstance(data["vector"], list)
+        assert len(data["vector"]) == EMBEDDING_DIM
+
+    def test_response_contains_intent(self, client):
+        """Should return an intent string."""
+        # Arrange & Act
+        data = post_extract(client, "bánh xèo ngon").json()
+
+        # Assert
+        assert "intent" in data
+        assert isinstance(data["intent"], str)
+        assert data["intent"] == "search_food"
 
     def test_lat_lng_are_passed_through(self, client):
         """lat and lng in request should be echoed back in response."""

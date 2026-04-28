@@ -1,67 +1,107 @@
-## 1. Schema Description (Mô tả Lược đồ)
+-- WARNING: This schema is for context only and is not meant to be run.
+-- Table order and constraints may not be valid for execution.
 
-Cơ sở dữ liệu của **wander bite** được thiết kế để hỗ trợ tìm kiếm ngữ nghĩa (Semantic Search) và cá nhân hóa sâu. Hệ thống sử dụng PostgreSQL với extension `pgvector`.
-
-### A. Các bảng chính và thuộc tính
-
-- **`users` (Người dùng):** Lưu trữ thông tin định danh, thông tin đăng nhập và hồ sơ sở thích.
-  - `id`: UUID string dùng thống nhất cho authentication, onboarding và các service khác.
-  - `username`: Tên đăng nhập duy nhất của người dùng.
-  - `password_hash`: Mật khẩu đã được hash bằng `passlib`.
-  - `preferences_vector`: Vector đặc trưng cho sở thích dài hạn của người dùng.
-  - `allergy_tags`: Dữ liệu JSONB lưu các thành phần gây dị ứng để lọc kết quả.
-- **`user_onboardings` (Phiên onboarding):** Lưu dữ liệu onboarding ban đầu và vector preference do AI sinh ra.
-  - `user_id`: Khóa chính đồng thời là khóa ngoại tham chiếu tới `users.id`.
-  - `preferences_vector`: Vector kết hợp giữa embedding AI và structured features từ form onboarding.
-- **`restaurants` (Nhà hàng):** Thông tin thực thể địa điểm.
-  - `lat`/`lng`: Tọa độ địa lý để tính khoảng cách.
-  - `sentiment_score`: Điểm số cảm xúc tổng hợp từ các bài đánh giá (xử lý offline).
-- **`dishes` (Món ăn):** Thành phần quan trọng nhất cho Stage 1 (Retrieval).
-  - `embedding_vector` (vector(768)): Vector không gian được tạo bởi PhoBERT từ tên và mô tả món ăn.
-  - `res_id`: Khóa ngoại liên kết với bảng `restaurants`.
-- **`reviews` (Đánh giá):** Dữ liệu phản hồi phục vụ cho việc tính toán sentiment và cung cấp context cho LLM.
-
-### B. Mối quan hệ (Relationships)
-
-- **One-to-Many (`restaurants` -> `dishes`):** Một nhà hàng có thể có nhiều món ăn trong menu.
-- **Many-to-Many (`users` <-> `restaurants` thông qua `reviews`):** Người dùng đánh giá nhiều nhà hàng và một nhà hàng nhận đánh giá từ nhiều người.
-- **One-to-One (`users` -> `user_onboardings`):** Mỗi người dùng có tối đa một bản ghi onboarding, được liên kết qua `user_onboardings.user_id`.
-- **Relationship Link:** `dishes` là đơn vị nhỏ nhất để thực hiện tìm kiếm vector, sau đó kết quả được nhóm theo `res_id` để hiển thị thông tin quán ăn.
-
----
-
-## 2. Migration Guide (Hướng dẫn quản lý Migration)
-
-### Quy trình dành cho Agent/Developer:
-
-#### Bước 1: Định nghĩa Model
-
-Mọi thay đổi về cấu trúc bảng phải được thực hiện trong các file models (ví dụ: `app/domains/search/models.py`). Đảm bảo sử dụng đúng kiểu dữ liệu `pgvector` cho các cột vector.
-
-#### Bước 2: Tạo bản ghi Migration (Autogenerate)
-
-Agent không được tự tạo bảng bằng SQL. Phải dùng lệnh để Alembic tự động so sánh mã nguồn và DB hiện tại để sinh ra script:
-
-```bash
-# Chạy bên trong container core_backend
-alembic revision --autogenerate -m "Mô tả thay đổi, vd: add_dishes_table"
-```
-
-#### Bước 3: Kiểm tra Script
-
-File migration mới sẽ xuất hiện trong thư mục `alembic/versions/`. Kiểm tra kỹ hai hàm:
-
-- `upgrade()`: Chứa các lệnh thay đổi DB (Add column, Create table).
-- `downgrade()`: Chứa các lệnh để hoàn tác (Undo) nếu xảy ra lỗi.
-
-#### Bước 4: Áp dụng thay đổi
-
-Sau khi kiểm tra, thực hiện cập nhật Database:
-
-```bash
-alembic upgrade head
-```
-
-> **CẢNH BÁO CHO AGENT:** Tuyệt đối không xóa hoặc sửa đổi các file trong `alembic/versions/` đã được merge vào nhánh `dev`. Nếu muốn thay đổi, hãy tạo một `revision` mới.
-
----
+CREATE TABLE public.dishes (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  res_id uuid,
+  name character varying NOT NULL,
+  price integer NOT NULL,
+  image_url text,
+  ingredients jsonb DEFAULT '[]'::jsonb,
+  allergens jsonb DEFAULT '[]'::jsonb,
+  is_vegetarian boolean DEFAULT false,
+  embedding_vector USER-DEFINED,
+  CONSTRAINT dishes_pkey PRIMARY KEY (id),
+  CONSTRAINT dishes_res_id_fkey FOREIGN KEY (res_id) REFERENCES public.restaurants(id)
+);
+CREATE TABLE public.res_tags (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  res_id uuid,
+  tag_id uuid,
+  CONSTRAINT res_tags_pkey PRIMARY KEY (id),
+  CONSTRAINT res_tags_res_id_fkey FOREIGN KEY (res_id) REFERENCES public.restaurants(id),
+  CONSTRAINT res_tags_tag_id_fkey FOREIGN KEY (tag_id) REFERENCES public.tags(id),
+  CONSTRAINT fk_res_tags_res FOREIGN KEY (res_id) REFERENCES public.restaurants(id),
+  CONSTRAINT fk_res_tags_tag FOREIGN KEY (tag_id) REFERENCES public.tags(id)
+);
+CREATE TABLE public.restaurants (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  name character varying NOT NULL,
+  address text NOT NULL,
+  lat double precision,
+  lng double precision,
+  price_range character varying,
+  opening_hours character varying,
+  image_url text,
+  rating_avg double precision DEFAULT 0.0,
+  sentiment_score double precision DEFAULT 0.0,
+  top_review_text text,
+  is_active boolean DEFAULT true,
+  embedding_vector USER-DEFINED,
+  total_reviews integer,
+  open_time time without time zone,
+  close_time time without time zone,
+  timezone text DEFAULT 'Asia/Ho_Chi_Minh'::text,
+  is_open_now boolean,
+  google_maps_url text,
+  CONSTRAINT restaurants_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.reviews (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  res_id uuid,
+  reviewer_name character varying,
+  rating numeric CHECK (rating IS NULL OR rating >= 0::numeric AND rating <= 10::numeric),
+  text text,
+  date timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT reviews_pkey PRIMARY KEY (id),
+  CONSTRAINT reviews_res_id_fkey FOREIGN KEY (res_id) REFERENCES public.restaurants(id),
+  CONSTRAINT fk_reviews_restaurant FOREIGN KEY (res_id) REFERENCES public.restaurants(id)
+);
+CREATE TABLE public.tags (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  name character varying NOT NULL UNIQUE,
+  CONSTRAINT tags_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.user_interactions (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  anonymous_id text,
+  user_id uuid,
+  res_id uuid,
+  dish_id uuid,
+  action_type character varying NOT NULL,
+  duration_sec integer,
+  created_at timestamp with time zone DEFAULT now(),
+  metadata jsonb,
+  CONSTRAINT user_interactions_pkey PRIMARY KEY (id),
+  CONSTRAINT user_interactions_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id),
+  CONSTRAINT user_interactions_res_id_fkey FOREIGN KEY (res_id) REFERENCES public.restaurants(id),
+  CONSTRAINT user_interactions_dish_id_fkey FOREIGN KEY (dish_id) REFERENCES public.dishes(id)
+);
+CREATE TABLE public.user_onboardings (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  anonymous_id text UNIQUE,
+  user_id uuid UNIQUE,
+  favorite_dishes jsonb,
+  spicy_level character varying,
+  dietary_restrictions jsonb,
+  allergies jsonb,
+  budget character varying,
+  location character varying,
+  age integer,
+  preferences_vector USER-DEFINED,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  completed_at timestamp with time zone,
+  CONSTRAINT user_onboardings_pkey PRIMARY KEY (id),
+  CONSTRAINT user_onboardings_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
+);
+CREATE TABLE public.users (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  username character varying NOT NULL UNIQUE,
+  password_hash character varying,
+  preferences_vector USER-DEFINED,
+  allergies jsonb,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT users_pkey PRIMARY KEY (id)
+);

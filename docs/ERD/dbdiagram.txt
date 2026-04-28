@@ -1,77 +1,99 @@
+// Use English for comments as requested
+// Updated schema to match SQL Truth file
+
 Table users {
-  id uuid [pk]
-  username varchar
-  password_hash varchar
-  preferences_vector vector(773)
-  allergic_to jsonb
+  id uuid [pk, default: `gen_random_uuid()`]
+  username varchar [unique, not null]
+  password_hash varchar [not null]
+  preferences_vector vector // USER-DEFINED in SQL
+  allergic_to jsonb [default: '[]']
 }
 
 Table user_interactions {
-  id uuid [pk]
+  id uuid [pk, default: `gen_random_uuid()`]
   user_id uuid
   res_id uuid
-  menu_id uuid
-  action_type varchar
+  dish_id uuid // Changed from menu_id to dish_id to match SQL
+  action_type varchar [not null]
   duration_sec int
-  created_at timestamptz
+  created_at timestamptz [default: `CURRENT_TIMESTAMP`]
 }
 
 Table res_tags {
-  id uuid [pk]
+  id uuid [pk, default: `gen_random_uuid()`]
   res_id uuid
   tag_id uuid
 }
 
 Table tags {
-  id uuid [pk]
-  name varchar
+  id uuid [pk, default: `gen_random_uuid()`]
+  name varchar [unique, not null]
 }
 
 Table reviews {
-  id uuid [pk]
+  id uuid [pk, default: `gen_random_uuid()`]
   res_id uuid
   reviewer_name varchar
-  rating int
+  rating numeric // Changed from int to numeric (0-10)
   text text
-  date timestamptz
+  date timestamptz [default: `CURRENT_TIMESTAMP`]
 }
 
 Table dishes {
-  id uuid [pk]
+  id uuid [pk, default: `gen_random_uuid()`]
   res_id uuid
-  name varchar
-  price int
+  name varchar [not null]
+  price int [not null]
   image_url text
-  ingredients jsonb
-  allergens jsonb
-  is_vegetarian bool
+  ingredients jsonb [default: '[]']
+  allergens jsonb [default: '[]']
+  is_vegetarian bool [default: false]
   embedding_vector vector
-  is_active bool
+  // is_active was removed as it's not in SQL truth
 }
 
 Table restaurants {
-  id uuid [pk]
-  name varchar
-  address text
+  id uuid [pk, default: `gen_random_uuid()`]
+  name varchar [not null]
+  address text [not null]
   lat float
   lng float
   price_range varchar
   opening_hours varchar
   image_url text
-  rating_avg float
-  sentiment_score float
+  rating_avg float [default: 0.0]
+  sentiment_score float [default: 0.0]
   top_review_text text
-  is_active bool
+  is_active bool [default: true]
+  embedding_vector vector
+  total_reviews int
+  open_time time
+  close_time time
+  timezone text [default: 'Asia/Ho_Chi_Minh']
+  is_open_now bool
+  google_maps_url text
+}
+
+Table user_onboardings {
+  user_id varchar [pk]
+  favorite_dishes json [not null]
+  spicy_level varchar [not null]
+  dietary_restrictions json
+  allergies json
+  budget varchar [not null]
+  location varchar [not null]
+  age int [not null]
+  preferences_vector vector
+  created_at timestamp
 }
 
 // Relationships
 Ref: user_interactions.user_id > users.id
 Ref: user_interactions.res_id > restaurants.id
-Ref: user_interactions.menu_id > dishes.id
+Ref: user_interactions.dish_id > dishes.id
 
 Ref: res_tags.res_id > restaurants.id
 Ref: res_tags.tag_id > tags.id
 
 Ref: reviews.res_id > restaurants.id
-
 Ref: dishes.res_id > restaurants.id

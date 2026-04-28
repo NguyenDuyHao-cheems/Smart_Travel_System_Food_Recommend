@@ -90,7 +90,7 @@ class OnboardingService:
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:
                 response = await client.post(
-                    f"{settings.AI_ENGINE_BASE_URL}/api/v1/nlp/process",
+                    f"{settings.AI_ENGINE_BASE_URL}/api/v1/nlp/extract-intent",
                     json={"text": text},
                 )
                 response.raise_for_status()

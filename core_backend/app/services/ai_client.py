@@ -14,7 +14,7 @@ class AIServiceClient:
         async with httpx.AsyncClient() as client:
             try:
                 response = await client.post(
-                    f"{settings.AI_ENGINE_BASE_URL}/api/v1/nlp/process",
+                    f"{settings.AI_ENGINE_BASE_URL}/api/v1/nlp/extract-intent",
                     json=payload.model_dump()
                 )
                 response.raise_for_status()
