@@ -6,7 +6,7 @@ class Candidate(BaseModel):
     vector: List[float] = Field(..., description="Vector đặc trưng (embedding) của nhà hàng cần xếp hạng")
 
 class RankRequest(BaseModel):
-    user_id: int = Field(..., description="ID định danh của người dùng")
+    user_id: str = Field(..., description="ID định danh của người dùng")
     pref_vector: List[float] = Field(..., description="Vector sở thích của người dùng để tính độ tương đồng")
 
     k: int = Field(default=5, ge=1, le=50, description="Số lượng kết quả nhà hàng tối đa cần trả về")

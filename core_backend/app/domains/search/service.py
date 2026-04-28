@@ -1,6 +1,7 @@
 import asyncio
 
 from fastapi import HTTPException
+from sqlalchemy.orm import Session
 
 from .schemas import (
     AIResponseData,
@@ -9,6 +10,7 @@ from .schemas import (
     RecommendResult,
 )
 from app.services.ai_client import AIServiceClient
+from app.services.recommendation_service import recommend
 
 
 class SearchService:
@@ -26,26 +28,51 @@ class SearchService:
         if not ai_response:
             raise HTTPException(status_code=503, detail="AI engine is currently unavailable.")
 
+        # FUTURE IMPLEMENTATION: Database operations will be orchestrated here.
+        # e.g., self.repository.search_restaurants(ai_response.vector)
+
         return ai_response
 
-    async def process_recommend_query(self, request: SearchRecommendRequest) -> SearchRecommendResponse:
+    async def process_recommend_query(self, request: SearchRecommendRequest, db: Session = None) -> SearchRecommendResponse:
         """
-        Logic recommend có fallback:
-        1. Gọi AI để lấy budget từ query
-        2. Filter strict trước
-        3. Nếu 0 kết quả thì nới radius + budget
-        4. Nếu vẫn 0 thì trả mock gần nhất để tránh UI trắng hoàn toàn
+        Logic recommend có fallback kết hợp allergy filter:
+        1. Gọi recommendation service pipeline để filter dị ứng
+        2. Gọi AI để lấy budget từ query
+        3. Map kết quả filter thành mock objects (hoặc query DB)
+        4. Filter strict bằng distance và budget
+        5. Nếu 0 kết quả thì nới radius + budget
+        6. Nếu vẫn 0 thì trả mock gần nhất để tránh UI trắng hoàn toàn
         """
         ai_response = await self.ai_client.extract_intent_and_vectorize(request.query)
         if not ai_response:
             raise HTTPException(status_code=503, detail="AI engine is currently unavailable.")
 
-        # TODO: Use request.lat and request.lng for real distance calculation instead of mock data
-        all_results = self._build_mock_results()
+        # 1. Lọc dị ứng bằng recommendation pipeline
+        recommend_results = recommend(
+            query=request.query,
+            user_id=request.user_id,
+            db=db
+        )
+        safe_ids = recommend_results["results"]
+        filtered_out_count = recommend_results["filtered_out_count"]
+        warning = recommend_results.get("warning")
+
+        # 2. Build danh sách kết quả (hiện tại dùng mock data)
+        # TODO: Cần fetch data từ DB để trả về RecommendResult đầy đủ thay vì chỉ mock
+        all_mock_results = self._build_mock_results()
+        
+        # Sort mock results based on the order of safe_ids (which are ranked by AI vector)
+        safe_results = []
+        for safe_id in safe_ids:
+            for item in all_mock_results:
+                if item.id == safe_id:
+                    safe_results.append(item)
+                    break
+
         strict_budget = ai_response.budget or self.DEFAULT_BUDGET_VND
 
         strict_results = self._filter_results(
-            results=all_results,
+            results=safe_results,
             max_budget=strict_budget,
             max_radius_km=self.DEFAULT_RADIUS_KM,
         )
@@ -57,35 +84,46 @@ class SearchService:
                 fallback_reason=None,
                 applied_radius_km=self.DEFAULT_RADIUS_KM,
                 applied_budget=strict_budget,
+                filtered_out_count=filtered_out_count,
+                warning=warning
             )
 
         relaxed_budget = strict_budget + self.FALLBACK_BUDGET_DELTA_VND
         relaxed_results = self._filter_results(
-            results=all_results,
+            results=safe_results,
             max_budget=relaxed_budget,
             max_radius_km=self.FALLBACK_RADIUS_KM,
         )
 
         if relaxed_results:
+            reason = "No results with strict filters, backend relaxed radius and budget."
+            if warning: reason = warning + ". " + reason
             return SearchRecommendResponse(
                 results=relaxed_results,
                 fallback_applied=True,
-                fallback_reason="No results with strict filters, backend relaxed radius and budget.",
+                fallback_reason=reason,
                 applied_radius_km=self.FALLBACK_RADIUS_KM,
                 applied_budget=relaxed_budget,
+                filtered_out_count=filtered_out_count,
+                warning=warning
             )
 
         nearest_results = sorted(
-            all_results,
+            safe_results,
             key=self._extract_distance_km,
         )[:5]
+
+        reason = "No results after relaxed filters, backend returned nearest restaurants as a safe fallback."
+        if warning: reason = warning + ". " + reason
 
         return SearchRecommendResponse(
             results=nearest_results,
             fallback_applied=True,
-            fallback_reason="No results after relaxed filters, backend returned nearest restaurants as a safe fallback.",
+            fallback_reason=reason,
             applied_radius_km=self.FALLBACK_RADIUS_KM,
             applied_budget=None,
+            filtered_out_count=filtered_out_count,
+            warning=warning
         )
 
     def _build_mock_results(self) -> list[RecommendResult]:
