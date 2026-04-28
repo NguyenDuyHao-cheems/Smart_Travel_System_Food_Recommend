@@ -14,6 +14,7 @@ class SearchRecommendRequest(BaseModel):
     query: str = Field(..., description="The user's required food and context")
     lat: float = Field(..., description="Current user latitude")
     lng: float = Field(..., description="Current user longitude")
+    user_id: Optional[str] = Field(None, description="Optional user ID for personalized filtering")
 
 class RecommendResult(BaseModel):
     """
@@ -25,7 +26,7 @@ class RecommendResult(BaseModel):
     dist: str
     price: str
     rating: str
-    reason: str
+    reason: str 
     img: str
 
 class SearchRecommendResponse(BaseModel):
@@ -33,6 +34,8 @@ class SearchRecommendResponse(BaseModel):
     Kết quả trả về dạng danh sách (List) đẩy về cho UI Next.js Render.
     """
     results: List[RecommendResult]
+    filtered_out_count: Optional[int] = Field(None, description="Number of items filtered out due to allergies")
+    warning: Optional[str] = Field(None, description="Warning message, e.g. when fallback is applied")
 
 class AISearchPayload(BaseModel):
     """
