@@ -117,8 +117,8 @@ class OnboardingService:
         ai_vector: List[float], payload: OnboardingRequest
     ) -> List[float]:
         """
-        Append a small structured encoding (5 dimensions) to the 768-dim AI
-        vector, producing a 773-dim combined preference vector.
+        Append a small structured encoding (5 dimensions) to the (settings.VECTOR_DIM - 5)-dim AI
+        vector, producing a {settings.VECTOR_DIM}-dim combined preference vector.
 
         Structured dims:
           [0] spicy_level  (0–4 normalised to 0–1)
@@ -143,18 +143,19 @@ class OnboardingService:
     @staticmethod
     def _fallback_vector(payload: OnboardingRequest) -> List[float]:
         """
-        Generate a deterministic 773-dim vector when the AI engine is down.
-        The first 768 dims are a simple hash-based approximation; the last 5
+        Generate a deterministic settings.VECTOR_DIM-dim vector when the AI engine is down.
+        The first (settings.VECTOR_DIM - 5) dims are a simple hash-based approximation; the last 5
         are the same structured encoding used in _combine_vectors.
         """
         spicy_map = {"none": 0, "mild": 1, "medium": 2, "hot": 3, "extra_hot": 4}
         budget_map = {"low": 0, "medium": 1, "high": 2}
 
         # Hash each dish name into a deterministic float in [-1, 1]
-        base = [0.0] * 768
+        base_dim = settings.VECTOR_DIM - 5
+        base = [0.0] * base_dim
         for dish in payload.favorite_dishes:
             for i, char in enumerate(dish):
-                base[i % 768] += (ord(char) / 128.0 - 1.0)
+                base[i % base_dim] += (ord(char) / 128.0 - 1.0)
 
         # Normalise to [-1, 1]
         magnitude = math.sqrt(sum(v * v for v in base)) or 1.0

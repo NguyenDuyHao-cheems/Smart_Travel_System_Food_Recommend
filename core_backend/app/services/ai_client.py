@@ -11,19 +11,21 @@ class AIServiceClient:
         """
         payload = AISearchPayload(text=text)
         
-        async with httpx.AsyncClient() as client:
+        url = f"{settings.AI_ENGINE_BASE_URL}/api/v1/nlp/extract-intent"
+        async with httpx.AsyncClient(timeout=5.0) as client:
             try:
-                response = await client.post(
-                    f"{settings.AI_ENGINE_BASE_URL}/api/v1/nlp/extract-intent",
-                    json=payload.model_dump()
-                )
-                response.raise_for_status()
-                
+                response = await client.post(url, json=payload.model_dump())
+                # If upstream returns non-2xx, log and return None so callers can
+                # translate it to a 503 Service Unavailable
+                if response.status_code >= 400:
+                    print(f"AI engine returned {response.status_code} for {url}: {response.text}")
+                    return None
+
                 # Parse and return the validated response
                 return AIResponseData(**response.json())
             except httpx.HTTPError as exc:
                 # Add proper error logging in production
-                print(f"Error communicating with AI engine: {exc}")
+                print(f"Error communicating with AI engine at {url}: {exc}")
                 return None
 
 def get_ai_client() -> AIServiceClient:
