@@ -10,7 +10,7 @@ class RestaurantModel(Base):
     address = Column(String)
     lat = Column(Float)
     lng = Column(Float)
-    price_range = Column(Integer)
+    price_range = Column(String)
     
     # Khớp đúng ảnh ERD của Bảo:
     rating_avg = Column(Float)            # Ảnh ghi rating_avg

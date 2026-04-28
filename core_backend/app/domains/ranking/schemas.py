@@ -1,6 +1,10 @@
 from pydantic import BaseModel, Field
 from typing import List, Optional
 
+class Candidate(BaseModel):
+    res_id: int
+    vector: List[float]
+
 class CandidateWithFeatures(BaseModel):
     """
     Dữ liệu ứng viên đã được sơ chế thành số nguyên để gửi sang AI Engine.

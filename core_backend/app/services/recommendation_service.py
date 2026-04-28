@@ -2,7 +2,7 @@ from sqlalchemy.orm import Session
 from app.services.user_services import get_user_allergies, get_user_preferences_vector
 from app.services.allergy_filter import filter_allergy, handle_fallback
 from app.services.candidate_mapper import to_candidates
-from app.domains.ranking.service import RankingService
+from app.domains.ranking.ranking_service import RankingService
 
 
 # TODO: Replace with real implementation that queries the database.
