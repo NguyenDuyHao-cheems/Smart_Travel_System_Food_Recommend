@@ -13,7 +13,7 @@ from .schemas import (
     AuthResponse
 )
 from .repository import UserOnboardingRepository, UserAccountRepository
-
+# TODO: mock code 
 # ── Mock fallback data ────────────────────────────────────────────────────────
 POPULAR_RESTAURANTS: List[MockRestaurant] = [
     MockRestaurant(name="Phở Thìn", cuisine="Vietnamese", rating=4.8, location="Ho Chi Minh City"),
