@@ -2,12 +2,15 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.database import check_db_connection, engine
 from app.domains.users.models import Base as UserBase
+from app.domains.tagging.router import router as tagging_router
+
+
 
 # ── Create tables on startup (SQLite / Postgres compatible) ──────────────────
 UserBase.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Smart Travel System - Food Recommend")
-
+app.include_router((tagging_router), prefix="/api/v1", tags=["Tagging"])
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,

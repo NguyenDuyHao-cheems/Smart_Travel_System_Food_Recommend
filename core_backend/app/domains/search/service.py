@@ -21,6 +21,8 @@ class SearchService:
         """
         Đây là Hàm xử lý chính cho logic tìm kiếm quán ăn kết hợp GPS.
         """
+        # TODO: Replace this mocked delay/results with AI + DB retrieval once the
+        # restaurant recommendation pipeline is connected end to end.
         # Mocking processing time as if calling AI engine and PostGIS DB
         import asyncio
         await asyncio.sleep(2)
