@@ -64,35 +64,44 @@ CREATE TABLE public.tags (
 );
 CREATE TABLE public.user_interactions (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
+  anonymous_id text,
   user_id uuid,
   res_id uuid,
   dish_id uuid,
   action_type character varying NOT NULL,
   duration_sec integer,
-  created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+  created_at timestamp with time zone DEFAULT now(),
+  metadata jsonb,
   CONSTRAINT user_interactions_pkey PRIMARY KEY (id),
   CONSTRAINT user_interactions_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id),
   CONSTRAINT user_interactions_res_id_fkey FOREIGN KEY (res_id) REFERENCES public.restaurants(id),
-  CONSTRAINT user_interactions_menu_id_fkey FOREIGN KEY (dish_id) REFERENCES public.dishes(id)
+  CONSTRAINT user_interactions_dish_id_fkey FOREIGN KEY (dish_id) REFERENCES public.dishes(id)
 );
 CREATE TABLE public.user_onboardings (
-  user_id character varying NOT NULL,
-  favorite_dishes json NOT NULL,
-  spicy_level character varying NOT NULL,
-  dietary_restrictions json,
-  allergies json,
-  budget character varying NOT NULL,
-  location character varying NOT NULL,
-  age integer NOT NULL,
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  anonymous_id text UNIQUE,
+  user_id uuid UNIQUE,
+  favorite_dishes jsonb,
+  spicy_level character varying,
+  dietary_restrictions jsonb,
+  allergies jsonb,
+  budget character varying,
+  location character varying,
+  age integer,
   preferences_vector USER-DEFINED,
-  created_at timestamp without time zone,
-  CONSTRAINT user_onboardings_pkey PRIMARY KEY (user_id)
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  completed_at timestamp with time zone,
+  CONSTRAINT user_onboardings_pkey PRIMARY KEY (id),
+  CONSTRAINT user_onboardings_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
 );
 CREATE TABLE public.users (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   username character varying NOT NULL UNIQUE,
-  password_hash character varying NOT NULL,
+  password_hash character varying,
   preferences_vector USER-DEFINED,
-  allergic_to jsonb DEFAULT '[]'::jsonb,
+  allergies jsonb,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
   CONSTRAINT users_pkey PRIMARY KEY (id)
 );
