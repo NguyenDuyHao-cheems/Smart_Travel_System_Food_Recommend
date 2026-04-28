@@ -1,5 +1,5 @@
 import re
-from typing import List, Dict, Any, Tuple, Union
+from typing import List, Dict, Any, Tuple, Union, Optional
 
 ALLERGY_MAP = {
     "peanut": ["peanut", "groundnut", "satay", "lạc", "đậu phộng", "sa tế"],
@@ -10,7 +10,7 @@ ALLERGY_MAP = {
     "soy": ["soy", "đậu nành", "tương", "tofu", "đậu hũ"]
 }
 
-def normalize(text: str) -> str:
+def normalize(text: Optional[str]) -> str:
     """Normalize text by converting to lowercase and stripping whitespace."""
     if not text:
         return ""
