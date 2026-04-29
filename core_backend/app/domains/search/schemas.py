@@ -15,6 +15,7 @@ class SearchRecommendRequest(BaseModel):
     lat: float = Field(..., description="Current user latitude")
     lng: float = Field(..., description="Current user longitude")
     user_id: Optional[str] = Field(None, description="Optional user ID for personalized filtering")
+    budget: Optional[int] = Field(None, ge=0, description="Optional explicit budget in VND from user. Takes priority over AI-extracted budget.")
 
 class RecommendResult(BaseModel):
     """

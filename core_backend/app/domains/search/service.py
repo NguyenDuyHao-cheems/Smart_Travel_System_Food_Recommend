@@ -69,7 +69,7 @@ class SearchService:
                     safe_results.append(item)
                     break
 
-        strict_budget = ai_response.budget or self.DEFAULT_BUDGET_VND
+        strict_budget = request.budget if request.budget is not None else (ai_response.budget or self.DEFAULT_BUDGET_VND)
 
         strict_results = self._filter_results(
             results=safe_results,
