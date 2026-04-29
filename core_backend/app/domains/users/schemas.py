@@ -32,7 +32,7 @@ class OnboardingRequest(BaseModel):
 
     location: str = Field(..., description="User's current city or district.")
 
-    age: int = Field(..., ge=13, le=120, description="User's age.")
+    age: Optional[int] = Field(None, ge=13, le=120, description="User's age.")
 
     
     @field_validator("favorite_dishes", "dietary_restrictions", "allergies")

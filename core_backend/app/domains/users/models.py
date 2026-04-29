@@ -63,10 +63,14 @@ class UserAccount(Base):
 
     Columns
     -------
-    id            – UUID string identifier of the user.
-    username      – unique username used for authentication.
-    password_hash – hashed password.
-    created_at    – UTC timestamp of when the account was created.
+    id                 – UUID string identifier of the user.
+    username           – unique username used for authentication.
+    password_hash      – hashed password.
+    preferences_vector – long-term profile vector (768-dim) compiled from
+                         onboarding prefs, bookmarks, liked items, interactions.
+    allergies          – JSON list of allergen tags.
+    created_at         – UTC timestamp of when the account was created.
+    updated_at         – UTC timestamp of the last profile update.
     """
 
     __tablename__ = "users"
@@ -74,4 +78,8 @@ class UserAccount(Base):
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     username = Column(String, unique=True, nullable=False, index=True)
     password_hash = Column(String, nullable=False)
+    preferences_vector = Column(Vector(settings.VECTOR_DIM), nullable=True)
+    allergies = Column(JSON, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc),
+                        onupdate=lambda: datetime.now(timezone.utc))

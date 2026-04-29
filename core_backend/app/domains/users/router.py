@@ -64,9 +64,10 @@ async def user_onboarding(
     user_id: str,
     payload: OnboardingRequest,
     service: OnboardingService = Depends(get_onboarding_service),
+    db: Session = Depends(get_db),
 ) -> OnboardingResponse:
     try:
-        return await service.process_onboarding(user_id=user_id, payload=payload)
+        return await service.process_onboarding(user_id=user_id, payload=payload, db=db)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
     except Exception as exc:
