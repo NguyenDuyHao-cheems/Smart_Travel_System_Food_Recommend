@@ -3,6 +3,8 @@ import httpx
 from typing import List, Optional
 from app.core.config import settings
 
+from app.domains.search.schemas import AIResponseData
+
 logger = logging.getLogger(__name__)
 
 async def embed_text(text: str) -> Optional[List[float]]:
@@ -55,6 +57,26 @@ class AIServiceClient:
         except Exception as exc:
             logger.error("AI engine health check failed: %s", exc)
             return False
+
+    async def extract_intent_and_vectorize(self, query: str) -> Optional[AIResponseData]:
+        """
+        Call AI engine to extract intent, budget, and embedding vector.
+        """
+        if not query.strip():
+            return None
+
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                response = await client.post(
+                    f"{self.base_url}/api/v1/nlp/extract-intent",
+                    json={"text": query},
+                )
+                response.raise_for_status()
+                data = response.json()
+                return AIResponseData(**data)
+        except Exception as exc:
+            logger.error("AI engine unreachable for extraction: %s", exc)
+            return None
 
 _client_instance: Optional[AIServiceClient] = None
 

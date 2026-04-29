@@ -7,7 +7,6 @@ def test_process_search_query_success(client):
     with patch(
         "app.services.ai_client.AIServiceClient.extract_intent_and_vectorize",
         new_callable=AsyncMock,
-        create=True,
     ) as mock_ai:
         mock_ai.return_value = AIResponseData(
             vector=[1.0, 2.0, 3.0],
@@ -27,7 +26,6 @@ def test_process_search_query_ai_unavailable(client):
     with patch(
         "app.services.ai_client.AIServiceClient.extract_intent_and_vectorize",
         new_callable=AsyncMock,
-        create=True,
     ) as mock_ai:
         mock_ai.return_value = None
 
@@ -40,7 +38,6 @@ def test_process_recommend_query_success_without_fallback(client):
     with patch(
         "app.services.ai_client.AIServiceClient.extract_intent_and_vectorize",
         new_callable=AsyncMock,
-        create=True,
     ) as mock_ai:
         mock_ai.return_value = AIResponseData(
             vector=[1.0, 2.0, 3.0],
@@ -70,7 +67,6 @@ def test_process_recommend_query_fallback_when_filters_too_strict(client):
     with patch(
         "app.services.ai_client.AIServiceClient.extract_intent_and_vectorize",
         new_callable=AsyncMock,
-        create=True,
     ) as mock_ai:
         strict_budget = 30000
         mock_ai.return_value = AIResponseData(
@@ -102,7 +98,6 @@ def test_process_recommend_query_ai_unavailable(client):
     with patch(
         "app.services.ai_client.AIServiceClient.extract_intent_and_vectorize",
         new_callable=AsyncMock,
-        create=True,
     ) as mock_ai:
         mock_ai.return_value = None
 
@@ -122,7 +117,6 @@ def test_process_recommend_query_nearest_fallback(client):
     with patch(
         "app.services.ai_client.AIServiceClient.extract_intent_and_vectorize",
         new_callable=AsyncMock,
-        create=True,
     ) as mock_ai:
         # Budget so low that even relaxed (5k + 30k = 35k) won't match anything (min mock is 40k)
         mock_ai.return_value = AIResponseData(
@@ -157,7 +151,6 @@ def test_user_budget_takes_priority_over_ai_budget(client):
     with patch(
         "app.services.ai_client.AIServiceClient.extract_intent_and_vectorize",
         new_callable=AsyncMock,
-        create=True,
     ) as mock_ai:
         mock_ai.return_value = AIResponseData(
             vector=[1.0, 2.0, 3.0],
@@ -179,6 +172,7 @@ def test_user_budget_takes_priority_over_ai_budget(client):
         data = response.json()
         # Budget from user body (60000) should win over AI (30000)
         assert data["applied_budget"] == 60000
+        assert data["fallback_applied"] is False
 
 
 def test_ai_budget_used_when_user_omits_budget(client):
@@ -186,7 +180,6 @@ def test_ai_budget_used_when_user_omits_budget(client):
     with patch(
         "app.services.ai_client.AIServiceClient.extract_intent_and_vectorize",
         new_callable=AsyncMock,
-        create=True,
     ) as mock_ai:
         mock_ai.return_value = AIResponseData(
             vector=[1.0, 2.0, 3.0],
@@ -214,7 +207,6 @@ def test_default_budget_when_both_user_and_ai_absent(client):
     with patch(
         "app.services.ai_client.AIServiceClient.extract_intent_and_vectorize",
         new_callable=AsyncMock,
-        create=True,
     ) as mock_ai:
         mock_ai.return_value = AIResponseData(
             vector=[1.0, 2.0, 3.0],
@@ -237,12 +229,11 @@ def test_default_budget_when_both_user_and_ai_absent(client):
         assert data["applied_budget"] == SearchService.DEFAULT_BUDGET_VND
 
 
-def test_user_budget_zero_is_respected(client):
-    """When user explicitly sends budget=0, it should NOT fall through to AI or default."""
+def test_user_budget_zero_means_unlimited(client):
+    """When user explicitly sends budget=0, it should be treated as unlimited (no price filtering)."""
     with patch(
         "app.services.ai_client.AIServiceClient.extract_intent_and_vectorize",
         new_callable=AsyncMock,
-        create=True,
     ) as mock_ai:
         mock_ai.return_value = AIResponseData(
             vector=[1.0, 2.0, 3.0],
@@ -256,13 +247,13 @@ def test_user_budget_zero_is_respected(client):
                 "query": "Tôi muốn ăn mì cay",
                 "lat": 10.8700,
                 "lng": 106.8031,
-                "budget": 0,  # Explicitly 0
+                "budget": 0,  # Explicitly 0 -> unlimited
             },
         )
 
         assert response.status_code == 200
         data = response.json()
-        # budget=0 is not None, so it should be used (not AI's 50k)
-        # Nearest fallback should trigger because 0 VND budget won't match anything
-        assert data["fallback_applied"] is True
-        assert data["applied_budget"] is None  # nearest fallback sets applied_budget=None
+        # budget=0 should be used (not AI's 50k), and treated as None (unlimited)
+        # So it should NOT trigger fallback because any price is fine
+        assert data["fallback_applied"] is False
+        assert data["applied_budget"] is None  # None indicates unlimited in response

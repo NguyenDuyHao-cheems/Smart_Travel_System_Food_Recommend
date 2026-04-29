@@ -98,6 +98,17 @@ def client(db_session):
     app.dependency_overrides.clear()
 
 
+@pytest.fixture(autouse=True)
+def mock_ai_network_calls():
+    """
+    Globally mock AI engine network calls to prevent tests from hitting the real API.
+    Specifically patches embed_text and profile rebuild which are used in onboarding.
+    """
+    with patch("app.services.ai_client.embed_text", new_callable=AsyncMock, return_value=DUMMY_AI_VECTOR), \
+         patch("app.domains.users.service.rebuild_user_profile_vector", new_callable=AsyncMock, return_value=DUMMY_AI_VECTOR):
+        yield
+
+
 # ── Payload factory ───────────────────────────────────────────────────────────
 
 def make_payload(**overrides) -> dict:
