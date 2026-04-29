@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   MapPin,
@@ -11,11 +11,16 @@ import {
   Brain,
   ShieldCheck,
   ExternalLink,
+  Search,
+  AlertTriangle,
+  Info,
+  Home,
 } from 'lucide-react';
 import { Roboto } from 'next/font/google';
 import { useGeolocation } from '../../hooks/useGeolocation';
 import { Header } from '../../components/ui/Header';
 import { LoadingState } from '../../components/ui/LoadingState';
+import { BudgetSelector, type BudgetOption } from '../../components/BudgetSelector';
 
 const roboto = Roboto({
   subsets: ['latin', 'vietnamese'],
@@ -270,11 +275,42 @@ function FeatureBar() {
    MAIN RESULT PAGE
    ═════════════════════════════════════════════════════════════ */
 function ResultPageContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const queryFromUrl = searchParams.get('q') || '';
+  const budgetFromUrl = (searchParams.get('budget') || 'auto') as BudgetOption;
+
   const [isLoading, setIsLoading] = useState(true);
-  const [searchQuery] = useState(queryFromUrl || 'Tìm quán mì cay 7 cấp độ ở Làng Đại Học');
+  const [searchQuery, setSearchQuery] = useState(queryFromUrl || 'Tìm quán mì cay 7 cấp độ ở Làng Đại Học');
+  const [inputValue, setInputValue] = useState(searchQuery);
+  const [budget, setBudget] = useState<BudgetOption>(budgetFromUrl);
+
+  const [fallbackApplied, setFallbackApplied] = useState(false);
+  const [fallbackReason, setFallbackReason] = useState<string>('');
+  const [appliedRadius, setAppliedRadius] = useState<number | null>(null);
+  const [appliedBudget, setAppliedBudget] = useState<number | null>(null);
+
+  const [filteredCount, setFilteredCount] = useState(0);
+  const [allergyWarning, setAllergyWarning] = useState<string>('');
+
   const { location, error: locError, isLoading: loadingLocation, getLocation } = useGeolocation();
+
+  // Sync URL params to state
+  useEffect(() => {
+    const q = searchParams.get('q') || '';
+    const b = (searchParams.get('budget') || 'auto') as BudgetOption;
+    if (q) {
+      setSearchQuery(q);
+      setInputValue(q);
+    }
+    setBudget(b);
+  }, [searchParams]);
+
+  const handleSearch = () => {
+    if (inputValue.trim() !== '') {
+      router.push(`/result?q=${encodeURIComponent(inputValue)}&budget=${budget}`);
+    }
+  };
 
   useEffect(() => {
     getLocation();
@@ -287,16 +323,41 @@ function ResultPageContent() {
     if (!location) return;
 
     const fetchRecommendations = async () => {
+      // [1] Lấy token và user_id từ localStorage
+      const token = localStorage.getItem('access_token');
+      const userId = localStorage.getItem('user_id');
+
+      // [1] Nếu không có token -> redirect về /auth (Hiện tại đang để TODO)
+      if (!token) {
+        // TODO: Chờ team làm xong trang /auth thì mở khóa đoạn code bên dưới để redirect
+        // router.push('/auth');
+        console.warn("TODO: Missing token, should redirect to /auth");
+      }
+
       setIsLoading(true);
+
+      // Thêm AbortController để chống treo (timeout sau 15 giây) nếu Backend/Database bị kẹt
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+
       try {
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
         const res = await fetch(`${apiUrl}/api/v1/search/recommend`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          signal: controller.signal,
+          headers: {
+            'Content-Type': 'application/json',
+            // [1] Thêm header Authorization: Bearer <token>
+            'Authorization': `Bearer ${token}`
+          },
           body: JSON.stringify({
             query: searchQuery,
             lat: location.lat,
             lng: location.lng,
+            // [1] Include user_id từ localStorage vào request body
+            user_id: userId || undefined,
+            // Đã cập nhật theo yêu cầu Hào: gửi format dạng integer
+            budget: budget === 'auto' ? undefined : parseInt(budget, 10),
           }),
         });
 
@@ -304,20 +365,36 @@ function ResultPageContent() {
           const data = await res.json();
           if (data && data.results) {
             setResults(data.results);
+            setFallbackApplied(data.fallback_applied || false);
+            setFallbackReason(data.fallback_reason || '');
+            setAppliedRadius(data.applied_radius_km ?? null);
+            setAppliedBudget(data.applied_budget ?? null);
+
+            setFilteredCount(data.filtered_out_count || 0);
+            setAllergyWarning(data.warning || '');
             setApiError(null);
           }
+        } else if (res.status === 401) {
+          // TODO: Chờ team có trang /auth thì mở ra để bắt lỗi hết hạn token
+          // router.push('/auth');
+          setApiError('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại. (TODO: Redirect to /auth)');
         } else {
           setApiError('Hệ thống AI đang gặp sự cố. Vui lòng thử lại sau.');
         }
-      } catch {
-        setApiError('Không thể kết nối đến máy chủ. Hãy đảm bảo Backend đã được khởi động.');
+      } catch (error: any) {
+        if (error.name === 'AbortError') {
+          setApiError('Quá thời gian kết nối (Timeout). Backend hoặc Database đang bị treo.');
+        } else {
+          setApiError('Không thể kết nối đến máy chủ. Hãy đảm bảo Backend đã được khởi động.');
+        }
       } finally {
+        clearTimeout(timeoutId);
         setIsLoading(false);
       }
     };
 
     fetchRecommendations();
-  }, [location, searchQuery]);
+  }, [location, searchQuery, budget]); // Re-fetch khi budget thay đổi
 
   const heroItem = results[0];
   const gridItems = results.slice(1, 5);
@@ -331,7 +408,18 @@ function ResultPageContent() {
 
       {/* ── Main Content ── */}
       <div className="flex-1 flex flex-col">
-        <Header showBack={true} />
+        <Header showBack={false} />
+
+        {/* Budget Selector bar — dưới header, trước main content */}
+        <div className="px-6 md:px-10 pt-4 pb-2 border-b border-gray-100 dark:border-gray-800 bg-[#F7F8FA] dark:bg-gray-900">
+          <BudgetSelector
+            value={budget}
+            onChange={(newBudget) => {
+              setBudget(newBudget);
+              router.push(`/result?q=${encodeURIComponent(inputValue)}&budget=${newBudget}`);
+            }}
+          />
+        </div>
 
         <main className="flex-1 px-6 md:px-10 py-8 overflow-y-auto">
           <div className="max-w-5xl mx-auto">
@@ -349,24 +437,80 @@ function ResultPageContent() {
                   animate={{ opacity: 1 }}
                   transition={{ duration: 0.5 }}
                 >
-                  {/* ─── Title Section ─── */}
+                  {/* ─── Title Section & Search Bar ─── */}
                   <motion.div
                     initial={{ opacity: 0, y: -20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="text-center mb-10"
+                    className="mb-10 max-w-2xl mx-auto"
                   >
-                    <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-orange-50 dark:bg-orange-500/20 mb-5">
-                      <Sparkles className="w-7 h-7 text-orange-500" />
+                    {/* [2] Hiển thị metadata: fallback_applied === true -> show banner cảnh báo kèm fallback_reason, applied_budget, applied_radius_km dạng badge */}
+                    {fallbackApplied && (
+                      <div className="mb-6 flex items-start gap-3 p-4 rounded-xl bg-yellow-50 dark:bg-yellow-500/10 border border-yellow-200 dark:border-yellow-500/20">
+                        <Info className="w-5 h-5 text-yellow-600 dark:text-yellow-500 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-sm text-yellow-800 dark:text-yellow-200 leading-relaxed mb-2">
+                            <strong>AI đã mở rộng phạm vi tìm kiếm:</strong> {fallbackReason || 'Không tìm thấy kết quả chính xác theo yêu cầu khắt khe, chúng tôi đã mở rộng phạm vi và ngân sách để gợi ý cho bạn!'}
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            {appliedBudget != null && (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-yellow-100 dark:bg-yellow-500/20 text-yellow-700 dark:text-yellow-300">
+                                💰 Ngân sách: {appliedBudget.toLocaleString('vi-VN')}đ
+                              </span>
+                            )}
+                            {appliedRadius != null && (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-yellow-100 dark:bg-yellow-500/20 text-yellow-700 dark:text-yellow-300">
+                                📍 Bán kính: {appliedRadius}km
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    {/* [3] Hiển thị filtered_out_count và warning (allergy filter) nếu có */}
+                    {filteredCount > 0 && (
+                      <div className="mb-6 flex items-start gap-3 p-4 rounded-xl bg-orange-50 dark:bg-orange-500/10 border border-orange-200 dark:border-orange-500/20">
+                        <AlertTriangle className="w-5 h-5 text-orange-600 dark:text-orange-500 flex-shrink-0 mt-0.5" />
+                        <p className="text-sm text-orange-800 dark:text-orange-200 leading-relaxed">
+                          <strong>Cảnh báo Dị ứng:</strong> {allergyWarning || `Đã loại ${filteredCount} quán có thành phần gây dị ứng để đảm bảo an toàn.`}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* [4] Thêm ô input tìm kiếm lại (pre-fill từ query URL param q) -> cập nhật URL param -> re-fetch. Thêm nút "Quay lại trang chủ" */}
+                    <div className="flex flex-col gap-3 mb-5">
+                      <div className="flex justify-between items-center px-1">
+                        <button onClick={() => router.push('/')} className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-orange-500 transition-colors">
+                          <Home className="w-4 h-4" /> Quay lại trang chủ
+                        </button>
+                      </div>
+                      <div className="relative group">
+                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                          <Sparkles className="h-5 w-5 text-orange-500" />
+                        </div>
+                        <input
+                          type="text"
+                          value={inputValue}
+                          onChange={(e) => setInputValue(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleSearch();
+                          }}
+                          className="block w-full pl-11 pr-32 py-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl leading-5 bg-transparent placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 sm:text-base transition-all shadow-sm group-hover:shadow-md dark:text-white"
+                          placeholder="Bạn muốn ăn gì hôm nay?"
+                        />
+                        <div className="absolute inset-y-2 right-2">
+                          <button
+                            onClick={handleSearch}
+                            className="flex items-center gap-2 px-5 py-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm h-full"
+                          >
+                            <Search className="w-4 h-4" />
+                            <span className="hidden sm:inline">Tìm lại</span>
+                          </button>
+                        </div>
+                      </div>
                     </div>
-                    <h1 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-3 tracking-tight">
-                      Here is your <span className="text-orange-500">Culinary Vibe</span> today! ✨
-                    </h1>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 max-w-lg mx-auto">
-                      AI has analyzed your mood, location, and preferences.
-                    </p>
 
                     {/* GPS Status */}
-                    <div className="mt-4 flex justify-center text-sm">
+                    <div className="mt-5 flex justify-center text-sm">
                       {loadingLocation && (
                         <span className="text-orange-400 animate-pulse font-medium">Đang định vị GPS...</span>
                       )}
@@ -378,7 +522,7 @@ function ResultPageContent() {
                       )}
                       {location && !loadingLocation && !locError && (
                         <span className="text-teal-500 dark:text-teal-400 flex items-center gap-1.5 font-medium">
-                          <MapPin className="w-4 h-4" /> GPS: {location.lat.toFixed(4)}, {location.lng.toFixed(4)}
+                          <MapPin className="w-4 h-4" /> Vị trí hiện tại: {location.lat.toFixed(4)}, {location.lng.toFixed(4)}
                         </span>
                       )}
                     </div>
@@ -403,6 +547,32 @@ function ResultPageContent() {
                         className="px-6 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-full transition-all font-medium shadow-md"
                       >
                         Thử kết nối lại
+                      </button>
+                    </motion.div>
+                  ) : results.length === 0 ? (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      className="py-20 text-center bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700 shadow-sm"
+                    >
+                      <div className="w-20 h-20 bg-gray-50 dark:bg-gray-900 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <Search className="w-10 h-10 text-gray-400 dark:text-gray-500" />
+                      </div>
+                      <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-3">
+                        Không tìm thấy món nào!
+                      </h2>
+                      <p className="text-gray-500 dark:text-gray-400 max-w-md mx-auto mb-8 leading-relaxed">
+                        Rất tiếc, AI không tìm thấy kết quả nào phù hợp với yêu cầu hiện tại. Thử thay đổi từ khóa hoặc mở rộng ngân sách xem sao nhé?
+                      </p>
+                      <button
+                        onClick={() => {
+                          setInputValue('');
+                          setSearchQuery('');
+                          document.querySelector('input')?.focus();
+                        }}
+                        className="px-6 py-2.5 bg-orange-50 dark:bg-orange-500/10 hover:bg-orange-100 dark:hover:bg-orange-500/20 text-orange-600 dark:text-orange-400 rounded-full transition-all font-semibold"
+                      >
+                        Thử tìm từ khóa khác
                       </button>
                     </motion.div>
                   ) : (
@@ -446,4 +616,4 @@ export default function ResultPage() {
       <ResultPageContent />
     </Suspense>
   );
-}
+}
