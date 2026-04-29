@@ -23,6 +23,8 @@ import {
 import { Playfair_Display, Roboto } from "next/font/google";
 // [HIDDEN] import { Sidebar } from "../components/Sidebar";
 import { ThemeToggle } from "../components/ThemeToggle";
+import { SurveyModal } from "../components/SurveyModal";
+import { BudgetSelector, type BudgetOption } from "../components/BudgetSelector";
 
 const playfair = Playfair_Display({
   subsets: ["latin", "vietnamese"],
@@ -180,16 +182,20 @@ const roboto = Roboto({
 
 export default function Home() {
   const [query, setQuery] = useState("");
+  const [budget, setBudget] = useState<BudgetOption>('auto');
   // [HIDDEN] const [activeFilter, setActiveFilter] = useState("Cay nóng");
   const router = useRouter();
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (!query.trim()) return;
-    router.push(`/result?q=${encodeURIComponent(query)}`);
+    // Truyền budget xuống URL để result page đọc và gửi API
+    const budgetParam = budget !== 'auto' ? `&budget=${budget}` : '';
+    router.push(`/result?q=${encodeURIComponent(query)}${budgetParam}`);
   };
 
   return (
+    <>
     <div className={`flex min-h-screen bg-[#F7F8FA] dark:bg-gray-900 transition-colors duration-300 ${roboto.className}`}>
       {/* ══════════════════════════════════════════════════════════
           [HIDDEN] Sidebar — Uncomment khi các trang con hoạt động
@@ -278,6 +284,11 @@ export default function Home() {
                 </button>
               </div>
             </form>
+
+            {/* Budget Selector */}
+            <div className="mb-4">
+              <BudgetSelector value={budget} onChange={setBudget} />
+            </div>
 
             {/* ══════════════════════════════════════════════════════════
                 [HIDDEN] Vibe Filters — Uncomment khi kết nối filter API
@@ -429,5 +440,10 @@ export default function Home() {
         </footer> */}
       </div>
     </div>
-  );
+
+    {/* Pop-up khảo sát — hiện lần đầu tiên user vào trang */}
+    <SurveyModal />
+  </>
+);
 }
+
