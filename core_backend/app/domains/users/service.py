@@ -1,10 +1,12 @@
-import httpx
+import logging
 import math
 from typing import List, Optional
 
 from app.core.config import settings
 from app.core.security import hash_password, verify_password, create_access_token
 from app.services.user_vector_builder import build_onboarding_text
+from app.services.ai_client import embed_text
+from app.services.user_profile_service import rebuild_user_profile_vector
 from .schemas import (
     OnboardingRequest,
     OnboardingResponse,
@@ -14,6 +16,8 @@ from .schemas import (
     AuthResponse
 )
 from .repository import UserOnboardingRepository, UserAccountRepository
+
+logger = logging.getLogger(__name__)
 # TODO: mock code 
 # ── Mock fallback data ────────────────────────────────────────────────────────
 POPULAR_RESTAURANTS: List[MockRestaurant] = [
@@ -48,7 +52,7 @@ class OnboardingService:
     # ── Public entry-point ────────────────────────────────────────────────────
 
     async def process_onboarding(
-        self, user_id: str, payload: OnboardingRequest
+        self, user_id: str, payload: OnboardingRequest, db=None
     ) -> OnboardingResponse:
         has_prior_data = self._repo.get_by_user_id(user_id) is not None
 
@@ -64,7 +68,7 @@ class OnboardingService:
             preferences_vector = self._fallback_vector(payload)
             fallback = not has_prior_data
 
-        # 3. Persist
+        # 3. Persist to onboarding table
         self._repo.upsert(
             user_id=user_id,
             favorite_dishes=payload.favorite_dishes,
@@ -73,11 +77,19 @@ class OnboardingService:
             allergies=payload.allergies,
             budget=payload.budget,
             location=payload.location,
-            age=payload.age,
+            age=payload.age or 0,
             preferences_vector=preferences_vector,
         )
 
-        # 4. Build response
+        # 4. Trigger profile rebuild (now that we have onboarding data)
+        # We only do this if a DB session is provided (for repository access)
+        if db:
+            try:
+                await rebuild_user_profile_vector(db, user_id)
+            except Exception as exc:
+                logger.error("Failed to trigger profile rebuild for user %s: %s", user_id, exc)
+
+        # 5. Build response
         return OnboardingResponse(
             status="success",
             message="Onboarding completed",
@@ -103,26 +115,7 @@ class OnboardingService:
             budget=payload.budget,
             location=payload.location,
         )
-        try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
-                response = await client.post(
-                    f"{settings.AI_ENGINE_BASE_URL}/api/v1/nlp/extract-intent",
-                    json={"text": text},
-                )
-                response.raise_for_status()
-                data = response.json()
-                vector = data.get("vector")
-                # Validate dimension
-                if vector and len(vector) == settings.VECTOR_DIM:
-                    return vector
-                print(
-                    f"[OnboardingService] AI vector dim mismatch: "
-                    f"expected {settings.VECTOR_DIM}, got {len(vector) if vector else 0}"
-                )
-                return None
-        except Exception as exc:
-            print(f"[OnboardingService] AI engine unreachable: {exc}")
-            return None
+        return await embed_text(text)
 
     @staticmethod
     def _fallback_vector(payload: OnboardingRequest) -> List[float]:
