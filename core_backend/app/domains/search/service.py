@@ -1,4 +1,5 @@
 import asyncio
+import logging
 
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
@@ -11,6 +12,8 @@ from .schemas import (
 )
 from app.services.ai_client import AIServiceClient
 from app.services.recommendation_service import recommend
+
+logger = logging.getLogger(__name__)
 
 
 class SearchService:
@@ -69,7 +72,16 @@ class SearchService:
                     safe_results.append(item)
                     break
 
-        strict_budget = ai_response.budget or self.DEFAULT_BUDGET_VND
+        if request.budget is not None:
+            # budget=0 is treated as "unlimited" (None)
+            strict_budget = request.budget if request.budget > 0 else None
+            logger.debug("Budget source: user body (%s VND)", strict_budget if strict_budget is not None else "unlimited")
+        elif ai_response.budget:
+            strict_budget = ai_response.budget
+            logger.debug("Budget source: AI extraction (%d VND)", strict_budget)
+        else:
+            strict_budget = self.DEFAULT_BUDGET_VND
+            logger.debug("Budget source: default (%d VND)", strict_budget)
 
         strict_results = self._filter_results(
             results=safe_results,
@@ -88,7 +100,7 @@ class SearchService:
                 warning=warning
             )
 
-        relaxed_budget = strict_budget + self.FALLBACK_BUDGET_DELTA_VND
+        relaxed_budget = (strict_budget + self.FALLBACK_BUDGET_DELTA_VND) if strict_budget is not None else None
         relaxed_results = self._filter_results(
             results=safe_results,
             max_budget=relaxed_budget,
@@ -192,7 +204,7 @@ class SearchService:
             min_price = self._extract_min_price(item)
             distance_km = self._extract_distance_km(item)
 
-            if min_price <= max_budget and distance_km <= max_radius_km:
+            if (max_budget is None or min_price <= max_budget) and distance_km <= max_radius_km:
                 filtered.append(item)
 
         return filtered
