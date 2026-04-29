@@ -1,44 +1,66 @@
+import logging
 import httpx
-from app.domains.search.schemas import AISearchPayload, AIResponseData
-from typing import Optional
+from typing import List, Optional
 from app.core.config import settings
 
-class AIServiceClient:
-    async def extract_intent_and_vectorize(self, text: str) -> Optional[AIResponseData]:
-        """
-        Makes an asynchronous HTTP request to the ai_engine to extract intent,
-        budget, and generate the vector embeddings for the provided text.
-        """
-        payload = AISearchPayload(text=text)
-        
-        url = f"{settings.AI_ENGINE_BASE_URL}/api/v1/nlp/extract-intent"
-        async with httpx.AsyncClient(timeout=5.0) as client:
-            try:
-                response = await client.post(url, json=payload.model_dump())
-                # If upstream returns non-2xx, log and return None so callers can
-                # translate it to a 503 Service Unavailable
-                if response.status_code >= 400:
-                    print(f"AI engine returned {response.status_code} for {url}: {response.text}")
-                    return None
+logger = logging.getLogger(__name__)
 
-                # Parse and return the validated response
-                return AIResponseData(**response.json())
-            except httpx.HTTPError as exc:
-                # Add proper error logging in production
-                print(f"Error communicating with AI engine at {url}: {exc}")
-                return None
+async def embed_text(text: str) -> Optional[List[float]]:
+    """
+    Send text to the AI Engine to produce a 768-dim PhoBERT embedding.
+    Validates the dimension against settings.VECTOR_DIM.
+    
+    Returns None if the engine is unreachable or returns an unexpected dim.
+    """
+    if not text.strip():
+        return None
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.post(
+                f"{settings.AI_ENGINE_BASE_URL}/api/v1/nlp/extract-intent",
+                json={"text": text},
+            )
+            response.raise_for_status()
+            data = response.json()
+            vector = data.get("vector")
+            
+            if vector and len(vector) == settings.VECTOR_DIM:
+                return vector
+                
+            logger.warning(
+                "AI vector dim mismatch: expected %d, got %d",
+                settings.VECTOR_DIM,
+                len(vector) if vector else 0,
+            )
+            return None
+    except Exception as exc:
+        logger.error("AI engine unreachable for embedding: %s", exc)
+        return None
+
+class AIServiceClient:
+    """
+    Client for interacting with the external AI Engine.
+    Handles health checks and other non-embedding tasks.
+    """
+    def __init__(self, base_url: str):
+        self.base_url = base_url
 
     async def check_health(self) -> bool:
-        """
-        Check if the AI engine is reachable and returning a healthy status.
-        """
-        url = f"{settings.AI_ENGINE_BASE_URL}/api/health"
-        async with httpx.AsyncClient(timeout=2.0) as client:
-            try:
-                response = await client.get(url)
+        """Return True if the AI engine is reachable and healthy."""
+        try:
+            async with httpx.AsyncClient(timeout=2.0) as client:
+                response = await client.get(f"{self.base_url}/api/health")
                 return response.status_code == 200
-            except httpx.HTTPError:
-                return False
+        except Exception as exc:
+            logger.error("AI engine health check failed: %s", exc)
+            return False
+
+_client_instance: Optional[AIServiceClient] = None
 
 def get_ai_client() -> AIServiceClient:
-    return AIServiceClient()
+    """Singleton factory for the AIServiceClient."""
+    global _client_instance
+    if _client_instance is None:
+        _client_instance = AIServiceClient(base_url=settings.AI_ENGINE_BASE_URL)
+    return _client_instance
