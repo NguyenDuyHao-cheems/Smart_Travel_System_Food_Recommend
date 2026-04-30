@@ -1,4 +1,3 @@
-import re
 from typing import List, Dict, Any, Tuple, Union, Optional
 
 ALLERGY_MAP = {
@@ -28,8 +27,6 @@ def contains_allergen(ingredient: str, user_allergies: List[str]) -> bool:
         keywords = ALLERGY_MAP.get(allergy_norm, [allergy_norm])
 
         for keyword in keywords:
-            # We check if the keyword is a substring of the ingredient
-            # For a more robust check, we could use regex to match whole words
             if keyword in ingredient_norm:
                 return True
 

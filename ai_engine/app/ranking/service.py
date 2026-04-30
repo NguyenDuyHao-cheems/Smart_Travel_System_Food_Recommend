@@ -1,26 +1,56 @@
-from .lightfm_inference import LightFMInference
+"""
+service.py — AIRankingService: điều phối pipeline LightFM → LambdaMART.
+
+Pipeline 2 tầng:
+  Tầng 1: LightFM điền similarity_score cho từng (user_id, res_id)
+  Tầng 2: LambdaMART rerank dựa trên tất cả features
+"""
+
+import logging
+from app.ranking.lightfm_inference import LightFMInference
+from app.ranking.lambdamart import LambdaMARTRanker
+from app.core.config import settings
+
+logger = logging.getLogger(__name__)
+
 
 class AIRankingService:
-    def __init__(self):
-        self.lightfm = LightFMInference()
-        #TODO: self.lambdamart = LambdaMARTInference()
+    """
+    Singleton-like: khởi tạo cả LightFM và LambdaMART một lần.
+    Dùng qua get_ranking_service() trong router.
+    """
 
-    def rank(self, payload):
-        user_id = payload.get("user_id")
-        candidates = payload.get("candidates")
+    def __init__(self):
+        # Tầng 1: LightFM — collaborative filtering similarity
+        self.lightfm = LightFMInference()
+
+        # Tầng 2: LambdaMART — learn-to-rank reranking
+        self.lambdamart = LambdaMARTRanker(model_path=settings.LAMBDAMART_MODEL_PATH)
+
+    def rank(self, payload: dict) -> dict:
+        """
+        Xếp hạng candidates theo pipeline 2 tầng:
+          1. Điền similarity_score qua LightFM (nếu chưa có hoặc = 0)
+          2. LambdaMART rerank
+
+        Args:
+            payload: dict với keys user_id, candidates (list of dicts), top_k
+
+        Returns:
+            {"ranked_ids": List[str], "scores": List[float]}
+        """
+        user_id = payload["user_id"]
+        candidates = payload["candidates"]   # list of dicts (integer features)
         top_k = payload.get("top_k", 10)
 
-        # 1. Điền similarity_score từ LightFM
+        # Tầng 1: Điền similarity_score từ LightFM nếu chưa có
         for c in candidates:
-            c['similarity_score'] = self.lightfm.get_similarity(user_id, c['res_id'])
+            if c.get("similarity_score", 0) == 0:
+                c["similarity_score"] = self.lightfm.get_similarity(
+                    user_id, c["res_id"]
+                )
 
-        # 2. TODO: LAMBDAMART RERANKING
-        # Sau khi có đủ features (rating, dist, similarity...), LambdaMART sẽ predict tại đây
-        
-        # Hiện tại: Sắp xếp tạm theo similarity_score của LightFM
-        candidates.sort(key=lambda x: x['similarity_score'], reverse=True)
-        
-        return {
-            "ranked_ids": [c['res_id'] for c in candidates[:top_k]],
-            "scores": [float(c['similarity_score']) for c in candidates[:top_k]]
-        }
+        # Tầng 2: LambdaMART predict và rerank
+        ranked_ids, scores = self.lambdamart.rank(candidates, top_k=top_k)
+
+        return {"ranked_ids": ranked_ids, "scores": scores}
