@@ -1,4 +1,3 @@
-import re
 from typing import List, Dict, Any, Tuple, Union, Optional
 
 ALLERGY_MAP = {
