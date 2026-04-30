@@ -1,7 +1,8 @@
 """
-router.py — FastAPI router cho LambdaMART ranking endpoint.
+router.py — FastAPI router cho AI Engine ranking endpoint.
 
-Endpoint: POST /api/v1/ranking/rank
+Endpoint: POST /api/v1/ml/rank
+Pipeline: LightFM (similarity_score) → LambdaMART (rerank)
 """
 
 import logging
@@ -10,8 +11,8 @@ from functools import lru_cache
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.core.config import settings
-from .lambdamart import LambdaMARTRanker
-from .schemas import RankRequest, RankResponse
+from .service import AIRankingService
+from .schemas import RankRequestPayload, RankResponse
 
 logger = logging.getLogger(__name__)
 
@@ -19,42 +20,43 @@ router = APIRouter()
 
 
 # ---------------------------------------------------------------------------
-# Dependency — singleton ranker, lazy-initialized on first request
+# Singleton ranking service — lazy-initialized on first request
 # ---------------------------------------------------------------------------
 
-
 @lru_cache(maxsize=1)
-def get_ranker() -> LambdaMARTRanker:
+def get_ranking_service() -> AIRankingService:
     """
-    Return the singleton LambdaMARTRanker.
-    Loads model from disk on first call; auto-trains if model file is missing.
-    lru_cache ensures this is called only once per process lifetime.
+    Return the singleton AIRankingService.
+    lru_cache ensures LightFM + LambdaMART are loaded only once per process.
     """
-    return LambdaMARTRanker(model_path=settings.LAMBDAMART_MODEL_PATH)
+    return AIRankingService()
 
 
 # ---------------------------------------------------------------------------
 # Endpoint
 # ---------------------------------------------------------------------------
 
-
-@router.post("/rank", response_model=RankResponse)
-def rank_candidates(
-    request: RankRequest,
-    ranker: LambdaMARTRanker = Depends(get_ranker),
+@router.post("/ml/rank", response_model=RankResponse)
+async def rank_candidates(
+    payload: RankRequestPayload,
+    service: AIRankingService = Depends(get_ranking_service),
 ) -> RankResponse:
     """
-    Rerank restaurant candidates using LambdaMART.
+    Xếp hạng restaurant candidates theo pipeline 2 tầng:
+      Tầng 1: LightFM điền similarity_score
+      Tầng 2: LambdaMART rerank theo tất cả features
 
-    - Input:  danh sách ứng viên + feature scores (similarity, rating, …)
-    - Output: danh sách res_id đã sắp xếp theo relevance score giảm dần
+    - Input:  user_id + danh sách candidates với integer features
+    - Output: ranked_ids (List[str]) + scores (List[float])
     """
     try:
-        candidates_dicts = [c.model_dump() for c in request.candidates]
-        ranked_ids, scores = ranker.rank(candidates_dicts, top_k=request.top_k)
-        return RankResponse(ranked_ids=ranked_ids, scores=scores)
+        result = service.rank(payload.model_dump())
+        return RankResponse(
+            ranked_ids=result["ranked_ids"],
+            scores=result.get("scores"),
+        )
     except Exception:
         logger.exception(
-            "LambdaMART ranking failed for %d candidates", len(request.candidates)
+            "Ranking pipeline failed for %d candidates", len(payload.candidates)
         )
         raise HTTPException(status_code=500, detail="Ranking service error.")

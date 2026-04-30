@@ -3,36 +3,47 @@ from typing import List, Optional
 
 
 class Candidate(BaseModel):
-    res_id: int = Field(..., description="ID định danh của nhà hàng")
-    vector: List[float] = Field(..., description="Vector đặc trưng (embedding) của nhà hàng cần xếp hạng")
+    """Ứng viên nhà hàng với vector embedding để tính cosine similarity."""
+    res_id: str = Field(..., description="ID định danh của nhà hàng (UUID hoặc string)")
+    vector: List[float] = Field(..., description="Vector đặc trưng (embedding) của nhà hàng")
 
 
 class CandidateWithFeatures(BaseModel):
     """
-    Mở rộng Candidate với các feature dùng cho LambdaMART.
-    Bật thêm fields này để gọi AI Engine ranking endpoint.
+    Ứng viên đã được sơ chế thành số nguyên để gửi sang AI Engine.
+    Tất cả features dạng int (nhân 100 để tránh float precision issues).
     """
-    res_id: int
-    similarity_score: float = Field(default=0.0, ge=0.0, le=1.0)
-    rating: float = Field(default=0.0, ge=0.0, le=5.0)
-    sentiment_score: float = Field(default=0.0, ge=-1.0, le=1.0)
-    distance_km: float = Field(default=0.0, ge=0.0)
-    price_normalized: float = Field(default=1.0, ge=0.0)
-    review_count: int = Field(default=0, ge=0)
+    res_id: str = Field(..., description="ID định danh của nhà hàng")
+    rating: int = Field(0, description="Rating nhân 100 (VD: 4.5 → 450)")
+    sentiment_score: int = Field(0, description="Sentiment nhân 100 (VD: 0.8 → 80)")
+    distance_m: int = Field(0, description="Khoảng cách tính bằng mét")
+    price_normalized: int = Field(0, description="% ngân sách (0-100)")
+    review_count: int = Field(0, ge=0)
+    similarity_score: int = Field(0, description="Điểm LightFM (AI Engine sẽ điền)")
+    is_open: int = Field(0, description="1 nếu đang mở cửa, 0 nếu đóng")
 
 
-class RankRequest(BaseModel):
-    user_id: int = Field(..., description="ID định danh của người dùng")
-    pref_vector: List[float] = Field(..., description="Vector sở thích của người dùng để tính độ tương đồng")
+class UserRankRequest(BaseModel):
+    """Request đầu vào từ Client gọi đến Core Backend."""
+    user_id: str = Field(..., description="ID định danh của người dùng")
 
-    k: int = Field(default=5, ge=1, le=50, description="Số lượng kết quả nhà hàng tối đa cần trả về")
-    offset: int = Field(default=0, ge=0, description="Vị trí bắt đầu của danh sách kết quả (dùng cho phân trang)")
+    # Pydantic V2: dùng min_length / max_length thay vì min_items/max_items
+    user_location: List[float] = Field(
+        ...,
+        min_length=2,
+        max_length=2,
+        description="Tọa độ người dùng [vĩ độ, kinh độ]"
+    )
 
-    tags: List[str] = Field(default_factory=list, description="Danh sách các thẻ phân loại (ví dụ: 'đồ ăn chay', 'không gian ngoài trời')")
-    budget: float = Field(default=100.0, ge=0.0, description="Mức chi phí tối đa dự kiến của người dùng")
+    k: int = Field(default=10, ge=1, le=50, description="Số lượng kết quả cần trả về")
+    offset: int = Field(default=0, ge=0)
 
-    user_location: List[float] = Field(default_factory=lambda: [0.0, 0.0], description="Tọa độ vị trí người dùng dạng [kinh độ, vĩ độ]")
-    radius: float = Field(default=1.0, ge=0.0, description="Bán kính (km) được cho phép tìm kiếm xung quanh vị trí người dùng")
-    
+    tags: List[str] = Field(default_factory=list)
+    budget: int = Field(default=100000, ge=0, description="Ngân sách tối đa (VNĐ)")
+    radius: float = Field(default=5.0, ge=0.0, description="Bán kính tìm kiếm (km)")
+
+
 class RankResponse(BaseModel):
-    top_ids: List[int] = Field(..., description="Danh sách ID các nhà hàng được gợi ý xếp hạng từ cao xuống thấp thông qua AI")
+    """Kết quả trả về danh sách ID đã được AI xếp hạng."""
+    ranked_ids: List[str] = Field(..., description="Danh sách ID nhà hàng từ cao xuống thấp")
+    scores: Optional[List[float]] = None

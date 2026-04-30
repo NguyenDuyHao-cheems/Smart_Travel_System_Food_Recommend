@@ -22,10 +22,10 @@ logger = logging.getLogger(__name__)
 
 FEATURE_NAMES: List[str] = [
     "similarity_score",
-    "rating_norm",       # rating / 5.0
-    "sentiment_norm",    # (sentiment_score + 1) / 2  →  [0, 1]
-    "distance_log",      # log1p(distance_km)
-    "price_clipped",     # clip(price_normalized, 0, 2)
+    "rating_norm",       # rating_int / 500.0  (= rating/5.0)
+    "sentiment_norm",    # (sentiment_int/100 + 1) / 2  →  [0, 1]
+    "distance_log",      # log1p(distance_m / 1000)  (m → km, then log)
+    "price_clipped",     # clip(price_normalized/100, 0, 2)
     "review_log",        # log1p(review_count)
 ]
 
@@ -71,16 +71,17 @@ class LambdaMARTRanker:
         self,
         candidates: List[dict],
         top_k: int = 10,
-    ) -> Tuple[List[int], List[float]]:
+    ) -> Tuple[List[str], List[float]]:
         """
         Rerank candidates using the LambdaMART model.
 
         Args:
             candidates: List of dicts, each containing res_id + feature fields.
+                        Features là integer-scaled (×100) từ FeatureService.
             top_k:      Maximum number of results to return.
 
         Returns:
-            Tuple of (ranked_ids, ranked_scores) sorted by descending score.
+            Tuple of (ranked_ids: List[str], ranked_scores: List[float]).
         """
         if not candidates:
             return [], []
@@ -92,11 +93,10 @@ class LambdaMARTRanker:
         scores: np.ndarray = self._booster.predict(X)  # shape (N,)
 
         k = min(top_k, len(candidates))
-        # argpartition to avoid full sort when k << N, then sort the slice
         top_idx = np.argpartition(scores, -k)[-k:]
         top_idx = top_idx[np.argsort(scores[top_idx])[::-1]]
 
-        ranked_ids = [int(candidates[i]["res_id"]) for i in top_idx]
+        ranked_ids = [str(candidates[i]["res_id"]) for i in top_idx]
         ranked_scores = [float(scores[i]) for i in top_idx]
         return ranked_ids, ranked_scores
 
@@ -105,16 +105,24 @@ class LambdaMARTRanker:
     # ------------------------------------------------------------------
 
     def _build_feature_matrix(self, candidates: List[dict]) -> np.ndarray:
-        """Convert candidate list to (N, 6) float32 feature matrix."""
+        """Convert candidate list to (N, 6) float32 feature matrix.
+
+        Input features là integer-scaled (×100) từ FeatureService:
+          - rating: int (VD: 450 = 4.5 sao)
+          - sentiment_score: int (VD: 80 = 0.8)
+          - distance_m: int (mét)
+          - price_normalized: int (% ngân sách, 0-100)
+          - similarity_score: int (0-100 từ LightFM)
+        """
         rows = []
         for c in candidates:
             rows.append(
                 [
-                    float(c.get("similarity_score", 0.0)),
-                    float(c.get("rating", 0.0)) / 5.0,
-                    (float(c.get("sentiment_score", 0.0)) + 1.0) / 2.0,
-                    np.log1p(float(c.get("distance_km", 0.0))),
-                    float(np.clip(c.get("price_normalized", 1.0), 0.0, 2.0)),
+                    float(c.get("similarity_score", 0)) / 100.0,
+                    float(c.get("rating", 0)) / 500.0,             # 450/500 ≈ 0.9
+                    (float(c.get("sentiment_score", 0)) / 100.0 + 1.0) / 2.0,
+                    np.log1p(float(c.get("distance_m", 0)) / 1000.0),  # m → km → log
+                    float(np.clip(c.get("price_normalized", 100) / 100.0, 0.0, 2.0)),
                     np.log1p(float(c.get("review_count", 0))),
                 ]
             )

@@ -93,13 +93,22 @@ def tmp_ranker(tmp_path_factory):
 @pytest.fixture(scope="session")
 def ranking_client(mock_embedding, tmp_ranker):
     """
-    FastAPI TestClient with the ranking dependency overridden to use tmp_ranker.
-    Depends on mock_embedding so NLP stubs are active.
+    FastAPI TestClient với ranking dependency được override để dùng tmp_ranker.
+    Dùng AIRankingService.rank() nhưng inject LambdaMARTRanker từ tmp_ranker.
     """
     from app.main import app
-    from app.ranking.router import get_ranker
+    from app.ranking.router import get_ranking_service
+    from app.ranking.service import AIRankingService
 
-    app.dependency_overrides[get_ranker] = lambda: tmp_ranker
+    # Tạo AIRankingService với lambdamart là tmp_ranker (trained)
+    class TestAIRankingService(AIRankingService):
+        def __init__(self):
+            from app.ranking.lightfm_inference import LightFMInference
+            self.lightfm = LightFMInference()  # OK nếu model không tồn tại → fallback=0
+            self.lambdamart = tmp_ranker         # inject trained ranker
+
+    test_service = TestAIRankingService()
+    app.dependency_overrides[get_ranking_service] = lambda: test_service
     with TestClient(app) as c:
         yield c
     app.dependency_overrides.clear()
@@ -110,12 +119,12 @@ def sample_candidates():
     """10 candidates with ascending similarity scores for deterministic tests."""
     return [
         {
-            "res_id": i,
-            "similarity_score": round(i * 0.09, 2),
-            "rating": 3.0 + (i % 3) * 0.5,
-            "sentiment_score": round((i % 5) * 0.1 - 0.2, 1),
-            "distance_km": float(i),
-            "price_normalized": round(0.5 + i * 0.05, 2),
+            "res_id": str(i),              # str (UUID-compatible)
+            "similarity_score": int(i * 9),   # 0-81 range
+            "rating": 300 + (i % 3) * 50,    # 300-400 int
+            "sentiment_score": int((i % 5) * 10 - 20),  # -20 to 20
+            "distance_m": i * 1000,           # 0-9000 m
+            "price_normalized": 50 + i * 5,   # 50-95
             "review_count": i * 10,
         }
         for i in range(1, 11)

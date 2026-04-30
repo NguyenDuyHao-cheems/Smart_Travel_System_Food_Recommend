@@ -19,12 +19,12 @@ class TestBuildFeatureMatrix:
     def test_output_shape_single_candidate(self, tmp_ranker):
         candidates = [
             {
-                "res_id": 1,
-                "similarity_score": 0.8,
-                "rating": 4.5,
-                "sentiment_score": 0.3,
-                "distance_km": 1.5,
-                "price_normalized": 0.8,
+                "res_id": "1",
+                "similarity_score": 80,   # 80/100 = 0.8
+                "rating": 450,            # 450/500 = 0.9
+                "sentiment_score": 30,    # (30/100+1)/2 = 0.65
+                "distance_m": 1500,       # log1p(1.5)
+                "price_normalized": 80,   # 80/100 = 0.8
                 "review_count": 100,
             }
         ]
@@ -37,47 +37,47 @@ class TestBuildFeatureMatrix:
         assert X.shape == (10, 6)
 
     def test_rating_normalised_to_0_1(self, tmp_ranker):
-        """rating=5.0 → feature column 1 == 1.0"""
+        """rating=500 (=5.0 *100) → 500/500 = 1.0"""
         candidates = [
             {
-                "res_id": 1,
-                "similarity_score": 0.0,
-                "rating": 5.0,
-                "sentiment_score": 0.0,
-                "distance_km": 0.0,
-                "price_normalized": 1.0,
+                "res_id": "1",
+                "similarity_score": 0,
+                "rating": 500,          # max rating: 5.0 * 100 = 500
+                "sentiment_score": 0,
+                "distance_m": 0,
+                "price_normalized": 100,
                 "review_count": 0,
             }
         ]
         X = tmp_ranker._build_feature_matrix(candidates)
-        assert X[0, 1] == pytest.approx(1.0), "rating 5.0 should normalise to 1.0"
+        assert X[0, 1] == pytest.approx(1.0), "rating 500 (=5.0) should normalise to 1.0"
 
     def test_sentiment_minus1_maps_to_0(self, tmp_ranker):
-        """sentiment_score=-1.0 → (−1+1)/2 = 0.0"""
+        """sentiment_score=-100 (=-1.0*100) → (-100/100+1)/2 = 0.0"""
         candidates = [
             {
-                "res_id": 1,
-                "similarity_score": 0.0,
-                "rating": 0.0,
-                "sentiment_score": -1.0,
-                "distance_km": 0.0,
-                "price_normalized": 1.0,
+                "res_id": "1",
+                "similarity_score": 0,
+                "rating": 0,
+                "sentiment_score": -100,   # -1.0 * 100
+                "distance_m": 0,
+                "price_normalized": 100,
                 "review_count": 0,
             }
         ]
         X = tmp_ranker._build_feature_matrix(candidates)
-        assert X[0, 2] == pytest.approx(0.0), "sentiment −1 should map to 0"
+        assert X[0, 2] == pytest.approx(0.0), "sentiment -100 should map to 0"
 
     def test_sentiment_plus1_maps_to_1(self, tmp_ranker):
-        """sentiment_score=1.0 → (1+1)/2 = 1.0"""
+        """sentiment_score=100 (=1.0*100) → (100/100+1)/2 = 1.0"""
         candidates = [
             {
-                "res_id": 1,
-                "similarity_score": 0.0,
-                "rating": 0.0,
-                "sentiment_score": 1.0,
-                "distance_km": 0.0,
-                "price_normalized": 1.0,
+                "res_id": "1",
+                "similarity_score": 0,
+                "rating": 0,
+                "sentiment_score": 100,    # +1.0 * 100
+                "distance_m": 0,
+                "price_normalized": 100,
                 "review_count": 0,
             }
         ]
@@ -85,15 +85,15 @@ class TestBuildFeatureMatrix:
         assert X[0, 2] == pytest.approx(1.0)
 
     def test_distance_log_scaled(self, tmp_ranker):
-        """distance_km uses log1p — zero distance maps to 0."""
+        """distance_m=0 → log1p(0/1000) = 0."""
         candidates = [
             {
-                "res_id": 1,
-                "similarity_score": 0.0,
-                "rating": 0.0,
-                "sentiment_score": 0.0,
-                "distance_km": 0.0,
-                "price_normalized": 1.0,
+                "res_id": "1",
+                "similarity_score": 0,
+                "rating": 0,
+                "sentiment_score": 0,
+                "distance_m": 0,          # 0 m → log1p(0) = 0
+                "price_normalized": 100,
                 "review_count": 0,
             }
         ]
@@ -102,10 +102,9 @@ class TestBuildFeatureMatrix:
 
     def test_missing_fields_default_to_zero(self, tmp_ranker):
         """Candidates with missing feature fields should not raise."""
-        candidates = [{"res_id": 99}]
+        candidates = [{"res_id": "99"}]   # res_id as str
         X = tmp_ranker._build_feature_matrix(candidates)
         assert X.shape == (1, 6)
-        # All values should be finite (no NaN/Inf)
         assert np.all(np.isfinite(X))
 
 
@@ -164,18 +163,18 @@ class TestRank:
         """When candidates < top_k, return all candidates."""
         candidates = [
             {
-                "res_id": 42,
-                "similarity_score": 0.9,
-                "rating": 4.5,
-                "sentiment_score": 0.5,
-                "distance_km": 0.5,
-                "price_normalized": 0.5,
+                "res_id": "42",          # str (UUID-compatible)
+                "similarity_score": 90,
+                "rating": 450,
+                "sentiment_score": 50,
+                "distance_m": 500,
+                "price_normalized": 50,
                 "review_count": 50,
             }
         ]
         ranked_ids, scores = tmp_ranker.rank(candidates, top_k=10)
         assert len(ranked_ids) == 1
-        assert ranked_ids[0] == 42
+        assert ranked_ids[0] == "42"    # expect str
 
     def test_empty_candidates_returns_empty(self, tmp_ranker):
         ranked_ids, scores = tmp_ranker.rank([], top_k=5)
@@ -189,7 +188,7 @@ class TestRank:
         ), "Scores must be in descending order"
 
     def test_all_ranked_ids_come_from_input(self, tmp_ranker, sample_candidates):
-        input_ids = {c["res_id"] for c in sample_candidates}
+        input_ids = {c["res_id"] for c in sample_candidates}   # set of str
         ranked_ids, _ = tmp_ranker.rank(sample_candidates, top_k=len(sample_candidates))
         assert all(rid in input_ids for rid in ranked_ids)
 

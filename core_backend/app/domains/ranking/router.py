@@ -1,44 +1,36 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from typing import List
-
-# Import đúng đường dẫn cấu trúc thư mục của Bảo
-from .schemas import RankRequest, RankResponse
-from .service import RankingService
-from app.core.database import SessionLocal 
-
-router = APIRouter()
-
-from functools import lru_cache
 from app.core.dependencies import get_db
+from .schemas import UserRankRequest, RankResponse
+from .ranking_service import RankingService
+
 import logging
 
 logger = logging.getLogger(__name__)
 
-@lru_cache(maxsize=1)
-def get_ranking_service() -> RankingService:
-    return RankingService()
+router = APIRouter()
 
-@router.post("/ml/rank-candidates", response_model=RankResponse)
-def rank_candidates(
-    request: RankRequest,
-    db: Session = Depends(get_db),
-    service: RankingService = Depends(get_ranking_service)
+
+@router.post("/ml/rank", response_model=RankResponse)
+async def rank_restaurants(
+    request: UserRankRequest,
+    db: Session = Depends(get_db)
 ):
     """
-    Endpoint thực hiện Pipeline:
-    1. Retrieval: Lọc thô từ Postgres (tags, budget, location, is_open)
-    2. Ranking: Xếp hạng bằng NumPy Cosine Similarity
+    Pipeline:
+    1. Retrieval: Lọc thô từ Postgres (tags, budget, location, is_active)
+    2. Feature Building: Integer features (×100)
+    3. AI Engine: LightFM similarity → LambdaMART rerank
+    4. Fallback: Sort theo khoảng cách nếu AI Engine sập
     """
     try:
-        # Gọi hàm điều phối chính trong RankingService
-        top_ids = service.get_recommendations(db, request)
-        # Trả về kết quả theo đúng Schema RankResponse
-        return RankResponse(top_ids=top_ids)
-        
+        service = RankingService()
+        ranked_ids = await service.get_recommendations(db, request)
+        return RankResponse(ranked_ids=ranked_ids)
     except Exception as e:
+        # Fix I6: log chi tiết nội bộ, trả về generic message cho client
         logger.exception("Ranking pipeline failed for user_id=%s", request.user_id)
         raise HTTPException(
-            status_code=500, 
+            status_code=500,
             detail="Internal server error. Please try again later."
         )

@@ -12,8 +12,11 @@ class Settings:
     LAMBDAMART_MODEL_PATH: str = os.getenv(
         "LAMBDAMART_MODEL_PATH", "models/lambdamart.lgb"
     )
-    LAMBDAMART_MIN_TRAIN_SAMPLES: int = int(
-        os.getenv("LAMBDAMART_MIN_TRAIN_SAMPLES", "10")
+    # Fix Issue #8: LAMBDAMART_MIN_TRAIN_SAMPLES removed (unused)
+
+    # LightFM collaborative filtering model
+    LIGHTFM_MODEL_PATH: str = os.getenv(
+        "LIGHTFM_MODEL_PATH", "app/ranking/lightfm/models/lightfm_artifacts.pkl"
     )
 
     # Gemini API settings for NLP parsing

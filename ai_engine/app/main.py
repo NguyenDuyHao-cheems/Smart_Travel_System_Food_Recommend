@@ -7,8 +7,8 @@ app = FastAPI(title="Smart Travel System - AI Engine")
 # Register the NLP router
 app.include_router(nlp_router, prefix="/api/v1/nlp", tags=["NLP"])
 
-# Register the Ranking router
-app.include_router(ranking_router, prefix="/api/v1/ranking", tags=["Ranking"])
+# Register the Ranking router — endpoint: /api/v1/ml/rank
+app.include_router(ranking_router, prefix="/api/v1", tags=["Ranking"])
 
 
 

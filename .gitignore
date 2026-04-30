@@ -56,6 +56,10 @@ Data_Pipeline/raw_data/*.json
 local_files/
 **/__pycache__/
 
+# Large root-level data dumps — seeded to Supabase, not needed in repo
+dishes.json
+reviews.json
+
 # Keep the folder structure but ignore the content
 !Data_Pipeline/raw_data/.gitkeep
 
