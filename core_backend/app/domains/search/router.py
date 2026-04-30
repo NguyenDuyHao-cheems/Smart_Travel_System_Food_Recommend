@@ -1,7 +1,9 @@
 from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
 from .schemas import SearchRequest, AIResponseData, SearchRecommendRequest, SearchRecommendResponse
 from .service import SearchService
 from app.services.ai_client import AIServiceClient, get_ai_client
+from app.core.dependencies import get_db
 
 router = APIRouter()
 
@@ -23,10 +25,12 @@ async def process_search_query(
 @router.post("/search/recommend", response_model=SearchRecommendResponse)
 async def recommend_food_with_gps(
     request: SearchRecommendRequest,
-    search_service: SearchService = Depends(get_search_service_dep)
+    search_service: SearchService = Depends(get_search_service_dep),
+    db: Session = Depends(get_db)
 ):
     """
     Receives a food requirement and user GPS location (lat, lng),
     then returns the recommended food places near that location.
     """
-    return await search_service.process_recommend_query(request)
+    return await search_service.process_recommend_query(request, db)
+

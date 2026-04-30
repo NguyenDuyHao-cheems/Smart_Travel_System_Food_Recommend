@@ -1,5 +1,7 @@
 from sqlalchemy.orm import Session
-from .models import UserOnboarding
+from sqlalchemy.exc import IntegrityError
+
+from .models import UserOnboarding, UserAccount
 from typing import Optional, List
 
 
@@ -70,3 +72,63 @@ class UserOnboardingRepository:
         self._db.commit()
         self._db.refresh(record)
         return record
+
+
+class UserAccountRepository:
+    def __init__(self, db: Session) -> None:
+        self._db = db
+
+    def get_by_id(self, user_id: str) -> Optional[UserAccount]:
+        """Return the user account by primary key *user_id*, or None."""
+        return (
+            self._db.query(UserAccount)
+            .filter(UserAccount.id == user_id)
+            .first()
+        )
+
+    def get_by_username(self, username: str) -> Optional[UserAccount]:
+        return (
+            self._db.query(UserAccount)
+            .filter(UserAccount.username == username)
+            .first()
+        )
+
+    def create_user(self, username: str, password_hash: str) -> UserAccount:
+        user = UserAccount(username=username, password_hash=password_hash)
+        self._db.add(user)
+        try:
+            self._db.commit()
+        except IntegrityError:
+            self._db.rollback()
+            raise ValueError("Username already exists.")
+        self._db.refresh(user)
+        return user
+
+    def update_preferences_vector(
+        self, user_id: str, preferences_vector: List[float]
+    ) -> Optional[UserAccount]:
+        """
+        Update the long-term preferences_vector on the users table.
+        Returns the updated record or None if user not found.
+        """
+        user = self.get_by_id(user_id)
+        if not user:
+            return None
+        user.preferences_vector = preferences_vector
+        self._db.commit()
+        self._db.refresh(user)
+        return user
+
+    def update_allergies(
+        self, user_id: str, allergies: List[str]
+    ) -> Optional[UserAccount]:
+        """Update the allergies JSON list on the users table."""
+        user = self.get_by_id(user_id)
+        if not user:
+            return None
+        user.allergies = allergies
+        self._db.commit()
+        self._db.refresh(user)
+        return user
+
+

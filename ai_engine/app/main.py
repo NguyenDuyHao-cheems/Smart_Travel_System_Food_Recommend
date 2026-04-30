@@ -11,7 +11,6 @@ app.include_router(nlp_router, prefix="/api/v1/nlp", tags=["NLP"])
 app.include_router(ranking_router, prefix="/api/v1", tags=["Ranking"])
 
 
-
 @app.get("/")
 def read_root():
     return {"message": "Welcome to Smart Travel System Food Recommend API - AI Engine"}

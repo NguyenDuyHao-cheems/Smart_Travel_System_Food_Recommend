@@ -23,4 +23,6 @@ class Settings:
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
     GEMINI_MODEL_NAME: str = os.getenv("GEMINI_MODEL_NAME", "gemini-flash-latest")
 
+    # Database
+    DATABASE_URL: str = os.getenv("DATABASE_URL", "")
 settings = Settings()

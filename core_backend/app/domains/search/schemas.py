@@ -14,6 +14,8 @@ class SearchRecommendRequest(BaseModel):
     query: str = Field(..., description="The user's required food and context")
     lat: float = Field(..., description="Current user latitude")
     lng: float = Field(..., description="Current user longitude")
+    user_id: Optional[str] = Field(None, description="Optional user ID for personalized filtering")
+    budget: Optional[int] = Field(None, ge=0, description="Optional explicit budget in VND from user. Takes priority over AI-extracted budget.")
 
 class RecommendResult(BaseModel):
     """
@@ -25,14 +27,41 @@ class RecommendResult(BaseModel):
     dist: str
     price: str
     rating: str
-    reason: str
+    reason: str 
     img: str
 
 class SearchRecommendResponse(BaseModel):
     """
-    Kết quả trả về dạng danh sách (List) đẩy về cho UI Next.js Render.
+    Kết quả trả về cho UI, kèm metadata để Frontend biết
+    backend có đang dùng cơ chế fallback hay không.
     """
     results: List[RecommendResult]
+    fallback_applied: bool = Field(
+        default=False,
+        description="True nếu backend đã tự động nới điều kiện tìm kiếm."
+    )
+    fallback_reason: Optional[str] = Field(
+        default=None,
+        description="Mô tả lý do backend áp dụng fallback."
+    )
+    applied_radius_km: float = Field(
+        ...,
+        ge=0,
+        description="Bán kính thực tế backend dùng để tìm kiếm."
+    )
+    applied_budget: Optional[int] = Field(
+        None,
+        ge=0,
+        description="Ngân sách thực tế backend dùng để lọc."
+    )
+    filtered_out_count: Optional[int] = Field(
+        None, 
+        description="Number of items filtered out due to allergies"
+    )
+    warning: Optional[str] = Field(
+        None, 
+        description="Warning message, e.g. when fallback is applied"
+    )
 
 class AISearchPayload(BaseModel):
     """
