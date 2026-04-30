@@ -52,7 +52,7 @@ async def parse_query_with_gemini(text: str) -> Tuple[List[str], Optional[int], 
             if result is not None:
                 return result
         except Exception as e:
-            logger.warning(f"Gemini API failed, falling back to regex: {e}")
+            logger.warning("Gemini API failed, falling back to regex: %s", e)
     else:
         logger.warning("GEMINI_API_KEY chưa được cấu hình, sử dụng regex fallback")
 
