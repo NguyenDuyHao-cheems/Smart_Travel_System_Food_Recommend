@@ -23,10 +23,8 @@ class RetrievalService:
         lat, lng = user_location
         deg_radius = radius / 111.0
 
-        # Dùng NULLIF để tránh lỗi cast khi price_range rỗng
         query = self.db.query(RestaurantModel).filter(
-            RestaurantModel.is_active == True,
-            text("NULLIF(price_range, '')::integer <= :budget").bindparams(budget=budget)
+            RestaurantModel.is_active == True
         )
 
         # Lọc theo khung tọa độ (bounding box)

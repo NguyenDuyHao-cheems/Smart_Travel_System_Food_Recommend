@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from app.core.dependencies import get_db
 from .schemas import UserRankRequest, RankResponse
 from .ranking_service import RankingService
+from functools import lru_cache
 
 import logging
 
@@ -11,10 +12,16 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+@lru_cache(maxsize=1)
+def get_ranking_service() -> RankingService:
+    return RankingService()
+
+
 @router.post("/ml/rank", response_model=RankResponse)
 async def rank_restaurants(
     request: UserRankRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    service: RankingService = Depends(get_ranking_service)
 ):
     """
     Pipeline:
@@ -24,7 +31,6 @@ async def rank_restaurants(
     4. Fallback: Sort theo khoảng cách nếu AI Engine sập
     """
     try:
-        service = RankingService()
         ranked_ids = await service.get_recommendations(db, request)
         return RankResponse(ranked_ids=ranked_ids)
     except Exception as e:
