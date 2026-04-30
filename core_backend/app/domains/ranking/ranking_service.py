@@ -14,7 +14,7 @@ import httpx
 from typing import List
 from sqlalchemy.orm import Session
 
-from .Retrieval_service import RetrievalService
+from .retrieval_service import RetrievalService
 from .feature_service import FeatureService
 from .schemas import Candidate
 from app.core.config import settings
@@ -24,15 +24,8 @@ logger = logging.getLogger(__name__)
 
 class RankingService:
     """
-    Singleton — dùng __new__ để đảm bảo chỉ tạo một instance.
     Orchestrates: Retrieval → Feature Building → AI Engine (LightFM+LambdaMART) → Fallback.
     """
-    _instance = None
-
-    def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super(RankingService, cls).__new__(cls)
-        return cls._instance
 
     # ------------------------------------------------------------------
     # Cosine Similarity (dùng nội bộ, không gọi AI Engine)
