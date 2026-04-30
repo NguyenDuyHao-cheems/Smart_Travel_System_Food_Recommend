@@ -25,10 +25,8 @@ load_dotenv(ROOT / ".env")
 
 DB_URI = os.getenv("DB_URI") or os.getenv("DATABASE_URL")
 if not DB_URI:
-    # Fallback: lắp thủ công nếu chưa có .env
-    SUPABASE_HOST = "db.gtukcqdggoumurygsncp.supabase.co"
-    SUPABASE_PASS = os.getenv("SUPABASE_DB_PASSWORD", "THAY_MAT_KHAU_VAO_DAY")
-    DB_URI = f"postgresql://postgres:{SUPABASE_PASS}@{SUPABASE_HOST}:5432/postgres"
+    print("[ERR] Khong tim thay DB_URI hoac DATABASE_URL trong .env")
+    sys.exit(1)
 
 DISHES_PATH = ROOT / "dishes.json"
 BATCH_SIZE  = 500   # số row mỗi lần insert
