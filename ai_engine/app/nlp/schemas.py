@@ -15,3 +15,9 @@ class ExtractIntentResponse(BaseModel):
     intent: Optional[str] = None
     lat: Optional[float] = None
     lng: Optional[float] = None
+
+class EmbedRequest(BaseModel):
+    text: str = Field(..., max_length=2000, description="Text to embed")
+
+class EmbedResponse(BaseModel):
+    vector: List[float] = Field(..., description="The generated embedded vector representation of the text")

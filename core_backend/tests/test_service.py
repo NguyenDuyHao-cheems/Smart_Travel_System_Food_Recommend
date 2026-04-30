@@ -76,12 +76,12 @@ class TestBuildOnboardingText:
             budget="medium",
             location="Ho Chi Minh City",
         )
-        assert "favorite_dishes:" in text
+        assert "Tôi thích các món" in text
         assert "Phở bò" in text
         assert "Bún chả" in text
-        assert "spicy_level: medium" in text
-        assert "budget: medium" in text
-        assert "location: Ho Chi Minh City" in text
+        assert "với độ cay medium" in text
+        assert "mức giá medium" in text
+        assert "ở khu vực Ho Chi Minh City" in text
 
     def test_empty_lists_are_skipped(self):
         text = build_onboarding_text(
@@ -92,8 +92,8 @@ class TestBuildOnboardingText:
             budget="low",
             location="Đà Nẵng",
         )
-        assert "dietary_restrictions" not in text
-        assert "allergies" not in text
+        assert "tôi ăn theo chế độ" not in text
+        assert "tôi bị dị ứng" not in text
 
     def test_none_fields_are_skipped(self):
         text = build_onboarding_text(
@@ -104,8 +104,8 @@ class TestBuildOnboardingText:
             budget=None,
             location=None,
         )
-        assert "spicy_level" not in text
-        assert "budget" not in text
+        assert "với độ cay" not in text
+        assert "mức giá" not in text
 
     def test_field_order_is_fixed(self):
         text = build_onboarding_text(
@@ -117,12 +117,12 @@ class TestBuildOnboardingText:
             location="Hà Nội",
         )
         positions = [
-            text.index("favorite_dishes:"),
-            text.index("spicy_level:"),
-            text.index("dietary_restrictions:"),
-            text.index("allergies:"),
-            text.index("budget:"),
-            text.index("location:"),
+            text.index("Tôi thích các món Phở"),
+            text.index("với độ cay hot"),
+            text.index("tôi ăn theo chế độ vegan"),
+            text.index("tôi bị dị ứng peanut"),
+            text.index("mức giá high"),
+            text.index("ở khu vực Hà Nội"),
         ]
         assert positions == sorted(positions)
 

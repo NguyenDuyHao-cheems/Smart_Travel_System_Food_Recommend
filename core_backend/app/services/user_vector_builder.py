@@ -99,14 +99,29 @@ def build_onboarding_text(
     """
     parts: list[str] = []
 
-    _add_field(parts, "favorite_dishes", favorite_dishes)
-    _add_field(parts, "spicy_level", spicy_level)
-    _add_field(parts, "dietary_restrictions", dietary_restrictions)
-    _add_field(parts, "allergies", allergies)
-    _add_field(parts, "budget", budget)
-    _add_field(parts, "location", location)
+    if favorite_dishes:
+        cleaned = [s.strip() for s in favorite_dishes if s and s.strip()]
+        if cleaned:
+            parts.append(f"Tôi thích các món {', '.join(cleaned)}")
+    if spicy_level and spicy_level.strip():
+        parts.append(f"với độ cay {spicy_level.strip()}")
+    if dietary_restrictions:
+        cleaned = [s.strip() for s in dietary_restrictions if s and s.strip()]
+        if cleaned:
+            parts.append(f"tôi ăn theo chế độ {', '.join(cleaned)}")
+    if allergies:
+        cleaned = [s.strip() for s in allergies if s and s.strip()]
+        if cleaned:
+            parts.append(f"tôi bị dị ứng {', '.join(cleaned)}")
+    if budget and budget.strip():
+        parts.append(f"mức giá {budget.strip()}")
+    if location and location.strip():
+        parts.append(f"ở khu vực {location.strip()}")
 
-    text = "\n".join(parts)
+    if not parts:
+        return ""
+
+    text = " ".join(parts) + "."
     return _normalise_whitespace(text)
 
 

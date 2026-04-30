@@ -62,7 +62,7 @@ class AIServiceClient:
 
         try:
             response = await self._client.post(
-                "/api/v1/nlp/extract-intent",
+                "/api/v1/nlp/embed",
                 json={"text": text},
             )
             response.raise_for_status()
