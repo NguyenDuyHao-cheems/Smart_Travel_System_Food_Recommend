@@ -26,10 +26,20 @@ class FeatureService:
 
             # 2. % ngân sách (0–100) — price_range là String trong DB
             try:
-                raw_price = float(getattr(r, "price_range", 0) or 0)
-            except (ValueError, TypeError):
-                raw_price = 0
-            price_norm = int((raw_price / budget) * 100) if budget > 0 else 100
+                raw_price_str = str(getattr(r, "price_range", "") or "")
+                if "-" in raw_price_str:
+                    raw_price = float(raw_price_str.split("-")[1].strip())
+                elif raw_price_str:
+                    raw_price = float(raw_price_str.strip())
+                else:
+                    raw_price = 0.0
+            except (ValueError, TypeError, IndexError):
+                raw_price = 0.0
+            
+            if budget <= 0:
+                price_norm = 0
+            else:
+                price_norm = int((raw_price / budget) * 100)
 
             # 3. Rating & Sentiment nhân 100 — dùng field names bản NEW
             rating_int = int((getattr(r, "rating_avg", 0.0) or 0.0) * 100)
