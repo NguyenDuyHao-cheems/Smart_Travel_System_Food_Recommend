@@ -1,6 +1,6 @@
 import asyncio
 from fastapi import APIRouter
-from .schemas import ExtractIntentRequest, ExtractIntentResponse
+from .schemas import ExtractIntentRequest, ExtractIntentResponse, EmbedRequest, EmbedResponse
 from .llm_parser import parse_query_with_gemini
 from .service import generate_mean_pooled_embedding
 
@@ -27,3 +27,11 @@ async def extract_intent(request: ExtractIntentRequest):
         lat=request.lat,
         lng=request.lng,
     )
+
+@router.post("/embed", response_model=EmbedResponse)
+async def embed_text_endpoint(request: EmbedRequest):
+    """
+    Generate embedding for the given text without intent extraction.
+    """
+    vector = await asyncio.to_thread(generate_mean_pooled_embedding, request.text)
+    return EmbedResponse(vector=vector)
