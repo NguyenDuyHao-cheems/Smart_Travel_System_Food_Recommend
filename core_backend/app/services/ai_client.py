@@ -16,13 +16,53 @@ async def embed_text(text: str) -> Optional[List[float]]:
 
     Returns None nếu AI Engine không phản hồi hoặc trả về sai dimension.
     """
-    if not text.strip():
-        return None
+    return await get_ai_client().embed_text(text)
 
-    try:
-        async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
-            response = await client.post(
-                f"{settings.AI_ENGINE_BASE_URL}/api/v1/nlp/extract-intent",
+
+class AIServiceClient:
+    """
+    Client cho AI Engine.
+    Dùng Singleton pattern qua get_ai_client() — không tạo instance mới mỗi request.
+    """
+
+    def __init__(self, base_url: str):
+        self.base_url = base_url
+        self._client = httpx.AsyncClient(base_url=base_url, timeout=_TIMEOUT)
+
+    async def check_health(self) -> bool:
+        """Trả về True nếu AI Engine đang hoạt động."""
+        try:
+            response = await self._client.get("/api/health")
+            return response.status_code == 200
+        except Exception as exc:
+            logger.error("AI engine health check failed: %s", exc)
+            return False
+
+    async def extract_intent_and_vectorize(self, query: str) -> Optional[AIResponseData]:
+        """
+        Gọi AI Engine để trích xuất intent, budget và embedding vector từ query.
+        """
+        if not query.strip():
+            return None
+
+        try:
+            response = await self._client.post(
+                "/api/v1/nlp/extract-intent",
+                json={"text": query},
+            )
+            response.raise_for_status()
+            return AIResponseData(**response.json())
+        except Exception as exc:
+            logger.error("AI engine unreachable for extraction: %s", exc)
+            return None
+
+    async def embed_text(self, text: str) -> Optional[List[float]]:
+        if not text.strip():
+            return None
+
+        try:
+            response = await self._client.post(
+                "/api/v1/nlp/extract-intent",
                 json={"text": text},
             )
             response.raise_for_status()
@@ -38,47 +78,8 @@ async def embed_text(text: str) -> Optional[List[float]]:
                 len(vector) if vector else 0,
             )
             return None
-    except Exception as exc:
-        logger.error("AI engine unreachable for embedding: %s", exc)
-        return None
-
-
-class AIServiceClient:
-    """
-    Client cho AI Engine.
-    Dùng Singleton pattern qua get_ai_client() — không tạo instance mới mỗi request.
-    """
-
-    def __init__(self, base_url: str):
-        self.base_url = base_url
-
-    async def check_health(self) -> bool:
-        """Trả về True nếu AI Engine đang hoạt động."""
-        try:
-            async with httpx.AsyncClient(timeout=2.0) as client:
-                response = await client.get(f"{self.base_url}/api/health")
-                return response.status_code == 200
         except Exception as exc:
-            logger.error("AI engine health check failed: %s", exc)
-            return False
-
-    async def extract_intent_and_vectorize(self, query: str) -> Optional[AIResponseData]:
-        """
-        Gọi AI Engine để trích xuất intent, budget và embedding vector từ query.
-        """
-        if not query.strip():
-            return None
-
-        try:
-            async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
-                response = await client.post(
-                    f"{self.base_url}/api/v1/nlp/extract-intent",
-                    json={"text": query},
-                )
-                response.raise_for_status()
-                return AIResponseData(**response.json())
-        except Exception as exc:
-            logger.error("AI engine unreachable for extraction: %s", exc)
+            logger.error("AI engine unreachable for embedding: %s", exc)
             return None
 
 
