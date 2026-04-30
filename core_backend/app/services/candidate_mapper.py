@@ -13,7 +13,7 @@ def to_candidates(items: List[Dict[str, Any]]) -> List[Candidate]:
         try:
             raw_id = item.get("id")
             if raw_id is None:
-                logger.warning(f"Skipping candidate with missing ID: {item}")
+                logger.warning("Skipping candidate with missing ID: %s", item)
                 continue
 
             res_id = str(raw_id)
@@ -21,7 +21,7 @@ def to_candidates(items: List[Dict[str, Any]]) -> List[Candidate]:
 
             # validate vector
             if not vector or not isinstance(vector, list):
-                logger.warning(f"Skipping candidate {res_id} with invalid vector: {vector}")
+                logger.warning("Skipping candidate %s with invalid vector: %s", res_id, vector)
                 continue
 
             candidates.append(
@@ -31,7 +31,7 @@ def to_candidates(items: List[Dict[str, Any]]) -> List[Candidate]:
                 )
             )
         except Exception as e:
-            logger.warning(f"Skip invalid candidate: {e}")
+            logger.warning("Skip invalid candidate: %s", e)
             continue
 
     return candidates
