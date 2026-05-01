@@ -5,7 +5,8 @@ Tách ra từ service.py monolithic để dễ test và maintain.
 """
 
 from sqlalchemy.orm import Session
-from sqlalchemy import text
+from sqlalchemy import cast, func, Integer, case
+
 from .models import RestaurantModel, RestaurantTagModel, TagModel
 
 _MAX_RETRIEVAL = 500
@@ -32,6 +33,22 @@ class RetrievalService:
             RestaurantModel.lat.between(lat - deg_radius, lat + deg_radius),
             RestaurantModel.lng.between(lng - deg_radius, lng + deg_radius)
         )
+        # Lọc budget trực tiếp trong DB.
+        # price_range đang lưu dạng "50000-100000" hoặc "50000".
+        # budget <= 0 được hiểu là không giới hạn ngân sách.
+        if budget and budget > 0:
+            max_price_expr = case(
+                (
+                    RestaurantModel.price_range.contains("-"),
+                    cast(func.split_part(RestaurantModel.price_range, "-", 2), Integer),
+                ),
+                else_=cast(RestaurantModel.price_range, Integer),
+            )
+
+            query = query.filter(
+                RestaurantModel.price_range.isnot(None),
+                max_price_expr <= budget,
+            )
 
         # Join với bảng tags nếu có yêu cầu lọc theo tag
         if tags:

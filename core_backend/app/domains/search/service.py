@@ -42,8 +42,8 @@ class SearchService:
         1. Gọi recommendation service pipeline để filter dị ứng
         2. Gọi AI để lấy budget từ query
         3. Map kết quả filter thành mock objects (hoặc query DB)
-        4. Filter strict bằng distance và budget
-        5. Nếu 0 kết quả thì nới radius + budget
+        4. Filter strict bằng distance; budget được đẩy xuống DB retrieval
+        5. Nếu 0 kết quả thì nới radius
         6. Nếu vẫn 0 thì trả mock gần nhất để tránh UI trắng hoàn toàn
         """
         ai_response = await self.ai_client.extract_intent_and_vectorize(request.query)
@@ -85,7 +85,6 @@ class SearchService:
 
         strict_results = self._filter_results(
             results=safe_results,
-            max_budget=strict_budget,
             max_radius_km=self.DEFAULT_RADIUS_KM,
         )
 
@@ -103,12 +102,11 @@ class SearchService:
         relaxed_budget = (strict_budget + self.FALLBACK_BUDGET_DELTA_VND) if strict_budget is not None else None
         relaxed_results = self._filter_results(
             results=safe_results,
-            max_budget=relaxed_budget,
             max_radius_km=self.FALLBACK_RADIUS_KM,
         )
 
         if relaxed_results:
-            reason = "No results with strict filters, backend relaxed radius and budget."
+            reason = "No results with strict filters, backend relaxed radius."
             if warning: reason = warning + ". " + reason
             return SearchRecommendResponse(
                 results=relaxed_results,
@@ -196,15 +194,13 @@ class SearchService:
     def _filter_results(
         self,
         results: list[RecommendResult],
-        max_budget: int,
         max_radius_km: float,
     ) -> list[RecommendResult]:
         filtered = []
         for item in results:
-            min_price = self._extract_min_price(item)
             distance_km = self._extract_distance_km(item)
 
-            if (max_budget is None or min_price <= max_budget) and distance_km <= max_radius_km:
+            if distance_km <= max_radius_km:
                 filtered.append(item)
 
         return filtered

@@ -63,7 +63,7 @@ def test_process_recommend_query_success_without_fallback(client):
         assert data["applied_budget"] == 50000
 
 
-def test_process_recommend_query_fallback_when_filters_too_strict(client):
+def test_process_recommend_query_budget_no_longer_triggers_memory_fallback(client):
     with patch(
         "app.services.ai_client.AIServiceClient.extract_intent_and_vectorize",
         new_callable=AsyncMock,
@@ -88,10 +88,10 @@ def test_process_recommend_query_fallback_when_filters_too_strict(client):
         data = response.json()
         assert "results" in data
         assert len(data["results"]) >= 1
-        assert data["fallback_applied"] is True
-        assert data["fallback_reason"] is not None
-        assert data["applied_radius_km"] == SearchService.FALLBACK_RADIUS_KM
-        assert data["applied_budget"] == strict_budget + SearchService.FALLBACK_BUDGET_DELTA_VND
+        assert data["fallback_applied"] is False
+        assert data["fallback_reason"] is None
+        assert data["applied_radius_km"] == SearchService.DEFAULT_RADIUS_KM
+        assert data["applied_budget"] == strict_budget
 
 
 def test_process_recommend_query_ai_unavailable(client):
@@ -113,22 +113,23 @@ def test_process_recommend_query_ai_unavailable(client):
         assert response.json()["detail"] == "AI engine is currently unavailable."
 
 
-def test_process_recommend_query_nearest_fallback(client):
+def test_process_recommend_query_nearest_fallback_when_radius_filters_out_all_results(client):
     with patch(
         "app.services.ai_client.AIServiceClient.extract_intent_and_vectorize",
         new_callable=AsyncMock,
-    ) as mock_ai:
-        # Budget so low that even relaxed (5k + 30k = 35k) won't match anything (min mock is 40k)
+    ) as mock_ai, patch.object(SearchService, "DEFAULT_RADIUS_KM", 0.1), patch.object(
+        SearchService, "FALLBACK_RADIUS_KM", 0.1
+    ):
         mock_ai.return_value = AIResponseData(
             vector=[1.0, 2.0, 3.0],
-            budget=5000,
+            budget=50000,
             intent="Mì cay",
         )
 
         response = client.post(
             "/api/v1/search/recommend",
             json={
-                "query": "Mì cay 5k",
+                "query": "Mì cay",
                 "lat": 10.8700,
                 "lng": 106.8031,
             },
