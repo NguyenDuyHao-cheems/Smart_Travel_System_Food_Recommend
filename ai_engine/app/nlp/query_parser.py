@@ -1,24 +1,55 @@
 import re
+import unicodedata
 from typing import Optional
 
 
-def extract_budget(text: str) -> Optional[int]:
-    """Trích xuất ngân sách từ query bằng regex. Ví dụ: '500k' -> 500000, '200000đ' -> 200000."""
+def _normalize_vietnamese(text: str) -> str:
     text = text.lower().strip()
+    text = unicodedata.normalize("NFD", text)
+    text = "".join(ch for ch in text if unicodedata.category(ch) != "Mn")
+    return text.replace("đ", "d")
 
-    # Ưu tiên tìm dạng "500k"
-    match_k = re.search(r"(\d+)\s*k\b", text)
-    if match_k:
-        return int(match_k.group(1)) * 1000
 
-    # Tìm dạng "200000 vnd" hoặc "200000đ" — BẮT BUỘC có đơn vị tiền tệ
-    match_vnd = re.search(r"(\d+)\s*(vnd|vnđ|đồng|đ)\b", text)
-    if match_vnd:
-        value = int(match_vnd.group(1))
-        if value >= 1000:
-            return value
+def _to_int_amount(raw_value: str, unit: str | None) -> Optional[int]:
+    value = float(raw_value.replace(",", "."))
+    normalized_unit = unit or ""
+
+    if normalized_unit in {"k", "nghin", "ngan"}:
+        return int(value * 1000)
+
+    if normalized_unit in {"trieu", "m"}:
+        return int(value * 1_000_000)
+
+    amount = int(value)
+    return amount if amount >= 1000 else None
+
+
+def extract_budget(text: str) -> Optional[int]:
+    normalized = _normalize_vietnamese(text)
+    if not normalized:
+        return None
+
+    amount = r"(\d+(?:[.,]\d+)?)"
+    patterns = [
+        rf"\b(?:duoi|tren|tam|khoang|toi da|duoi muc|gia duoi|gia tren)\s+{amount}\s*(k|nghin|ngan|trieu|m)\b",
+        rf"\b{amount}\s*(k|nghin|ngan|trieu|m)\b",
+        rf"\b(?:duoi|tren|tam|khoang|toi da|gia duoi|gia tren)\s+{amount}\s*(vnd|vnd|dong|d)\b",
+        rf"\b{amount}\s*(vnd|vnd|dong|d)\b",
+    ]
+
+    for pattern in patterns:
+        match = re.search(pattern, normalized)
+        if match:
+            groups = match.groups()
+            raw_value = groups[0]
+            unit = groups[1] if len(groups) > 1 else None
+            return _to_int_amount(raw_value, unit)
+
+    if re.search(r"\b(re|gia re|binh dan|sinh vien)\b", normalized):
+        return 30000
 
     return None
+
 
 
 def extract_tags(text: str) -> list[str]:
@@ -26,8 +57,19 @@ def extract_tags(text: str) -> list[str]:
     text = text.lower().strip()
 
     # Loại bỏ phần budget ra khỏi text trước khi tách tags
-    text = re.sub(r"\d+\s*k\b", " ", text)
-    text = re.sub(r"\d+\s*(vnd|vnđ|đồng|đ)\b", " ", text)
+    text = re.sub(
+        r"\b(?:dưới|duoi|trên|tren|tầm|tam|khoảng|khoang|tối đa|toi da|giá dưới|gia duoi|giá trên|gia tren)?\s*\d+(?:[.,]\d+)?\s*(k|nghìn|nghin|ngàn|ngan|triệu|trieu|m|vnd|vnđ|dong|đ|d)\b",
+        " ",
+        text,
+        flags=re.IGNORECASE,
+    )
+    text = re.sub(
+        r"\b(rẻ|re|giá rẻ|gia re|bình dân|binh dan|sinh viên|sinh vien)\b",
+        " ",
+        text,
+        flags=re.IGNORECASE,
+    )
+
 
     stop_words = {
         # Đại từ / chủ ngữ

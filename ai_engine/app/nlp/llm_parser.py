@@ -118,6 +118,10 @@ async def _call_gemini(text: str) -> Optional[Tuple[List[str], Optional[int], st
     if not isinstance(budget, int):
         budget = None
 
+    regex_budget = extract_budget(text)
+    if regex_budget is not None:
+        budget = regex_budget
+
     intent = parsed.get("intent", "search_food")
 
     return tags, budget, intent
