@@ -54,44 +54,42 @@ def extract_budget(text: str) -> Optional[int]:
 
 def extract_tags(text: str) -> list[str]:
     """Trích xuất danh sách tags (từ khoá) từ query bằng regex và stop-word filtering."""
-    text = text.lower().strip()
+    text = _normalize_vietnamese(text)
 
     # Loại bỏ phần budget ra khỏi text trước khi tách tags
+    # (after normalization, only unaccented forms are needed)
     text = re.sub(
-        r"\b(?:dưới|duoi|trên|tren|tầm|tam|khoảng|khoang|tối đa|toi da|giá dưới|gia duoi|giá trên|gia tren)?\s*\d+(?:[.,]\d+)?\s*(k|nghìn|nghin|ngàn|ngan|triệu|trieu|m|vnd|vnđ|dong|đ|d)\b",
+        r"\b(?:duoi|tren|tam|khoang|toi da|gia duoi|gia tren)?\s*\d+(?:[.,]\d+)?\s*(k|nghin|ngan|trieu|m|vnd|dong|d)\b",
         " ",
         text,
-        flags=re.IGNORECASE,
     )
     text = re.sub(
-        r"\b(rẻ|re|giá rẻ|gia re|bình dân|binh dan|sinh viên|sinh vien)\b",
+        r"\b(re|gia re|binh dan|sinh vien)\b",
         " ",
         text,
-        flags=re.IGNORECASE,
     )
-
 
     stop_words = {
         # Đại từ / chủ ngữ
-        "toi", "tôi", "minh", "mình", "ban", "bạn", "ta", "chung", "chúng",
+        "toi", "minh", "ban", "ta", "chung",
         # Động từ phổ biến
-        "muon", "muốn", "can", "cần", "tim", "tìm", "di", "đi", "cho",
-        "an", "ăn", "uong", "uống", "co", "có", "la", "là", "duoc", "được",
-        "biet", "biết", "thich", "thích", "xem", "kiem", "kiếm", "lam", "làm",
+        "muon", "can", "tim", "di", "cho",
+        "an", "uong", "co", "la", "duoc",
+        "biet", "thich", "xem", "kiem", "lam",
         # Giới từ / liên từ
-        "o", "ở", "tai", "tại", "va", "và", "voi", "với", "hay", "hoac", "hoặc",
-        "thi", "thì", "ma", "mà", "nhung", "nhưng", "vi", "vì", "de", "để",
-        "nhu", "như", "khi", "nao", "nào", "gi", "gì", "nay", "này", "do", "đó",
+        "o", "tai", "va", "voi", "hay", "hoac",
+        "thi", "ma", "nhung", "vi", "de",
+        "nhu", "khi", "nao", "gi", "nay", "do",
         # Trạng từ / tính từ chung
-        "rat", "rất", "qua", "quá", "lam", "lắm", "cung", "cũng",
-        "dang", "đang", "da", "đã", "se", "sẽ", "roi", "rồi",
-        "khong", "không", "chua", "chưa", "het", "hết",
+        "rat", "qua", "lam", "cung",
+        "dang", "da", "se", "roi",
+        "khong", "chua", "het",
         # Từ liên quan giá / vị trí
-        "duoi", "dưới", "tren", "trên", "tam", "tầm", "khoang", "khoảng",
-        "gia", "giá", "gan", "gần", "day", "đây", "cho", "noi", "nơi",
+        "duoi", "tren", "tam", "khoang",
+        "gia", "gan", "day", "cho", "noi",
         # Từ đệm
-        "mot", "một", "cai", "cái", "nhat", "nhất", "the", "thế",
-        "hom", "hôm", "nay", "luon", "luôn", "nha", "nhé",
+        "mot", "cai", "nhat", "the",
+        "hom", "nay", "luon", "nha", "nhe",
     }
 
     words = re.findall(r"\w+", text, flags=re.UNICODE)
