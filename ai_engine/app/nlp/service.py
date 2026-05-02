@@ -11,6 +11,14 @@ logger = logging.getLogger(__name__)
 
 
 def _fallback_embedding(text: str) -> list[float]:
+    """Deterministic pseudo-random embedding used when PhoBERT is unavailable.
+
+    # TODO: Values are in [-0.05, 0.05] (near-zero), so cosine/dot-product
+    # similarity with real embeddings will be ~0. Downstream ranking must
+    # rely on other signals (tags, budget) when fallback is active.
+    # Consider adding an `embedding_fallback: true` flag in the API response
+    # so core_backend can adjust its ranking strategy accordingly.
+    """
     seed = int(hashlib.sha256(text.encode("utf-8")).hexdigest()[:16], 16)
     rng = random.Random(seed)
     return [rng.uniform(-0.05, 0.05) for _ in range(settings.VECTOR_DIM)]
