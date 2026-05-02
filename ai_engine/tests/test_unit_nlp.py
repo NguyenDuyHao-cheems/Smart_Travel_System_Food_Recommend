@@ -82,10 +82,10 @@ class TestExtractTags:
         assert isinstance(result, list)
 
     def test_basic_food_words_in_tags(self):
-        """Key food words should appear in tags."""
+        """Key food words should appear in tags (normalized / unaccented)."""
         tags = extract_tags("phở bò ngon")
-        assert "phở" in tags
-        assert "bò" in tags
+        assert "pho" in tags
+        assert "bo" in tags
 
     def test_stop_words_excluded(self):
         """Vietnamese stop words must be filtered out."""
@@ -117,10 +117,10 @@ class TestExtractTags:
         assert extract_tags("") == []
 
     def test_mixed_viet_and_english(self):
-        """Should handle mixed Vietnamese/English text."""
+        """Should handle mixed Vietnamese/English text (normalized output)."""
         tags = extract_tags("bún chả near me")
-        assert "bún" in tags
-        assert "chả" in tags or "cha" in tags
+        assert "bun" in tags
+        assert "cha" in tags
 
 class TestEmbeddingFallback:
     def test_fallback_embedding_has_expected_dimension(self, monkeypatch):
