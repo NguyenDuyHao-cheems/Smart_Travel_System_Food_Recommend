@@ -70,7 +70,7 @@ class SearchService:
         )
 
         rank_request = UserRankRequest(
-            user_id=request.user_id,
+            user_id=request.user_id or "anonymous",
             query_vector=ai_response.vector,
             user_location=[
                 request.lat,
