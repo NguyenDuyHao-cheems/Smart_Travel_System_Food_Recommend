@@ -2,6 +2,7 @@ import asyncio
 import logging
 
 from fastapi import HTTPException
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from .schemas import (
@@ -11,7 +12,8 @@ from .schemas import (
     RecommendResult,
 )
 from app.services.ai_client import AIServiceClient
-from app.services.recommendation_service import recommend
+from app.domains.ranking.ranking_service import RankingService
+from app.domains.ranking.schemas import UserRankRequest
 
 logger = logging.getLogger(__name__)
 
@@ -36,46 +38,71 @@ class SearchService:
 
         return ai_response
 
-    async def process_recommend_query(self, request: SearchRecommendRequest, db: Session = None) -> SearchRecommendResponse:
+    async def process_recommend_query(
+        self,
+        request: SearchRecommendRequest,
+        db: Session = None
+    ) -> SearchRecommendResponse:
         """
-        Logic recommend có fallback kết hợp allergy filter:
-        1. Gọi recommendation service pipeline để filter dị ứng
-        2. Gọi AI để lấy budget từ query
-        3. Map kết quả filter thành mock objects (hoặc query DB)
-        4. Filter strict bằng distance và budget
-        5. Nếu 0 kết quả thì nới radius + budget
-        6. Nếu vẫn 0 thì trả mock gần nhất để tránh UI trắng hoàn toàn
+        Logic recommend mới:
+        1. Gọi AI Engine để lấy query_vector từ query người dùng
+        2. Dùng RankingService + SemanticRetrievalService để search DB bằng pgvector
+        3. Build RecommendResult từ restaurant thật trong DB
+        4. Apply filter budget/radius và fallback
         """
+        if db is None:
+            raise HTTPException(status_code=500, detail="Database session is required.")
+
         ai_response = await self.ai_client.extract_intent_and_vectorize(request.query)
         if not ai_response:
             raise HTTPException(status_code=503, detail="AI engine is currently unavailable.")
 
-        # 1. Lọc dị ứng bằng recommendation pipeline
-        recommend_results = recommend(
-            query=request.query,
-            user_id=request.user_id,
-            db=db
-        )
-        safe_ids = recommend_results["results"]
-        filtered_out_count = recommend_results["filtered_out_count"]
-        warning = recommend_results.get("warning")
+        # 1. Ranking bằng semantic retrieval mới.
+        # Fix task "dùng sai vector để tìm kiếm":
+        # Dùng query_vector từ AI response để so khớp với embedding_vector trong DB.
+        # Không gọi recommendation_service.recommend() cũ vì service đó dùng user_vector để cosine.
+        ranking_service = RankingService()
 
-        # 2. Build danh sách kết quả (hiện tại dùng mock data)
-        # TODO: Cần fetch data từ DB để trả về RecommendResult đầy đủ thay vì chỉ mock
-        all_mock_results = self._build_mock_results()
-        
-        # Sort mock results based on the order of safe_ids (which are ranked by AI vector)
-        safe_results = []
-        for safe_id in safe_ids:
-            for item in all_mock_results:
-                if item.id == safe_id:
-                    safe_results.append(item)
-                    break
+        rank_budget = (
+            request.budget
+            if request.budget is not None and request.budget > 0
+            else self.DEFAULT_BUDGET_VND
+        )
+
+        rank_request = UserRankRequest(
+            user_id=request.user_id,
+            query_vector=ai_response.vector,
+            user_location=[
+                request.lat,
+                request.lng,
+            ],
+            k=5,
+            offset=0,
+            tags=[],
+            budget=rank_budget,
+            radius=self.FALLBACK_RADIUS_KM,
+        )
+
+        safe_ids = await ranking_service.get_recommendations(db, rank_request)
+        filtered_out_count = 0
+        warning = None
+
+        # 2. Build danh sách kết quả từ DB thật theo ranked_ids.
+        # Ranking mới trả UUID thật của restaurants, không còn dùng mock id 1,2,3 nữa.
+        safe_results = self._build_results_from_db(
+            db=db,
+            ranked_ids=safe_ids,
+            user_lat=request.lat,
+            user_lng=request.lng,
+        )
 
         if request.budget is not None:
             # budget=0 is treated as "unlimited" (None)
             strict_budget = request.budget if request.budget > 0 else None
-            logger.debug("Budget source: user body (%s VND)", strict_budget if strict_budget is not None else "unlimited")
+            logger.debug(
+                "Budget source: user body (%s VND)",
+                strict_budget if strict_budget is not None else "unlimited",
+            )
         elif ai_response.budget:
             strict_budget = ai_response.budget
             logger.debug("Budget source: AI extraction (%d VND)", strict_budget)
@@ -97,10 +124,15 @@ class SearchService:
                 applied_radius_km=self.DEFAULT_RADIUS_KM,
                 applied_budget=strict_budget,
                 filtered_out_count=filtered_out_count,
-                warning=warning
+                warning=warning,
             )
 
-        relaxed_budget = (strict_budget + self.FALLBACK_BUDGET_DELTA_VND) if strict_budget is not None else None
+        relaxed_budget = (
+            strict_budget + self.FALLBACK_BUDGET_DELTA_VND
+            if strict_budget is not None
+            else None
+        )
+
         relaxed_results = self._filter_results(
             results=safe_results,
             max_budget=relaxed_budget,
@@ -109,7 +141,9 @@ class SearchService:
 
         if relaxed_results:
             reason = "No results with strict filters, backend relaxed radius and budget."
-            if warning: reason = warning + ". " + reason
+            if warning:
+                reason = warning + ". " + reason
+
             return SearchRecommendResponse(
                 results=relaxed_results,
                 fallback_applied=True,
@@ -117,7 +151,7 @@ class SearchService:
                 applied_radius_km=self.FALLBACK_RADIUS_KM,
                 applied_budget=relaxed_budget,
                 filtered_out_count=filtered_out_count,
-                warning=warning
+                warning=warning,
             )
 
         nearest_results = sorted(
@@ -126,7 +160,8 @@ class SearchService:
         )[:5]
 
         reason = "No results after relaxed filters, backend returned nearest restaurants as a safe fallback."
-        if warning: reason = warning + ". " + reason
+        if warning:
+            reason = warning + ". " + reason
 
         return SearchRecommendResponse(
             results=nearest_results,
@@ -135,63 +170,100 @@ class SearchService:
             applied_radius_km=self.FALLBACK_RADIUS_KM,
             applied_budget=None,
             filtered_out_count=filtered_out_count,
-            warning=warning
+            warning=warning,
         )
 
-    # TODO: mock code 
-    def _build_mock_results(self) -> list[RecommendResult]:
-        return [
-            RecommendResult(
-                id=1,
-                name="Mì Cay Sasin - Làng Đại Học",
-                match="98%",
-                dist="1.1 km",
-                price="49k - 89k",
-                rating="4.9",
-                reason="Khớp hoàn hảo: Nằm ngay trục đường sầm uất của Làng Đại Học. Nước dùng chuẩn vị, không gian có máy lạnh.",
-                img="/images/food1.jpg",
-            ),
-            RecommendResult(
-                id=2,
-                name="Mì Cay Seoul - Dĩ An",
-                match="94%",
-                dist="2.8 km",
-                price="45k - 75k",
-                rating="4.7",
-                reason="Nằm hướng về trung tâm Dĩ An. Nước súp đậm đà cay nồng, sợi mì dai và trân châu đường đen đi kèm cực cuốn.",
-                img="/images/food2.jpg",
-            ),
-            RecommendResult(
-                id=3,
-                name="Mì Cay Naga - Làng Đại Học",
-                match="89%",
-                dist="1.2 km",
-                price="40k - 65k",
-                rating="4.5",
-                reason="Giải pháp tối ưu ngân sách cho sinh viên cuối tháng. Giá cả cực kỳ hạt dẻ nhưng topping hải sản vẫn rất đầy đặn.",
-                img="/images/food3.jpg",
-            ),
-            RecommendResult(
-                id=4,
-                name="Yagami - Ẩm Thực Lẩu Thái-Nhật-Hàn",
-                match="85%",
-                dist="4.5 km",
-                price="45k - 79k",
-                rating="4.8",
-                reason="Không gian check-in cực đẹp mang hơi hướng sang trọng, khuyên thử món mì cay bạch tuộc tươi giòn.",
-                img="/images/food4.jpg",
-            ),
-            RecommendResult(
-                id=5,
-                name="Mì Cay Sasin Hoàng Diệu 2",
-                match="82%",
-                dist="5.2 km",
-                price="40k - 65k",
-                rating="4.6",
-                reason="Tọa lạc trên con phố ẩm thực nhộn nhịp. Thích hợp cho những buổi tối cuối tuần muốn đi xa trường một chút.",
-                img="/images/food5.jpg",
-            ),
-        ]
+    def _build_results_from_db(
+        self,
+        db: Session,
+        ranked_ids: list[str],
+        user_lat: float,
+        user_lng: float,
+    ) -> list[RecommendResult]:
+        """
+        Build RecommendResult từ restaurant thật trong DB theo thứ tự ranked_ids.
+        Dùng raw SQL để tránh lệch model SQLAlchemy với DB thật.
+        """
+        if not ranked_ids:
+            return []
+
+        placeholders = []
+        params = {}
+
+        for index, res_id in enumerate(ranked_ids):
+            key = f"id_{index}"
+            placeholders.append(f":{key}")
+            params[key] = str(res_id)
+
+        sql = text(f"""
+            SELECT
+                id,
+                name,
+                lat,
+                lng,
+                price_range,
+                rating_avg,
+                image_url
+            FROM public.restaurants
+            WHERE id IN ({", ".join(placeholders)})
+        """)
+
+        rows = db.execute(sql, params).mappings().all()
+        restaurant_map = {str(row["id"]): dict(row) for row in rows}
+
+        results = []
+
+        for res_id in ranked_ids:
+            r = restaurant_map.get(str(res_id))
+            if not r:
+                continue
+
+            distance_km = self._haversine_km(
+                user_lat,
+                user_lng,
+                float(r.get("lat") or 0),
+                float(r.get("lng") or 0),
+            )
+
+            results.append(
+                RecommendResult(
+                    id=str(r.get("id")),
+                    name=r.get("name") or "Unknown restaurant",
+                    match="95%",
+                    dist=f"{distance_km:.1f} km",
+                    price=r.get("price_range") or "Không rõ",
+                    rating=str(r.get("rating_avg") or 0),
+                    reason="Được đề xuất vì nội dung tìm kiếm khớp ngữ nghĩa với embedding của nhà hàng.",
+                    img=r.get("image_url") or "",
+                )
+            )
+
+        return results
+
+    def _haversine_km(
+        self,
+        lat1: float,
+        lng1: float,
+        lat2: float,
+        lng2: float,
+    ) -> float:
+        import math
+
+        radius_km = 6371.0
+
+        dlat = math.radians(lat2 - lat1)
+        dlng = math.radians(lng2 - lng1)
+
+        a = (
+            math.sin(dlat / 2) ** 2
+            + math.cos(math.radians(lat1))
+            * math.cos(math.radians(lat2))
+            * math.sin(dlng / 2) ** 2
+        )
+
+        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+        return radius_km * c
+
 
     def _filter_results(
         self,
@@ -212,18 +284,32 @@ class SearchService:
     @staticmethod
     def _extract_min_price(item: RecommendResult) -> int:
         try:
-            # Expected format: "49k - 89k"
-            raw = item.price.lower().replace("k", "").split("-")[0].strip()
-            return int(raw) * 1000
-        except (ValueError, IndexError, AttributeError):
-            # Fallback to a very high price so it gets filtered out if invalid
-            return 999_999_999
+            price_text = str(item.price or "").lower().strip()
 
+            if not price_text or price_text == "không rõ":
+                return 0
+
+            # Ví dụ: "49k - 89k"
+            if "k" in price_text:
+                raw = price_text.replace("k", "").split("-")[0].strip()
+                return int(float(raw)) * 1000
+
+            # Ví dụ: "50000-100000"
+            if "-" in price_text:
+                raw = price_text.split("-")[0].strip()
+                return int(float(raw))
+
+            # Ví dụ: "50000"
+            return int(float(price_text))
+
+        except (ValueError, IndexError, AttributeError):
+            return 999_999_999
+    
     @staticmethod
     def _extract_distance_km(item: RecommendResult) -> float:
         try:
             # Expected format: "1.1 km"
-            raw = item.dist.lower().replace("km", "").strip()
+            raw = str(item.dist or "").lower().replace("km", "").strip()
             return float(raw)
         except (ValueError, AttributeError):
             # Fallback to a very large distance

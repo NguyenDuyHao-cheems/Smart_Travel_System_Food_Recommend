@@ -46,49 +46,20 @@ def generate_candidates(query: str):
         }
     ]
 
-
 def recommend(query: str, user_id: str, db: Session):
+    """
+    Deprecated.
 
-    ranking_service = RankingService()
+    Flow recommend cũ dùng user_vector để ranking đã bị loại bỏ
+    vì sai mục đích semantic search.
 
-    user_allergies = get_user_allergies(db, user_id)
-    user_vector = get_user_preferences_vector(db, user_id)
+    Luồng đúng hiện tại nằm ở:
+    app/domains/search/service.py -> SearchService.process_recommend_query()
 
-    raw_candidates = generate_candidates(query)
-
-    if not raw_candidates:
-        return {
-            "results": [],
-            "filtered_out_count": 0,
-            "fallback_applied": False
-        }
-
-    # 🔥 filter trước
-    safe_raw, removed = filter_allergy(raw_candidates, user_allergies)
-
-    if not safe_raw:
-        fallback = handle_fallback(raw_candidates)
-        return {
-            "results": fallback["results"],
-            "filtered_out_count": len(removed),
-            "fallback_applied": True
-        }
-
-    # 🔥 convert
-    candidates = to_candidates(safe_raw)
-
-    if user_vector is None:
-        user_vector = [1.0] * settings.VECTOR_DIM
-
-    ranked_ids = ranking_service.rank(
-        pref_vector=user_vector,
-        candidates=candidates,
-        k=5
+    Luồng đúng:
+    query -> AI Engine tạo query_vector -> RankingService.get_recommendations()
+    -> SemanticRetrievalService -> restaurants.embedding_vector bằng pgvector.
+    """
+    raise RuntimeError(
+        "Deprecated recommend() flow. Use SearchService.process_recommend_query() instead."
     )
-
-    return {
-        "results": ranked_ids,
-        "filtered_out_count": len(removed),
-        "fallback_applied": False
-    }
-

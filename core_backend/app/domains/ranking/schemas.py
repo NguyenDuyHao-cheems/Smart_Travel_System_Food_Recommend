@@ -27,7 +27,15 @@ class UserRankRequest(BaseModel):
     """Request đầu vào từ Client gọi đến Core Backend."""
     user_id: str = Field(..., description="ID định danh của người dùng")
 
-    # Pydantic V2: dùng min_length / max_length thay vì min_items/max_items
+    # query_vector là vector embedding của câu query hiện tại.
+    # Dùng để semantic search với embedding_vector của nhà hàng trong DB.
+    # Không dùng user_vector ở đây vì user_vector là sở thích dài hạn,
+    # còn query_vector đại diện cho nhu cầu tìm kiếm hiện tại của user.
+    query_vector: List[float] = Field(
+        ...,
+        description="Vector embedding của câu query người dùng"
+    )
+
     user_location: List[float] = Field(
         ...,
         min_length=2,
