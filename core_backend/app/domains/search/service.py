@@ -14,6 +14,7 @@ from .schemas import (
 from app.services.ai_client import AIServiceClient
 from app.domains.ranking.ranking_service import RankingService
 from app.domains.ranking.schemas import UserRankRequest
+from app.services.user_services import get_user_allergies
 
 logger = logging.getLogger(__name__)
 
@@ -70,7 +71,7 @@ class SearchService:
         )
 
         rank_request = UserRankRequest(
-            user_id=request.user_id,
+            user_id=request.user_id or "anonymous",
             query_vector=ai_response.vector,
             user_location=[
                 request.lat,
@@ -84,8 +85,23 @@ class SearchService:
         )
 
         safe_ids = await ranking_service.get_recommendations(db, rank_request)
+
         filtered_out_count = 0
         warning = None
+
+        user_allergies = []
+
+        if request.user_id:
+            try:
+                user_allergies = get_user_allergies(db, request.user_id)
+            except Exception as exc:
+                logger.warning(
+                    "Could not load user allergies for user_id=%s: %s",
+                    request.user_id,
+                    exc,
+                )
+                db.rollback()
+                user_allergies = []
 
         # 2. Build danh sách kết quả từ DB thật theo ranked_ids.
         # Ranking mới trả UUID thật của restaurants, không còn dùng mock id 1,2,3 nữa.
@@ -95,6 +111,19 @@ class SearchService:
             user_lat=request.lat,
             user_lng=request.lng,
         )
+
+        if user_allergies:
+            safe_results, filtered_out_count = self._filter_results_by_allergies(
+                db=db,
+                results=safe_results,
+                user_allergies=user_allergies,
+            )
+
+            if filtered_out_count > 0:
+                warning = (
+                    f"{filtered_out_count} result(s) were removed because their dishes "
+                    "may contain allergens from the user's allergy profile."
+                )
 
         if request.budget is not None:
             # budget=0 is treated as "unlimited" (None)
@@ -239,6 +268,76 @@ class SearchService:
             )
 
         return results
+
+    def _filter_results_by_allergies(
+        self,
+        db: Session,
+        results: list[RecommendResult],
+        user_allergies: list[str],
+    ) -> tuple[list[RecommendResult], int]:
+        """
+        Lọc restaurant theo dị ứng của user dựa trên dishes.allergens.
+
+        Vì allergens nằm ở bảng dishes, ta kiểm tra tất cả dish thuộc restaurant.
+        Nếu restaurant có ít nhất 1 dish chứa allergen trùng với user_allergies,
+        restaurant đó sẽ bị loại khỏi kết quả recommend.
+        """
+        if not results or not user_allergies:
+            return results, 0
+
+        restaurant_ids = [str(item.id) for item in results]
+
+        placeholders = []
+        params = {}
+
+        for index, res_id in enumerate(restaurant_ids):
+            key = f"res_id_{index}"
+            placeholders.append(f":{key}")
+            params[key] = res_id
+
+        sql = text(f"""
+            SELECT
+                res_id,
+                allergens
+            FROM public.dishes
+            WHERE res_id IN ({", ".join(placeholders)})
+            AND allergens IS NOT NULL
+        """)
+
+        rows = db.execute(sql, params).mappings().all()
+
+        allergy_set = {
+            str(allergy).lower().strip()
+            for allergy in user_allergies
+            if allergy and str(allergy).strip()
+        }
+
+        unsafe_restaurant_ids = set()
+
+        for row in rows:
+            res_id = str(row["res_id"])
+            allergens = row.get("allergens") or []
+
+            if isinstance(allergens, str):
+                allergens = [allergens]
+
+            dish_allergen_set = {
+                str(allergen).lower().strip()
+                for allergen in allergens
+                if allergen and str(allergen).strip()
+            }
+
+            if allergy_set.intersection(dish_allergen_set):
+                unsafe_restaurant_ids.add(res_id)
+
+        safe_results = [
+            item for item in results
+            if str(item.id) not in unsafe_restaurant_ids
+        ]
+
+        filtered_out_count = len(results) - len(safe_results)
+
+        return safe_results, filtered_out_count
 
     def _haversine_km(
         self,
