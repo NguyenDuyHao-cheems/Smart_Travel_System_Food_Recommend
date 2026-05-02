@@ -11,6 +11,8 @@ They test the logic of:
 import pytest
 
 from app.nlp.query_parser import extract_budget, extract_tags
+from app.core.config import settings
+from app.nlp.service import generate_mean_pooled_embedding
 
 
 # ---------------------------------------------------------------------------
@@ -20,6 +22,17 @@ from app.nlp.query_parser import extract_budget, extract_tags
 
 class TestExtractBudget:
     """Unit tests for the extract_budget() function."""
+    def test_extracts_under_50k_phrase(self):
+        assert extract_budget("quán ăn dưới 50k") == 50000
+
+    def test_extracts_about_100_nghin_phrase(self):
+        assert extract_budget("khoảng 100 nghìn một người") == 100000
+
+    def test_extracts_cheap_keyword(self):
+        assert extract_budget("tìm quán ăn rẻ") == 30000
+
+    def test_explicit_budget_takes_priority_over_cheap_keyword(self):
+        assert extract_budget("quán rẻ dưới 50k") == 50000
 
     def test_extracts_50k_notation(self):
         """'50k' should return 50000."""
@@ -69,10 +82,10 @@ class TestExtractTags:
         assert isinstance(result, list)
 
     def test_basic_food_words_in_tags(self):
-        """Key food words should appear in tags."""
+        """Key food words should appear in tags (normalized / unaccented)."""
         tags = extract_tags("phở bò ngon")
-        assert "phở" in tags
-        assert "bò" in tags
+        assert "pho" in tags
+        assert "bo" in tags
 
     def test_stop_words_excluded(self):
         """Vietnamese stop words must be filtered out."""
@@ -104,11 +117,34 @@ class TestExtractTags:
         assert extract_tags("") == []
 
     def test_mixed_viet_and_english(self):
-        """Should handle mixed Vietnamese/English text."""
+        """Should handle mixed Vietnamese/English text (normalized output)."""
         tags = extract_tags("bún chả near me")
-        assert "bún" in tags
-        assert "chả" in tags or "cha" in tags
+        assert "bun" in tags
+        assert "cha" in tags
 
+class TestEmbeddingFallback:
+    def test_fallback_embedding_has_expected_dimension(self, monkeypatch):
+        def broken_provider():
+            raise RuntimeError("model not loaded")
+
+        monkeypatch.setattr("app.nlp.service.get_tokenizer_and_model", broken_provider)
+
+        vector = generate_mean_pooled_embedding("phở bò dưới 50k")
+
+        assert isinstance(vector, list)
+        assert len(vector) == settings.VECTOR_DIM
+        assert all(isinstance(value, float) for value in vector)
+
+    def test_fallback_embedding_is_deterministic(self, monkeypatch):
+        def broken_provider():
+            raise RuntimeError("model not loaded")
+
+        monkeypatch.setattr("app.nlp.service.get_tokenizer_and_model", broken_provider)
+
+        first = generate_mean_pooled_embedding("bún chả rẻ")
+        second = generate_mean_pooled_embedding("bún chả rẻ")
+
+        assert first == second
 
 # ---------------------------------------------------------------------------
 # End of tests
