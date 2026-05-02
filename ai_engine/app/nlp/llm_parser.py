@@ -118,6 +118,12 @@ async def _call_gemini(text: str) -> Optional[Tuple[List[str], Optional[int], st
     if not isinstance(budget, int):
         budget = None
 
+    # TODO: Regex always overrides Gemini's budget when it finds a match.
+    # This is pragmatic for the MVP because explicit numbers like "dưới 50k"
+    # are more reliable than LLM inference. However, it can misinterpret
+    # negative contexts (e.g., "dưới 50k thì không ăn" → regex returns 50000
+    # even though the user means they DON'T want that budget). Revisit when
+    # Gemini's structured output becomes more reliable.
     regex_budget = extract_budget(text)
     if regex_budget is not None:
         budget = regex_budget
