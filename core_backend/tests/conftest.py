@@ -34,9 +34,61 @@ import types
 if "pgvector" not in sys.modules:
     pgvector_mock = types.ModuleType("pgvector")
     pgvector_sa_mock = types.ModuleType("pgvector.sqlalchemy")
-    # Stub Vector class as a generic SQLAlchemy type for testing
-    from sqlalchemy.types import JSON
-    pgvector_sa_mock.Vector = JSON 
+
+    # Build a VECTOR type stub that supports pgvector distance operators
+    from sqlalchemy.types import UserDefinedType, Float
+    class _MockVECTOR(UserDefinedType):
+        cache_ok = True
+
+        def __init__(self, dim=None):
+            super(UserDefinedType, self).__init__()
+            self.dim = dim
+
+        def get_col_spec(self, **kw):
+            if self.dim is None:
+                return "VECTOR"
+            return "VECTOR(%d)" % self.dim
+
+        class comparator_factory(UserDefinedType.Comparator):
+            def l2_distance(self, other):
+                return self.op("<->", return_type=Float)(other)
+
+            def max_inner_product(self, other):
+                return self.op("<#>", return_type=Float)(other)
+
+            def cosine_distance(self, other):
+                return self.op("<=>", return_type=Float)(other)
+
+            def l1_distance(self, other):
+                return self.op("<+>", return_type=Float)(other)
+
+        def bind_processor(self, dialect):
+            import json
+            def process(value):
+                if value is None:
+                    return None
+                return json.dumps(value)
+            return process
+
+        def result_processor(self, dialect, coltype):
+            import json
+            def process(value):
+                if value is None:
+                    return None
+                if isinstance(value, str):
+                    return json.loads(value)
+                return value
+            return process
+
+        def literal_processor(self, dialect):
+            import json
+            def process(value):
+                if value is None:
+                    return "NULL"
+                return "'%s'" % json.dumps(value)
+            return process
+
+    pgvector_sa_mock.Vector = _MockVECTOR
     sys.modules["pgvector"] = pgvector_mock
     sys.modules["pgvector.sqlalchemy"] = pgvector_sa_mock
 

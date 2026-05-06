@@ -50,11 +50,23 @@ class SearchService:
         if not ai_response:
             raise HTTPException(status_code=503, detail="AI engine is currently unavailable.")
 
-        # 1. Lọc dị ứng bằng recommendation pipeline
+        # 1. Lọc dị ứng + semantic retrieval bằng recommendation pipeline
+        # Xác định budget: ưu tiên user request > AI extraction > default
+        if request.budget is not None and request.budget > 0:
+            effective_budget = request.budget
+        elif ai_response.budget:
+            effective_budget = ai_response.budget
+        else:
+            effective_budget = self.DEFAULT_BUDGET_VND
+
         recommend_results = recommend(
             query=request.query,
             user_id=request.user_id,
-            db=db
+            db=db,
+            query_vector=ai_response.vector,
+            budget=effective_budget,
+            user_location=[request.lat, request.lng],
+            radius=self.DEFAULT_RADIUS_KM,
         )
         safe_ids = recommend_results["results"]
         filtered_out_count = recommend_results["filtered_out_count"]
@@ -68,7 +80,7 @@ class SearchService:
         safe_results = []
         for safe_id in safe_ids:
             for item in all_mock_results:
-                if item.id == safe_id:
+                if str(item.id) == str(safe_id):
                     safe_results.append(item)
                     break
 

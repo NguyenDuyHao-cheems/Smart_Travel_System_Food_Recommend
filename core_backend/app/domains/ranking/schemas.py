@@ -2,10 +2,6 @@ from pydantic import BaseModel, Field
 from typing import List, Optional
 
 
-class Candidate(BaseModel):
-    """Ứng viên nhà hàng với vector embedding để tính cosine similarity."""
-    res_id: str = Field(..., description="ID định danh của nhà hàng (UUID hoặc string)")
-    vector: List[float] = Field(..., description="Vector đặc trưng (embedding) của nhà hàng")
 
 
 class CandidateWithFeatures(BaseModel):
@@ -41,6 +37,10 @@ class UserRankRequest(BaseModel):
     tags: List[str] = Field(default_factory=list)
     budget: int = Field(default=100000, ge=0, description="Ngân sách tối đa (VNĐ)")
     radius: float = Field(default=5.0, ge=0.0, description="Bán kính tìm kiếm (km)")
+    query_vector: Optional[List[float]] = Field(
+        default=None,
+        description="Vector embedding 768d từ PhoBERT query. Dùng cho semantic retrieval."
+    )
 
 
 class RankResponse(BaseModel):
