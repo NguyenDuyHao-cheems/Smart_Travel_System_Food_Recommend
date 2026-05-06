@@ -1,8 +1,11 @@
 """
-retrieval_service.py — Stage 1 retrieval: lọc thô từ Postgres.
+retrieval_service.py — Stage 1 retrieval: lọc và sắp xếp semantic từ Postgres.
 
+Dùng pgvector cosine distance (<=>) để ORDER BY similarity khi có query_vector.
 Tách ra từ service.py monolithic để dễ test và maintain.
 """
+
+from typing import List, Optional
 
 from sqlalchemy.orm import Session
 from sqlalchemy import cast, func, Integer, case
@@ -16,10 +19,26 @@ class RetrievalService:
     def __init__(self, db: Session):
         self.db = db
 
-    def get_candidates(self, tags, budget, user_location, radius):
+    def get_candidates(
+        self,
+        tags: List[str],
+        budget: int,
+        user_location: List[float],
+        radius: float,
+        query_vector: Optional[List[float]] = None,
+    ):
         """
-        Lọc thô từ Postgres.
-        Trả về danh sách RestaurantModel rows (không cần monkey-patch).
+        Retrieval từ Postgres với semantic ordering.
+
+        Khi có query_vector:
+          - Lọc bỏ restaurants chưa có embedding_vector.
+          - ORDER BY embedding_vector <=> query_vector (Cosine Distance, thấp = gần nhất).
+
+        Khi không có query_vector:
+          - Fallback ORDER BY rating_avg DESC.
+
+        Returns:
+            Danh sách RestaurantModel rows, tối đa _MAX_RETRIEVAL.
         """
         lat, lng = user_location
         deg_radius = radius / 111.0
@@ -33,6 +52,7 @@ class RetrievalService:
             RestaurantModel.lat.between(lat - deg_radius, lat + deg_radius),
             RestaurantModel.lng.between(lng - deg_radius, lng + deg_radius)
         )
+
         # Lọc budget trực tiếp trong DB.
         # price_range đang lưu dạng "50000-100000" hoặc "50000".
         # budget <= 0 được hiểu là không giới hạn ngân sách.
@@ -59,5 +79,16 @@ class RetrievalService:
                 .filter(TagModel.name.in_(tags))
             )
 
-        # Trả về tối đa 500 ứng viên để đảm bảo hiệu năng
+        # Semantic ordering bằng pgvector cosine distance
+        if query_vector is not None:
+            query = query.filter(
+                RestaurantModel.embedding_vector.isnot(None)
+            ).order_by(
+                RestaurantModel.embedding_vector.cosine_distance(query_vector)
+            )
+        else:
+            query = query.order_by(
+                RestaurantModel.rating_avg.desc().nullslast()
+            )
+
         return query.distinct().limit(_MAX_RETRIEVAL).all()
