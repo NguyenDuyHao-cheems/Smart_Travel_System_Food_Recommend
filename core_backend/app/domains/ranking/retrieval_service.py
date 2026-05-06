@@ -57,26 +57,27 @@ class RetrievalService:
         # price_range đang lưu dạng "50000-100000" hoặc "50000".
         # budget <= 0 được hiểu là không giới hạn ngân sách.
         if budget and budget > 0:
-            max_price_expr = case(
+            raw_max_price_str = case(
                 (
                     RestaurantModel.price_range.contains("-"),
-                    cast(func.split_part(RestaurantModel.price_range, "-", 2), Integer),
+                    func.split_part(RestaurantModel.price_range, "-", 2),
                 ),
-                else_=cast(RestaurantModel.price_range, Integer),
+                else_=RestaurantModel.price_range,
             )
+            
+            clean_max_price_str = func.regexp_replace(raw_max_price_str, r'\D', '', 'g')
+            clean_max_price_int = cast(func.nullif(clean_max_price_str, ''), Integer)
 
             query = query.filter(
                 RestaurantModel.price_range.isnot(None),
-                max_price_expr <= budget,
+                clean_max_price_int.isnot(None),
+                clean_max_price_int <= budget,
             )
 
-        # Join với bảng tags nếu có yêu cầu lọc theo tag
+        # Lọc theo tags sử dụng EXISTS (tránh duplicate rows và loại bỏ distinct)
         if tags:
-            query = (
-                query
-                .join(RestaurantTagModel, RestaurantModel.id == RestaurantTagModel.res_id)
-                .join(TagModel, TagModel.id == RestaurantTagModel.tag_id)
-                .filter(TagModel.name.in_(tags))
+            query = query.filter(
+                RestaurantModel.tags.any(TagModel.name.in_(tags))
             )
 
         # Semantic ordering bằng pgvector cosine distance
@@ -90,5 +91,4 @@ class RetrievalService:
             query = query.order_by(
                 RestaurantModel.rating_avg.desc().nullslast()
             )
-
-        return query.distinct().limit(_MAX_RETRIEVAL).all()
+        return query.limit(_MAX_RETRIEVAL).all()
