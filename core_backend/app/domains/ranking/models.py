@@ -1,7 +1,8 @@
 from sqlalchemy import Column, Integer, String, Float, Boolean, ForeignKey
 from sqlalchemy.orm import relationship
 from app.core.database import Base
-from sqlalchemy.dialects.postgresql import ARRAY
+from pgvector.sqlalchemy import Vector
+from app.core.config import settings
 
 
 class RestaurantModel(Base):
@@ -22,8 +23,8 @@ class RestaurantModel(Base):
     is_active = Column(Boolean, default=True)       # nhà hàng còn hoạt động
     is_open_now = Column(Boolean, default=False)    # đang mở cửa tại thời điểm này
 
-    # Cột vector cho Cosine Similarity fallback
-    vector = Column(ARRAY(Float), nullable=True)
+    # Cột vector embedding (pgvector) cho semantic search
+    embedding_vector = Column(Vector(settings.VECTOR_DIM), nullable=True)
 
     image_url = Column(String, nullable=True)
     opening_hours = Column(String, nullable=True)
