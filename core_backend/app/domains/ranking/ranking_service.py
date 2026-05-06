@@ -2,21 +2,19 @@
 ranking_service.py — Orchestrates the 2-stage ranking pipeline.
 
 Pipeline:
-  1. RetrievalService  → lọc thô từ DB (tags, budget, location, is_active)
+  1. RetrievalService  → semantic retrieval từ DB (pgvector cosine + tags, budget, location)
   2. FeatureService    → build integer features
-  3. AI Engine         → LightFM fills similarity_score, LambdaMART reranks
+  3. AI Engine         → LambdaMART reranks
   4. Fallback          → sort theo distance_m nếu AI Engine không phản hồi
 """
 
 import logging
-import numpy as np
 import httpx
 from typing import List
 from sqlalchemy.orm import Session
 
 from .retrieval_service import RetrievalService
 from .feature_service import FeatureService
-from .schemas import Candidate
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -24,46 +22,8 @@ logger = logging.getLogger(__name__)
 
 class RankingService:
     """
-    Orchestrates: Retrieval → Feature Building → AI Engine (LightFM+LambdaMART) → Fallback.
+    Orchestrates: Semantic Retrieval → Feature Building → AI Engine (LambdaMART) → Fallback.
     """
-
-    # ------------------------------------------------------------------
-    # Cosine Similarity (dùng nội bộ, không gọi AI Engine)
-    # ------------------------------------------------------------------
-
-    def rank(self, pref_vector: List[float], candidates: List[Candidate], k: int = 5) -> List[str]:
-        """
-        Cosine similarity ranking (dùng cho recommendation_service đơn giản).
-        Trả về List[str] (res_id).
-        """
-        if not candidates:
-            return []
-        pref = np.array(pref_vector, dtype=np.float32)
-        norm_pref = np.linalg.norm(pref)
-        if norm_pref == 0:
-            return [c.res_id for c in candidates[:k]]
-
-        matrix = np.array([c.vector for c in candidates], dtype=np.float32)
-        matrix_norms = np.linalg.norm(matrix, axis=1)
-        valid_mask = matrix_norms > 1e-8
-
-        if not np.any(valid_mask):
-            return [c.res_id for c in candidates[:k]]
-
-        matrix = matrix[valid_mask]
-        matrix_norms = matrix_norms[valid_mask]
-        valid_candidates = [c for c, v in zip(candidates, valid_mask) if v]
-
-        similarities = (matrix @ pref) / (matrix_norms * norm_pref)
-        k = min(k, len(similarities))
-        top_idx = np.argpartition(similarities, -k)[-k:]
-        top_idx = top_idx[np.argsort(similarities[top_idx])[::-1]]
-
-        return [valid_candidates[i].res_id for i in top_idx]
-
-    # ------------------------------------------------------------------
-    # Full Pipeline: Retrieval → Features → AI Engine → Fallback
-    # ------------------------------------------------------------------
 
     async def get_recommendations(self, db: Session, request) -> List[str]:
         """
@@ -71,15 +31,19 @@ class RankingService:
 
         Args:
             db: SQLAlchemy session
-            request: UserRankRequest schema
+            request: UserRankRequest schema (chứa query_vector cho semantic retrieval)
 
         Returns:
             List[str] — danh sách res_id theo thứ tự ranking giảm dần.
         """
-        # Bước 1: Lọc thô từ DB
+        # Bước 1: Semantic retrieval từ DB (pgvector cosine distance)
         retrieval = RetrievalService(db)
         rows = retrieval.get_candidates(
-            request.tags, request.budget, request.user_location, request.radius
+            tags=request.tags,
+            budget=request.budget,
+            user_location=request.user_location,
+            radius=request.radius,
+            query_vector=getattr(request, "query_vector", None),
         )
         if not rows:
             return []
@@ -93,7 +57,7 @@ class RankingService:
             budget=request.budget,
         )
 
-        # Bước 3: Gọi AI Engine (LightFM → LambdaMART)
+        # Bước 3: Gọi AI Engine (LambdaMART rerank)
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:
                 payload = {
@@ -119,3 +83,4 @@ class RankingService:
         logger.warning("AI Engine unavailable — falling back to distance sort.")
         featured.sort(key=lambda x: x["distance_m"])
         return [str(c["res_id"]) for c in featured[: request.k]]
+
