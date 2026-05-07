@@ -64,6 +64,7 @@ class SearchService:
             user_id=request.user_id,
             db=db,
             query_vector=ai_response.vector,
+            tags=ai_response.tags, # Passed down to retrieval for hard filtering
             budget=effective_budget,
             user_location=[request.lat, request.lng],
             radius=self.DEFAULT_RADIUS_KM,
@@ -72,14 +73,28 @@ class SearchService:
         filtered_out_count = recommend_results["filtered_out_count"]
         warning = recommend_results.get("warning")
 
-        # 2. Build danh sách kết quả (từ DB models)
+        # Build danh sách kết quả trực tiếp từ DB models (giới hạn 15 kết quả cho UI)
+        safe_candidates = recommend_results["results"][:15]
         safe_results = []
         for model in safe_candidates:
+            if hasattr(model, 'distance') and model.distance is not None:
+                # cosine_distance is usually 0.0 for exact match, up to 2.0.
+                # We map distance to match percentage
+                match_pct = max(0, min(100, int((1.0 - model.distance) * 100)))
+                if match_pct < 15:
+                    # Ngưỡng tối thiểu: Nếu vector distance quá xa (<15% match), bỏ qua kết quả này
+                    # Nếu tất cả kết quả đều bị bỏ qua, hệ thống sẽ tự động nhảy vào geographical fallback
+                    continue
+                match_str = f"{match_pct}%"
+            else:
+                match_str = "95%"
+
             result = self._map_to_recommend_result(
                 model=model,
                 user_lat=request.lat,
                 user_lng=request.lng,
-                intent=ai_response.intent
+                intent=ai_response.intent,
+                match_str=match_str
             )
             safe_results.append(result)
 
@@ -129,10 +144,34 @@ class SearchService:
                 warning=warning
             )
 
-        nearest_results = sorted(
-            safe_results,
-            key=self._extract_distance_km,
-        )[:5]
+        if not strict_results and not relaxed_results:
+            # Fallback thực sự: Lấy nhà hàng gần nhất (không dùng vector query)
+            fallback_recommend = recommend(
+                query=request.query,
+                user_id=request.user_id,
+                db=db,
+                query_vector=None, # Disable semantic
+                budget=effective_budget,
+                user_location=[request.lat, request.lng],
+                radius=self.FALLBACK_RADIUS_KM,
+            )
+            fallback_candidates = fallback_recommend["results"][:5]
+            nearest_results = []
+            for model in fallback_candidates:
+                nearest_results.append(
+                    self._map_to_recommend_result(
+                        model=model,
+                        user_lat=request.lat,
+                        user_lng=request.lng,
+                        intent=ai_response.intent,
+                        match_str="Gợi ý gần đây"
+                    )
+                )
+        else:
+            nearest_results = sorted(
+                safe_results,
+                key=self._extract_distance_km,
+            )[:5]
 
         reason = "No results after relaxed filters, backend returned nearest restaurants as a safe fallback."
         if warning: reason = warning + ". " + reason
@@ -148,7 +187,7 @@ class SearchService:
         )
 
     @staticmethod
-    def _map_to_recommend_result(model, user_lat: float, user_lng: float, intent: str = None) -> RecommendResult:
+    def _map_to_recommend_result(model, user_lat: float, user_lng: float, intent: str = None, match_str: str = "95%") -> RecommendResult:
         import math
         lat1, lng1 = user_lat, user_lng
         lat2, lng2 = float(model.lat or 0), float(model.lng or 0)
@@ -175,7 +214,7 @@ class SearchService:
         return RecommendResult(
             id=str(model.id),
             name=model.name or "Không rõ tên",
-            match="95%",
+            match=match_str,
             dist=f"{dist_km:.1f} km",
             price=price_display,
             rating=str(model.rating_avg) if model.rating_avg else "Mới",

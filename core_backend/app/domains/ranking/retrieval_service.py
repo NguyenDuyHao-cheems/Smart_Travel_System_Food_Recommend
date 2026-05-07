@@ -82,13 +82,20 @@ class RetrievalService:
 
         # Semantic ordering bằng pgvector cosine distance
         if query_vector is not None:
-            query = query.filter(
+            distance = RestaurantModel.embedding_vector.cosine_distance(query_vector).label("distance")
+            query = query.add_columns(distance).filter(
                 RestaurantModel.embedding_vector.isnot(None)
-            ).order_by(
-                RestaurantModel.embedding_vector.cosine_distance(query_vector)
-            )
+            ).order_by(distance)
+            
+            results = query.limit(_MAX_RETRIEVAL).all()
+            candidates = []
+            for row in results:
+                model = row[0]
+                model.distance = row[1]
+                candidates.append(model)
+            return candidates
         else:
             query = query.order_by(
                 RestaurantModel.rating_avg.desc().nullslast()
             )
-        return query.limit(_MAX_RETRIEVAL).all()
+            return query.limit(_MAX_RETRIEVAL).all()
