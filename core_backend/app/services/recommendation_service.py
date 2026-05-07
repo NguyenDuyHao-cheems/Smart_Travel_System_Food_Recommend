@@ -56,17 +56,16 @@ def recommend(
     if not safe_candidates:
         fallback = handle_fallback(raw_candidates)
         return {
-            "results": [str(r.id) for r in fallback["results"][:5]],
+            "results": fallback["results"][:5],
             "filtered_out_count": len(removed),
             "fallback_applied": True,
             "warning": fallback.get("warning"),
         }
 
-    # Kết quả đã được sắp xếp semantic bởi DB — chỉ cần trả về IDs
-    result_ids = [str(r.id) for r in safe_candidates]
+    # Return full objects instead of IDs
 
     return {
-        "results": result_ids,
+        "results": safe_candidates,
         "filtered_out_count": len(removed),
         "fallback_applied": False,
     }
