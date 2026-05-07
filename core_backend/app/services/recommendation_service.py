@@ -26,10 +26,10 @@ def recommend(
     user_allergies = get_user_allergies(db, user_id) if user_id else []
     user_vector = get_user_preferences_vector(db, user_id) if user_id else None
 
-    # Kết hợp vector: ưu tiên query hiện tại (70%) nhưng giữ lại sở thích user (30%)
+    # Kết hợp vector: ưu tiên query hiện tại (85%) để tránh bị lệch quá nhiều do sở thích user (15%)
     final_vector = query_vector
     if query_vector and user_vector and len(query_vector) == len(user_vector):
-        final_vector = [(0.7 * q) + (0.3 * u) for q, u in zip(query_vector, user_vector)]
+        final_vector = [(0.85 * q) + (0.15 * u) for q, u in zip(query_vector, user_vector)]
     elif user_vector and not query_vector:
         final_vector = user_vector
 
@@ -56,17 +56,16 @@ def recommend(
     if not safe_candidates:
         fallback = handle_fallback(raw_candidates)
         return {
-            "results": [str(r.id) for r in fallback["results"][:5]],
+            "results": fallback["results"][:5],
             "filtered_out_count": len(removed),
             "fallback_applied": True,
             "warning": fallback.get("warning"),
         }
 
-    # Kết quả đã được sắp xếp semantic bởi DB — chỉ cần trả về IDs
-    result_ids = [str(r.id) for r in safe_candidates]
+    # Return full objects instead of IDs
 
     return {
-        "results": result_ids,
+        "results": safe_candidates,
         "filtered_out_count": len(removed),
         "fallback_applied": False,
     }

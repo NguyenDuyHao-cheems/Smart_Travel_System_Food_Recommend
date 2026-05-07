@@ -64,25 +64,39 @@ class SearchService:
             user_id=request.user_id,
             db=db,
             query_vector=ai_response.vector,
+            tags=ai_response.tags, # Passed down to retrieval for hard filtering
             budget=effective_budget,
             user_location=[request.lat, request.lng],
             radius=self.DEFAULT_RADIUS_KM,
         )
-        safe_ids = recommend_results["results"]
+        safe_candidates = recommend_results["results"]
         filtered_out_count = recommend_results["filtered_out_count"]
         warning = recommend_results.get("warning")
 
-        # 2. Build danh sách kết quả (hiện tại dùng mock data)
-        # TODO: Cần fetch data từ DB để trả về RecommendResult đầy đủ thay vì chỉ mock
-        all_mock_results = self._build_mock_results()
-        
-        # Sort mock results based on the order of safe_ids (which are ranked by AI vector)
+        # Build danh sách kết quả trực tiếp từ DB models (giới hạn 15 kết quả cho UI)
+        safe_candidates = recommend_results["results"][:15]
         safe_results = []
-        for safe_id in safe_ids:
-            for item in all_mock_results:
-                if str(item.id) == str(safe_id):
-                    safe_results.append(item)
-                    break
+        for model in safe_candidates:
+            if hasattr(model, 'distance') and model.distance is not None:
+                # cosine_distance is usually 0.0 for exact match, up to 2.0.
+                # We map distance to match percentage
+                match_pct = max(0, min(100, int((1.0 - model.distance) * 100)))
+                if match_pct < 15:
+                    # Ngưỡng tối thiểu: Nếu vector distance quá xa (<15% match), bỏ qua kết quả này
+                    # Nếu tất cả kết quả đều bị bỏ qua, hệ thống sẽ tự động nhảy vào geographical fallback
+                    continue
+                match_str = f"{match_pct}%"
+            else:
+                match_str = "95%"
+
+            result = self._map_to_recommend_result(
+                model=model,
+                user_lat=request.lat,
+                user_lng=request.lng,
+                intent=ai_response.intent,
+                match_str=match_str
+            )
+            safe_results.append(result)
 
         if request.budget is not None:
             # budget=0 is treated as "unlimited" (None)
@@ -130,10 +144,34 @@ class SearchService:
                 warning=warning
             )
 
-        nearest_results = sorted(
-            safe_results,
-            key=self._extract_distance_km,
-        )[:5]
+        if not strict_results and not relaxed_results:
+            # Fallback thực sự: Lấy nhà hàng gần nhất (không dùng vector query)
+            fallback_recommend = recommend(
+                query=request.query,
+                user_id=request.user_id,
+                db=db,
+                query_vector=None, # Disable semantic
+                budget=effective_budget,
+                user_location=[request.lat, request.lng],
+                radius=self.FALLBACK_RADIUS_KM,
+            )
+            fallback_candidates = fallback_recommend["results"][:5]
+            nearest_results = []
+            for model in fallback_candidates:
+                nearest_results.append(
+                    self._map_to_recommend_result(
+                        model=model,
+                        user_lat=request.lat,
+                        user_lng=request.lng,
+                        intent=ai_response.intent,
+                        match_str="Gợi ý gần đây"
+                    )
+                )
+        else:
+            nearest_results = sorted(
+                safe_results,
+                key=self._extract_distance_km,
+            )[:5]
 
         reason = "No results after relaxed filters, backend returned nearest restaurants as a safe fallback."
         if warning: reason = warning + ". " + reason
@@ -148,60 +186,41 @@ class SearchService:
             warning=warning
         )
 
-    # TODO: mock code 
-    def _build_mock_results(self) -> list[RecommendResult]:
-        return [
-            RecommendResult(
-                id=1,
-                name="Mì Cay Sasin - Làng Đại Học",
-                match="98%",
-                dist="1.1 km",
-                price="49k - 89k",
-                rating="4.9",
-                reason="Khớp hoàn hảo: Nằm ngay trục đường sầm uất của Làng Đại Học. Nước dùng chuẩn vị, không gian có máy lạnh.",
-                img="/images/food1.jpg",
-            ),
-            RecommendResult(
-                id=2,
-                name="Mì Cay Seoul - Dĩ An",
-                match="94%",
-                dist="2.8 km",
-                price="45k - 75k",
-                rating="4.7",
-                reason="Nằm hướng về trung tâm Dĩ An. Nước súp đậm đà cay nồng, sợi mì dai và trân châu đường đen đi kèm cực cuốn.",
-                img="/images/food2.jpg",
-            ),
-            RecommendResult(
-                id=3,
-                name="Mì Cay Naga - Làng Đại Học",
-                match="89%",
-                dist="1.2 km",
-                price="40k - 65k",
-                rating="4.5",
-                reason="Giải pháp tối ưu ngân sách cho sinh viên cuối tháng. Giá cả cực kỳ hạt dẻ nhưng topping hải sản vẫn rất đầy đặn.",
-                img="/images/food3.jpg",
-            ),
-            RecommendResult(
-                id=4,
-                name="Yagami - Ẩm Thực Lẩu Thái-Nhật-Hàn",
-                match="85%",
-                dist="4.5 km",
-                price="45k - 79k",
-                rating="4.8",
-                reason="Không gian check-in cực đẹp mang hơi hướng sang trọng, khuyên thử món mì cay bạch tuộc tươi giòn.",
-                img="/images/food4.jpg",
-            ),
-            RecommendResult(
-                id=5,
-                name="Mì Cay Sasin Hoàng Diệu 2",
-                match="82%",
-                dist="5.2 km",
-                price="40k - 65k",
-                rating="4.6",
-                reason="Tọa lạc trên con phố ẩm thực nhộn nhịp. Thích hợp cho những buổi tối cuối tuần muốn đi xa trường một chút.",
-                img="/images/food5.jpg",
-            ),
-        ]
+    @staticmethod
+    def _map_to_recommend_result(model, user_lat: float, user_lng: float, intent: str = None, match_str: str = "95%") -> RecommendResult:
+        import math
+        lat1, lng1 = user_lat, user_lng
+        lat2, lng2 = float(model.lat or 0), float(model.lng or 0)
+        R = 6371.0
+        p1, p2 = math.radians(lat1), math.radians(lat2)
+        dp = math.radians(lat2 - lat1)
+        dl = math.radians(lng2 - lng1)
+        a = math.sin(dp / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
+        dist_km = R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+
+        price_str = model.price_range or ""
+        if price_str:
+            try:
+                parts = price_str.split("-")
+                formatted_parts = [f"{int(p.strip())//1000}k" for p in parts if p.strip().isdigit()]
+                price_display = " - ".join(formatted_parts)
+                if not price_display:
+                    price_display = price_str
+            except Exception:
+                price_display = price_str
+        else:
+            price_display = "Liên hệ"
+
+        return RecommendResult(
+            id=str(model.id),
+            name=model.name or "Không rõ tên",
+            match=match_str,
+            dist=f"{dist_km:.1f} km",
+            price=price_display,
+            rating=str(model.rating_avg) if model.rating_avg else "Mới",
+            reason=intent or "Phù hợp với tìm kiếm của bạn",
+            img=model.image_url or "/images/default_food.jpg"
+        )
 
     def _filter_results(
         self,
