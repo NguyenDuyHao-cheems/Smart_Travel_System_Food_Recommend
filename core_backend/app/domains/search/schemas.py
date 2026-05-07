@@ -21,7 +21,7 @@ class RecommendResult(BaseModel):
     """
     Schema này định dạng đầu ra bắt buộc của 1 quán ăn để thẻ UI hiển thị trên Frontend không bị vỡ.
     """
-    id: int
+    id: str
     name: str
     match: str
     dist: str
