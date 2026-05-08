@@ -35,7 +35,7 @@ POST /api/v1/search/process  { "query": "mì cay gần đây dưới 50k" }
         ▼  AIServiceClient.extract_intent_and_vectorize(text)
                 │  httpx.AsyncClient().post(...)
                 ▼
-        AI Engine → trả { vector: [...], intent: ..., budget: ..., tags: [...] }
+        AI Engine → trả { vector: [...], intent: ..., budget: ... }
         │
         ▼  (FUTURE) repository.search_restaurants(vector) → pgvector
         │
@@ -119,7 +119,7 @@ User gõ: "mì cay không gian đẹp dưới 50k gần tôi"
          ▼ [AI Engine :8001]
          │
          ├─ underthesea.tokenize()     → tách từ tiếng Việt
-         ├─ extract_intent()           → { intent: "search_food", budget: 50000, tags: [...] }
+         ├─ extract_intent()           → { intent: "search_food", budget: 50000 }
          └─ PhoBERT(text) → mean pooling → vector [768 dims]
          │
          ▼ [Core Backend :8000]

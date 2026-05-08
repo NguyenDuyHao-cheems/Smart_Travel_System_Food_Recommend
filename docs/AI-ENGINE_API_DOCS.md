@@ -13,7 +13,7 @@
 
 **Extract Intent**
 
-Unified endpoint to extract tags, budget, intent and generate embeddings.
+Unified endpoint to extract budget, intent and generate embeddings.
 
 **Tags:** `NLP`
 **Operation ID:** `extract_intent_api_v1_nlp_extract_intent_post`
@@ -76,7 +76,6 @@ _See [ExtractIntentRequest](#schemas)_
 | Field      | Type              | Required | Description                                              |
 | ---------- | ----------------- | -------- | -------------------------------------------------------- |
 | `raw_text` | `string`          | ✓        |                                                          |
-| `tags`     | array of `string` | ✓        |                                                          |
 | `budget`   | `any`             |          |                                                          |
 | `vector`   | array of `number` | ✓        | The generated embedded vector representation of the text |
 | `intent`   | `string`          |          | The extracted intent of the user search                  |
