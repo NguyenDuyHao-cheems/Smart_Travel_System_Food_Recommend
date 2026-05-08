@@ -102,13 +102,17 @@ export default function OnboardingPage() {
 
   // Sinh ID độc nhất cho mỗi User để không bị đụng hàng
   useEffect(() => {
-    let stored = localStorage.getItem('food_recsys_userid');
-    if (!stored) {
-      stored = `user_${crypto.randomUUID()}`;
-      localStorage.setItem('food_recsys_userid', stored);
+    const token = localStorage.getItem('access_token');
+    const storedUserId = localStorage.getItem('user_id');
+    
+    if (!token || !storedUserId) {
+      console.warn("Chưa đăng nhập, redirect về /auth");
+      router.push('/auth?redirect=/onboarding');
+      return;
     }
-    setUserId(stored);
-  }, []);
+    
+    setUserId(storedUserId);
+  }, [router]);
 
   // Helpers
   const toggleArrayItem = React.useCallback((field: keyof OnboardingData, value: string) => {
