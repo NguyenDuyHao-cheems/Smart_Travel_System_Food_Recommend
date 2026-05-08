@@ -88,9 +88,12 @@ def build_onboarding_text(
     """
     Build the onboarding text for embedding.
 
-    Field order (fixed):
-        favorite_dishes → spicy_level → dietary_restrictions →
-        allergies → budget → location
+    Currently, only favorite_dishes are used to form the preference vector
+    as other fields (spicy, budget, etc.) are planned for future integration
+    or filtered out to keep the vector focused on food preferences.
+
+    Field order:
+        favorite_dishes
 
     Returns
     -------
@@ -103,20 +106,6 @@ def build_onboarding_text(
         cleaned = [s.strip() for s in favorite_dishes if s and s.strip()]
         if cleaned:
             parts.append(f"Tôi thích các món {', '.join(cleaned)}")
-    if spicy_level and spicy_level.strip():
-        parts.append(f"với độ cay {spicy_level.strip()}")
-    if dietary_restrictions:
-        cleaned = [s.strip() for s in dietary_restrictions if s and s.strip()]
-        if cleaned:
-            parts.append(f"tôi ăn theo chế độ {', '.join(cleaned)}")
-    if allergies:
-        cleaned = [s.strip() for s in allergies if s and s.strip()]
-        if cleaned:
-            parts.append(f"tôi bị dị ứng {', '.join(cleaned)}")
-    if budget and budget.strip():
-        parts.append(f"mức giá {budget.strip()}")
-    if location and location.strip():
-        parts.append(f"ở khu vực {location.strip()}")
 
     if not parts:
         return ""
@@ -140,6 +129,10 @@ def build_profile_text(
 ) -> str:
     """
     Build the comprehensive user profile text for embedding.
+
+    NOTE: Currently relies primarily on onboarding_preferences as interaction
+    data (bookmarks, likes) is not yet being actively tracked/processed for
+    vector updates.
 
     Field order (fixed):
         onboarding_preferences → bookmarks → liked_restaurants →
