@@ -18,6 +18,7 @@ import {
   // [HIDDEN] Brain,
   // [HIDDEN] ShieldCheck,
   Sparkles,
+  User,
   // [HIDDEN] ChevronRight,
 } from "lucide-react";
 import { Playfair_Display, Roboto } from "next/font/google";
@@ -183,8 +184,25 @@ const roboto = Roboto({
 export default function Home() {
   const [query, setQuery] = useState("");
   const [budget, setBudget] = useState<BudgetOption>('auto');
-  // [HIDDEN] const [activeFilter, setActiveFilter] = useState("Cay nóng");
+  const [username, setUsername] = useState<string | null>(null);
   const router = useRouter();
+
+  React.useEffect(() => {
+    const token = localStorage.getItem('access_token');
+    const storedUser = localStorage.getItem('username');
+    if (token) {
+      setUsername(storedUser || 'User');
+    }
+  }, []);
+
+  const handleLogout = () => {
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('user_id');
+    localStorage.removeItem('username');
+    localStorage.removeItem('food_recsys_userid'); // Dọn dẹp cả ID ảo nếu có
+    setUsername(null);
+    router.push('/auth');
+  };
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -239,14 +257,32 @@ export default function Home() {
 
             <ThemeToggle />
 
-            {/* [HIDDEN] User Avatar — Uncomment khi có auth */}
-            {/* <div className="w-9 h-9 rounded-full overflow-hidden ring-2 ring-orange-100 cursor-pointer">
-              <img
-                src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop&crop=face"
-                alt="User avatar"
-                className="w-full h-full object-cover"
-              />
-            </div> */}
+            {username ? (
+              <div className="flex items-center gap-3 ml-2">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex items-center justify-center overflow-hidden">
+                    <User className="w-5 h-5 text-gray-400" />
+                  </div>
+                  <span className="text-sm font-semibold text-gray-700 dark:text-gray-200 hidden sm:block">
+                    {username}
+                  </span>
+                </div>
+                <div className="h-4 w-px bg-gray-200 dark:bg-gray-700 mx-1"></div>
+                <button 
+                  onClick={handleLogout}
+                  className="text-[13px] font-semibold text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400 transition-colors cursor-pointer"
+                >
+                  Đăng xuất
+                </button>
+              </div>
+            ) : (
+              <button 
+                onClick={() => router.push('/auth')}
+                className="ml-2 px-4 py-2 rounded-xl bg-orange-50 dark:bg-orange-500/10 text-orange-600 dark:text-orange-500 text-sm font-bold hover:bg-orange-100 dark:hover:bg-orange-500/20 transition-colors cursor-pointer"
+              >
+                Đăng nhập
+              </button>
+            )}
           </div>
         </header>
 
