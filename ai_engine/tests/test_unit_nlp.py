@@ -127,7 +127,7 @@ class TestEmbeddingFallback:
         def broken_provider():
             raise RuntimeError("model not loaded")
 
-        monkeypatch.setattr("app.nlp.service.get_tokenizer_and_model", broken_provider)
+        monkeypatch.setattr("app.nlp.service.get_embedding_model", broken_provider)
 
         vector = generate_mean_pooled_embedding("phở bò dưới 50k")
 
@@ -139,12 +139,31 @@ class TestEmbeddingFallback:
         def broken_provider():
             raise RuntimeError("model not loaded")
 
-        monkeypatch.setattr("app.nlp.service.get_tokenizer_and_model", broken_provider)
+        monkeypatch.setattr("app.nlp.service.get_embedding_model", broken_provider)
 
         first = generate_mean_pooled_embedding("bún chả rẻ")
         second = generate_mean_pooled_embedding("bún chả rẻ")
 
         assert first == second
+
+    def test_generate_mean_pooled_embedding_with_segmentation(self, monkeypatch):
+        class DummyModel:
+            def encode(self, text):
+                self.last_encoded_text = text
+                class MockTensor:
+                    def tolist(self):
+                        return [0.1] * settings.VECTOR_DIM
+                return MockTensor()
+                
+        dummy = DummyModel()
+        monkeypatch.setattr("app.nlp.service.get_embedding_model", lambda: dummy)
+        
+        # Call generate_mean_pooled_embedding
+        vector = generate_mean_pooled_embedding("bún chả hà nội")
+        
+        # Check if the word segmentation was applied
+        assert dummy.last_encoded_text == "bún chả hà_nội"
+        assert len(vector) == settings.VECTOR_DIM
 
 # ---------------------------------------------------------------------------
 # End of tests
