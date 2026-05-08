@@ -10,7 +10,7 @@ from typing import List, Optional
 from sqlalchemy.orm import Session
 from sqlalchemy import cast, func, Integer, case
 
-from .models import RestaurantModel, RestaurantTagModel, TagModel
+from .models import RestaurantModel
 
 _MAX_RETRIEVAL = 500
 
@@ -21,7 +21,6 @@ class RetrievalService:
 
     def get_candidates(
         self,
-        tags: List[str],
         budget: int,
         user_location: List[float],
         radius: float,
@@ -72,12 +71,6 @@ class RetrievalService:
                 RestaurantModel.price_range.isnot(None),
                 clean_max_price_int.isnot(None),
                 clean_max_price_int <= budget,
-            )
-
-        # Lọc theo tags sử dụng EXISTS (tránh duplicate rows và loại bỏ distinct)
-        if tags:
-            query = query.filter(
-                RestaurantModel.tags.any(TagModel.name.in_(tags))
             )
 
         # Semantic ordering bằng pgvector cosine distance

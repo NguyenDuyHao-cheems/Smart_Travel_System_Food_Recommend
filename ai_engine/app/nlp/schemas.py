@@ -9,7 +9,6 @@ class ExtractIntentRequest(BaseModel):
 
 class ExtractIntentResponse(BaseModel):
     raw_text: str
-    tags: List[str]
     budget: Optional[int] = None
     vector: List[float] = Field(..., description="The generated embedded vector representation of the text")
     intent: Optional[str] = None

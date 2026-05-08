@@ -74,6 +74,5 @@ class AIResponseData(BaseModel):
     Schema representing the structured response returned by the ai_engine.
     """
     vector: List[float] = Field(..., description="The generated embedded vector representation of the text")
-    tags: List[str] = Field(default_factory=list, description="Extracted keywords for hard filtering")
     budget: Optional[int] = Field(None, description="The budget extracted from the text, if any")
     intent: Optional[str] = Field(None, description="The extracted intent of the user search")

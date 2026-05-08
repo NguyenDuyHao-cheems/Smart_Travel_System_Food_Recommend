@@ -64,7 +64,6 @@ class SearchService:
             user_id=request.user_id,
             db=db,
             query_vector=ai_response.vector,
-            tags=ai_response.tags, # Passed down to retrieval for hard filtering
             budget=effective_budget,
             user_location=[request.lat, request.lng],
             radius=self.DEFAULT_RADIUS_KM,

@@ -2,7 +2,7 @@
 ranking_service.py — Orchestrates the 2-stage ranking pipeline.
 
 Pipeline:
-  1. RetrievalService  → semantic retrieval từ DB (pgvector cosine + tags, budget, location)
+  1. RetrievalService  → semantic retrieval từ DB (pgvector cosine + budget, location)
   2. FeatureService    → build integer features
   3. AI Engine         → LambdaMART reranks
   4. Fallback          → sort theo distance_m nếu AI Engine không phản hồi
@@ -39,7 +39,6 @@ class RankingService:
         # Bước 1: Semantic retrieval từ DB (pgvector cosine distance)
         retrieval = RetrievalService(db)
         rows = retrieval.get_candidates(
-            tags=request.tags,
             budget=request.budget,
             user_location=request.user_location,
             radius=request.radius,

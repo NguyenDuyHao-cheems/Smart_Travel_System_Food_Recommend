@@ -10,7 +10,7 @@ import logging
 import httpx
 from typing import Tuple, List, Optional
 from app.core.config import settings
-from app.nlp.query_parser import extract_tags, extract_budget
+from app.nlp.query_parser import extract_budget
 
 logger = logging.getLogger(__name__)
 
@@ -23,27 +23,27 @@ _GEMINI_URL_TEMPLATE = (
 )
 
 # Fix Issue #7: System instructions ở đây, KHÔNG nhúng vào user message
-_SYSTEM_INSTRUCTION = """Bạn là một chuyên gia ẩm thực và tâm lý. Nhiệm vụ của bạn là đọc câu nói của người dùng và trích xuất ra các từ khóa món ăn, không gian phù hợp để giúp hệ thống tìm kiếm quán ăn.
+_SYSTEM_INSTRUCTION = """Bạn là một chuyên gia ẩm thực và tâm lý. Nhiệm vụ của bạn là đọc câu nói của người dùng để giúp hệ thống tìm kiếm quán ăn.
 
 Dưới đây là một số ví dụ (Examples):
 User: "Mình vừa chia tay người yêu, buồn quá không biết ăn gì"
-JSON: {"tags": ["đồ ngọt", "kem", "yên tĩnh", "chill", "chữa lành"], "budget": null, "intent": "search_food"}
+JSON: {"budget": null, "intent": "search_food"}
 
 User: "Sếp mới thưởng nóng, kiếm chỗ nào nhậu tới bến luôn đem theo 500k"
-JSON: {"tags": ["quán nhậu", "bia", "đông vui", "náo nhiệt", "lẩu nướng"], "budget": 500000, "intent": "search_food"}
+JSON: {"budget": 500000, "intent": "search_food"}
 
-Hãy suy luận tâm trạng và trả về DUY NHẤT một chuỗi JSON chứa "tags" (mảng chuỗi), "budget" (số nguyên hoặc null) và "intent" (chuỗi). Không giải thích gì thêm!"""
+Hãy suy luận tâm trạng và trả về DUY NHẤT một chuỗi JSON chứa "budget" (số nguyên hoặc null) và "intent" (chuỗi). Không giải thích gì thêm!"""
 
 
-async def parse_query_with_gemini(text: str) -> Tuple[List[str], Optional[int], str]:
+async def parse_query_with_gemini(text: str) -> Tuple[Optional[int], str]:
     """
-    Gửi câu query của user tới Gemini API để trích xuất tags và budget.
+    Gửi câu query của user tới Gemini API để trích xuất budget.
 
     Nếu Gemini API thất bại (thiếu key, timeout, rate-limit, ...),
     tự động fallback sang phương pháp regex cơ bản.
 
     Returns:
-        (tags, budget, intent)
+        (budget, intent)
     """
     # --- Thử gọi Gemini trước ---
     if settings.GEMINI_API_KEY:
@@ -60,7 +60,7 @@ async def parse_query_with_gemini(text: str) -> Tuple[List[str], Optional[int], 
     return _regex_fallback(text)
 
 
-async def _call_gemini(text: str) -> Optional[Tuple[List[str], Optional[int], str]]:
+async def _call_gemini(text: str) -> Optional[Tuple[Optional[int], str]]:
     """
     Gọi Gemini API (async httpx) và parse JSON response.
     Trả về None nếu thất bại.
@@ -110,10 +110,6 @@ async def _call_gemini(text: str) -> Optional[Tuple[List[str], Optional[int], st
 
     parsed = json.loads(response_text)
 
-    tags = parsed.get("tags", [])
-    if not isinstance(tags, list):
-        tags = [str(tags)]
-
     budget = parsed.get("budget")
     if not isinstance(budget, int):
         budget = None
@@ -130,11 +126,10 @@ async def _call_gemini(text: str) -> Optional[Tuple[List[str], Optional[int], st
 
     intent = parsed.get("intent", "search_food")
 
-    return tags, budget, intent
+    return budget, intent
 
 
-def _regex_fallback(text: str) -> Tuple[List[str], Optional[int], str]:
-    """Fallback dùng regex để trích xuất tags và budget khi Gemini không khả dụng."""
-    tags = extract_tags(text)
+def _regex_fallback(text: str) -> Tuple[Optional[int], str]:
+    """Fallback dùng regex để trích xuất budget khi Gemini không khả dụng."""
     budget = extract_budget(text)
-    return tags, budget, "search_food"
+    return budget, "search_food"

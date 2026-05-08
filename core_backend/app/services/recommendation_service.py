@@ -12,7 +12,6 @@ def recommend(
     user_id: str,
     db: Session,
     query_vector: Optional[List[float]] = None,
-    tags: Optional[List[str]] = None,
     budget: int = 0,
     user_location: Optional[List[float]] = None,
     radius: float = 5.0,
@@ -36,7 +35,6 @@ def recommend(
     # Lấy candidates từ DB với semantic ordering
     retrieval = RetrievalService(db)
     raw_candidates = retrieval.get_candidates(
-        tags=tags or [],
         budget=budget,
         user_location=user_location or [0.0, 0.0],
         radius=radius,
