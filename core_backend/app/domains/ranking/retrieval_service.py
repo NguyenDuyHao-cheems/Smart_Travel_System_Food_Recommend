@@ -8,7 +8,7 @@ Tách ra từ service.py monolithic để dễ test và maintain.
 from typing import List, Optional
 
 from sqlalchemy.orm import Session
-from sqlalchemy import cast, func, Integer, case
+from sqlalchemy import cast, func, Integer, case, or_, and_
 
 from .models import RestaurantModel
 
@@ -41,7 +41,7 @@ class RetrievalService:
         """
         lat, lng = user_location
         deg_radius = radius / 111.0
-
+        # đang hoạt động
         query = self.db.query(RestaurantModel).filter(
             RestaurantModel.is_active == True
         )
@@ -56,6 +56,13 @@ class RetrievalService:
         # price_range đang lưu dạng "50000-100000" hoặc "50000".
         # budget <= 0 được hiểu là không giới hạn ngân sách.
         if budget and budget > 0:
+            raw_min_price_str = case(
+                (
+                    RestaurantModel.price_range.contains("-"),
+                    func.split_part(RestaurantModel.price_range, "-", 1),
+                ),
+                else_=RestaurantModel.price_range,
+            )
             raw_max_price_str = case(
                 (
                     RestaurantModel.price_range.contains("-"),
@@ -64,13 +71,21 @@ class RetrievalService:
                 else_=RestaurantModel.price_range,
             )
             
+            clean_min_price_str = func.regexp_replace(raw_min_price_str, r'\D', '', 'g')
             clean_max_price_str = func.regexp_replace(raw_max_price_str, r'\D', '', 'g')
-            clean_max_price_int = cast(func.nullif(clean_max_price_str, ''), Integer)
+            
+            # Sử dụng coalesce để chuyển giá trị null/rỗng thành 0
+            clean_min_price_int = func.coalesce(cast(func.nullif(clean_min_price_str, ''), Integer), 0)
+            clean_max_price_int = func.coalesce(cast(func.nullif(clean_max_price_str, ''), Integer), 0)
 
             query = query.filter(
-                RestaurantModel.price_range.isnot(None),
-                clean_max_price_int.isnot(None),
-                clean_max_price_int <= budget,
+                or_(
+                    # Bao gồm các quán không có khoảng giá (0-0 hoặc dữ liệu trống)
+                    and_(clean_min_price_int == 0, clean_max_price_int == 0),
+                    # Quán có giá min hoặc max nằm trong budget
+                    clean_min_price_int <= budget,
+                    clean_max_price_int <= budget,
+                )
             )
 
         # Semantic ordering bằng pgvector cosine distance
