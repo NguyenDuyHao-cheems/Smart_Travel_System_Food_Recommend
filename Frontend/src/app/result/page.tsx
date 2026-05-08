@@ -30,6 +30,19 @@ const roboto = Roboto({
 /* ─────────────────────────────────────────────────────────────
    Tag helpers — derive tags from AI reason text
    ───────────────────────────────────────────────────────────── */
+export interface RecommendResult {
+  id: string | number;
+  name: string;
+  match: string;
+  dist: string;
+  price: string;
+  rating: string;
+  reason: string;
+  img: string;
+  tags?: string[];
+  restaurantName?: string;
+}
+
 interface VibeTag {
   label: string;
   emoji: string;
@@ -52,7 +65,7 @@ const VIBE_TAGS: VibeTag[] = [
   { label: 'Local', emoji: '📍', bgLight: 'bg-orange-50', bgDark: 'dark:bg-orange-500/10', text: 'text-orange-500', border: 'border-orange-100 dark:border-orange-500/20' },
 ];
 
-function getTagsForItem(item: any, index: number): VibeTag[] {
+function getTagsForItem(item: RecommendResult, index: number): VibeTag[] {
   // If API returns tags, use them; otherwise pick 2-3 based on index
   if (item.tags && Array.isArray(item.tags)) {
     return item.tags.map((t: string) => VIBE_TAGS.find(v => v.label.toLowerCase() === t.toLowerCase()) || VIBE_TAGS[0]);
@@ -79,7 +92,7 @@ function getMatchColor(match: string): string {
 /* ─────────────────────────────────────────────────────────────
    Hero Result Card (#1 — AI TOP PICK)
    ───────────────────────────────────────────────────────────── */
-function HeroResultCard({ item }: { item: any }) {
+function HeroResultCard({ item }: { item: RecommendResult }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 30 }}
@@ -168,7 +181,7 @@ function HeroResultCard({ item }: { item: any }) {
 /* ─────────────────────────────────────────────────────────────
    Small Result Card (#2-#5)
    ───────────────────────────────────────────────────────────── */
-function SmallResultCard({ item, index }: { item: any; index: number }) {
+function SmallResultCard({ item, index }: { item: RecommendResult; index: number }) {
   const tags = getTagsForItem(item, index);
   const matchColor = getMatchColor(item.match);
 
@@ -316,7 +329,7 @@ function ResultPageContent() {
     getLocation();
   }, [getLocation]);
 
-  const [results, setResults] = useState<any[]>([]);
+  const [results, setResults] = useState<RecommendResult[]>([]);
   const [apiError, setApiError] = useState<string | null>(null);
 
   useEffect(() => {
