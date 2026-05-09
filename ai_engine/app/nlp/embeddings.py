@@ -1,7 +1,7 @@
 import asyncio
 from fastapi import APIRouter
 from .schemas import ExtractIntentRequest, ExtractIntentResponse, EmbedRequest, EmbedResponse
-from .llm_parser import parse_query_with_gemini
+from .llm_parser import clean_query_with_gemini
 from .service import generate_mean_pooled_embedding
 
 router = APIRouter()
@@ -10,20 +10,19 @@ router = APIRouter()
 @router.post("/extract-intent", response_model=ExtractIntentResponse)
 async def extract_intent(request: ExtractIntentRequest):
     """
-    Unified endpoint to extract tags, budget, intent using Gemini API and generate embeddings.
+    Unified endpoint: Gemini cleans query → word_tokenize → embed.
     """
-    # Fix #6: parse_query_with_gemini is now async (uses httpx internally)
-    tags, budget, intent = await parse_query_with_gemini(request.text)
+    # Step 1: Gemini reformulates raw query
+    cleaned_query = await clean_query_with_gemini(request.text)
 
-    # Wrap CPU-bound PhoBERT embedding in thread to avoid blocking event loop
-    vector = await asyncio.to_thread(generate_mean_pooled_embedding, request.text)
+    # Step 2: Embed the CLEANED query (not raw text!)
+    # generate_mean_pooled_embedding already calls word_tokenize internally
+    vector = await asyncio.to_thread(generate_mean_pooled_embedding, cleaned_query)
 
     return ExtractIntentResponse(
         raw_text=request.text,
-        tags=tags,
-        budget=budget,
+        cleaned_query=cleaned_query,
         vector=vector,
-        intent=intent,
         lat=request.lat,
         lng=request.lng,
     )

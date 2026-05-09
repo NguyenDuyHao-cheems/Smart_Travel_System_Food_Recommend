@@ -17,15 +17,15 @@ def get_ranking_service() -> RankingService:
     return RankingService()
 
 
-@router.post("/ml/rank", response_model=RankResponse)
+@router.post("/ml/rank", response_model=RankResponse, deprecated=True)
 async def rank_restaurants(
     request: UserRankRequest,
     db: Session = Depends(get_db),
     service: RankingService = Depends(get_ranking_service)
 ):
     """
-    Pipeline:
-    1. Retrieval: Lọc thô từ Postgres (tags, budget, location, is_active)
+    [DEPRECATED] Sử dụng /search/recommend thay thế.
+    Endpoint này được giữ lại cho mục đích nội bộ và debug pipeline ranking.
     2. Feature Building: Integer features (×100)
     3. AI Engine: LightFM similarity → LambdaMART rerank
     4. Fallback: Sort theo khoảng cách nếu AI Engine sập

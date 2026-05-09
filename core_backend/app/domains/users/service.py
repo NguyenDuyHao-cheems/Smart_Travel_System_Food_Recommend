@@ -78,6 +78,7 @@ class OnboardingService:
             budget=payload.budget,
             location=payload.location,
             age=payload.age or 0,
+            is_vegetarian=payload.is_vegetarian,
             preferences_vector=preferences_vector,
         )
 
@@ -111,6 +112,7 @@ class OnboardingService:
             favorite_dishes=payload.favorite_dishes,
             spicy_level=payload.spicy_level,
             dietary_restrictions=payload.dietary_restrictions,
+            is_vegetarian=payload.is_vegetarian,
             allergies=payload.allergies,
             budget=payload.budget,
             location=payload.location,
@@ -129,6 +131,7 @@ class OnboardingService:
             favorite_dishes=payload.favorite_dishes,
             spicy_level=payload.spicy_level,
             dietary_restrictions=payload.dietary_restrictions,
+            is_vegetarian=payload.is_vegetarian,
             allergies=payload.allergies,
             budget=payload.budget,
             location=payload.location,

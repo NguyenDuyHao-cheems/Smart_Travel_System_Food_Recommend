@@ -7,7 +7,6 @@ CREATE TABLE public.dishes (
   name character varying NOT NULL,
   price integer NOT NULL,
   image_url text,
-  ingredients jsonb DEFAULT '[]'::jsonb,
   allergens jsonb DEFAULT '[]'::jsonb,
   is_vegetarian boolean DEFAULT false,
   embedding_vector USER-DEFINED,
@@ -35,7 +34,6 @@ CREATE TABLE public.restaurants (
   image_url text,
   rating_avg double precision DEFAULT 0.0,
   sentiment_score double precision DEFAULT 0.0,
-  top_review_text text,
   is_active boolean DEFAULT true,
   embedding_vector USER-DEFINED,
   total_reviews integer,
@@ -44,6 +42,8 @@ CREATE TABLE public.restaurants (
   timezone text DEFAULT 'Asia/Ho_Chi_Minh'::text,
   is_open_now boolean,
   google_maps_url text,
+  top_reviews jsonb,
+  is_vegetarian boolean DEFAULT false,
   CONSTRAINT restaurants_pkey PRIMARY KEY (id)
 );
 CREATE TABLE public.reviews (
@@ -92,6 +92,7 @@ CREATE TABLE public.user_onboardings (
   created_at timestamp with time zone DEFAULT now(),
   updated_at timestamp with time zone DEFAULT now(),
   completed_at timestamp with time zone,
+  is_vegetarian boolean DEFAULT false,
   CONSTRAINT user_onboardings_pkey PRIMARY KEY (id),
   CONSTRAINT user_onboardings_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
 );

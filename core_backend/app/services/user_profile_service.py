@@ -42,6 +42,7 @@ def _build_onboarding_summary(record: UserOnboarding) -> str:
         favorite_dishes=record.favorite_dishes,
         spicy_level=record.spicy_level,
         dietary_restrictions=record.dietary_restrictions,
+        is_vegetarian=record.is_vegetarian,
         allergies=record.allergies,
         budget=record.budget,
         location=record.location,
@@ -83,7 +84,9 @@ async def rebuild_user_profile_vector(
     onboarding_summary = _build_onboarding_summary(onboarding_record)
     
     dietary_profile = None
-    if onboarding_record.dietary_restrictions:
+    if onboarding_record.is_vegetarian:
+        dietary_profile = "vegetarian"
+    elif onboarding_record.dietary_restrictions:
         dr = onboarding_record.dietary_restrictions
         dietary_profile = ", ".join(dr) if isinstance(dr, list) else str(dr)
 

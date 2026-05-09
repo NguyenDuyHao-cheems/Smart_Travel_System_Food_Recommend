@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 import uuid
 
-from sqlalchemy import Column, String, Integer, JSON, DateTime, event, DDL, ForeignKey
+from sqlalchemy import Column, String, Integer, JSON, DateTime, event, DDL, ForeignKey, Boolean
 from sqlalchemy.orm import DeclarativeBase
 from pgvector.sqlalchemy import Vector
 from sqlalchemy.ext.compiler import compiles
@@ -53,6 +53,7 @@ class UserOnboarding(Base):
     budget = Column(String, nullable=False)
     location = Column(String, nullable=False)
     age = Column(Integer, nullable=False)
+    is_vegetarian = Column(Boolean, default=False)
     preferences_vector = Column(Vector(settings.VECTOR_DIM), nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 

@@ -9,7 +9,7 @@ def search_service():
 
 def make_mock_result(price: str, dist: str) -> RecommendResult:
     return RecommendResult(
-        id=1,
+        id="1",
         name="Test",
         match="90%",
         dist=dist,

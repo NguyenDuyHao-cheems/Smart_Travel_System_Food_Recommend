@@ -1,4 +1,4 @@
-import hashlib
+import hashlib
 import logging
 import random
 
@@ -21,10 +21,17 @@ def _fallback_embedding(text: str) -> list[float]:
     return [rng.uniform(-0.05, 0.05) for _ in range(settings.VECTOR_DIM)]
 
 
+from underthesea import word_tokenize
+
 def generate_mean_pooled_embedding(text: str) -> list[float]:
     try:
         model = get_embedding_model()
-        vector = model.encode(text).tolist()
+        
+        # Apply Vietnamese word segmentation
+        segmented_text = word_tokenize(text, format="text")
+        logger.debug("Original text: %s | Segmented text: %s", text, segmented_text)
+        
+        vector = model.encode(segmented_text).tolist()
 
         if len(vector) != settings.VECTOR_DIM:
             logger.warning("Embedding dimension mismatch: got %s", len(vector))

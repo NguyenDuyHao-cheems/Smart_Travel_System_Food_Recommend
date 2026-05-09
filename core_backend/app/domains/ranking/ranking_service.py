@@ -2,7 +2,7 @@
 ranking_service.py — Orchestrates the 2-stage ranking pipeline.
 
 Pipeline:
-  1. RetrievalService  → semantic retrieval từ DB (pgvector cosine + tags, budget, location)
+  1. RetrievalService  → semantic retrieval từ DB (pgvector cosine + budget, location)
   2. FeatureService    → build integer features
   3. AI Engine         → LambdaMART reranks
   4. Fallback          → sort theo distance_m nếu AI Engine không phản hồi
@@ -27,7 +27,8 @@ class RankingService:
 
     async def get_recommendations(self, db: Session, request) -> List[str]:
         """
-        Async pipeline chính.
+        [DEPRECATED] Dùng `app.services.recommendation_service.recommend` thay thế.
+        Async pipeline chính cho endpoint nội bộ.
 
         Args:
             db: SQLAlchemy session
@@ -39,11 +40,11 @@ class RankingService:
         # Bước 1: Semantic retrieval từ DB (pgvector cosine distance)
         retrieval = RetrievalService(db)
         rows = retrieval.get_candidates(
-            tags=request.tags,
             budget=request.budget,
             user_location=request.user_location,
             radius=request.radius,
             query_vector=getattr(request, "query_vector", None),
+            query_text=getattr(request, "query", ""),
         )
         if not rows:
             return []
@@ -55,6 +56,7 @@ class RankingService:
             user_lat=request.user_location[0],
             user_lng=request.user_location[1],
             budget=request.budget,
+            query_text=getattr(request, "query", ""),
         )
 
         # Bước 3: Gọi AI Engine (LambdaMART rerank)

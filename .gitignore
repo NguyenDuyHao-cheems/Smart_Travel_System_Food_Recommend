@@ -98,3 +98,4 @@ docs/PLAN.md
 coverage/
 core_backend/*.sqlite
 *.pkl
+lambdamart.lgb

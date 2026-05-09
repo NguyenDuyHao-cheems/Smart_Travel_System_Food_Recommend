@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, Boolean, ForeignKey
+from sqlalchemy import Column, Integer, String, Float, Boolean, ForeignKey, JSON
 from sqlalchemy.orm import relationship
 from app.core.database import Base
 from pgvector.sqlalchemy import Vector
@@ -22,6 +22,7 @@ class RestaurantModel(Base):
     total_reviews = Column(Integer, nullable=True)  # tổng số lượt đánh giá
     is_active = Column(Boolean, default=True)       # nhà hàng còn hoạt động
     is_open_now = Column(Boolean, default=False)    # đang mở cửa tại thời điểm này
+    is_vegetarian = Column(Boolean, default=False)  # nhà hàng chuyên chay hoặc có menu chay
 
     # Cột vector embedding (pgvector) cho semantic search
     embedding_vector = Column(Vector(settings.VECTOR_DIM), nullable=True)
@@ -29,7 +30,27 @@ class RestaurantModel(Base):
     image_url = Column(String, nullable=True)
     opening_hours = Column(String, nullable=True)
 
+    tag_match: bool = False  # non-DB field for boosting/ranking
+
     tags = relationship("TagModel", secondary="res_tags", back_populates="restaurants")
+    dishes = relationship("DishModel", back_populates="restaurant")
+
+
+class DishModel(Base):
+    __tablename__ = "dishes"
+
+    id = Column(String, primary_key=True, index=True)
+    res_id = Column(String, ForeignKey("restaurants.id"), index=True)
+    name = Column(String, nullable=False)
+    price = Column(Integer, nullable=False)
+    image_url = Column(String, nullable=True)
+    ingredients = Column(JSON, default=[])
+    allergens = Column(JSON, default=[])
+    is_vegetarian = Column(Boolean, default=False)
+    embedding_vector = Column(Vector(settings.VECTOR_DIM), nullable=True)
+
+    restaurant = relationship("RestaurantModel", back_populates="dishes")
+
 
 
 class TagModel(Base):
@@ -49,9 +70,25 @@ class RestaurantTagModel(Base):
 
 
 class InteractionModel(Base):
-    __tablename__ = "interactions"
+    __tablename__ = "user_interactions"
 
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(String, index=True)
+    id = Column(String, primary_key=True, index=True)
+    anonymous_id = Column(String, nullable=True)
+    user_id = Column(String, nullable=True)
     res_id = Column(String, ForeignKey("restaurants.id"), index=True)
-    rating = Column(Float, nullable=True)
+    dish_id = Column(String, ForeignKey("dishes.id"), nullable=True)
+    action_type = Column(String, nullable=False)
+    duration_sec = Column(Integer, nullable=True)
+    created_at = Column(String, nullable=True)
+    interaction_metadata = Column("metadata", JSON, default={})
+
+
+class ReviewModel(Base):
+    __tablename__ = "reviews"
+
+    id = Column(String, primary_key=True, index=True)
+    res_id = Column(String, ForeignKey("restaurants.id"), index=True)
+    reviewer_name = Column(String, nullable=True)
+    rating = Column(Float, nullable=True)
+    text = Column(String, nullable=True)
+    date = Column(String, nullable=True)

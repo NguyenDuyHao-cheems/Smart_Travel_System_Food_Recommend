@@ -31,7 +31,7 @@ class LightFMInference:
         if not os.path.exists(self.model_path):
             logger.warning(
                 "Không tìm thấy LightFM model tại %s. "
-                "similarity_score sẽ = 0 cho tất cả ứng viên.",
+                "Hệ thống sẽ sử dụng Semantic Score từ Core Backend làm fallback.",
                 self.model_path
             )
             self.data = None
