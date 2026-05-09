@@ -331,11 +331,10 @@ function ResultPageContent() {
       const token = localStorage.getItem('access_token');
       const userId = localStorage.getItem('user_id');
 
-      // [1] Nếu không có token -> redirect về /auth (Hiện tại đang để TODO)
       if (!token) {
-        // TODO: Chờ team làm xong trang /auth thì mở khóa đoạn code bên dưới để redirect
-        // router.push('/auth');
-        console.warn("TODO: Missing token, should redirect to /auth");
+        console.warn("Chưa đăng nhập, redirect về /auth");
+        router.push('/auth?redirect=/result');
+        return;
       }
 
       setIsLoading(true);
