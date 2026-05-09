@@ -27,7 +27,8 @@ class RankingService:
 
     async def get_recommendations(self, db: Session, request) -> List[str]:
         """
-        Async pipeline chính.
+        [DEPRECATED] Dùng `app.services.recommendation_service.recommend` thay thế.
+        Async pipeline chính cho endpoint nội bộ.
 
         Args:
             db: SQLAlchemy session
