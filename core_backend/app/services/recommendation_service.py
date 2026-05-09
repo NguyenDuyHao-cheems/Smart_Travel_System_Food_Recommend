@@ -3,7 +3,7 @@ from typing import List, Optional
 from sqlalchemy.orm import Session
 
 from app.services.user_services import get_user_allergies, get_user_preferences_vector
-from app.services.allergy_filter import filter_allergy, handle_fallback
+from app.services.allergy_filter import filter_allergy, handle_fallback, fetch_allergen_map
 from app.domains.ranking.retrieval_service import RetrievalService
 
 
@@ -48,8 +48,10 @@ def recommend(
             "fallback_applied": False,
         }
 
-    # Allergy filter (hoạt động trên RestaurantModel rows qua hasattr)
-    safe_candidates, removed = filter_allergy(raw_candidates, user_allergies)
+    # Pre-fetch allergens từ dishes cho tất cả restaurant candidates
+    restaurant_ids = [c.id for c in raw_candidates]
+    allergen_map = fetch_allergen_map(db, restaurant_ids) if user_allergies else {}
+    safe_candidates, removed = filter_allergy(raw_candidates, user_allergies, allergen_map)
 
     if not safe_candidates:
         fallback = handle_fallback(raw_candidates)
