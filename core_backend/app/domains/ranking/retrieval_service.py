@@ -5,6 +5,7 @@ Dùng pgvector cosine distance (<=>) để ORDER BY similarity khi có query_vec
 Tách ra từ service.py monolithic để dễ test và maintain.
 """
 
+import unicodedata
 from typing import List, Optional
 
 from sqlalchemy.orm import Session
@@ -13,6 +14,14 @@ from sqlalchemy import cast, func, Integer, case, or_, and_
 from .models import RestaurantModel, DishModel
 
 _MAX_RETRIEVAL = 500
+
+
+def _normalize_vietnamese(text: str) -> str:
+    """Remove diacritics and normalize Vietnamese text for ASCII comparison."""
+    text = text.lower().strip()
+    text = unicodedata.normalize("NFD", text)
+    text = "".join(ch for ch in text if unicodedata.category(ch) != "Mn")
+    return text.replace("đ", "d")
 
 
 class RetrievalService:
@@ -44,12 +53,14 @@ class RetrievalService:
         """
         lat, lng = user_location
         deg_radius = radius / 111.0
-        
-        q_lower = query_text.lower()
-        vegetarian_keywords = ["chay", "vegetarian", "vegan", "veggie", "đồ chay", "quán chay"]
-        is_vegetarian_query = any(kw in q_lower for kw in vegetarian_keywords)
-        food_keywords = ["cơm", "gà", "bò", "phở", "bún", "hải sản", "lẩu", "nướng", "cua", "cá", "mì", "miến"]
-        is_food_query = any(kw in q_lower for kw in food_keywords)
+
+        q_norm = _normalize_vietnamese(query_text)
+        vegetarian_keywords = ["chay", "vegetarian", "vegan", "veggie", "do chay", "quan chay"]
+        food_keywords = ["com", "ga", "bo", "pho", "bun", "banh", "hai san", "lau", "nuong", "cua", "ca", "mi", "mien", "banh canh", "banh mi", "banh xeo", "banh patty"]
+
+        is_vegetarian_query = any(kw in q_norm for kw in vegetarian_keywords)
+        # Match: query contains food keyword OR food keyword contains query (subword)
+        is_food_query = any(q_norm in kw or kw in q_norm for kw in food_keywords)
 
         # đang hoạt động
         query = self.db.query(RestaurantModel).filter(
