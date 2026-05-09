@@ -1,6 +1,6 @@
 import logging
 import httpx
-from typing import List, Optional
+from typing import Optional, List
 
 from sqlalchemy.orm import Session
 
@@ -20,7 +20,6 @@ async def recommend(
     query_vector: Optional[List[float]] = None,
     budget: int = 0,
     user_location: Optional[List[float]] = None,
-    radius: float = 5.0,
     tag_name: Optional[str] = None,
 ):
     """
@@ -43,8 +42,6 @@ async def recommend(
     retrieval = RetrievalService(db)
     raw_candidates = retrieval.get_candidates(
         budget=budget,
-        user_location=user_location or [0.0, 0.0],
-        radius=radius,
         query_vector=final_vector,
         query_text=query,
         tag_name=tag_name,

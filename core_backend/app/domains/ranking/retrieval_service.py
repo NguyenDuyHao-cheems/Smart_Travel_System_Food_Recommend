@@ -71,14 +71,12 @@ class RetrievalService:
     def get_candidates(
         self,
         budget: int,
-        user_location: List[float],
-        radius: float,
         query_vector: Optional[List[float]] = None,
         query_text: str = "",
         tag_name: Optional[str] = None,
     ):
         """
-        Retrieval từ Postgres với semantic ordering.
+        Retrieval từ Postgres với semantic ordering (relevance-first).
 
         Khi có query_vector:
           - Lọc bỏ restaurants chưa có embedding_vector.
@@ -90,12 +88,12 @@ class RetrievalService:
         Khi không có query_vector:
           - Fallback ORDER BY rating_avg DESC.
 
+        Không áp dụng bounding box theo khoảng cách — khoảng cách là metadata,
+        việc lọc theo bán kính là tuỳ chọn phía Frontend.
+
         Returns:
             Danh sách RestaurantModel rows, tối đa _MAX_RETRIEVAL.
         """
-        lat, lng = user_location
-        deg_radius = radius / 111.0
-
         q_norm = _normalize_vietnamese(query_text)
         vegetarian_keywords = ["chay", "vegetarian", "vegan", "veggie", "do chay", "quan chay"]
         food_keywords = ["com", "ga", "bo", "pho", "bun", "banh", "hai san", "lau", "nuong", "cua", "ca", "mi", "mien", "banh canh", "banh mi", "banh xeo", "banh patty"]
@@ -103,15 +101,9 @@ class RetrievalService:
         is_vegetarian_query = any(kw in q_norm for kw in vegetarian_keywords)
         is_food_query = any(q_norm in kw or kw in q_norm for kw in food_keywords)
 
-        # Khởi tạo query cơ bản
+        # Khởi tạo query cơ bản — không giới hạn bounding box
         query = self.db.query(RestaurantModel).filter(
             RestaurantModel.is_active == True
-        )
-
-        # 1. Bounding box filter
-        query = query.filter(
-            RestaurantModel.lat.between(lat - deg_radius, lat + deg_radius),
-            RestaurantModel.lng.between(lng - deg_radius, lng + deg_radius)
         )
 
         # 2. Budget filter

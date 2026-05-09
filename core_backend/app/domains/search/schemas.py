@@ -20,35 +20,33 @@ class SearchRecommendRequest(BaseModel):
 
 class RecommendResult(BaseModel):
     """
-    Schema này định dạng đầu ra bắt buộc của 1 quán ăn để thẻ UI hiển thị trên Frontend không bị vỡ.
+    Schema định dạng đầu ra 1 quán ăn cho UI.
+    distance_km là giá trị số để frontend filter client-side.
     """
     id: str
     name: str
     match: str
-    dist: str
+    dist: str           # display string, e.g. "1.2 km"
+    distance_km: float = 0.0  # numeric value for client-side filtering
     price: str
     rating: str
-    reason: str 
+    reason: str
     img: str
 
 class SearchRecommendResponse(BaseModel):
     """
-    Kết quả trả về cho UI, kèm metadata để Frontend biết
-    backend có đang dùng cơ chế fallback hay không.
+    Kết quả trả về cho UI. Backend không còn lọc theo bán kính —
+    toàn bộ kết quả sắp xếp theo semantic relevance.
+    Việc lọc khoảng cách là tuỳ chọn phía Frontend dựa trên trường distance_km.
     """
     results: List[RecommendResult]
     fallback_applied: bool = Field(
         default=False,
-        description="True nếu backend đã tự động nới điều kiện tìm kiếm."
+        description="True nếu allergy filter loại toàn bộ, backend dùng fallback."
     )
     fallback_reason: Optional[str] = Field(
         default=None,
-        description="Mô tả lý do backend áp dụng fallback."
-    )
-    applied_radius_km: float = Field(
-        ...,
-        ge=0,
-        description="Bán kính thực tế backend dùng để tìm kiếm."
+        description="Mô tả lý do fallback (nếu có)."
     )
     applied_budget: Optional[int] = Field(
         None,
@@ -56,12 +54,12 @@ class SearchRecommendResponse(BaseModel):
         description="Ngân sách thực tế backend dùng để lọc."
     )
     filtered_out_count: Optional[int] = Field(
-        None, 
-        description="Number of items filtered out due to allergies"
+        None,
+        description="Số lượng quán bị loại do dị ứng."
     )
     warning: Optional[str] = Field(
-        None, 
-        description="Warning message, e.g. when fallback is applied"
+        None,
+        description="Thông báo cảnh báo (ví dụ: dị ứng)."
     )
 
 class AISearchPayload(BaseModel):
