@@ -59,7 +59,7 @@ class SearchService:
         else:
             effective_budget = self.DEFAULT_BUDGET_VND
 
-        recommend_results = recommend(
+        recommend_results = await recommend(
             query=request.query,
             user_id=request.user_id,
             db=db,
@@ -75,8 +75,24 @@ class SearchService:
         # Build danh sách kết quả trực tiếp từ DB models (giới hạn 15 kết quả cho UI)
         safe_candidates = recommend_results["results"][:15]
         safe_results = []
+        
+        # Tính min/max của ranking_score để chuẩn hóa (normalize) về %
+        # (do LambdaMART dùng hàm loss lambdarank nên score là giá trị tương đối, không giới hạn ở 0-3)
+        scores = [m.ranking_score for m in safe_candidates if hasattr(m, 'ranking_score') and m.ranking_score is not None]
+        max_score = max(scores) if scores else 0
+        min_score = min(scores) if scores else 0
+        score_range = max_score - min_score
+
         for model in safe_candidates:
-            if hasattr(model, 'distance') and model.distance is not None:
+            if hasattr(model, 'ranking_score') and model.ranking_score is not None:
+                if score_range > 0:
+                    # Scale vào khoảng 70% -> 98% cho UX tự nhiên
+                    normalized = (model.ranking_score - min_score) / score_range
+                    match_pct = 70 + int(normalized * 28)
+                else:
+                    match_pct = 95
+                match_str = f"{match_pct}%"
+            elif hasattr(model, 'distance') and model.distance is not None:
                 # cosine_distance is usually 0.0 for exact match, up to 2.0.
                 # We map distance to match percentage
                 match_pct = max(0, min(100, int((1.0 - model.distance) * 100)))
@@ -145,7 +161,7 @@ class SearchService:
 
         if not strict_results and not relaxed_results:
             # Fallback thực sự: Lấy nhà hàng gần nhất (không dùng vector query)
-            fallback_recommend = recommend(
+            fallback_recommend = await recommend(
                 query=request.query,
                 user_id=request.user_id,
                 db=db,
