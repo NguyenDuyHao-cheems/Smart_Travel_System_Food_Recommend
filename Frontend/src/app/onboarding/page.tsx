@@ -100,17 +100,17 @@ export default function OnboardingPage() {
   const [errorMsg, setErrorMsg] = useState('');
   const [userId, setUserId] = useState('');
 
-  // Sinh ID độc nhất cho mỗi User để không bị đụng hàng
+  // Yêu cầu đăng nhập — redirect về /auth nếu chưa có token
   useEffect(() => {
     const token = localStorage.getItem('access_token');
     const storedUserId = localStorage.getItem('user_id');
-    
+
     if (!token || !storedUserId) {
       console.warn("Chưa đăng nhập, redirect về /auth");
       router.push('/auth?redirect=/onboarding');
       return;
     }
-    
+
     setUserId(storedUserId);
   }, [router]);
 
@@ -158,11 +158,30 @@ export default function OnboardingPage() {
 
     setIsSubmitting(true);
     try {
+      const payloadToSubmit = {
+        ...formData,
+        location: formData.location.trim(),
+        // Backend đang chặn cứng (validate) Enum tiếng Anh cho 2 trường này, nên bắt buộc gửi ID. 
+        // Backend (Thành viên 2) sẽ phải tự map ID sang Text khi sinh vector.
+        spicy_level: formData.spicy_level,
+        budget: formData.budget,
+        // Dị ứng và Chế độ ăn là mảng String tự do, nên ta map sang Tiếng Việt thoải mái
+        dietary_restrictions: formData.dietary_restrictions.map(
+          id => DIETARY_OPTS.find(o => o.id === id)?.label
+        ).filter(Boolean),
+        allergies: formData.allergies.map(
+          id => ALLERGY_OPTS.find(o => o.id === id)?.label
+        ).filter(Boolean),
+      };
+
+      console.log("🚀 [Frontend] Payload Tiếng Việt chuẩn bị gửi cho Backend:", payloadToSubmit);
+
       const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://127.0.0.1:8000';
+      
       const response = await fetch(`${API_BASE}/api/v1/users/${userId}/onboarding`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payloadToSubmit),
       });
 
       if (response.ok) {
