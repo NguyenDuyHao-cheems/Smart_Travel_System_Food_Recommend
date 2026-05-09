@@ -51,11 +51,9 @@ class SearchService:
             raise HTTPException(status_code=503, detail="AI engine is currently unavailable.")
 
         # 1. Lọc dị ứng + semantic retrieval bằng recommendation pipeline
-        # Xác định budget: ưu tiên user request > AI extraction > default
+        # Xác định budget: ưu tiên user request > default (không còn AI budget)
         if request.budget is not None and request.budget > 0:
             effective_budget = request.budget
-        elif ai_response.budget:
-            effective_budget = ai_response.budget
         else:
             effective_budget = self.DEFAULT_BUDGET_VND
 
@@ -108,21 +106,13 @@ class SearchService:
                 model=model,
                 user_lat=request.lat,
                 user_lng=request.lng,
-                intent=ai_response.intent,
+                intent=None, # intent không còn — reason sẽ dùng default
                 match_str=match_str
             )
             safe_results.append(result)
 
-        if request.budget is not None:
-            # budget=0 is treated as "unlimited" (None)
-            strict_budget = request.budget if request.budget > 0 else None
-            logger.debug("Budget source: user body (%s VND)", strict_budget if strict_budget is not None else "unlimited")
-        elif ai_response.budget:
-            strict_budget = ai_response.budget
-            logger.debug("Budget source: AI extraction (%d VND)", strict_budget)
-        else:
-            strict_budget = self.DEFAULT_BUDGET_VND
-            logger.debug("Budget source: default (%d VND)", strict_budget)
+        strict_budget = request.budget if (request.budget and request.budget > 0) else self.DEFAULT_BUDGET_VND
+        logger.debug("Budget source: user=%s, effective=%d VND", request.budget, strict_budget)
 
         strict_results = self._filter_results(
             results=safe_results,
@@ -178,7 +168,7 @@ class SearchService:
                         model=model,
                         user_lat=request.lat,
                         user_lng=request.lng,
-                        intent=ai_response.intent,
+                        intent=None,
                         match_str="Gợi ý gần đây"
                     )
                 )
