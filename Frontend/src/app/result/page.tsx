@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, useEffect, Suspense, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -21,6 +21,7 @@ import { useGeolocation } from '../../hooks/useGeolocation';
 import { Header } from '../../components/ui/Header';
 import { LoadingState } from '../../components/ui/LoadingState';
 import { BudgetSelector, type BudgetOption } from '../../components/BudgetSelector';
+import { DistanceFilter } from '../../components/DistanceFilter';
 
 const roboto = Roboto({
   subsets: ['latin', 'vietnamese'],
@@ -287,11 +288,14 @@ function ResultPageContent() {
 
   const [fallbackApplied, setFallbackApplied] = useState(false);
   const [fallbackReason, setFallbackReason] = useState<string>('');
-  const [appliedRadius, setAppliedRadius] = useState<number | null>(null);
   const [appliedBudget, setAppliedBudget] = useState<number | null>(null);
 
   const [filteredCount, setFilteredCount] = useState(0);
   const [allergyWarning, setAllergyWarning] = useState<string>('');
+
+  // Distance filter state (client-side, default OFF)
+  const [distanceFilterEnabled, setDistanceFilterEnabled] = useState(false);
+  const [distanceRadius, setDistanceRadius] = useState(2);
 
   const { location, error: locError, isLoading: loadingLocation, getLocation } = useGeolocation();
 
@@ -367,7 +371,6 @@ function ResultPageContent() {
             setResults(data.results);
             setFallbackApplied(data.fallback_applied || false);
             setFallbackReason(data.fallback_reason || '');
-            setAppliedRadius(data.applied_radius_km ?? null);
             setAppliedBudget(data.applied_budget ?? null);
 
             setFilteredCount(data.filtered_out_count || 0);
@@ -396,8 +399,14 @@ function ResultPageContent() {
     fetchRecommendations();
   }, [location, searchQuery, budget]); // Re-fetch khi budget thay đổi
 
-  const heroItem = results[0];
-  const gridItems = results.slice(1, 5);
+  // Client-side distance filter — no API re-fetch needed
+  const displayResults = useMemo(() => {
+    if (!distanceFilterEnabled) return results;
+    return results.filter((r) => (r.distance_km ?? 0) <= distanceRadius);
+  }, [results, distanceFilterEnabled, distanceRadius]);
+
+  const heroItem = displayResults[0];
+  const gridItems = displayResults.slice(1, 5);
 
   return (
     <div className={`flex min-h-screen bg-[#F7F8FA] dark:bg-gray-900 transition-colors duration-300 ${roboto.className}`}>
@@ -410,14 +419,22 @@ function ResultPageContent() {
       <div className="flex-1 flex flex-col">
         <Header showBack={false} />
 
-        {/* Budget Selector bar — dưới header, trước main content */}
-        <div className="px-6 md:px-10 pt-4 pb-2 border-b border-gray-100 dark:border-gray-800 bg-[#F7F8FA] dark:bg-gray-900">
+        {/* Budget + Distance filter bar */}
+        <div className="px-6 md:px-10 pt-4 pb-3 border-b border-gray-100 dark:border-gray-800 bg-[#F7F8FA] dark:bg-gray-900 flex flex-col gap-3">
           <BudgetSelector
             value={budget}
             onChange={(newBudget) => {
               setBudget(newBudget);
               router.push(`/result?q=${encodeURIComponent(inputValue)}&budget=${newBudget}`);
             }}
+          />
+          <DistanceFilter
+            enabled={distanceFilterEnabled}
+            onToggle={setDistanceFilterEnabled}
+            radius={distanceRadius}
+            onRadiusChange={setDistanceRadius}
+            totalCount={results.length}
+            filteredCount={displayResults.length}
           />
         </div>
 
@@ -455,11 +472,6 @@ function ResultPageContent() {
                             {appliedBudget != null && (
                               <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-yellow-100 dark:bg-yellow-500/20 text-yellow-700 dark:text-yellow-300">
                                 💰 Ngân sách: {appliedBudget.toLocaleString('vi-VN')}đ
-                              </span>
-                            )}
-                            {appliedRadius != null && (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-yellow-100 dark:bg-yellow-500/20 text-yellow-700 dark:text-yellow-300">
-                                📍 Bán kính: {appliedRadius}km
                               </span>
                             )}
                           </div>
