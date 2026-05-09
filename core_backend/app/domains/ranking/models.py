@@ -22,6 +22,7 @@ class RestaurantModel(Base):
     total_reviews = Column(Integer, nullable=True)  # tổng số lượt đánh giá
     is_active = Column(Boolean, default=True)       # nhà hàng còn hoạt động
     is_open_now = Column(Boolean, default=False)    # đang mở cửa tại thời điểm này
+    is_vegetarian = Column(Boolean, default=False)  # nhà hàng chuyên chay hoặc có menu chay
 
     # Cột vector embedding (pgvector) cho semantic search
     embedding_vector = Column(Vector(settings.VECTOR_DIM), nullable=True)
@@ -67,9 +68,25 @@ class RestaurantTagModel(Base):
 
 
 class InteractionModel(Base):
-    __tablename__ = "interactions"
+    __tablename__ = "user_interactions"
 
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(String, index=True)
+    id = Column(String, primary_key=True, index=True)
+    anonymous_id = Column(String, nullable=True)
+    user_id = Column(String, nullable=True)
     res_id = Column(String, ForeignKey("restaurants.id"), index=True)
-    rating = Column(Float, nullable=True)
+    dish_id = Column(String, ForeignKey("dishes.id"), nullable=True)
+    action_type = Column(String, nullable=False)
+    duration_sec = Column(Integer, nullable=True)
+    created_at = Column(String, nullable=True)
+    interaction_metadata = Column("metadata", JSON, default={})
+
+
+class ReviewModel(Base):
+    __tablename__ = "reviews"
+
+    id = Column(String, primary_key=True, index=True)
+    res_id = Column(String, ForeignKey("restaurants.id"), index=True)
+    reviewer_name = Column(String, nullable=True)
+    rating = Column(Float, nullable=True)
+    text = Column(String, nullable=True)
+    date = Column(String, nullable=True)
