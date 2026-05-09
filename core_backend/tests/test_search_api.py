@@ -34,10 +34,29 @@ def test_process_search_query_ai_unavailable(client):
         assert response.json()["detail"] == "AI engine is currently unavailable."
 
 
+class MockRestaurantModel:
+    def __init__(self, id):
+        self.id = id
+        self.name = f"Mock {id}"
+        self.lat = 10.87
+        self.lng = 106.80
+        self.price_range = "50000"
+        self.rating_avg = 4.5
+        self.image_url = ""
+        self.distance = 0.1
+        self.ranking_score = 1.5
+
 def _mock_recommend_results(results=None, filtered_out_count=0, fallback_applied=False, warning=None):
     """Helper to create mock recommend() return values."""
+    mock_results = []
+    if results:
+        for r in results:
+            if isinstance(r, str):
+                mock_results.append(MockRestaurantModel(r))
+            else:
+                mock_results.append(r)
     return {
-        "results": results or [],
+        "results": mock_results,
         "filtered_out_count": filtered_out_count,
         "fallback_applied": fallback_applied,
         "warning": warning,
@@ -50,6 +69,7 @@ def test_process_recommend_query_success_without_fallback(client):
         new_callable=AsyncMock,
     ) as mock_ai, patch(
         "app.domains.search.service.recommend",
+        new_callable=AsyncMock,
     ) as mock_recommend:
         mock_ai.return_value = AIResponseData(
             vector=[1.0, 2.0, 3.0],
@@ -88,6 +108,7 @@ def test_process_recommend_query_budget_no_longer_triggers_memory_fallback(clien
         new_callable=AsyncMock,
     ) as mock_ai, patch(
         "app.domains.search.service.recommend",
+        new_callable=AsyncMock,
     ) as mock_recommend:
         strict_budget = 30000
         mock_ai.return_value = AIResponseData(
@@ -143,6 +164,7 @@ def test_process_recommend_query_nearest_fallback_when_radius_filters_out_all_re
         new_callable=AsyncMock,
     ) as mock_ai, patch(
         "app.domains.search.service.recommend",
+        new_callable=AsyncMock,
     ) as mock_recommend, patch.object(SearchService, "DEFAULT_RADIUS_KM", 0.1), patch.object(
         SearchService, "FALLBACK_RADIUS_KM", 0.1
     ):
@@ -181,6 +203,7 @@ def test_user_budget_takes_priority_over_ai_budget(client):
         new_callable=AsyncMock,
     ) as mock_ai, patch(
         "app.domains.search.service.recommend",
+        new_callable=AsyncMock,
     ) as mock_recommend:
         mock_ai.return_value = AIResponseData(
             vector=[1.0, 2.0, 3.0],
@@ -219,6 +242,7 @@ def test_ai_budget_used_when_user_omits_budget(client):
         new_callable=AsyncMock,
     ) as mock_ai, patch(
         "app.domains.search.service.recommend",
+        new_callable=AsyncMock,
     ) as mock_recommend:
         mock_ai.return_value = AIResponseData(
             vector=[1.0, 2.0, 3.0],
@@ -255,6 +279,7 @@ def test_default_budget_when_both_user_and_ai_absent(client):
         new_callable=AsyncMock,
     ) as mock_ai, patch(
         "app.domains.search.service.recommend",
+        new_callable=AsyncMock,
     ) as mock_recommend:
         mock_ai.return_value = AIResponseData(
             vector=[1.0, 2.0, 3.0],
@@ -287,6 +312,7 @@ def test_user_budget_zero_means_unlimited(client):
         new_callable=AsyncMock,
     ) as mock_ai, patch(
         "app.domains.search.service.recommend",
+        new_callable=AsyncMock,
     ) as mock_recommend:
         mock_ai.return_value = AIResponseData(
             vector=[1.0, 2.0, 3.0],
