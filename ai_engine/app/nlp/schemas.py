@@ -9,10 +9,8 @@ class ExtractIntentRequest(BaseModel):
 
 class ExtractIntentResponse(BaseModel):
     raw_text: str
-    tags: List[str]
-    budget: Optional[int] = None
+    cleaned_query: str = Field(..., description="Query đã được Gemini làm sạch, dùng để embed")
     vector: List[float] = Field(..., description="The generated embedded vector representation of the text")
-    intent: Optional[str] = None
     lat: Optional[float] = None
     lng: Optional[float] = None
 

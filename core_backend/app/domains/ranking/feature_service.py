@@ -11,7 +11,7 @@ from typing import List
 
 class FeatureService:
     def build_integer_features(
-        self, candidates, user_lat: float, user_lng: float, budget: int
+        self, candidates, user_lat: float, user_lng: float, budget: int, query_text: str = ""
     ) -> List[dict]:
         """
         Chuyển danh sách RestaurantModel rows thành list of dict với integer features.
@@ -41,12 +41,50 @@ class FeatureService:
             else:
                 price_norm = int((raw_price / budget) * 100)
 
-            # 3. Rating & Sentiment nhân 100 — dùng field names bản NEW
+            # 3. Rating & Sentiment: scale về 0–100
+            # sentiment_score trong DB: thang 0–10 → nhân 10 → 0–100
             rating_int = int((getattr(r, "rating_avg", 0.0) or 0.0) * 100)
-            sentiment_int = int((getattr(r, "sentiment_score", 0.0) or 0.0) * 100)
+            sentiment_int = int((getattr(r, "sentiment_score", 0.0) or 0.0) * 10)
 
             # 4. Trạng thái mở cửa — dùng is_open_now (bản NEW)
             is_open_int = 1 if getattr(r, "is_open_now", False) else 0
+
+            # Lấy similarity score từ vector search (pgvector cosine_distance) nếu có
+            sim_score = 0
+            if hasattr(r, "distance") and r.distance is not None:
+                sim_score = max(0, min(100, int((1.0 - r.distance) * 100)))
+
+            # Lexical Keyword Boost (Hybrid Search Lite)
+            # Bù đắp cho giới hạn của Vietnamese Bi-Encoder (miss các cross-lingual keywords hoặc từ khóa ngắn)
+            if query_text and hasattr(r, "name") and r.name:
+                q_lower = query_text.lower()
+                n_lower = r.name.lower()
+                
+                # 1. Xử lý synonym groups (tiếng Việt <-> tiếng Anh)
+                synonyms = [
+                    ["cà phê", "coffee", "cafe", "càphê"],
+                    ["trà sữa", "milk tea", "milktea"],
+                    ["chay", "vegetarian", "vegan", "veggie", "đồ chay", "quán chay"],
+                    ["sushi", "sashimi"],
+                ]
+                
+                boosted = False
+                for syn_group in synonyms:
+                    if any(kw in q_lower for kw in syn_group):
+                        # Query THỰC SỰ có chứa keyword trong group này
+                        if any(kw in n_lower for kw in syn_group):
+                            sim_score = min(100, sim_score + 40) # Boost cực mạnh cho exact semantic match
+                            boosted = True
+                            break
+                        # Nếu user tìm "cà phê" nhưng n_lower không có, thì không boost
+                
+                # 2. Xử lý overlapping keywords thông thường
+                if not boosted:
+                    words = [w for w in q_lower.split() if len(w) >= 3 and w not in ["tìm", "quán", "nhà", "hàng", "ăn", "uống", "những"]]
+                    for w in words:
+                        if w in n_lower:
+                            sim_score = min(100, sim_score + 25)
+                            break
 
             result.append({
                 "res_id": str(r.id),
@@ -55,8 +93,9 @@ class FeatureService:
                 "distance_m": int(dist_m),
                 "price_normalized": price_norm,
                 "review_count": int(getattr(r, "total_reviews", 0) or 0),
-                "similarity_score": 0,          # AI Engine sẽ điền qua LightFM
+                "similarity_score": sim_score,
                 "is_open": is_open_int,
+                "tag_match": 1 if getattr(r, "tag_match", False) else 0,
             })
         return result
 

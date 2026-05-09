@@ -10,7 +10,6 @@ import logging
 import httpx
 from typing import Tuple, List, Optional
 from app.core.config import settings
-from app.nlp.query_parser import extract_tags, extract_budget
 
 logger = logging.getLogger(__name__)
 
@@ -22,28 +21,48 @@ _GEMINI_URL_TEMPLATE = (
     "{model}:generateContent?key={key}"
 )
 
-# Fix Issue #7: System instructions ở đây, KHÔNG nhúng vào user message
-_SYSTEM_INSTRUCTION = """Bạn là một chuyên gia ẩm thực và tâm lý. Nhiệm vụ của bạn là đọc câu nói của người dùng và trích xuất ra các từ khóa món ăn, không gian phù hợp để giúp hệ thống tìm kiếm quán ăn.
+_SYSTEM_INSTRUCTION = """Bạn là hệ thống tiền xử lý truy vấn tìm kiếm quán ăn/món ăn. Nhiệm vụ:
 
-Dưới đây là một số ví dụ (Examples):
-User: "Mình vừa chia tay người yêu, buồn quá không biết ăn gì"
-JSON: {"tags": ["đồ ngọt", "kem", "yên tĩnh", "chill", "chữa lành"], "budget": null, "intent": "search_food"}
+1. Sửa lỗi chính tả tiếng Việt (ví dụ: "bún bò huê" → "bún bò Huế")
+2. Mở rộng query quá ngắn/mơ hồ thành câu rõ ý định ẩm thực
+3. Trích xuất ý định ẩm thực thực sự từ ngữ cảnh cảm xúc/hội thoại
+4. Loại bỏ thông tin nhiễu (ngân sách, địa điểm, cảm xúc) — chỉ giữ phần mô tả món ăn/quán ăn
+5. Giữ nguyên tên riêng món ăn, tên quán nếu có
 
-User: "Sếp mới thưởng nóng, kiếm chỗ nào nhậu tới bến luôn đem theo 500k"
-JSON: {"tags": ["quán nhậu", "bia", "đông vui", "náo nhiệt", "lẩu nướng"], "budget": 500000, "intent": "search_food"}
+Ví dụ:
+User: "buồn quá ăn gì"
+JSON: {"cleaned_query": "món ăn ngon phù hợp khi buồn, đồ ăn comfort food"}
 
-Hãy suy luận tâm trạng và trả về DUY NHẤT một chuỗi JSON chứa "tags" (mảng chuỗi), "budget" (số nguyên hoặc null) và "intent" (chuỗi). Không giải thích gì thêm!"""
+User: "bún bò huê ngon"
+JSON: {"cleaned_query": "bún bò Huế ngon"}
+
+User: "sếp thưởng nóng kiếm chỗ nhậu tới bến"
+JSON: {"cleaned_query": "quán nhậu, quán bia, đồ nhắm, hải sản tươi"}
+
+User: "phở"
+JSON: {"cleaned_query": "phở bò, phở gà, quán phở ngon"}
+
+User: "đi bão xong đói bụng muốn ăn gà rán"
+JSON: {"cleaned_query": "gà rán, quán gà rán giòn"}
+
+User: "cafe sữa"  
+JSON: {"cleaned_query": "quán cà phê, cà phê sữa đá"}
+
+Chỉ trả về JSON {"cleaned_query": "..."}, không giải thích!"""
 
 
-async def parse_query_with_gemini(text: str) -> Tuple[List[str], Optional[int], str]:
+async def clean_query_with_gemini(text: str) -> str:
     """
-    Gửi câu query của user tới Gemini API để trích xuất tags và budget.
-
-    Nếu Gemini API thất bại (thiếu key, timeout, rate-limit, ...),
-    tự động fallback sang phương pháp regex cơ bản.
-
+    Gửi câu query thô của user tới Gemini để làm sạch và reformulate.
+    
+    Gemini sẽ:
+    - Sửa chính tả
+    - Mở rộng query ngắn  
+    - Trích xuất ý định ẩm thực thực sự
+    - Loại bỏ noise (ngân sách, cảm xúc, vị trí)
+    
     Returns:
-        (tags, budget, intent)
+        str: Câu truy vấn đã được làm sạch. Nếu Gemini fail → trả về text gốc.
     """
     # --- Thử gọi Gemini trước ---
     if settings.GEMINI_API_KEY:
@@ -52,18 +71,18 @@ async def parse_query_with_gemini(text: str) -> Tuple[List[str], Optional[int], 
             if result is not None:
                 return result
         except Exception as e:
-            logger.warning("Gemini API failed, falling back to regex: %s", e)
+            logger.warning("Gemini API failed, falling back to original text: %s", e)
     else:
-        logger.warning("GEMINI_API_KEY chưa được cấu hình, sử dụng regex fallback")
+        logger.warning("GEMINI_API_KEY chưa được cấu hình, sử dụng original text fallback")
 
-    # --- Fallback: dùng regex parser cũ ---
-    return _regex_fallback(text)
+    # --- Fallback: dùng original text ---
+    return text
 
 
-async def _call_gemini(text: str) -> Optional[Tuple[List[str], Optional[int], str]]:
+async def _call_gemini(text: str) -> Optional[str]:
     """
-    Gọi Gemini API (async httpx) và parse JSON response.
-    Trả về None nếu thất bại.
+    Gọi Gemini API để reformulate query.
+    Trả về cleaned_query string hoặc None nếu thất bại.
 
     Fix #7: User text được gửi trong contents[].parts[].text thuần túy,
     system instructions được tách ra riêng trong system_instruction field.
@@ -110,31 +129,9 @@ async def _call_gemini(text: str) -> Optional[Tuple[List[str], Optional[int], st
 
     parsed = json.loads(response_text)
 
-    tags = parsed.get("tags", [])
-    if not isinstance(tags, list):
-        tags = [str(tags)]
-
-    budget = parsed.get("budget")
-    if not isinstance(budget, int):
-        budget = None
-
-    # TODO: Regex always overrides Gemini's budget when it finds a match.
-    # This is pragmatic for the MVP because explicit numbers like "dưới 50k"
-    # are more reliable than LLM inference. However, it can misinterpret
-    # negative contexts (e.g., "dưới 50k thì không ăn" → regex returns 50000
-    # even though the user means they DON'T want that budget). Revisit when
-    # Gemini's structured output becomes more reliable.
-    regex_budget = extract_budget(text)
-    if regex_budget is not None:
-        budget = regex_budget
-
-    intent = parsed.get("intent", "search_food")
-
-    return tags, budget, intent
-
-
-def _regex_fallback(text: str) -> Tuple[List[str], Optional[int], str]:
-    """Fallback dùng regex để trích xuất tags và budget khi Gemini không khả dụng."""
-    tags = extract_tags(text)
-    budget = extract_budget(text)
-    return tags, budget, "search_food"
+    cleaned = parsed.get("cleaned_query", "").strip()
+    if not cleaned:
+        return None
+    
+    logger.info("Query cleaned: '%s' → '%s'", text, cleaned)
+    return cleaned

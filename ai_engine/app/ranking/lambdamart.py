@@ -31,8 +31,9 @@ FEATURE_NAMES: List[str] = [
 
 # Feature weight vector used to compute heuristic relevance labels during training.
 # Order matches FEATURE_NAMES.  Negative weights = lower is better.
+# Tăng similarity weight lên 0.45 để đảm bảo semantic match luôn được ưu tiên
 _HEURISTIC_WEIGHTS = np.array(
-    [0.30, 0.25, 0.20, -0.10, -0.10, 0.05], dtype=np.float32
+    [0.45, 0.20, 0.15, -0.08, -0.08, 0.04], dtype=np.float32
 )
 
 _LGBM_PARAMS: dict = {

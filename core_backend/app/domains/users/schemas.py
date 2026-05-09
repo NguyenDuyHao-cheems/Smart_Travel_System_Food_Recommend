@@ -33,6 +33,10 @@ class OnboardingRequest(BaseModel):
     location: str = Field(..., description="User's current city or district.")
 
     age: Optional[int] = Field(None, ge=13, le=120, description="User's age.")
+    is_vegetarian: bool = Field(
+        default=False,
+        description="True if the user follows a vegetarian diet.",
+    )
 
     
     @field_validator("favorite_dishes", "dietary_restrictions", "allergies")

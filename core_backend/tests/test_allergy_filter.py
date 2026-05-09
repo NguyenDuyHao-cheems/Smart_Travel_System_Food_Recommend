@@ -32,8 +32,8 @@ def test_contains_allergen_no_match():
 # ── Core Filter Tests ─────────────────────────────────────────────────────────
 def test_filter_allergy_no_allergies():
     candidates = [
-        {"id": 1, "name": "Bún Bò", "ingredients": ["bò", "bún"]},
-        {"id": 2, "name": "Phở Gà", "ingredients": ["gà", "phở"]}
+        {"id": 1, "name": "Bún Bò", "allergens": ["bò", "bún"]},
+        {"id": 2, "name": "Phở Gà", "allergens": ["gà", "phở"]}
     ]
     safe, removed = filter_allergy(candidates, [])
     assert len(safe) == 2
@@ -41,9 +41,9 @@ def test_filter_allergy_no_allergies():
 
 def test_filter_allergy_match_allergen():
     candidates = [
-        {"id": 1, "name": "Gỏi Cuốn Tôm", "ingredients": ["tôm", "thịt", "bánh tráng"]},
-        {"id": 2, "name": "Phở Bò", "ingredients": ["bò", "phở"]},
-        {"id": 3, "name": "Bún Đậu", "ingredients": ["đậu hũ", "bún", "thịt heo"]}
+        {"id": 1, "name": "Gỏi Cuốn Tôm", "allergens": ["tôm", "thịt", "bánh tráng"]},
+        {"id": 2, "name": "Phở Bò", "allergens": ["bò", "phở"]},
+        {"id": 3, "name": "Bún Đậu", "allergens": ["đậu hũ", "bún", "thịt heo"]}
     ]
     safe, removed = filter_allergy(candidates, ["shrimp", "soy"])
     
@@ -55,10 +55,10 @@ def test_filter_allergy_match_allergen():
     assert 1 in removed_ids
     assert 3 in removed_ids
 
-def test_filter_allergy_missing_ingredients():
+def test_filter_allergy_missing_allergens():
     candidates = [
-        {"id": 1, "name": "Unknown Dish"},  # No ingredients key
-        {"id": 2, "name": "Salad", "ingredients": []} # Empty ingredients
+        {"id": 1, "name": "Unknown Dish"},  # No allergens key
+        {"id": 2, "name": "Salad", "allergens": []} # Empty allergens
     ]
     safe, removed = filter_allergy(candidates, ["peanut"])
     assert len(safe) == 2
@@ -69,13 +69,30 @@ def test_filter_allergy_empty_candidates():
     assert len(safe) == 0
     assert len(removed) == 0
 
-def test_filter_allergy_string_ingredients():
+def test_filter_allergy_string_allergens():
     candidates = [
-        {"id": 1, "name": "Bánh Mì", "ingredients": "bột mì, trứng, pate"}
+        {"id": 1, "name": "Bánh Mì", "allergens": "bột mì, trứng, pate"}
     ]
     safe, removed = filter_allergy(candidates, ["egg"])
     assert len(safe) == 0
     assert len(removed) == 1
+
+class MockRestaurant:
+    def __init__(self, id):
+        self.id = id
+
+def test_filter_allergy_with_allergen_map():
+    candidates = [
+        MockRestaurant(id="r1"),
+        MockRestaurant(id="r2"),
+    ]
+    allergen_map = {
+        "r1": ["tôm", "đậu phộng"],
+        "r2": ["bò"],
+    }
+    safe, removed = filter_allergy(candidates, ["shrimp"], allergen_map)
+    assert len(removed) == 1
+    assert removed[0].id == "r1"
 
 # ── Fallback Tests ────────────────────────────────────────────────────────────
 def test_handle_fallback():
@@ -96,7 +113,7 @@ def test_performance():
         candidates.append({
             "id": i,
             "name": f"Dish {i}",
-            "ingredients": ["ingredient A", "ingredient B", "peanut" if i % 10 == 0 else "chicken"]
+            "allergens": ["ingredient A", "ingredient B", "peanut" if i % 10 == 0 else "chicken"]
         })
         
     start_time = time.perf_counter()

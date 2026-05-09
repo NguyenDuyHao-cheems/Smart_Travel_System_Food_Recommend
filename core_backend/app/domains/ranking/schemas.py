@@ -34,7 +34,6 @@ class UserRankRequest(BaseModel):
     k: int = Field(default=10, ge=1, le=50, description="Số lượng kết quả cần trả về")
     offset: int = Field(default=0, ge=0)
 
-    tags: List[str] = Field(default_factory=list)
     budget: int = Field(default=100000, ge=0, description="Ngân sách tối đa (VNĐ)")
     radius: float = Field(default=5.0, ge=0.0, description="Bán kính tìm kiếm (km)")
     query_vector: Optional[List[float]] = Field(

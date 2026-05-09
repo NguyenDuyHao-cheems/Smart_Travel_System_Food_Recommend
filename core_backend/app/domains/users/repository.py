@@ -37,7 +37,8 @@ class UserOnboardingRepository:
         budget: str,
         location: str,
         age: int,
-        preferences_vector: Optional[List[float]],
+        is_vegetarian: bool = False,
+        preferences_vector: Optional[List[float]] = None,
     ) -> UserOnboarding:
         """
         Insert a new onboarding record or overwrite the existing one.
@@ -53,6 +54,7 @@ class UserOnboardingRepository:
             existing.budget = budget
             existing.location = location
             existing.age = age
+            existing.is_vegetarian = is_vegetarian
             existing.preferences_vector = preferences_vector
             record = existing
         else:
@@ -65,6 +67,7 @@ class UserOnboardingRepository:
                 budget=budget,
                 location=location,
                 age=age,
+                is_vegetarian=is_vegetarian,
                 preferences_vector=preferences_vector,
             )
             self._db.add(record)

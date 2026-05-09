@@ -10,7 +10,7 @@ They test the logic of:
 
 import pytest
 
-from app.nlp.query_parser import extract_budget, extract_tags
+from app.nlp.query_parser import extract_budget
 from app.core.config import settings
 from app.nlp.service import generate_mean_pooled_embedding
 
@@ -68,66 +68,13 @@ class TestExtractBudget:
         assert extract_budget("50 k") == 50000
 
 
-# ---------------------------------------------------------------------------
-# extract_tags()
-# ---------------------------------------------------------------------------
-
-
-class TestExtractTags:
-    """Unit tests for the extract_tags() function."""
-
-    def test_returns_list(self):
-        """Should always return a list."""
-        result = extract_tags("phở bò")
-        assert isinstance(result, list)
-
-    def test_basic_food_words_in_tags(self):
-        """Key food words should appear in tags (normalized / unaccented)."""
-        tags = extract_tags("phở bò ngon")
-        assert "pho" in tags
-        assert "bo" in tags
-
-    def test_stop_words_excluded(self):
-        """Vietnamese stop words must be filtered out."""
-        stop_words = {"muon", "muốn", "an", "ăn", "gan", "gần", "toi", "tôi",
-                      "duoi", "dưới", "tren", "trên", "tam", "tầm",
-                      "khoang", "khoảng", "gia", "giá"}
-        tags = set(extract_tags("tôi muốn ăn phở gần đây"))
-        overlap = stop_words & tags
-        assert len(overlap) == 0, f"Stop words found: {overlap}"
-
-    def test_digits_excluded(self):
-        """Pure digit tokens should not appear in tags."""
-        tags = extract_tags("quán 50k bún chả")
-        assert not any(tag.isdigit() for tag in tags)
-
-    def test_k_suffix_amounts_removed(self):
-        """Tokens like '50k' should be stripped before tagging."""
-        tags = extract_tags("ăn tầm 50k bún chả")
-        # '50k' should not appear as a tag
-        assert "50k" not in tags
-
-    def test_no_duplicates_in_tags(self):
-        """Each tag should appear only once."""
-        tags = extract_tags("phở bò phở gà phở")
-        assert len(tags) == len(set(tags))
-
-    def test_empty_string_returns_empty_list(self):
-        """Empty input should return an empty list."""
-        assert extract_tags("") == []
-
-    def test_mixed_viet_and_english(self):
-        """Should handle mixed Vietnamese/English text (normalized output)."""
-        tags = extract_tags("bún chả near me")
-        assert "bun" in tags
-        assert "cha" in tags
 
 class TestEmbeddingFallback:
     def test_fallback_embedding_has_expected_dimension(self, monkeypatch):
         def broken_provider():
             raise RuntimeError("model not loaded")
 
-        monkeypatch.setattr("app.nlp.service.get_tokenizer_and_model", broken_provider)
+        monkeypatch.setattr("app.nlp.service.get_embedding_model", broken_provider)
 
         vector = generate_mean_pooled_embedding("phở bò dưới 50k")
 
@@ -139,12 +86,31 @@ class TestEmbeddingFallback:
         def broken_provider():
             raise RuntimeError("model not loaded")
 
-        monkeypatch.setattr("app.nlp.service.get_tokenizer_and_model", broken_provider)
+        monkeypatch.setattr("app.nlp.service.get_embedding_model", broken_provider)
 
         first = generate_mean_pooled_embedding("bún chả rẻ")
         second = generate_mean_pooled_embedding("bún chả rẻ")
 
         assert first == second
+
+    def test_generate_mean_pooled_embedding_with_segmentation(self, monkeypatch):
+        class DummyModel:
+            def encode(self, text):
+                self.last_encoded_text = text
+                class MockTensor:
+                    def tolist(self):
+                        return [0.1] * settings.VECTOR_DIM
+                return MockTensor()
+                
+        dummy = DummyModel()
+        monkeypatch.setattr("app.nlp.service.get_embedding_model", lambda: dummy)
+        
+        # Call generate_mean_pooled_embedding
+        vector = generate_mean_pooled_embedding("bún chả hà nội")
+        
+        # Check if the word segmentation was applied
+        assert dummy.last_encoded_text == "bún chả hà_nội"
+        assert len(vector) == settings.VECTOR_DIM
 
 # ---------------------------------------------------------------------------
 # End of tests

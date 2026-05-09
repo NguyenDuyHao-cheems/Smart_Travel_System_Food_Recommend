@@ -100,19 +100,19 @@ export default function OnboardingPage() {
   const [errorMsg, setErrorMsg] = useState('');
   const [userId, setUserId] = useState('');
 
-  // Sinh ID độc nhất cho mỗi User để không bị đụng hàng
+  // Yêu cầu đăng nhập — redirect về /auth nếu chưa có token
   useEffect(() => {
-    let stored = localStorage.getItem('food_recsys_userid');
-    // Bỏ tiền tố "user_" vì Backend PostgreSQL dùng kiểu UUID chuẩn, nếu có chữ "user_" sẽ bị lỗi InvalidTextRepresentation
-    if (stored && stored.startsWith('user_')) {
-      stored = null; // Bắt buộc tạo lại nếu đang lưu format cũ
+    const token = localStorage.getItem('access_token');
+    const storedUserId = localStorage.getItem('user_id');
+
+    if (!token || !storedUserId) {
+      console.warn("Chưa đăng nhập, redirect về /auth");
+      router.push('/auth?redirect=/onboarding');
+      return;
     }
-    if (!stored) {
-      stored = crypto.randomUUID();
-      localStorage.setItem('food_recsys_userid', stored);
-    }
-    setUserId(stored);
-  }, []);
+
+    setUserId(storedUserId);
+  }, [router]);
 
   // Helpers
   const toggleArrayItem = React.useCallback((field: keyof OnboardingData, value: string) => {

@@ -169,6 +169,7 @@ def make_payload(**overrides) -> dict:
         "favorite_dishes": ["Phở bò", "Bún chả", "Bánh mì"],
         "spicy_level": "medium",
         "dietary_restrictions": [],
+        "is_vegetarian": False,
         "allergies": [],
         "budget": "medium",
         "location": "Ho Chi Minh City",

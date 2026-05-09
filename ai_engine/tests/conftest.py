@@ -30,23 +30,23 @@ def _stub_torch():
     torch_mock.Tensor = MagicMock
     torch_mock.FloatTensor = MagicMock
     torch_mock.long = MagicMock()
+    torch_mock.__spec__ = MagicMock()
     sys.modules["torch"] = torch_mock
 
 
-def _stub_transformers():
-    """Inject a fake 'transformers' module into sys.modules."""
-    if "transformers" in sys.modules:
+def _stub_sentence_transformers():
+    """Inject a fake 'sentence_transformers' module into sys.modules."""
+    if "sentence_transformers" in sys.modules:
         return
 
-    transformers_mock = types.ModuleType("transformers")
-    transformers_mock.AutoTokenizer = MagicMock()
-    transformers_mock.RobertaModel = MagicMock()
-    sys.modules["transformers"] = transformers_mock
+    st_mock = types.ModuleType("sentence_transformers")
+    st_mock.SentenceTransformer = MagicMock()
+    sys.modules["sentence_transformers"] = st_mock
 
 
 # Stub BEFORE any app imports
 _stub_torch()
-_stub_transformers()
+_stub_sentence_transformers()
 
 
 # ---------------------------------------------------------------------------

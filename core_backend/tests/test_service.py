@@ -72,6 +72,7 @@ class TestBuildOnboardingText:
             favorite_dishes=["Phở bò", "Bún chả", "Bánh mì"],
             spicy_level="medium",
             dietary_restrictions=[],
+            is_vegetarian=False,
             allergies=[],
             budget="medium",
             location="Ho Chi Minh City",
@@ -276,6 +277,7 @@ class TestProcessOnboarding:
         call_kwargs = service._repo.upsert.call_args.kwargs
         assert call_kwargs["user_id"] == "user_004"
         assert call_kwargs["favorite_dishes"] == req.favorite_dishes
+        assert call_kwargs["is_vegetarian"] == req.is_vegetarian
 
     @pytest.mark.asyncio
     async def test_ai_vector_used_directly_without_extra_dims(self):

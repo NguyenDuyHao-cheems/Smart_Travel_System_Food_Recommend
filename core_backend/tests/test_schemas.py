@@ -47,6 +47,14 @@ class TestOnboardingRequestValid:
         assert req.dietary_restrictions == []
         assert req.allergies == []
 
+    def test_is_vegetarian_defaults_to_false(self):
+        req = OnboardingRequest(**make_payload())
+        assert req.is_vegetarian is False
+
+    def test_is_vegetarian_can_be_set_true(self):
+        req = OnboardingRequest(**make_payload(is_vegetarian=True))
+        assert req.is_vegetarian is True
+
 
 # ── OnboardingRequest – validation errors ─────────────────────────────────────
 
