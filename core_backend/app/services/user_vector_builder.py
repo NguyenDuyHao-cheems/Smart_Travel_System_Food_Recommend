@@ -81,6 +81,7 @@ def build_onboarding_text(
     favorite_dishes: Optional[List[str]] = None,
     spicy_level: Optional[str] = None,
     dietary_restrictions: Optional[List[str]] = None,
+    is_vegetarian: bool = False,
     allergies: Optional[List[str]] = None,
     budget: Optional[str] = None,
     location: Optional[str] = None,
