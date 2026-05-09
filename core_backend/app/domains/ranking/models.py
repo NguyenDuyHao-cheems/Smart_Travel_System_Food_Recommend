@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, Boolean, ForeignKey
+from sqlalchemy import Column, Integer, String, Float, Boolean, ForeignKey, JSON
 from sqlalchemy.orm import relationship
 from app.core.database import Base
 from pgvector.sqlalchemy import Vector
@@ -30,6 +30,24 @@ class RestaurantModel(Base):
     opening_hours = Column(String, nullable=True)
 
     tags = relationship("TagModel", secondary="res_tags", back_populates="restaurants")
+    dishes = relationship("DishModel", back_populates="restaurant")
+
+
+class DishModel(Base):
+    __tablename__ = "dishes"
+
+    id = Column(String, primary_key=True, index=True)
+    res_id = Column(String, ForeignKey("restaurants.id"), index=True)
+    name = Column(String, nullable=False)
+    price = Column(Integer, nullable=False)
+    image_url = Column(String, nullable=True)
+    ingredients = Column(JSON, default=[])
+    allergens = Column(JSON, default=[])
+    is_vegetarian = Column(Boolean, default=False)
+    embedding_vector = Column(Vector(settings.VECTOR_DIM), nullable=True)
+
+    restaurant = relationship("RestaurantModel", back_populates="dishes")
+
 
 
 class TagModel(Base):
