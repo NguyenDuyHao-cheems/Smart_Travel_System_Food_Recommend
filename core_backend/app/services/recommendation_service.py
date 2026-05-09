@@ -21,6 +21,7 @@ async def recommend(
     budget: int = 0,
     user_location: Optional[List[float]] = None,
     radius: float = 5.0,
+    tag_name: Optional[str] = None,
 ):
     """
     Recommendation pipeline:
@@ -46,6 +47,7 @@ async def recommend(
         radius=radius,
         query_vector=final_vector,
         query_text=query,
+        tag_name=tag_name,
     )
 
     if not raw_candidates:

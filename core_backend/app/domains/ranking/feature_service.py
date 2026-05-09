@@ -95,6 +95,7 @@ class FeatureService:
                 "review_count": int(getattr(r, "total_reviews", 0) or 0),
                 "similarity_score": sim_score,
                 "is_open": is_open_int,
+                "tag_match": 1 if getattr(r, "tag_match", False) else 0,
             })
         return result
 

@@ -44,6 +44,7 @@ class RankingService:
             user_location=request.user_location,
             radius=request.radius,
             query_vector=getattr(request, "query_vector", None),
+            query_text=getattr(request, "query", ""),
         )
         if not rows:
             return []
@@ -55,6 +56,7 @@ class RankingService:
             user_lat=request.user_location[0],
             user_lng=request.user_location[1],
             budget=request.budget,
+            query_text=getattr(request, "query", ""),
         )
 
         # Bước 3: Gọi AI Engine (LambdaMART rerank)

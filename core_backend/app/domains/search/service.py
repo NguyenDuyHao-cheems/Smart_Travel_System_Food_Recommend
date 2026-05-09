@@ -65,6 +65,7 @@ class SearchService:
             budget=effective_budget,
             user_location=[request.lat, request.lng],
             radius=self.DEFAULT_RADIUS_KM,
+            tag_name=request.tag_name,
         )
         safe_candidates = recommend_results["results"]
         filtered_out_count = recommend_results["filtered_out_count"]
@@ -159,6 +160,7 @@ class SearchService:
                 budget=effective_budget,
                 user_location=[request.lat, request.lng],
                 radius=self.FALLBACK_RADIUS_KM,
+                tag_name=request.tag_name,
             )
             fallback_candidates = fallback_recommend["results"][:5]
             nearest_results = []

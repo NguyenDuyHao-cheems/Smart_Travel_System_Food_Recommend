@@ -30,6 +30,8 @@ class RestaurantModel(Base):
     image_url = Column(String, nullable=True)
     opening_hours = Column(String, nullable=True)
 
+    tag_match: bool = False  # non-DB field for boosting/ranking
+
     tags = relationship("TagModel", secondary="res_tags", back_populates="restaurants")
     dishes = relationship("DishModel", back_populates="restaurant")
 
