@@ -1,3 +1,5 @@
+import logging
+import httpx
 from typing import List, Optional
 
 from sqlalchemy.orm import Session
@@ -5,9 +7,13 @@ from sqlalchemy.orm import Session
 from app.services.user_services import get_user_allergies, get_user_preferences_vector
 from app.services.allergy_filter import filter_allergy, handle_fallback, fetch_allergen_map
 from app.domains.ranking.retrieval_service import RetrievalService
+from app.domains.ranking.feature_service import FeatureService
+from app.core.config import settings
+
+logger = logging.getLogger(__name__)
 
 
-def recommend(
+async def recommend(
     query: str,
     user_id: str,
     db: Session,
@@ -39,6 +45,7 @@ def recommend(
         user_location=user_location or [0.0, 0.0],
         radius=radius,
         query_vector=final_vector,
+        query_text=query,
     )
 
     if not raw_candidates:
@@ -62,7 +69,77 @@ def recommend(
             "warning": fallback.get("warning"),
         }
 
-    # Return full objects instead of IDs
+    # --- BƯỚC MỚI: Gọi AI Engine để rerank ---
+    COSINE_THRESHOLD = 0.80  # distance <= 0.80 tương đương sim >= 20%
+    
+    if final_vector:
+        qualified_candidates = [c for c in safe_candidates if hasattr(c, 'distance') and c.distance is not None and c.distance <= COSINE_THRESHOLD]
+        if len(qualified_candidates) < 3:
+            logger.info("Chỉ có %d ứng viên đạt chuẩn (distance <= %.2f) — Bỏ qua LambdaMART rerank để giữ cosine order", len(qualified_candidates), COSINE_THRESHOLD)
+            return {
+                "results": safe_candidates,
+                "filtered_out_count": len(removed),
+                "fallback_applied": False,
+            }
+        top_candidates = qualified_candidates[:50]
+    else:
+        top_candidates = safe_candidates[:50]
+
+    logger.info(
+        "Retrieval quality: total=%d, selected_for_rerank=%d, best_dist=%.3f, worst_dist=%.3f",
+        len(safe_candidates),
+        len(top_candidates),
+        min([c.distance for c in top_candidates if hasattr(c, 'distance') and c.distance is not None], default=-1.0),
+        max([c.distance for c in top_candidates if hasattr(c, 'distance') and c.distance is not None], default=-1.0)
+    )
+    
+    feature_svc = FeatureService()
+    featured = feature_svc.build_integer_features(
+        top_candidates,
+        user_lat=user_location[0] if user_location else 0.0,
+        user_lng=user_location[1] if user_location else 0.0,
+        budget=budget,
+        query_text=query
+    )
+    
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            payload = {
+                "user_id": user_id or "anonymous",
+                "candidates": featured,
+                "top_k": len(featured),
+            }
+            resp = await client.post(
+                f"{settings.AI_ENGINE_BASE_URL}/api/v1/ml/rank",
+                json=payload,
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                ranked_ids = data.get("ranked_ids", [])
+                scores = data.get("scores", [])
+                
+                id_to_candidate = {str(c.id): c for c in top_candidates}
+                reranked = []
+                for i, rid in enumerate(ranked_ids):
+                    if rid in id_to_candidate:
+                        c = id_to_candidate[rid]
+                        c.ranking_score = scores[i] if i < len(scores) else None
+                        reranked.append(c)
+                
+                # Xử lý các ứng viên bị miss (nếu có)
+                for c in top_candidates:
+                    if str(c.id) not in {str(r.id) for r in reranked}:
+                        c.ranking_score = None
+                        reranked.append(c)
+                        
+                # Merge an toàn vào danh sách ban đầu
+                reranked_ids = {str(c.id) for c in reranked}
+                remaining_candidates = [c for c in safe_candidates if str(c.id) not in reranked_ids]
+                safe_candidates = reranked + remaining_candidates
+            else:
+                logger.warning("Ranking API returned %s: %s", resp.status_code, resp.text)
+    except Exception as exc:
+        logger.warning("Ranking rerank failed, keeping cosine order: %s", exc)
 
     return {
         "results": safe_candidates,
