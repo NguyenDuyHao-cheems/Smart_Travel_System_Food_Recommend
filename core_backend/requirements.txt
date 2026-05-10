@@ -1,0 +1,13 @@
+fastapi>=0.100.0
+uvicorn
+sqlalchemy
+psycopg2-binary
+asyncpg
+python-dotenv
+httpx
+pydantic>=2.0.0
+pgvector
+cachetools
+numpy
+python-jose[cryptography]
+bcrypt

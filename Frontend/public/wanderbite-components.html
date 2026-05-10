@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Wanderbite — Component Library</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Roboto', 'sans-serif'] },
+        },
+      },
+    };
+  </script>
+  <style>
+    body { font-family: 'Roboto', sans-serif; }
+    .section-title {
+      font-size: 13px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.1em; color: #9CA3AF; margin-bottom: 20px;
+      padding-bottom: 8px; border-bottom: 1px solid #E5E7EB;
+    }
+    .dark .section-title { color: #6B7280; border-color: #374151; }
+    .component-row { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; margin-bottom: 32px; }
+  </style>
+</head>
+
+<body class="bg-gray-50 text-gray-900 min-h-screen" id="body">
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- HEADER: Title + Dark Mode Toggle                          -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<header class="sticky top-0 z-50 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-b border-gray-200 dark:border-gray-700">
+  <div class="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+    <div>
+      <h1 class="text-2xl font-bold text-gray-900 dark:text-white">🎨 Wanderbite <span class="text-orange-500">Component Library</span></h1>
+      <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">All UI components — Light & Dark Mode</p>
+    </div>
+    <button onclick="toggleDark()" id="darkToggle"
+      class="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all cursor-pointer shadow-sm">
+      <span id="toggleIcon">🌙</span>
+      <span id="toggleText">Dark Mode</span>
+    </button>
+  </div>
+</header>
+
+<main class="max-w-6xl mx-auto px-6 py-10 dark:bg-gray-900 dark:text-white transition-colors">
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- 1. COLOR PALETTE                                          -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<section class="mb-14">
+  <div class="section-title">1. Color Palette</div>
+
+  <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+    <!-- Light Mode Colors -->
+    <div class="flex flex-col items-center gap-2">
+      <div class="w-full h-20 rounded-2xl bg-gray-50 border border-gray-200 dark:border-gray-600 shadow-sm"></div>
+      <span class="text-xs font-medium text-gray-500 dark:text-gray-400">Background</span>
+      <span class="text-[11px] font-mono text-gray-400">#F9FAFB</span>
+    </div>
+    <div class="flex flex-col items-center gap-2">
+      <div class="w-full h-20 rounded-2xl bg-white border border-gray-200 dark:border-gray-600 shadow-sm"></div>
+      <span class="text-xs font-medium text-gray-500 dark:text-gray-400">Surface/Card</span>
+      <span class="text-[11px] font-mono text-gray-400">#FFFFFF</span>
+    </div>
+    <div class="flex flex-col items-center gap-2">
+      <div class="w-full h-20 rounded-2xl bg-gray-900 shadow-sm"></div>
+      <span class="text-xs font-medium text-gray-500 dark:text-gray-400">Primary Text</span>
+      <span class="text-[11px] font-mono text-gray-400">#111827</span>
+    </div>
+    <div class="flex flex-col items-center gap-2">
+      <div class="w-full h-20 rounded-2xl bg-gray-500 shadow-sm"></div>
+      <span class="text-xs font-medium text-gray-500 dark:text-gray-400">Secondary Text</span>
+      <span class="text-[11px] font-mono text-gray-400">#6B7280</span>
+    </div>
+    <!-- Accents -->
+    <div class="flex flex-col items-center gap-2">
+      <div class="w-full h-20 rounded-2xl shadow-sm" style="background:#ff8f00"></div>
+      <span class="text-xs font-medium text-gray-500 dark:text-gray-400">Primary Accent</span>
+      <span class="text-[11px] font-mono text-gray-400">#ff8f00</span>
+    </div>
+    <div class="flex flex-col items-center gap-2">
+      <div class="w-full h-20 rounded-2xl shadow-sm" style="background:#00bcd4"></div>
+      <span class="text-xs font-medium text-gray-500 dark:text-gray-400">Secondary (AI)</span>
+      <span class="text-[11px] font-mono text-gray-400">#00bcd4</span>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- 2. TYPOGRAPHY                                             -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<section class="mb-14">
+  <div class="section-title">2. Typography</div>
+
+  <div class="bg-white dark:bg-gray-800 rounded-2xl p-8 shadow-sm border border-gray-100 dark:border-gray-700 space-y-5">
+    <div>
+      <span class="text-[11px] font-mono text-gray-400 block mb-1">H1 — text-4xl / font-bold</span>
+      <h1 class="text-4xl font-bold text-gray-900 dark:text-white">Hôm nay bạn muốn ăn gì?</h1>
+    </div>
+    <div>
+      <span class="text-[11px] font-mono text-gray-400 block mb-1">H2 — text-2xl / font-semibold</span>
+      <h2 class="text-2xl font-semibold text-gray-900 dark:text-white">Gợi ý dành cho bạn</h2>
+    </div>
+    <div>
+      <span class="text-[11px] font-mono text-gray-400 block mb-1">H3 — text-xl / font-semibold</span>
+      <h3 class="text-xl font-semibold text-gray-900 dark:text-white">Bún bò Huế — Quán Mệ Oanh</h3>
+    </div>
+    <div>
+      <span class="text-[11px] font-mono text-gray-400 block mb-1">Body — text-base / font-normal</span>
+      <p class="text-base text-gray-600 dark:text-gray-400">Wanderbite sử dụng AI để gợi ý món ăn phù hợp với sở thích, vị trí và tâm trạng của bạn.</p>
+    </div>
+    <div>
+      <span class="text-[11px] font-mono text-gray-400 block mb-1">Small — text-sm / font-medium</span>
+      <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Khoảng cách: 2.5km • Mở cửa đến 22:00</p>
+    </div>
+    <div>
+      <span class="text-[11px] font-mono text-gray-400 block mb-1">Caption — text-xs / font-medium</span>
+      <p class="text-xs font-medium text-gray-400">AI Match: 98% • Cập nhật 5 phút trước</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- 3. BUTTONS                                                -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<section class="mb-14">
+  <div class="section-title">3. Buttons</div>
+
+  <!-- Primary CTA -->
+  <p class="text-xs font-semibold text-gray-400 dark:text-gray-500 mb-3 uppercase tracking-wider">Primary CTA</p>
+  <div class="component-row">
+    <button class="bg-orange-500 text-white rounded-2xl px-6 py-3 font-semibold text-sm hover:bg-orange-600 transition-all duration-200 shadow-md shadow-orange-200 dark:shadow-[0_0_20px_rgba(255,143,0,0.4)] cursor-pointer">
+      Tìm kiếm
+    </button>
+    <button class="bg-orange-500 text-white rounded-2xl px-6 py-3 font-semibold text-sm hover:bg-orange-600 transition-all duration-200 shadow-md shadow-orange-200 dark:shadow-[0_0_20px_rgba(255,143,0,0.4)] cursor-pointer flex items-center gap-2">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+      Tìm kiếm
+    </button>
+    <button class="bg-orange-500 text-white rounded-2xl px-8 py-4 font-bold text-base hover:bg-orange-600 transition-all duration-200 shadow-lg shadow-orange-200 dark:shadow-[0_0_30px_rgba(255,143,0,0.4)] cursor-pointer">
+      Khám phá ngay
+    </button>
+    <button class="bg-orange-500 text-white rounded-2xl px-6 py-3 font-semibold text-sm opacity-50 cursor-not-allowed">
+      Disabled
+    </button>
+  </div>
+
+  <!-- Secondary -->
+  <p class="text-xs font-semibold text-gray-400 dark:text-gray-500 mb-3 uppercase tracking-wider">Secondary</p>
+  <div class="component-row">
+    <button class="border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 rounded-2xl px-6 py-3 font-semibold text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200 cursor-pointer">
+      Hủy bỏ
+    </button>
+    <button class="border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 rounded-2xl px-6 py-3 font-semibold text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200 cursor-pointer flex items-center gap-2">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
+      Thêm mới
+    </button>
+    <button class="border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 rounded-xl px-5 py-2.5 font-medium text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200 cursor-pointer">
+      Xem tất cả
+    </button>
+  </div>
+
+  <!-- Ghost / Text -->
+  <p class="text-xs font-semibold text-gray-400 dark:text-gray-500 mb-3 uppercase tracking-wider">Ghost / Text</p>
+  <div class="component-row">
+    <button class="text-orange-500 font-semibold text-sm hover:text-orange-600 transition-all cursor-pointer px-2">
+      Xem thêm →
+    </button>
+    <button class="text-gray-500 dark:text-gray-400 font-medium text-sm hover:text-gray-700 dark:hover:text-gray-200 transition-all cursor-pointer underline underline-offset-2 px-2">
+      Bỏ qua
+    </button>
+  </div>
+
+  <!-- Icon Buttons -->
+  <p class="text-xs font-semibold text-gray-400 dark:text-gray-500 mb-3 uppercase tracking-wider">Icon Buttons</p>
+  <div class="component-row">
+    <button class="p-2.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition cursor-pointer text-gray-500 dark:text-gray-400">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+    </button>
+    <button class="p-2.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition cursor-pointer text-gray-500 dark:text-gray-400">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+    </button>
+    <button class="p-2.5 rounded-full bg-orange-50 dark:bg-orange-500/20 text-orange-500 hover:bg-orange-100 dark:hover:bg-orange-500/30 transition cursor-pointer">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
+    </button>
+    <button class="w-10 h-10 rounded-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 shadow-sm transition cursor-pointer">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/></svg>
+    </button>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- 4. PILLS / TAGS (Vibe Filters)                            -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<section class="mb-14">
+  <div class="section-title">4. Pills / Tags (Vibe Filters)</div>
+
+  <p class="text-xs font-semibold text-gray-400 dark:text-gray-500 mb-3 uppercase tracking-wider">Filter Pills</p>
+  <div class="component-row">
+    <!-- Active -->
+    <span class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-full text-sm font-medium bg-orange-100 dark:bg-orange-500/20 border border-orange-300 dark:border-orange-500/30 text-orange-600 dark:text-orange-400 cursor-pointer transition-all">
+      🔥 Cay nóng
+    </span>
+    <!-- Default -->
+    <span class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-full text-sm font-medium bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-all">
+      ❄️ Mát lạnh
+    </span>
+    <span class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-full text-sm font-medium bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-all">
+      💕 Lãng mạn
+    </span>
+    <span class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-full text-sm font-medium bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-all">
+      💰 Giá sinh viên
+    </span>
+  </div>
+
+  <p class="text-xs font-semibold text-gray-400 dark:text-gray-500 mb-3 uppercase tracking-wider">Category Tags</p>
+  <div class="component-row">
+    <span class="px-3 py-1.5 rounded-full text-xs font-medium bg-red-50 dark:bg-red-500/10 text-red-500 border border-red-100 dark:border-red-500/20">Cay nóng</span>
+    <span class="px-3 py-1.5 rounded-full text-xs font-medium bg-teal-50 dark:bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-100 dark:border-teal-500/20">Truyền thống</span>
+    <span class="px-3 py-1.5 rounded-full text-xs font-medium bg-green-50 dark:bg-green-500/10 text-green-600 dark:text-green-400 border border-green-100 dark:border-green-500/20">Bữa trưa</span>
+    <span class="px-3 py-1.5 rounded-full text-xs font-medium bg-blue-50 dark:bg-blue-500/10 text-blue-500 dark:text-blue-400 border border-blue-100 dark:border-blue-500/20">Hải sản</span>
+    <span class="px-3 py-1.5 rounded-full text-xs font-medium bg-yellow-50 dark:bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border border-yellow-100 dark:border-yellow-500/20">Phô mai</span>
+    <span class="px-3 py-1.5 rounded-full text-xs font-medium bg-pink-50 dark:bg-pink-500/10 text-pink-500 dark:text-pink-400 border border-pink-100 dark:border-pink-500/20">Ngọt nhẹ</span>
+    <span class="px-3 py-1.5 rounded-full text-xs font-medium bg-cyan-50 dark:bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-100 dark:border-cyan-500/20">Giải nhiệt</span>
+    <span class="px-3 py-1.5 rounded-full text-xs font-medium bg-violet-50 dark:bg-violet-500/10 text-violet-500 dark:text-violet-400 border border-violet-100 dark:border-violet-500/20">Âu - Ý</span>
+  </div>
+
+  <p class="text-xs font-semibold text-gray-400 dark:text-gray-500 mb-3 uppercase tracking-wider">Badges</p>
+  <div class="component-row">
+    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-cyan-500/90 text-white">
+      🤖 AI Match: 98%
+    </span>
+    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-black/60 dark:bg-gray-700 text-white dark:text-gray-300">
+      📍 2.5km
+    </span>
+    <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold bg-orange-500 text-white">
+      ⭐ 4.8
+    </span>
+    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400">
+      ✅ Đang mở
+    </span>
+    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400">
+      ⛔ Đã đóng
+    </span>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- 5. INPUT FIELDS                                           -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<section class="mb-14">
+  <div class="section-title">5. Input Fields</div>
+
+  <!-- AI Search Bar -->
+  <p class="text-xs font-semibold text-gray-400 dark:text-gray-500 mb-3 uppercase tracking-wider">AI Search Bar</p>
+  <div class="max-w-2xl mb-8">
+    <div class="flex items-center bg-white dark:bg-gray-800 rounded-3xl border border-gray-200 dark:border-gray-700 shadow-md focus-within:ring-2 focus-within:ring-orange-400 dark:focus-within:shadow-[0_0_20px_rgba(255,143,0,0.3)] transition-all px-5 py-1">
+      <svg class="w-5 h-5 text-orange-400 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg>
+      <input type="text" placeholder="Mô tả món ăn bạn muốn, ví dụ: món cay, gần đây, giá rẻ..." class="flex-1 bg-transparent border-none outline-none py-3.5 text-sm text-gray-700 dark:text-gray-200 placeholder:text-gray-400 dark:placeholder:text-gray-500" />
+      <button class="bg-orange-500 text-white rounded-2xl px-5 py-2.5 font-semibold text-sm hover:bg-orange-600 transition-all flex items-center gap-2 ml-2 shadow-md shadow-orange-200 dark:shadow-[0_0_15px_rgba(255,143,0,0.3)] cursor-pointer whitespace-nowrap">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+        Tìm kiếm
+      </button>
+    </div>
+  </div>
+
+  <!-- Standard Input -->
+  <p class="text-xs font-semibold text-gray-400 dark:text-gray-500 mb-3 uppercase tracking-wider">Standard Input</p>
+  <div class="max-w-md mb-8 space-y-4">
+    <div>
+      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Tên của bạn</label>
+      <input type="text" placeholder="Nhập tên..." class="w-full bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 px-4 py-3 text-sm text-gray-700 dark:text-gray-200 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-orange-400 transition-all" />
+    </div>
+    <div>
+      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Email</label>
+      <input type="email" placeholder="email@example.com" class="w-full bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 px-4 py-3 text-sm text-gray-700 dark:text-gray-200 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-orange-400 transition-all" />
+    </div>
+  </div>
+
+  <!-- Textarea -->
+  <p class="text-xs font-semibold text-gray-400 dark:text-gray-500 mb-3 uppercase tracking-wider">Textarea</p>
+  <div class="max-w-md mb-6">
+    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Ghi chú</label>
+    <textarea rows="3" placeholder="Viết ghi chú của bạn..." class="w-full bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 px-4 py-3 text-sm text-gray-700 dark:text-gray-200 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-orange-400 transition-all resize-none"></textarea>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- 6. FOOD CARDS                                             -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<section class="mb-14">
+  <div class="section-title">6. Food Cards (Recommendation)</div>
+
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+
+    <!-- Card 1 -->
+    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm dark:shadow-none border border-transparent dark:border-gray-700 overflow-hidden hover:shadow-lg dark:hover:border-gray-600 transition-all duration-300 cursor-pointer group">
+      <div class="relative h-[200px] overflow-hidden">
+        <img src="https://images.unsplash.com/photo-1582878826629-29b7ad1cdc43?w=600&h=400&fit=crop" alt="Bún bò Huế" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+        <div class="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent"></div>
+        <span class="absolute top-3 left-3 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-cyan-500/90 text-white">🤖 AI Match: 98%</span>
+        <span class="absolute top-3 right-12 inline-flex items-center gap-0.5 px-2 py-1 rounded-full text-xs font-semibold bg-black/60 text-white">📍 2.5km</span>
+        <button class="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/90 dark:bg-gray-900/80 flex items-center justify-center hover:scale-110 transition-all cursor-pointer">
+          <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
+        </button>
+      </div>
+      <div class="p-4">
+        <h3 class="text-base font-bold text-gray-800 dark:text-white mb-1 group-hover:text-orange-500 transition-colors">Bún bò Huế</h3>
+        <p class="text-xs text-gray-400 mb-2">Quán Mệ Oanh • Thủ Đức</p>
+        <div class="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 mb-3">
+          <span class="text-amber-400">⭐</span>
+          <span class="font-semibold text-gray-700 dark:text-gray-300">4.8</span>
+          <span class="text-gray-400">(256)</span>
+          <span class="text-gray-300 dark:text-gray-600 mx-0.5">•</span>
+          <span class="font-medium">30k - 50k</span>
+        </div>
+        <div class="flex flex-wrap gap-1.5">
+          <span class="px-2.5 py-1 rounded-full text-xs font-medium bg-red-50 dark:bg-red-500/10 text-red-500 border border-red-100 dark:border-red-500/20">Cay nóng</span>
+          <span class="px-2.5 py-1 rounded-full text-xs font-medium bg-teal-50 dark:bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-100 dark:border-teal-500/20">Truyền thống</span>
+          <span class="px-2.5 py-1 rounded-full text-xs font-medium bg-green-50 dark:bg-green-500/10 text-green-600 dark:text-green-400 border border-green-100 dark:border-green-500/20">Bữa trưa</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Card 2 -->
+    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm dark:shadow-none border border-transparent dark:border-gray-700 overflow-hidden hover:shadow-lg dark:hover:border-gray-600 transition-all duration-300 cursor-pointer group">
+      <div class="relative h-[200px] overflow-hidden">
+        <img src="https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=600&h=400&fit=crop" alt="Pizza" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+        <div class="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent"></div>
+        <span class="absolute top-3 left-3 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-cyan-500/90 text-white">🤖 AI Match: 95%</span>
+        <span class="absolute top-3 right-12 inline-flex items-center gap-0.5 px-2 py-1 rounded-full text-xs font-semibold bg-black/60 text-white">📍 1.2km</span>
+        <button class="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/90 dark:bg-gray-900/80 flex items-center justify-center hover:scale-110 transition-all cursor-pointer">
+          <svg class="w-4 h-4 text-red-400" fill="currentColor" viewBox="0 0 24 24"><path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
+        </button>
+      </div>
+      <div class="p-4">
+        <h3 class="text-base font-bold text-gray-800 dark:text-white mb-1 group-hover:text-orange-500 transition-colors">Pizza Hải sản</h3>
+        <p class="text-xs text-gray-400 mb-2">Pizza 4P's • Quận 7</p>
+        <div class="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 mb-3">
+          <span class="text-amber-400">⭐</span>
+          <span class="font-semibold text-gray-700 dark:text-gray-300">4.6</span>
+          <span class="text-gray-400">(189)</span>
+          <span class="text-gray-300 dark:text-gray-600 mx-0.5">•</span>
+          <span class="font-medium">70k - 120k</span>
+        </div>
+        <div class="flex flex-wrap gap-1.5">
+          <span class="px-2.5 py-1 rounded-full text-xs font-medium bg-yellow-50 dark:bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border border-yellow-100 dark:border-yellow-500/20">Phô mai</span>
+          <span class="px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 dark:bg-blue-500/10 text-blue-500 dark:text-blue-400 border border-blue-100 dark:border-blue-500/20">Hải sản</span>
+          <span class="px-2.5 py-1 rounded-full text-xs font-medium bg-violet-50 dark:bg-violet-500/10 text-violet-500 dark:text-violet-400 border border-violet-100 dark:border-violet-500/20">Âu - Ý</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Card 3: Hero Card (Span 2 — on lg) -->
+    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm dark:shadow-none border border-transparent dark:border-gray-700 overflow-hidden hover:shadow-lg dark:hover:border-gray-600 transition-all duration-300 cursor-pointer group">
+      <div class="relative h-[200px] overflow-hidden">
+        <img src="https://images.unsplash.com/photo-1512058564366-18510be2db19?w=600&h=400&fit=crop" alt="Cơm tấm" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+        <div class="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent"></div>
+        <span class="absolute top-3 left-3 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-cyan-500/90 text-white">🤖 AI Match: 96%</span>
+        <span class="absolute top-3 right-12 inline-flex items-center gap-0.5 px-2 py-1 rounded-full text-xs font-semibold bg-black/60 text-white">📍 3.1km</span>
+        <button class="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/90 dark:bg-gray-900/80 flex items-center justify-center hover:scale-110 transition-all cursor-pointer">
+          <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
+        </button>
+      </div>
+      <div class="p-4">
+        <h3 class="text-base font-bold text-gray-800 dark:text-white mb-1 group-hover:text-orange-500 transition-colors">Cơm tấm sườn</h3>
+        <p class="text-xs text-gray-400 mb-2">Cơm Tấm Bụi • Bình Thạnh</p>
+        <div class="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 mb-3">
+          <span class="text-amber-400">⭐</span>
+          <span class="font-semibold text-gray-700 dark:text-gray-300">4.6</span>
+          <span class="text-gray-400">(212)</span>
+          <span class="text-gray-300 dark:text-gray-600 mx-0.5">•</span>
+          <span class="font-medium">25k - 40k</span>
+        </div>
+        <div class="flex flex-wrap gap-1.5">
+          <span class="px-2.5 py-1 rounded-full text-xs font-medium bg-teal-50 dark:bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-100 dark:border-teal-500/20">Truyền thống</span>
+          <span class="px-2.5 py-1 rounded-full text-xs font-medium bg-green-50 dark:bg-green-500/10 text-green-600 dark:text-green-400 border border-green-100 dark:border-green-500/20">Bữa trưa</span>
+          <span class="px-2.5 py-1 rounded-full text-xs font-medium bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-500/20">No nê</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- 7. CHAT BOX / AI ASSISTANT                                -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<section class="mb-14">
+  <div class="section-title">7. Chat Box / AI Assistant</div>
+
+  <div class="max-w-lg">
+    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-md dark:shadow-none border border-gray-100 dark:border-gray-700 overflow-hidden">
+      <!-- Chat Header -->
+      <div class="flex items-center gap-3 px-5 py-4 border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+        <div class="w-9 h-9 rounded-full bg-gradient-to-br from-cyan-400 to-cyan-600 flex items-center justify-center text-white text-sm font-bold shadow-md shadow-cyan-200 dark:shadow-cyan-500/20">
+          AI
+        </div>
+        <div>
+          <p class="text-sm font-semibold text-gray-800 dark:text-white">Wanderbite AI</p>
+          <p class="text-xs text-green-500 font-medium flex items-center gap-1">
+            <span class="w-1.5 h-1.5 rounded-full bg-green-500 inline-block"></span> Online
+          </p>
+        </div>
+        <button class="ml-auto p-1.5 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition text-gray-400 cursor-pointer">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <!-- Chat Messages -->
+      <div class="p-5 space-y-4 max-h-[320px] overflow-y-auto bg-gray-50/50 dark:bg-gray-900/50">
+        <!-- AI Message -->
+        <div class="flex gap-2.5">
+          <div class="w-7 h-7 rounded-full bg-gradient-to-br from-cyan-400 to-cyan-600 flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0 mt-0.5">AI</div>
+          <div class="bg-white dark:bg-gray-800 rounded-2xl rounded-tl-md px-4 py-3 text-sm text-gray-700 dark:text-gray-300 shadow-sm border border-gray-100 dark:border-gray-700 max-w-[85%]">
+            Xin chào! 👋 Tôi là trợ lý AI của Wanderbite. Hôm nay bạn muốn ăn gì?
+          </div>
+        </div>
+
+        <!-- User Message -->
+        <div class="flex gap-2.5 justify-end">
+          <div class="bg-orange-500 text-white rounded-2xl rounded-tr-md px-4 py-3 text-sm shadow-sm max-w-[85%]">
+            Tôi muốn tìm quán bún bò ngon gần Thủ Đức
+          </div>
+        </div>
+
+        <!-- AI Message with Card -->
+        <div class="flex gap-2.5">
+          <div class="w-7 h-7 rounded-full bg-gradient-to-br from-cyan-400 to-cyan-600 flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0 mt-0.5">AI</div>
+          <div class="bg-white dark:bg-gray-800 rounded-2xl rounded-tl-md px-4 py-3 text-sm text-gray-700 dark:text-gray-300 shadow-sm border border-gray-100 dark:border-gray-700 max-w-[85%] space-y-2">
+            <p>Tôi tìm thấy <strong class="text-orange-500">3 quán bún bò</strong> phù hợp gần bạn! 🎉</p>
+            <div class="bg-gray-50 dark:bg-gray-900 rounded-xl p-3 border border-gray-100 dark:border-gray-700">
+              <div class="flex items-center gap-2">
+                <span class="text-sm font-semibold text-gray-800 dark:text-white">Quán Mệ Oanh</span>
+                <span class="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-cyan-500/90 text-white">AI 98%</span>
+              </div>
+              <p class="text-xs text-gray-400 mt-1">📍 2.5km • ⭐ 4.8 • 30k-50k</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Chat Input -->
+      <div class="px-4 py-3 border-t border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800">
+        <div class="flex items-center gap-2">
+          <input type="text" placeholder="Nhập tin nhắn..." class="flex-1 bg-gray-50 dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-orange-400 transition-all" />
+          <button class="w-10 h-10 rounded-xl bg-orange-500 text-white flex items-center justify-center hover:bg-orange-600 transition-all shadow-md shadow-orange-200 dark:shadow-[0_0_15px_rgba(255,143,0,0.3)] cursor-pointer flex-shrink-0">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- 8. DISPLAY FRAMES / PANELS                                -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<section class="mb-14">
+  <div class="section-title">8. Display Frames / Panels</div>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+
+    <!-- Info Panel -->
+    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm dark:shadow-none border border-gray-100 dark:border-gray-700 p-6">
+      <div class="flex items-center gap-3 mb-4">
+        <div class="w-10 h-10 rounded-xl bg-orange-100 dark:bg-orange-500/20 flex items-center justify-center text-orange-500">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        </div>
+        <div>
+          <h3 class="text-base font-semibold text-gray-800 dark:text-white">Thông tin</h3>
+          <p class="text-xs text-gray-400">Cập nhật vừa xong</p>
+        </div>
+      </div>
+      <p class="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+        Wanderbite sử dụng AI để phân tích sở thích của bạn từ dữ liệu tìm kiếm, đánh giá và vị trí GPS để đề xuất món ăn phù hợp nhất.
+      </p>
+    </div>
+
+    <!-- Stats Panel -->
+    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm dark:shadow-none border border-gray-100 dark:border-gray-700 p-6">
+      <h3 class="text-base font-semibold text-gray-800 dark:text-white mb-4">Thống kê hôm nay</h3>
+      <div class="grid grid-cols-3 gap-4">
+        <div class="text-center">
+          <p class="text-2xl font-bold text-orange-500">128</p>
+          <p class="text-xs text-gray-400 mt-1">Lượt tìm kiếm</p>
+        </div>
+        <div class="text-center">
+          <p class="text-2xl font-bold text-cyan-500">45</p>
+          <p class="text-xs text-gray-400 mt-1">AI Matches</p>
+        </div>
+        <div class="text-center">
+          <p class="text-2xl font-bold text-green-500">4.7</p>
+          <p class="text-xs text-gray-400 mt-1">Rating TB</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notification / Alert Panels -->
+  <p class="text-xs font-semibold text-gray-400 dark:text-gray-500 mb-3 uppercase tracking-wider">Notifications / Alerts</p>
+  <div class="space-y-3 max-w-xl mb-8">
+    <div class="flex items-center gap-3 p-4 rounded-2xl bg-green-50 dark:bg-green-500/10 border border-green-200 dark:border-green-500/20">
+      <span class="text-green-500 text-lg">✅</span>
+      <p class="text-sm font-medium text-green-700 dark:text-green-400">Đã lưu vào danh sách yêu thích thành công!</p>
+    </div>
+    <div class="flex items-center gap-3 p-4 rounded-2xl bg-orange-50 dark:bg-orange-500/10 border border-orange-200 dark:border-orange-500/20">
+      <span class="text-orange-500 text-lg">⚠️</span>
+      <p class="text-sm font-medium text-orange-700 dark:text-orange-400">Quán này sắp đóng cửa trong 30 phút!</p>
+    </div>
+    <div class="flex items-center gap-3 p-4 rounded-2xl bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20">
+      <span class="text-red-500 text-lg">❌</span>
+      <p class="text-sm font-medium text-red-700 dark:text-red-400">Không thể kết nối GPS. Vui lòng bật định vị.</p>
+    </div>
+    <div class="flex items-center gap-3 p-4 rounded-2xl bg-cyan-50 dark:bg-cyan-500/10 border border-cyan-200 dark:border-cyan-500/20">
+      <span class="text-cyan-500 text-lg">🤖</span>
+      <p class="text-sm font-medium text-cyan-700 dark:text-cyan-400">AI đã cập nhật gợi ý mới cho bạn!</p>
+    </div>
+  </div>
+
+  <!-- Modal / Dialog Frame -->
+  <p class="text-xs font-semibold text-gray-400 dark:text-gray-500 mb-3 uppercase tracking-wider">Modal / Dialog</p>
+  <div class="max-w-md mx-auto relative">
+    <div class="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl dark:shadow-none border border-gray-100 dark:border-gray-700 p-8 text-center">
+      <div class="w-16 h-16 rounded-full bg-orange-100 dark:bg-orange-500/20 flex items-center justify-center mx-auto mb-5">
+        <span class="text-3xl">🎉</span>
+      </div>
+      <h3 class="text-xl font-bold text-gray-800 dark:text-white mb-2">Đặt bàn thành công!</h3>
+      <p class="text-sm text-gray-500 dark:text-gray-400 mb-6 leading-relaxed">
+        Bạn đã đặt bàn tại <strong class="text-orange-500">Quán Mệ Oanh</strong> vào lúc 19:00 hôm nay. Chúc bạn có bữa ăn ngon!
+      </p>
+      <div class="flex gap-3">
+        <button class="flex-1 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 rounded-2xl px-5 py-3 font-semibold text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-all cursor-pointer">
+          Đóng
+        </button>
+        <button class="flex-1 bg-orange-500 text-white rounded-2xl px-5 py-3 font-semibold text-sm hover:bg-orange-600 transition-all shadow-md shadow-orange-200 dark:shadow-[0_0_20px_rgba(255,143,0,0.4)] cursor-pointer">
+          Xem chi tiết
+        </button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- 9. NAVIGATION / SIDEBAR                                   -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<section class="mb-14">
+  <div class="section-title">9. Navigation / Sidebar</div>
+
+  <div class="max-w-[280px]">
+    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm dark:shadow-none border border-gray-100 dark:border-gray-700 p-4">
+      <!-- Logo -->
+      <div class="flex items-center gap-2.5 px-3 mb-6">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-orange-400 to-orange-500 flex items-center justify-center shadow-md shadow-orange-200 dark:shadow-orange-500/20">
+          <span class="text-white text-lg">🍜</span>
+        </div>
+        <span class="text-lg font-bold text-gray-800 dark:text-white">Wander<span class="text-orange-500">bite</span></span>
+      </div>
+
+      <!-- Nav Items -->
+      <nav class="space-y-1">
+        <a href="#" class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium bg-orange-50 dark:bg-orange-500/15 text-orange-600 dark:text-orange-400 shadow-sm shadow-orange-100 dark:shadow-none transition-all">
+          <svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+          Khám phá
+        </a>
+        <a href="#" class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all">
+          <svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
+          Yêu thích
+        </a>
+        <a href="#" class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all">
+          <svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          Lịch sử
+        </a>
+        <a href="#" class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all">
+          <svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg>
+          Gợi ý cho bạn
+        </a>
+      </nav>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- 10. FEATURE BAR                                           -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<section class="mb-14">
+  <div class="section-title">10. Feature Bar</div>
+
+  <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm dark:shadow-none border border-gray-100 dark:border-gray-700 px-6 py-5">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-orange-100 dark:bg-orange-500/20 flex items-center justify-center text-orange-500 flex-shrink-0">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+        </div>
+        <div>
+          <p class="text-sm font-semibold text-gray-700 dark:text-gray-300">AI đề xuất thông minh</p>
+          <p class="text-xs text-gray-400">Cá nhân hóa theo sở thích</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-orange-100 dark:bg-orange-500/20 flex items-center justify-center text-orange-500 flex-shrink-0">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+        </div>
+        <div>
+          <p class="text-sm font-semibold text-gray-700 dark:text-gray-300">Tìm kiếm quanh bạn</p>
+          <p class="text-xs text-gray-400">Dựa trên vị trí GPS</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-pink-100 dark:bg-pink-500/20 flex items-center justify-center text-pink-500 flex-shrink-0">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
+        </div>
+        <div>
+          <p class="text-sm font-semibold text-gray-700 dark:text-gray-300">Đánh giá chân thực</p>
+          <p class="text-xs text-gray-400">Từ cộng đồng Wanderbite</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-500/20 flex items-center justify-center text-emerald-500 flex-shrink-0">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+        </div>
+        <div>
+          <p class="text-sm font-semibold text-gray-700 dark:text-gray-300">An toàn & Uy tín</p>
+          <p class="text-xs text-gray-400">Kiểm duyệt chất lượng</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- 11. SHADOWS & EFFECTS DEMO                                -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<section class="mb-14">
+  <div class="section-title">11. Shadows & Border Radius</div>
+
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
+    <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 text-center">
+      <p class="text-xs font-mono text-gray-400 mb-2">rounded-xl</p>
+      <p class="text-xs text-gray-500 dark:text-gray-400">shadow-sm</p>
+    </div>
+    <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-md border border-gray-100 dark:border-gray-700 text-center">
+      <p class="text-xs font-mono text-gray-400 mb-2">rounded-2xl</p>
+      <p class="text-xs text-gray-500 dark:text-gray-400">shadow-md</p>
+    </div>
+    <div class="bg-white dark:bg-gray-800 p-6 rounded-3xl shadow-lg border border-gray-100 dark:border-gray-700 text-center">
+      <p class="text-xs font-mono text-gray-400 mb-2">rounded-3xl</p>
+      <p class="text-xs text-gray-500 dark:text-gray-400">shadow-lg</p>
+    </div>
+    <div class="bg-white dark:bg-gray-800 p-6 rounded-full shadow-xl border border-gray-100 dark:border-gray-700 text-center">
+      <p class="text-xs font-mono text-gray-400 mb-2">rounded-full</p>
+      <p class="text-xs text-gray-500 dark:text-gray-400">shadow-xl</p>
+    </div>
+  </div>
+
+  <p class="text-xs font-semibold text-gray-400 dark:text-gray-500 mb-3 uppercase tracking-wider">Dark Mode: Glassmorphism</p>
+  <div class="hidden dark:block bg-gradient-to-br from-gray-800 to-gray-900 p-8 rounded-2xl">
+    <div class="bg-gray-800/70 backdrop-blur-md rounded-2xl border border-gray-700 p-6 max-w-sm">
+      <p class="text-white font-semibold text-sm mb-1">Glassmorphism Panel</p>
+      <p class="text-gray-400 text-xs">bg-gray-800/70 backdrop-blur-md border-gray-700</p>
+    </div>
+  </div>
+  <div class="dark:hidden bg-gray-100 p-4 rounded-2xl">
+    <p class="text-sm text-gray-500 text-center">👆 Bật Dark Mode để xem Glassmorphism effect</p>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- 12. SPACING REFERENCE                                     -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<section class="mb-14">
+  <div class="section-title">12. Spacing System</div>
+
+  <div class="flex flex-wrap gap-4">
+    <div class="text-center">
+      <div class="w-8 h-8 bg-orange-200 dark:bg-orange-500/30 rounded-lg mx-auto mb-2"></div>
+      <p class="text-[10px] font-mono text-gray-400">p-2 (8px)</p>
+    </div>
+    <div class="text-center">
+      <div class="w-16 h-16 bg-orange-200 dark:bg-orange-500/30 rounded-lg mx-auto mb-2"></div>
+      <p class="text-[10px] font-mono text-gray-400">p-4 (16px)</p>
+    </div>
+    <div class="text-center">
+      <div class="w-24 h-24 bg-orange-200 dark:bg-orange-500/30 rounded-lg mx-auto mb-2"></div>
+      <p class="text-[10px] font-mono text-gray-400">p-6 (24px)</p>
+    </div>
+    <div class="text-center">
+      <div class="w-32 h-32 bg-orange-200 dark:bg-orange-500/30 rounded-lg mx-auto mb-2"></div>
+      <p class="text-[10px] font-mono text-gray-400">p-8 (32px)</p>
+    </div>
+    <div class="text-center">
+      <div class="w-48 h-48 bg-orange-200 dark:bg-orange-500/30 rounded-lg mx-auto mb-2"></div>
+      <p class="text-[10px] font-mono text-gray-400">p-12 (48px)</p>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<!-- Footer -->
+<footer class="border-t border-gray-200 dark:border-gray-700 py-6 text-center bg-white dark:bg-gray-900">
+  <p class="text-xs text-gray-400">Wanderbite Design System — Component Library v1.0 — Built with Tailwind CSS</p>
+</footer>
+
+<script>
+  function toggleDark() {
+    const body = document.documentElement;
+    body.classList.toggle('dark');
+    const isDark = body.classList.contains('dark');
+    document.getElementById('toggleIcon').textContent = isDark ? '☀️' : '🌙';
+    document.getElementById('toggleText').textContent = isDark ? 'Light Mode' : 'Dark Mode';
+    document.getElementById('body').classList.toggle('bg-gray-50', !isDark);
+    document.getElementById('body').classList.toggle('bg-gray-900', isDark);
+    document.getElementById('body').classList.toggle('text-gray-900', !isDark);
+    document.getElementById('body').classList.toggle('text-white', isDark);
+  }
+</script>
+
+</body>
+</html>
