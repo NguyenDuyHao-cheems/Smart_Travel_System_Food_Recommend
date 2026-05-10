@@ -12,7 +12,7 @@
 
 - **Git**
 - **Docker** & **Docker Compose** (Dành cho việc chạy backend services)
-- **Node.js** (Phiên bản LTS, >= 18.x) và **npm** (Hoặc yarn/pnpm, để chạy Frontend)
+- **Node.js** (Phiên bản LTS, >= 20.x) và **npm** (Hoặc yarn/pnpm, để chạy Frontend)
 - **Python** (>= 3.10) (Nếu muốn chạy backend thủ công trên máy thật)
 
 ## 🚀 Hướng Dẫn Cài Đặt & Khởi Chạy
@@ -53,8 +53,12 @@ Frontend hiện được xây dựng bằng Next.js, bạn cần khởi chạy t
 ```bash
 cd Frontend
 npm install    # Hoặc yarn install
+# Lưu ý: Nếu gặp lỗi Peer Dependency, hãy dùng: npm install --legacy-peer-deps
 npm run dev    # Chạy ở chế độ phát triển
 ```
+
+> [!TIP]
+> Nếu bạn gặp lỗi khi `npm install`, hãy đảm bảo bạn đang sử dụng **Node.js 20+** và **npm 10+**. Bạn có thể kiểm tra bằng lệnh `node -v` và `npm -v`.
 
 Ứng dụng web sẽ được phơi bày tại [http://localhost:3000](http://localhost:3000).
 
