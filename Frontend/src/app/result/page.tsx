@@ -36,6 +36,7 @@ export interface RecommendResult {
   name: string;
   match: string;
   dist: string;
+  distance_km?: number;
   price: string;
   rating: string;
   reason: string;

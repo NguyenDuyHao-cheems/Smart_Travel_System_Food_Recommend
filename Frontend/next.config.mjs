@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: 'standalone', // Required for Docker multi-stage build
   turbopack: {}, // Suppresses the warning about custom webpack configs in Turbopack mode
   webpack: (config, { dev }) => {
     if (dev) {
