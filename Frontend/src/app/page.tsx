@@ -26,16 +26,116 @@ import {
   RefreshCw,
   X,
 } from "lucide-react";
-import { Roboto } from "next/font/google";
+import { Playfair_Display, Roboto } from "next/font/google";
 // [HIDDEN] import { Sidebar } from "../components/Sidebar";
 import { ThemeToggle } from "../components/ThemeToggle";
 import { SurveyModal } from "../components/SurveyModal";
 import { BudgetSelector, type BudgetOption } from "../components/BudgetSelector";
 
+const playfair = Playfair_Display({
+  subsets: ["latin", "vietnamese"],
+  weight: ["400", "600", "700"],
+});
+
 const roboto = Roboto({
   subsets: ["latin", "vietnamese"],
   weight: ["300", "400", "500", "700", "900"],
 });
+
+/* ───────── [HIDDEN] Mock Data — Uncomment khi kết nối API ───────── */
+
+// const vibeFilters = [
+//   { label: "Cay nóng", icon: Flame, color: "orange" },
+//   { label: "Mát lạnh", icon: Snowflake, color: "sky" },
+//   { label: "Lãng mạn", icon: HeartPulse, color: "pink" },
+//   { label: "Giá sinh viên", icon: Coins, color: "amber" },
+// ];
+
+// interface FoodItem {
+//   id: number;
+//   name: string;
+//   image: string;
+//   matchPercent: number;
+//   distance: string;
+//   rating: number;
+//   reviews: number;
+//   priceRange: string;
+//   tags: { label: string; color: string }[];
+// }
+
+// const foodItems: FoodItem[] = [
+//   {
+//     id: 1,
+//     name: "Bún bò Huế",
+//     image:
+//       "https://images.unsplash.com/photo-1582878826629-29b7ad1cdc43?w=600&h=400&fit=crop",
+//     matchPercent: 98,
+//     distance: "2.5km",
+//     rating: 4.8,
+//     reviews: 256,
+//     priceRange: "30k - 50k",
+//     tags: [
+//       { label: "Cay nóng", color: "bg-red-50 text-red-500 border-red-100" },
+//       { label: "Truyền thống", color: "bg-teal-50 text-teal-600 border-teal-100" },
+//       { label: "Bữa trưa", color: "bg-green-50 text-green-600 border-green-100" },
+//     ],
+//   },
+//   {
+//     id: 2,
+//     name: "Pizza Hải sản",
+//     image:
+//       "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=600&h=400&fit=crop",
+//     matchPercent: 95,
+//     distance: "1.2km",
+//     rating: 4.6,
+//     reviews: 189,
+//     priceRange: "70k - 120k",
+//     tags: [
+//       { label: "Phô mai", color: "bg-yellow-50 text-yellow-600 border-yellow-100" },
+//       { label: "Hải sản", color: "bg-blue-50 text-blue-500 border-blue-100" },
+//       { label: "Âu - Ý", color: "bg-violet-50 text-violet-500 border-violet-100" },
+//     ],
+//   },
+//   {
+//     id: 3,
+//     name: "Trà sữa trân châu",
+//     image:
+//       "https://images.unsplash.com/photo-1525385133512-2f3bdd039054?w=600&h=400&fit=crop",
+//     matchPercent: 92,
+//     distance: "800m",
+//     rating: 4.7,
+//     reviews: 320,
+//     priceRange: "20k - 35k",
+//     tags: [
+//       { label: "Ngọt nhẹ", color: "bg-pink-50 text-pink-500 border-pink-100" },
+//       { label: "Giải nhiệt", color: "bg-cyan-50 text-cyan-600 border-cyan-100" },
+//       { label: "Đồ uống", color: "bg-indigo-50 text-indigo-500 border-indigo-100" },
+//     ],
+//   },
+//   {
+//     id: 4,
+//     name: "Cơm tấm sườn",
+//     image:
+//       "https://images.unsplash.com/photo-1512058564366-18510be2db19?w=600&h=400&fit=crop",
+//     matchPercent: 96,
+//     distance: "3.1km",
+//     rating: 4.6,
+//     reviews: 212,
+//     priceRange: "25k - 40k",
+//     tags: [
+//       { label: "Truyền thống", color: "bg-teal-50 text-teal-600 border-teal-100" },
+//       { label: "Bữa trưa", color: "bg-green-50 text-green-600 border-green-100" },
+//       { label: "No nê", color: "bg-amber-50 text-amber-600 border-amber-100" },
+//     ],
+//   },
+// ];
+
+// const features = [
+//   { icon: Brain, iconBg: "bg-orange-100 text-orange-500", title: "AI đề xuất thông minh", desc: "Cá nhân hóa theo sở thích" },
+//   { icon: MapPin, iconBg: "bg-orange-100 text-orange-500", title: "Tìm kiếm quanh bạn", desc: "Dựa trên vị trí GPS" },
+//   { icon: Heart, iconBg: "bg-pink-100 text-pink-500", title: "Đánh giá chân thực", desc: "Từ cộng đồng FoodAI" },
+//   { icon: ShieldCheck, iconBg: "bg-emerald-100 text-emerald-500", title: "An toàn & Uy tín", desc: "Kiểm duyệt chất lượng" },
+// ];
 
 /* ───────── Component ───────── */
 
@@ -279,6 +379,27 @@ export default function Home() {
                 Nhập mô tả món ăn bạn thích, AI sẽ gợi ý cho bạn
               </p>
 
+              {/* ══════════════════════════════════════════════════════════
+                [HIDDEN] Vibe Filters — Uncomment khi kết nối filter API
+                ══════════════════════════════════════════════════════════ */}
+              {/* <div className="flex items-center justify-center gap-3 flex-wrap mt-4">
+                <span className="text-[13px] font-semibold text-gray-400 mr-1">Vibe Filters</span>
+                {vibeFilters.map((filter) => (
+                  <button
+                    key={filter.label}
+                    onClick={() => setActiveFilter(filter.label)}
+                    className="flex items-center gap-1.5 px-4 py-2.5 rounded-full text-[13px] font-medium border transition-all cursor-pointer"
+                  >
+                    <filter.icon className="w-4 h-4" />
+                    {filter.label}
+                  </button>
+                ))}
+                <button className="flex items-center gap-1.5 px-4 py-2.5 rounded-full text-[13px] font-medium bg-white text-gray-500 border border-gray-200 hover:bg-gray-50 cursor-pointer">
+                  <SlidersHorizontal className="w-4 h-4 text-gray-400" />
+                  Bộ lọc
+                </button>
+              </div> */}
+
               {/* ── System Status Indicator (dưới search bar) ── */}
               <div className="mt-5 flex items-center justify-center gap-2 text-[12px]">
                 {healthStatus === 'loading' && (
@@ -312,6 +433,78 @@ export default function Home() {
               </div>
             </section>
 
+            {/* ══════════════════════════════════════════════════════════
+              [HIDDEN] Food Recommendations — Uncomment khi có dữ liệu từ API
+              ══════════════════════════════════════════════════════════ */}
+            {/* <section className="mb-8">
+              <div className="flex items-center justify-between mb-5">
+                <div className="flex items-center gap-2">
+                  <Star className="w-5 h-5 text-amber-400 fill-amber-400" />
+                  <h2 className="text-lg font-bold text-gray-800">Gợi ý dành cho bạn</h2>
+                </div>
+                <button className="flex items-center gap-1 text-[13px] font-medium text-orange-500 hover:text-orange-600 transition-colors cursor-pointer">
+                  Xem tất cả
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                {foodItems.map((item) => (
+                  <div key={item.id} className="bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-lg hover:border-gray-200 transition-all duration-300 cursor-pointer group">
+                    <div className="relative h-[190px] overflow-hidden">
+                      <img src={item.image} alt={item.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
+                      <div className="absolute top-3 left-3 flex items-center gap-1 px-2.5 py-1 rounded-full bg-orange-500 text-white text-[11px] font-bold shadow-md">
+                        <Sparkles className="w-3 h-3" />
+                        AI Match: {item.matchPercent}%
+                      </div>
+                      <div className="absolute top-3 right-12 flex items-center gap-0.5 px-2 py-1 rounded-full bg-white/90 backdrop-blur-sm text-[11px] font-semibold text-gray-600 shadow-sm">
+                        <MapPin className="w-3 h-3 text-orange-400" />
+                        {item.distance}
+                      </div>
+                      <button className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center shadow-sm hover:bg-white hover:scale-110 transition-all cursor-pointer">
+                        <Heart className="w-4 h-4 text-gray-400 hover:text-red-400 transition-colors" />
+                      </button>
+                    </div>
+                    <div className="p-4">
+                      <h3 className="text-[15px] font-bold text-gray-800 mb-2 group-hover:text-orange-600 transition-colors">{item.name}</h3>
+                      <div className="flex items-center gap-1.5 text-[13px] text-gray-500 mb-3">
+                        <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
+                        <span className="font-semibold text-gray-700">{item.rating}</span>
+                        <span className="text-gray-400">({item.reviews})</span>
+                        <span className="text-gray-300 mx-0.5">•</span>
+                        <span className="font-medium">{item.priceRange}</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {item.tags.map((tag) => (
+                          <span key={tag.label} className={`px-2.5 py-1 rounded-full text-[11px] font-medium border ${tag.color}`}>
+                            {tag.label}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section> */}
+
+            {/* ══════════════════════════════════════════════════════════
+              [HIDDEN] Feature Bar — Uncomment khi hoàn thiện các tính năng
+              ══════════════════════════════════════════════════════════ */}
+            {/* <section className="bg-white rounded-2xl border border-gray-100 shadow-sm px-6 py-5 mb-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                {features.map((feat) => (
+                  <div key={feat.title} className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${feat.iconBg}`}>
+                      <feat.icon className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <p className="text-[13px] font-semibold text-gray-700">{feat.title}</p>
+                      <p className="text-[11px] text-gray-400">{feat.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section> */}
 
           </main>
 
