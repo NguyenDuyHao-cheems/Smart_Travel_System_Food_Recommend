@@ -1,8 +1,20 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
+import logging
 from app.nlp.embeddings import router as nlp_router
 from app.ranking.router import router as ranking_router
+from app.nlp.model_provider import get_embedding_model
 
-app = FastAPI(title="Smart Travel System - AI Engine")
+logger = logging.getLogger(__name__)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    logger.info("Loading AI model on startup...")
+    get_embedding_model()
+    logger.info("AI model loaded successfully.")
+    yield
+
+app = FastAPI(title="Smart Travel System - AI Engine", lifespan=lifespan)
 
 # Register the NLP router
 app.include_router(nlp_router, prefix="/api/v1/nlp", tags=["NLP"])
@@ -17,4 +29,4 @@ def read_root():
 
 @app.get("/api/health")
 def get_health_status():
-    return {"status": "online", "ai_engine": True}
+    return {"status": "online", "ai_engine": True, "model_loaded": True}
