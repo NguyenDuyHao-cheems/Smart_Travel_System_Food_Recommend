@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Roboto } from "next/font/google";
 import {
@@ -21,7 +21,7 @@ const roboto = Roboto({
   weight: ["300", "400", "500", "700", "900"],
 });
 
-export default function AuthPage() {
+function AuthPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectPath = searchParams.get("redirect") || "/";
@@ -315,5 +315,13 @@ export default function AuthPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function AuthPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#F7F8FA] dark:bg-[#0A0D14]" />}>
+      <AuthPageContent />
+    </Suspense>
   );
 }
