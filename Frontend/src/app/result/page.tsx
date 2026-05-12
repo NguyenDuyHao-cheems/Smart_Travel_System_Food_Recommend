@@ -393,12 +393,14 @@ function ResultPageContent() {
           // TODO: Chờ team có trang /auth thì mở ra để bắt lỗi hết hạn token
           // router.push('/auth');
           setApiError('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại. (TODO: Redirect to /auth)');
+        } else if (res.status === 503) {
+          setApiError('Hệ thống AI đang khởi động, vui lòng đợi trong giây lát...');
         } else {
           setApiError('Hệ thống AI đang gặp sự cố. Vui lòng thử lại sau.');
         }
       } catch (error: any) {
         if (error.name === 'AbortError') {
-          setApiError('Quá thời gian kết nối (Timeout). Backend hoặc Database đang bị treo.');
+          setApiError('Quá thời gian kết nối (Timeout). Hệ thống AI có thể đang khởi động, vui lòng thử lại.');
         } else {
           setApiError('Không thể kết nối đến máy chủ. Hãy đảm bảo Backend đã được khởi động.');
         }
