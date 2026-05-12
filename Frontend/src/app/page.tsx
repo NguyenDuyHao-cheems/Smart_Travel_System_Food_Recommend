@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   // [HIDDEN] Bell,
   // [HIDDEN] Headphones,
@@ -227,15 +228,18 @@ export default function Home() {
         <div className="flex-1 flex flex-col">
           {/* ─── Top Bar (Minimal — chỉ giữ ThemeToggle) ─── */}
           <header className="sticky top-0 z-40 flex items-center justify-between px-8 py-4 bg-[#F7F8FA]/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-100/60 dark:border-gray-700/60 transition-colors duration-300">
-            {/* Logo */}
-            <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-orange-400 to-orange-500 flex items-center justify-center shadow-md shadow-orange-200 dark:shadow-orange-500/20">
+            {/* Logo - Clickable to Home (Force Reload) */}
+            <a 
+              href="/" 
+              className="flex items-center gap-2.5 group hover:opacity-90 transition-opacity cursor-pointer"
+            >
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-orange-400 to-orange-500 flex items-center justify-center shadow-md shadow-orange-200 dark:shadow-orange-500/20 group-hover:scale-105 transition-transform">
                 <span className="text-white text-lg">🍜</span>
               </div>
-              <span className="text-xl font-bold text-gray-800 dark:text-white tracking-tight">
+              <span className="text-xl font-bold text-gray-800 dark:text-white tracking-tight group-hover:text-orange-500 transition-colors">
                 Wanderbite
               </span>
-            </div>
+            </a>
 
             {/* Right side — chỉ giữ ThemeToggle */}
             <div className="flex items-center gap-4">
