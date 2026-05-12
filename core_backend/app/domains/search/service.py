@@ -161,4 +161,5 @@ class SearchService:
             rating=str(model.rating_avg) if model.rating_avg else "Mới",
             reason="Phù hợp với tìm kiếm của bạn",
             img=model.image_url or "/images/default_food.jpg",
+            google_maps_url=getattr(model, 'google_maps_url', None),
         )
