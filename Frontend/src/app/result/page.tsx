@@ -22,6 +22,7 @@ import { Header } from '../../components/ui/Header';
 import { LoadingState } from '../../components/ui/LoadingState';
 import { BudgetSelector, type BudgetOption } from '../../components/BudgetSelector';
 import { DistanceFilter } from '../../components/DistanceFilter';
+import { Sidebar } from '../../components/Sidebar';
 
 const roboto = Roboto({
   subsets: ['latin', 'vietnamese'],
@@ -42,6 +43,7 @@ export interface RecommendResult {
   img: string;
   tags?: string[];
   restaurantName?: string;
+  distance_km?: number;
 }
 
 interface VibeTag {
@@ -306,6 +308,8 @@ function ResultPageContent() {
   const [filteredCount, setFilteredCount] = useState(0);
   const [allergyWarning, setAllergyWarning] = useState<string>('');
 
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+
   // Distance filter state (client-side, default OFF)
   const [distanceFilterEnabled, setDistanceFilterEnabled] = useState(false);
   const [distanceRadius, setDistanceRadius] = useState(2);
@@ -423,12 +427,12 @@ function ResultPageContent() {
   return (
     <div className={`flex min-h-screen bg-[#F7F8FA] dark:bg-gray-900 transition-colors duration-300 ${roboto.className}`}>
       {/* ══════════════════════════════════════════════════════════
-          [HIDDEN] Sidebar — Uncomment khi các trang con hoạt động
+          Sidebar
           ══════════════════════════════════════════════════════════ */}
-      {/* <Sidebar /> */}
+      <Sidebar isCollapsed={isSidebarCollapsed} onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)} />
 
       {/* ── Main Content ── */}
-      <div className="flex-1 flex flex-col">
+      <div className={`flex-1 flex flex-col transition-all duration-300 ${isSidebarCollapsed ? 'ml-[80px]' : 'ml-[260px]'}`}>
         <Header showBack={false} />
 
         {/* Budget + Distance filter bar */}

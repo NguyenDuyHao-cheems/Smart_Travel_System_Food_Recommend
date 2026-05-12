@@ -3,26 +3,26 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  // [HIDDEN] Bell,
-  // [HIDDEN] Headphones,
-  // [HIDDEN] Globe,
+  Bell,
+  Headphones,
+  Globe,
   Search,
-  // [HIDDEN] Star,
-  // [HIDDEN] MapPin,
-  // [HIDDEN] Heart,
-  // [HIDDEN] Flame,
-  // [HIDDEN] Snowflake,
-  // [HIDDEN] HeartPulse,
-  // [HIDDEN] Coins,
-  // [HIDDEN] SlidersHorizontal,
-  // [HIDDEN] Brain,
-  // [HIDDEN] ShieldCheck,
+  Star,
+  MapPin,
+  Heart,
+  Flame,
+  Snowflake,
+  HeartPulse,
+  Coins,
+  SlidersHorizontal,
+  Brain,
+  ShieldCheck,
   Sparkles,
   User,
-  // [HIDDEN] ChevronRight,
+  ChevronRight,
 } from "lucide-react";
 import { Playfair_Display, Roboto } from "next/font/google";
-// [HIDDEN] import { Sidebar } from "../components/Sidebar";
+import { Sidebar } from "../components/Sidebar";
 import { ThemeToggle } from "../components/ThemeToggle";
 import { SurveyModal } from "../components/SurveyModal";
 import { BudgetSelector, type BudgetOption } from "../components/BudgetSelector";
@@ -39,152 +39,154 @@ const roboto = Roboto({
 
 /* ───────── [HIDDEN] Mock Data — Uncomment khi kết nối API ───────── */
 
-// const vibeFilters = [
-//   { label: "Cay nóng", icon: Flame, color: "orange" },
-//   { label: "Mát lạnh", icon: Snowflake, color: "sky" },
-//   { label: "Lãng mạn", icon: HeartPulse, color: "pink" },
-//   { label: "Giá sinh viên", icon: Coins, color: "amber" },
-// ];
+const vibeFilters = [
+  { label: "Cay nóng", icon: Flame, color: "orange" },
+  { label: "Mát lạnh", icon: Snowflake, color: "sky" },
+  { label: "Lãng mạn", icon: HeartPulse, color: "pink" },
+  { label: "Giá sinh viên", icon: Coins, color: "amber" },
+];
 
-// interface FoodItem {
-//   id: number;
-//   name: string;
-//   image: string;
-//   matchPercent: number;
-//   distance: string;
-//   rating: number;
-//   reviews: number;
-//   priceRange: string;
-//   tags: { label: string; color: string }[];
-// }
+interface FoodItem {
+  id: number;
+  name: string;
+  image: string;
+  matchPercent: number;
+  distance: string;
+  rating: number;
+  reviews: number;
+  priceRange: string;
+  tags: { label: string; color: string }[];
+}
 
-// const foodItems: FoodItem[] = [
-//   {
-//     id: 1,
-//     name: "Bún bò Huế",
-//     image:
-//       "https://images.unsplash.com/photo-1582878826629-29b7ad1cdc43?w=600&h=400&fit=crop",
-//     matchPercent: 98,
-//     distance: "2.5km",
-//     rating: 4.8,
-//     reviews: 256,
-//     priceRange: "30k - 50k",
-//     tags: [
-//       { label: "Cay nóng", color: "bg-red-50 text-red-500 border-red-100" },
-//       {
-//         label: "Truyền thống",
-//         color: "bg-teal-50 text-teal-600 border-teal-100",
-//       },
-//       {
-//         label: "Bữa trưa",
-//         color: "bg-green-50 text-green-600 border-green-100",
-//       },
-//     ],
-//   },
-//   {
-//     id: 2,
-//     name: "Pizza Hải sản",
-//     image:
-//       "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=600&h=400&fit=crop",
-//     matchPercent: 95,
-//     distance: "1.2km",
-//     rating: 4.6,
-//     reviews: 189,
-//     priceRange: "70k - 120k",
-//     tags: [
-//       {
-//         label: "Phô mai",
-//         color: "bg-yellow-50 text-yellow-600 border-yellow-100",
-//       },
-//       { label: "Hải sản", color: "bg-blue-50 text-blue-500 border-blue-100" },
-//       {
-//         label: "Âu - Ý",
-//         color: "bg-violet-50 text-violet-500 border-violet-100",
-//       },
-//     ],
-//   },
-//   {
-//     id: 3,
-//     name: "Trà sữa trân châu",
-//     image:
-//       "https://images.unsplash.com/photo-1525385133512-2f3bdd039054?w=600&h=400&fit=crop",
-//     matchPercent: 92,
-//     distance: "800m",
-//     rating: 4.7,
-//     reviews: 320,
-//     priceRange: "20k - 35k",
-//     tags: [
-//       { label: "Ngọt nhẹ", color: "bg-pink-50 text-pink-500 border-pink-100" },
-//       {
-//         label: "Giải nhiệt",
-//         color: "bg-cyan-50 text-cyan-600 border-cyan-100",
-//       },
-//       {
-//         label: "Đồ uống",
-//         color: "bg-indigo-50 text-indigo-500 border-indigo-100",
-//       },
-//     ],
-//   },
-//   {
-//     id: 4,
-//     name: "Cơm tấm sườn",
-//     image:
-//       "https://images.unsplash.com/photo-1512058564366-18510be2db19?w=600&h=400&fit=crop",
-//     matchPercent: 96,
-//     distance: "3.1km",
-//     rating: 4.6,
-//     reviews: 212,
-//     priceRange: "25k - 40k",
-//     tags: [
-//       {
-//         label: "Truyền thống",
-//         color: "bg-teal-50 text-teal-600 border-teal-100",
-//       },
-//       {
-//         label: "Bữa trưa",
-//         color: "bg-green-50 text-green-600 border-green-100",
-//       },
-//       {
-//         label: "No nê",
-//         color: "bg-amber-50 text-amber-600 border-amber-100",
-//       },
-//     ],
-//   },
-// ];
+const foodItems: FoodItem[] = [
+  {
+    id: 1,
+    name: "Bún bò Huế",
+    image:
+      "https://images.unsplash.com/photo-1582878826629-29b7ad1cdc43?w=600&h=400&fit=crop",
+    matchPercent: 98,
+    distance: "2.5km",
+    rating: 4.8,
+    reviews: 256,
+    priceRange: "30k - 50k",
+    tags: [
+      { label: "Cay nóng", color: "bg-red-50 text-red-500 border-red-100" },
+      {
+        label: "Truyền thống",
+        color: "bg-teal-50 text-teal-600 border-teal-100",
+      },
+      {
+        label: "Bữa trưa",
+        color: "bg-green-50 text-green-600 border-green-100",
+      },
+    ],
+  },
+  {
+    id: 2,
+    name: "Pizza Hải sản",
+    image:
+      "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=600&h=400&fit=crop",
+    matchPercent: 95,
+    distance: "1.2km",
+    rating: 4.6,
+    reviews: 189,
+    priceRange: "70k - 120k",
+    tags: [
+      {
+        label: "Phô mai",
+        color: "bg-yellow-50 text-yellow-600 border-yellow-100",
+      },
+      { label: "Hải sản", color: "bg-blue-50 text-blue-500 border-blue-100" },
+      {
+        label: "Âu - Ý",
+        color: "bg-violet-50 text-violet-500 border-violet-100",
+      },
+    ],
+  },
+  {
+    id: 3,
+    name: "Trà sữa trân châu",
+    image:
+      "https://images.unsplash.com/photo-1525385133512-2f3bdd039054?w=600&h=400&fit=crop",
+    matchPercent: 92,
+    distance: "800m",
+    rating: 4.7,
+    reviews: 320,
+    priceRange: "20k - 35k",
+    tags: [
+      { label: "Ngọt nhẹ", color: "bg-pink-50 text-pink-500 border-pink-100" },
+      {
+        label: "Giải nhiệt",
+        color: "bg-cyan-50 text-cyan-600 border-cyan-100",
+      },
+      {
+        label: "Đồ uống",
+        color: "bg-indigo-50 text-indigo-500 border-indigo-100",
+      },
+    ],
+  },
+  {
+    id: 4,
+    name: "Cơm tấm sườn",
+    image:
+      "https://images.unsplash.com/photo-1512058564366-18510be2db19?w=600&h=400&fit=crop",
+    matchPercent: 96,
+    distance: "3.1km",
+    rating: 4.6,
+    reviews: 212,
+    priceRange: "25k - 40k",
+    tags: [
+      {
+        label: "Truyền thống",
+        color: "bg-teal-50 text-teal-600 border-teal-100",
+      },
+      {
+        label: "Bữa trưa",
+        color: "bg-green-50 text-green-600 border-green-100",
+      },
+      {
+        label: "No nê",
+        color: "bg-amber-50 text-amber-600 border-amber-100",
+      },
+    ],
+  },
+];
 
-// const features = [
-//   {
-//     icon: Brain,
-//     iconBg: "bg-orange-100 text-orange-500",
-//     title: "AI đề xuất thông minh",
-//     desc: "Cá nhân hóa theo sở thích",
-//   },
-//   {
-//     icon: MapPin,
-//     iconBg: "bg-orange-100 text-orange-500",
-//     title: "Tìm kiếm quanh bạn",
-//     desc: "Dựa trên vị trí GPS",
-//   },
-//   {
-//     icon: Heart,
-//     iconBg: "bg-pink-100 text-pink-500",
-//     title: "Đánh giá chân thực",
-//     desc: "Từ cộng đồng FoodAI",
-//   },
-//   {
-//     icon: ShieldCheck,
-//     iconBg: "bg-emerald-100 text-emerald-500",
-//     title: "An toàn & Uy tín",
-//     desc: "Kiểm duyệt chất lượng",
-//   },
-// ];
+const features = [
+  {
+    icon: Brain,
+    iconBg: "bg-orange-100 text-orange-500",
+    title: "AI đề xuất thông minh",
+    desc: "Cá nhân hóa theo sở thích",
+  },
+  {
+    icon: MapPin,
+    iconBg: "bg-orange-100 text-orange-500",
+    title: "Tìm kiếm quanh bạn",
+    desc: "Dựa trên vị trí GPS",
+  },
+  {
+    icon: Heart,
+    iconBg: "bg-pink-100 text-pink-500",
+    title: "Đánh giá chân thực",
+    desc: "Từ cộng đồng Wanderbite",
+  },
+  {
+    icon: ShieldCheck,
+    iconBg: "bg-emerald-100 text-emerald-500",
+    title: "An toàn & Uy tín",
+    desc: "Kiểm duyệt chất lượng",
+  },
+];
 
 /* ───────── Component ───────── */
 
 export default function Home() {
   const [query, setQuery] = useState("");
   const [budget, setBudget] = useState<BudgetOption>('auto');
+  const [activeFilter, setActiveFilter] = useState("");
   const [username, setUsername] = useState<string | null>(null);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const router = useRouter();
 
   React.useEffect(() => {
@@ -216,44 +218,36 @@ export default function Home() {
     <>
     <div className={`flex min-h-screen bg-[#F7F8FA] dark:bg-gray-900 transition-colors duration-300 ${roboto.className}`}>
       {/* ══════════════════════════════════════════════════════════
-          [HIDDEN] Sidebar — Uncomment khi các trang con hoạt động
+          Sidebar
           ══════════════════════════════════════════════════════════ */}
-      {/* <Sidebar /> */}
+      <Sidebar isCollapsed={isSidebarCollapsed} onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)} />
 
       {/* ── Main Content ── */}
-      {/* NOTE: Đã bỏ ml-[260px] vì sidebar đã ẩn */}
-      <div className="flex-1 flex flex-col">
+      <div className={`flex-1 flex flex-col transition-all duration-300 ${isSidebarCollapsed ? 'ml-[80px]' : 'ml-[260px]'}`}>
         {/* ─── Top Bar (Minimal — chỉ giữ ThemeToggle) ─── */}
-        <header className="sticky top-0 z-40 flex items-center justify-between px-8 py-4 bg-[#F7F8FA]/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-100/60 dark:border-gray-700/60 transition-colors duration-300">
-          {/* Logo */}
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-orange-400 to-orange-500 flex items-center justify-center shadow-md shadow-orange-200 dark:shadow-orange-500/20">
-              <span className="text-white text-lg">🍜</span>
-            </div>
-            <span className="text-xl font-bold text-gray-800 dark:text-white tracking-tight">
-              Wanderbite
-            </span>
-          </div>
+        <header className="sticky top-0 z-40 flex items-center justify-between px-8 h-[72px] bg-[#F7F8FA]/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-100/60 dark:border-gray-700/60 transition-colors duration-300">
+          {/* Logo (Removed) */}
+          <div className="flex items-center gap-2.5"></div>
 
           {/* Right side — chỉ giữ ThemeToggle */}
           <div className="flex items-center gap-4">
             {/* ══════════════════════════════════════════════════════
-                [HIDDEN] Top Bar Buttons — Uncomment khi kết nối chức năng
+                Top Bar Buttons
                 ══════════════════════════════════════════════════════ */}
-            {/* <button className="relative w-9 h-9 rounded-full flex items-center justify-center hover:bg-gray-100 transition-colors cursor-pointer">
+            <button className="relative w-9 h-9 rounded-full flex items-center justify-center hover:bg-gray-100 transition-colors cursor-pointer">
               <Bell className="w-[18px] h-[18px] text-gray-500" />
               <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white" />
-            </button> */}
+            </button>
 
-            {/* <button className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 transition-colors cursor-pointer">
+            <button className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 transition-colors cursor-pointer">
               <Headphones className="w-[18px] h-[18px]" />
               <span className="font-medium">Hỗ trợ</span>
-            </button> */}
+            </button>
 
-            {/* <button className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 transition-colors cursor-pointer">
+            <button className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 transition-colors cursor-pointer">
               <Globe className="w-[18px] h-[18px]" />
               <span className="font-medium">Tiếng Việt</span>
-            </button> */}
+            </button>
 
             <ThemeToggle />
 
@@ -287,9 +281,9 @@ export default function Home() {
         </header>
 
         {/* ─── Page Content ─── */}
-        <main className="flex-1 px-8 py-6 overflow-y-auto flex items-center justify-center">
+        <main className="flex-1 px-8 py-6 overflow-y-auto flex flex-col">
           {/* ── Hero: Search Section (✅ FUNCTIONAL) ── */}
-          <section className="text-center max-w-3xl mx-auto w-full">
+          <section className="text-center max-w-3xl mx-auto w-full mt-8">
             <h1 className="text-[42px] font-black text-gray-900 dark:text-white mb-8 leading-tight tracking-tight uppercase transition-colors duration-300">
               Hôm nay bạn muốn{" "}
               <span className="text-orange-500">
@@ -327,9 +321,9 @@ export default function Home() {
             </div>
 
             {/* ══════════════════════════════════════════════════════════
-                [HIDDEN] Vibe Filters — Uncomment khi kết nối filter API
+                Vibe Filters
                 ══════════════════════════════════════════════════════════ */}
-            {/* <div className="flex items-center justify-center gap-3 flex-wrap">
+            <div className="flex items-center justify-center gap-3 flex-wrap">
               <span className="text-[13px] font-semibold text-gray-400 mr-1">
                 Vibe Filters
               </span>
@@ -357,7 +351,7 @@ export default function Home() {
                 <SlidersHorizontal className="w-4 h-4 text-gray-400" />
                 Bộ lọc
               </button>
-            </div> */}
+            </div>
 
             <p className="text-sm text-gray-400 dark:text-gray-500 mt-2">
               Nhập mô tả món ăn bạn thích, AI sẽ gợi ý cho bạn
@@ -365,9 +359,9 @@ export default function Home() {
           </section>
 
           {/* ══════════════════════════════════════════════════════════
-              [HIDDEN] Food Recommendations — Uncomment khi có dữ liệu từ API
+              Food Recommendations
               ══════════════════════════════════════════════════════════ */}
-          {/* <section className="mb-8">
+          <section className="mb-8">
             <div className="flex items-center justify-between mb-5">
               <div className="flex items-center gap-2">
                 <Star className="w-5 h-5 text-amber-400 fill-amber-400" />
@@ -439,12 +433,12 @@ export default function Home() {
                 </div>
               ))}
             </div>
-          </section> */}
+          </section>
 
           {/* ══════════════════════════════════════════════════════════
-              [HIDDEN] Feature Bar — Uncomment khi hoàn thiện các tính năng
+              Feature Bar
               ══════════════════════════════════════════════════════════ */}
-          {/* <section className="bg-white rounded-2xl border border-gray-100 shadow-sm px-6 py-5 mb-4">
+          <section className="bg-white rounded-2xl border border-gray-100 shadow-sm px-6 py-5 mb-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {features.map((feat) => (
                 <div
@@ -465,15 +459,15 @@ export default function Home() {
                 </div>
               ))}
             </div>
-          </section> */}
+          </section>
         </main>
 
         {/* ══════════════════════════════════════════════════════════
-            [HIDDEN] Footer — Uncomment khi hoàn thiện
+            Footer
             ══════════════════════════════════════════════════════════ */}
-        {/* <footer className="px-8 py-4 text-center text-[12px] text-gray-400 border-t border-gray-100">
-          © 2026 FoodAI. All rights reserved.
-        </footer> */}
+        <footer className="px-8 py-4 text-center text-[12px] text-gray-400 border-t border-gray-100">
+          © 2026 Wanderbite. All rights reserved.
+        </footer>
       </div>
     </div>
 
