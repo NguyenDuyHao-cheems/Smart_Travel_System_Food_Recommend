@@ -1,43 +1,36 @@
-from fastapi import APIRouter 
-from .schemas import NLPRequest, NLPResponse, ExtractIntentRequest, ExtractIntentResponse
-from .extractor import extract_intent_and_budget
-from .query_parser import extract_budget, extract_tags
+import asyncio
+from fastapi import APIRouter
+from .schemas import ExtractIntentRequest, ExtractIntentResponse, EmbedRequest, EmbedResponse
+from .llm_parser import clean_query_with_gemini
 from .service import generate_mean_pooled_embedding
 
 router = APIRouter()
 
 
-
-@router.post("/process", response_model=NLPResponse)
-def process_nlp(request: NLPRequest):
-    """
-    Takes user text, extracts intents and budget, and returns a 
-    PhoBERT vector embedding.
-    """
-    # 1. Extract intents & budget
-    extracted_data = extract_intent_and_budget(request.text)
-    
-    # 2. Generate vector embeddings
-    embeddings = generate_mean_pooled_embedding(request.text)
-        
-    return NLPResponse(
-        vector=embeddings,
-        extracted_budget=extracted_data["extracted_budget"],
-        intent=extracted_data["intent"]
-    )
-
 @router.post("/extract-intent", response_model=ExtractIntentResponse)
-def extract_intent(request: ExtractIntentRequest):
-    tags = extract_tags(request.text)
-    budget = extract_budget(request.text)
+async def extract_intent(request: ExtractIntentRequest):
+    """
+    Unified endpoint: Gemini cleans query → word_tokenize → embed.
+    """
+    # Step 1: Gemini reformulates raw query
+    cleaned_query = await clean_query_with_gemini(request.text)
 
-    query_vector = generate_mean_pooled_embedding(request.text)
+    # Step 2: Embed the CLEANED query (not raw text!)
+    # generate_mean_pooled_embedding already calls word_tokenize internally
+    vector = await asyncio.to_thread(generate_mean_pooled_embedding, cleaned_query)
 
     return ExtractIntentResponse(
         raw_text=request.text,
-        tags=tags,
-        budget=budget,
-        query_vector=query_vector,
+        cleaned_query=cleaned_query,
+        vector=vector,
         lat=request.lat,
         lng=request.lng,
     )
+
+@router.post("/embed", response_model=EmbedResponse)
+async def embed_text_endpoint(request: EmbedRequest):
+    """
+    Generate embedding for the given text without intent extraction.
+    """
+    vector = await asyncio.to_thread(generate_mean_pooled_embedding, request.text)
+    return EmbedResponse(vector=vector)

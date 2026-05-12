@@ -14,15 +14,20 @@ class SearchRecommendRequest(BaseModel):
     query: str = Field(..., description="The user's required food and context")
     lat: float = Field(..., description="Current user latitude")
     lng: float = Field(..., description="Current user longitude")
+    user_id: Optional[str] = Field(None, description="Optional user ID for personalized filtering")
+    budget: Optional[int] = Field(None, ge=0, description="Optional explicit budget in VND from user. Takes priority over AI-extracted budget.")
+    tag_name: Optional[str] = Field(None, description="Optional tag name for explicit filtering (e.g., 'gà', 'phở')")
 
 class RecommendResult(BaseModel):
     """
-    Schema này định dạng đầu ra bắt buộc của 1 quán ăn để thẻ UI hiển thị trên Frontend không bị vỡ.
+    Schema định dạng đầu ra 1 quán ăn cho UI.
+    distance_km là giá trị số để frontend filter client-side.
     """
-    id: int
+    id: str
     name: str
     match: str
-    dist: str
+    dist: str           # display string, e.g. "1.2 km"
+    distance_km: float = 0.0  # numeric value for client-side filtering
     price: str
     rating: str
     reason: str
@@ -30,9 +35,32 @@ class RecommendResult(BaseModel):
 
 class SearchRecommendResponse(BaseModel):
     """
-    Kết quả trả về dạng danh sách (List) đẩy về cho UI Next.js Render.
+    Kết quả trả về cho UI. Backend không còn lọc theo bán kính —
+    toàn bộ kết quả sắp xếp theo semantic relevance.
+    Việc lọc khoảng cách là tuỳ chọn phía Frontend dựa trên trường distance_km.
     """
     results: List[RecommendResult]
+    fallback_applied: bool = Field(
+        default=False,
+        description="True nếu allergy filter loại toàn bộ, backend dùng fallback."
+    )
+    fallback_reason: Optional[str] = Field(
+        default=None,
+        description="Mô tả lý do fallback (nếu có)."
+    )
+    applied_budget: Optional[int] = Field(
+        None,
+        ge=0,
+        description="Ngân sách thực tế backend dùng để lọc."
+    )
+    filtered_out_count: Optional[int] = Field(
+        None,
+        description="Số lượng quán bị loại do dị ứng."
+    )
+    warning: Optional[str] = Field(
+        None,
+        description="Thông báo cảnh báo (ví dụ: dị ứng)."
+    )
 
 class AISearchPayload(BaseModel):
     """
@@ -45,5 +73,4 @@ class AIResponseData(BaseModel):
     Schema representing the structured response returned by the ai_engine.
     """
     vector: List[float] = Field(..., description="The generated embedded vector representation of the text")
-    extracted_budget: Optional[float] = Field(None, description="The budget extracted from the text, if any")
-    intent: Optional[str] = Field(None, description="The extracted intent of the user search")
+    cleaned_query: str = Field(..., description="Query đã được Gemini làm sạch")

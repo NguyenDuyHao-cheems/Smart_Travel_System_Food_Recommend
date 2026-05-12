@@ -9,33 +9,110 @@ Sets up:
 
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+import os
+from sqlalchemy import event
+from sqlalchemy.engine import Engine
+
+@event.listens_for(Engine, "connect")
+def set_sqlite_pragma(dbapi_connection, connection_record):
+    if os.environ.get("DATABASE_URL", "").startswith("sqlite"):
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA foreign_keys=OFF")
+        cursor.close()
+
+
+# Set dummy DATABASE_URL and SECRET_KEY before any imports from app
+os.environ["DATABASE_URL"] = "sqlite:///./test_temp.db"
+
+os.environ["SECRET_KEY"] = "test_secret_key_123"
+
 
 import sys
 import types
+
+# ── Mock pgvector ─────────────────────────────────────────────────────────────
 if "pgvector" not in sys.modules:
     pgvector_mock = types.ModuleType("pgvector")
     pgvector_sa_mock = types.ModuleType("pgvector.sqlalchemy")
-    # Stub Vector class as a generic SQLAlchemy type for testing
-    from sqlalchemy.types import String
-    pgvector_sa_mock.Vector = String 
+
+    # Build a VECTOR type stub that supports pgvector distance operators
+    from sqlalchemy.types import UserDefinedType, Float
+    class _MockVECTOR(UserDefinedType):
+        cache_ok = True
+
+        def __init__(self, dim=None):
+            super(UserDefinedType, self).__init__()
+            self.dim = dim
+
+        def get_col_spec(self, **kw):
+            if self.dim is None:
+                return "VECTOR"
+            return "VECTOR(%d)" % self.dim
+
+        class comparator_factory(UserDefinedType.Comparator):
+            def l2_distance(self, other):
+                return self.op("<->", return_type=Float)(other)
+
+            def max_inner_product(self, other):
+                return self.op("<#>", return_type=Float)(other)
+
+            def cosine_distance(self, other):
+                return self.op("<=>", return_type=Float)(other)
+
+            def l1_distance(self, other):
+                return self.op("<+>", return_type=Float)(other)
+
+        def bind_processor(self, dialect):
+            import json
+            def process(value):
+                if value is None:
+                    return None
+                return json.dumps(value)
+            return process
+
+        def result_processor(self, dialect, coltype):
+            import json
+            def process(value):
+                if value is None:
+                    return None
+                if isinstance(value, str):
+                    return json.loads(value)
+                return value
+            return process
+
+        def literal_processor(self, dialect):
+            import json
+            def process(value):
+                if value is None:
+                    return "NULL"
+                return "'%s'" % json.dumps(value)
+            return process
+
+    pgvector_sa_mock.Vector = _MockVECTOR
     sys.modules["pgvector"] = pgvector_mock
     sys.modules["pgvector.sqlalchemy"] = pgvector_sa_mock
 
-from app.main import app
-from app.core.database import SessionLocal
-from app.domains.users.models import Base as UserBase
+from sqlalchemy import create_engine as real_create_engine
+
+def mocked_create_engine(url, *args, **kwargs):
+    if str(url).startswith("sqlite"):
+        kwargs["connect_args"] = {"check_same_thread": False}
+    return real_create_engine(url, *args, **kwargs)
+
+# Patch create_engine before any app imports
+with patch("sqlalchemy.create_engine", side_effect=mocked_create_engine):
+    from app.main import app
+    from app.core.database import SessionLocal, engine as engine_test
+    from app.domains.users.models import Base as UserBase, UserAccount, UserOnboarding
 
 
-# ── In-memory SQLite database ─────────────────────────────────────────────────
-SQLITE_URL = "sqlite:///./test_onboarding.db"
+from fastapi.testclient import TestClient
+from sqlalchemy.orm import sessionmaker
 
-engine_test = create_engine(
-    SQLITE_URL, connect_args={"check_same_thread": False}
-)
+# ── Database Session Setup ───────────────────────────────────────────────────
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine_test)
+
+
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -73,6 +150,17 @@ def client(db_session):
     app.dependency_overrides.clear()
 
 
+@pytest.fixture(autouse=True)
+def mock_ai_network_calls():
+    """
+    Globally mock AI engine network calls to prevent tests from hitting the real API.
+    Specifically patches embed_text and profile rebuild which are used in onboarding.
+    """
+    with patch("app.services.ai_client.embed_text", new_callable=AsyncMock, return_value=DUMMY_AI_VECTOR), \
+         patch("app.domains.users.service.rebuild_user_profile_vector", new_callable=AsyncMock, return_value=DUMMY_AI_VECTOR):
+        yield
+
+
 # ── Payload factory ───────────────────────────────────────────────────────────
 
 def make_payload(**overrides) -> dict:
@@ -81,6 +169,7 @@ def make_payload(**overrides) -> dict:
         "favorite_dishes": ["Phở bò", "Bún chả", "Bánh mì"],
         "spicy_level": "medium",
         "dietary_restrictions": [],
+        "is_vegetarian": False,
         "allergies": [],
         "budget": "medium",
         "location": "Ho Chi Minh City",

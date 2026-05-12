@@ -10,8 +10,9 @@ They test the logic of:
 
 import pytest
 
-from app.nlp.query_parser import extract_budget, extract_tags
-from app.nlp.extractor import extract_intent_and_budget
+from app.nlp.query_parser import extract_budget
+from app.core.config import settings
+from app.nlp.service import generate_mean_pooled_embedding
 
 
 # ---------------------------------------------------------------------------
@@ -21,6 +22,17 @@ from app.nlp.extractor import extract_intent_and_budget
 
 class TestExtractBudget:
     """Unit tests for the extract_budget() function."""
+    def test_extracts_under_50k_phrase(self):
+        assert extract_budget("quán ăn dưới 50k") == 50000
+
+    def test_extracts_about_100_nghin_phrase(self):
+        assert extract_budget("khoảng 100 nghìn một người") == 100000
+
+    def test_extracts_cheap_keyword(self):
+        assert extract_budget("tìm quán ăn rẻ") == 30000
+
+    def test_explicit_budget_takes_priority_over_cheap_keyword(self):
+        assert extract_budget("quán rẻ dưới 50k") == 50000
 
     def test_extracts_50k_notation(self):
         """'50k' should return 50000."""
@@ -56,106 +68,50 @@ class TestExtractBudget:
         assert extract_budget("50 k") == 50000
 
 
-# ---------------------------------------------------------------------------
-# extract_tags()
-# ---------------------------------------------------------------------------
 
+class TestEmbeddingFallback:
+    def test_fallback_embedding_has_expected_dimension(self, monkeypatch):
+        def broken_provider():
+            raise RuntimeError("model not loaded")
 
-class TestExtractTags:
-    """Unit tests for the extract_tags() function."""
+        monkeypatch.setattr("app.nlp.service.get_embedding_model", broken_provider)
 
-    def test_returns_list(self):
-        """Should always return a list."""
-        result = extract_tags("phở bò")
-        assert isinstance(result, list)
+        vector = generate_mean_pooled_embedding("phở bò dưới 50k")
 
-    def test_basic_food_words_in_tags(self):
-        """Key food words should appear in tags."""
-        tags = extract_tags("phở bò ngon")
-        assert "phở" in tags
-        assert "bò" in tags
+        assert isinstance(vector, list)
+        assert len(vector) == settings.VECTOR_DIM
+        assert all(isinstance(value, float) for value in vector)
 
-    def test_stop_words_excluded(self):
-        """Vietnamese stop words must be filtered out."""
-        stop_words = {"muon", "muốn", "an", "ăn", "gan", "gần", "toi", "tôi",
-                      "duoi", "dưới", "tren", "trên", "tam", "tầm",
-                      "khoang", "khoảng", "gia", "giá"}
-        tags = set(extract_tags("tôi muốn ăn phở gần đây"))
-        overlap = stop_words & tags
-        assert len(overlap) == 0, f"Stop words found: {overlap}"
+    def test_fallback_embedding_is_deterministic(self, monkeypatch):
+        def broken_provider():
+            raise RuntimeError("model not loaded")
 
-    def test_digits_excluded(self):
-        """Pure digit tokens should not appear in tags."""
-        tags = extract_tags("quán 50k bún chả")
-        assert not any(tag.isdigit() for tag in tags)
+        monkeypatch.setattr("app.nlp.service.get_embedding_model", broken_provider)
 
-    def test_k_suffix_amounts_removed(self):
-        """Tokens like '50k' should be stripped before tagging."""
-        tags = extract_tags("ăn tầm 50k bún chả")
-        # '50k' should not appear as a tag
-        assert "50k" not in tags
+        first = generate_mean_pooled_embedding("bún chả rẻ")
+        second = generate_mean_pooled_embedding("bún chả rẻ")
 
-    def test_no_duplicates_in_tags(self):
-        """Each tag should appear only once."""
-        tags = extract_tags("phở bò phở gà phở")
-        assert len(tags) == len(set(tags))
+        assert first == second
 
-    def test_empty_string_returns_empty_list(self):
-        """Empty input should return an empty list."""
-        assert extract_tags("") == []
-
-    def test_mixed_viet_and_english(self):
-        """Should handle mixed Vietnamese/English text."""
-        tags = extract_tags("bún chả near me")
-        assert "bún" in tags
-        assert "chả" in tags or "cha" in tags
-
+    def test_generate_mean_pooled_embedding_with_segmentation(self, monkeypatch):
+        class DummyModel:
+            def encode(self, text):
+                self.last_encoded_text = text
+                class MockTensor:
+                    def tolist(self):
+                        return [0.1] * settings.VECTOR_DIM
+                return MockTensor()
+                
+        dummy = DummyModel()
+        monkeypatch.setattr("app.nlp.service.get_embedding_model", lambda: dummy)
+        
+        # Call generate_mean_pooled_embedding
+        vector = generate_mean_pooled_embedding("bún chả hà nội")
+        
+        # Check if the word segmentation was applied
+        assert dummy.last_encoded_text == "bún chả hà_nội"
+        assert len(vector) == settings.VECTOR_DIM
 
 # ---------------------------------------------------------------------------
-# extract_intent_and_budget()
+# End of tests
 # ---------------------------------------------------------------------------
-
-
-class TestExtractIntentAndBudget:
-    """Unit tests for the extract_intent_and_budget() function."""
-
-    def test_always_returns_search_food_intent(self):
-        """Intent should always be 'search_food' in current implementation."""
-        result = extract_intent_and_budget("phở bò Hà Nội")
-        assert result["intent"] == "search_food"
-
-    def test_rẻ_keyword_sets_budget_50000(self):
-        """'rẻ' keyword → budget = 50000."""
-        result = extract_intent_and_budget("quán ăn rẻ")
-        assert result["extracted_budget"] == 50000.0
-
-    def test_cheap_keyword_sets_budget_50000(self):
-        """'cheap' keyword → budget = 50000."""
-        result = extract_intent_and_budget("cheap food near me")
-        assert result["extracted_budget"] == 50000.0
-
-    def test_sang_trong_keyword_sets_budget_500000(self):
-        """'sang trọng' keyword → budget = 500000."""
-        result = extract_intent_and_budget("nhà hàng sang trọng Hà Nội")
-        assert result["extracted_budget"] == 500000.0
-
-    def test_luxury_keyword_sets_budget_500000(self):
-        """'luxury' keyword → budget = 500000."""
-        result = extract_intent_and_budget("luxury dining experience")
-        assert result["extracted_budget"] == 500000.0
-
-    def test_no_budget_keyword_returns_none(self):
-        """Text without budget keywords → extracted_budget = None."""
-        result = extract_intent_and_budget("bún bò Huế")
-        assert result["extracted_budget"] is None
-
-    def test_returns_dict_with_correct_keys(self):
-        """Result must contain both 'intent' and 'extracted_budget' keys."""
-        result = extract_intent_and_budget("quán cơm")
-        assert "intent" in result
-        assert "extracted_budget" in result
-
-    def test_case_insensitive_rẻ_detection(self):
-        """'RẺ' in uppercase should also match."""
-        result = extract_intent_and_budget("quán ăn RẺ")
-        assert result["extracted_budget"] == 50000.0

@@ -47,21 +47,24 @@ class TestOnboardingRequestValid:
         assert req.dietary_restrictions == []
         assert req.allergies == []
 
+    def test_is_vegetarian_defaults_to_false(self):
+        req = OnboardingRequest(**make_payload())
+        assert req.is_vegetarian is False
+
+    def test_is_vegetarian_can_be_set_true(self):
+        req = OnboardingRequest(**make_payload(is_vegetarian=True))
+        assert req.is_vegetarian is True
+
 
 # ── OnboardingRequest – validation errors ─────────────────────────────────────
 
 class TestOnboardingRequestInvalid:
     def test_too_few_dishes_raises(self):
         with pytest.raises(ValidationError) as exc_info:
-            OnboardingRequest(**make_payload(favorite_dishes=["Phở", "Bún"]))
+            OnboardingRequest(**make_payload(favorite_dishes=[])) # 0 dishes is too few
         errors = exc_info.value.errors()
         assert any("favorite_dishes" in str(e) for e in errors)
 
-    def test_too_many_dishes_raises(self):
-        with pytest.raises(ValidationError):
-            OnboardingRequest(**make_payload(
-                favorite_dishes=["a", "b", "c", "d", "e", "f"]  # 6 items
-            ))
 
     def test_invalid_spicy_level_raises(self):
         with pytest.raises(ValidationError):
@@ -101,9 +104,9 @@ class TestOnboardingResponse:
         assert resp.popular_restaurants is None
 
     def test_with_vector(self):
-        vec = [0.5] * 773
+        vec = [0.5] * 768
         resp = OnboardingResponse(preferences_vector=vec)
-        assert len(resp.preferences_vector) == 773
+        assert len(resp.preferences_vector) == 768
 
     def test_fallback_with_restaurants(self):
         restaurants = [

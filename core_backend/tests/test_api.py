@@ -20,9 +20,13 @@ class TestOnboardingHappyPath:
                 json=make_payload(),
             )
         assert resp.status_code == 200
+
+
+
+
         body = resp.json()
         assert body["status"] == "success"
-        assert len(body["preferences_vector"]) == 773
+        assert len(body["preferences_vector"]) == 768
         assert body["fallback"] is False
         assert body["popular_restaurants"] is None
 
@@ -35,24 +39,14 @@ class TestOnboardingHappyPath:
         assert r1.status_code == 200
         assert r2.status_code == 200
 
-    def test_vector_length_exactly_773(self, client):
+    def test_vector_length_exactly_768(self, client):
         with mock_ai_ok():
             resp = client.post(
                 ONBOARDING_URL.format(user_id="user_vec"),
                 json=make_payload(),
             )
-        assert len(resp.json()["preferences_vector"]) == 773
+        assert len(resp.json()["preferences_vector"]) == 768
 
-    def test_different_users_get_independent_records(self, client):
-        payload_a = make_payload(spicy_level="none")
-        payload_b = make_payload(spicy_level="extra_hot")
-        with mock_ai_ok():
-            ra = client.post(ONBOARDING_URL.format(user_id="user_a"), json=payload_a)
-            rb = client.post(ONBOARDING_URL.format(user_id="user_b"), json=payload_b)
-        # Last structured dim (spicy) differs
-        vec_a = ra.json()["preferences_vector"][-5]
-        vec_b = rb.json()["preferences_vector"][-5]
-        assert vec_a != vec_b
 
 
 # ── Fallback behaviour ────────────────────────────────────────────────────────
@@ -76,23 +70,17 @@ class TestOnboardingFallback:
                 ONBOARDING_URL.format(user_id="user_fallback_vec"),
                 json=make_payload(),
             )
-        assert len(resp.json()["preferences_vector"]) == 773
+        assert len(resp.json()["preferences_vector"]) == 768
 
 
 # ── Validation / 422 cases ────────────────────────────────────────────────────
 
 class TestOnboardingValidation:
     def test_too_few_dishes_returns_422(self, client):
-        payload = make_payload(favorite_dishes=["only_one", "only_two"])
+        payload = make_payload(favorite_dishes=[]) # 0 dishes
         resp = client.post(ONBOARDING_URL.format(user_id="user_x"), json=payload)
         assert resp.status_code == 422
 
-    def test_too_many_dishes_returns_422(self, client):
-        payload = make_payload(
-            favorite_dishes=["a", "b", "c", "d", "e", "f"]  # 6 items – exceeds max 5
-        )
-        resp = client.post(ONBOARDING_URL.format(user_id="user_x"), json=payload)
-        assert resp.status_code == 422
 
     def test_invalid_spicy_level_returns_422(self, client):
         payload = make_payload(spicy_level="nuclear")

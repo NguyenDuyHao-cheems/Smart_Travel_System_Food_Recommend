@@ -1,30 +1,98 @@
+import logging
 import httpx
-from app.domains.search.schemas import AISearchPayload, AIResponseData
-from typing import Optional
+from typing import List, Optional
 from app.core.config import settings
+from app.domains.search.schemas import AIResponseData
+
+logger = logging.getLogger(__name__)
+
+_TIMEOUT = 10.0
+
+
+async def embed_text(text: str) -> Optional[List[float]]:
+    """
+    Gửi text đến AI Engine để lấy 768-dim PhoBERT embedding.
+    Dùng cho user profile embedding (recommendation_service).
+
+    Returns None nếu AI Engine không phản hồi hoặc trả về sai dimension.
+    """
+    return await get_ai_client().embed_text(text)
+
 
 class AIServiceClient:
-    async def extract_intent_and_vectorize(self, text: str) -> Optional[AIResponseData]:
+    """
+    Client cho AI Engine.
+    Dùng Singleton pattern qua get_ai_client() — không tạo instance mới mỗi request.
+    """
+
+    def __init__(self, base_url: str):
+        self.base_url = base_url
+        self._client = httpx.AsyncClient(base_url=base_url, timeout=_TIMEOUT)
+
+    async def check_health(self) -> bool:
+        """Trả về True nếu AI Engine đang hoạt động."""
+        try:
+            response = await self._client.get("/api/health")
+            return response.status_code == 200
+        except Exception as exc:
+            logger.error("AI engine health check failed: %s", exc)
+            return False
+
+    async def extract_intent_and_vectorize(self, query: str) -> Optional[AIResponseData]:
         """
-        Makes an asynchronous HTTP request to the ai_engine to extract intent,
-        budget, and generate the vector embeddings for the provided text.
+        Gọi AI Engine để trích xuất intent, budget và embedding vector từ query.
         """
-        payload = AISearchPayload(text=text)
-        
-        async with httpx.AsyncClient() as client:
-            try:
-                response = await client.post(
-                    f"{settings.AI_ENGINE_BASE_URL}/api/v1/nlp/process",
-                    json=payload.model_dump()
-                )
-                response.raise_for_status()
-                
-                # Parse and return the validated response
-                return AIResponseData(**response.json())
-            except httpx.HTTPError as exc:
-                # Add proper error logging in production
-                print(f"Error communicating with AI engine: {exc}")
-                return None
+        if not query.strip():
+            return None
+
+        try:
+            response = await self._client.post(
+                "/api/v1/nlp/extract-intent",
+                json={"text": query},
+            )
+            response.raise_for_status()
+            return AIResponseData(**response.json())
+        except Exception as exc:
+            logger.error("AI engine unreachable for extraction: %s", exc)
+            return None
+
+    async def embed_text(self, text: str) -> Optional[List[float]]:
+        if not text.strip():
+            return None
+
+        try:
+            response = await self._client.post(
+                "/api/v1/nlp/embed",
+                json={"text": text},
+            )
+            response.raise_for_status()
+            data = response.json()
+            vector = data.get("vector")
+
+            if vector and len(vector) == settings.VECTOR_DIM:
+                return vector
+
+            logger.warning(
+                "AI vector dim mismatch: expected %d, got %d",
+                settings.VECTOR_DIM,
+                len(vector) if vector else 0,
+            )
+            return None
+        except Exception as exc:
+            logger.error("AI engine unreachable for embedding: %s", exc)
+            return None
+
+
+# ---------------------------------------------------------------------------
+# Singleton factory — Fix PR Issue #5: không tạo client mới mỗi request
+# ---------------------------------------------------------------------------
+
+_client_instance: Optional[AIServiceClient] = None
+
 
 def get_ai_client() -> AIServiceClient:
-    return AIServiceClient()
+    """Singleton factory cho AIServiceClient."""
+    global _client_instance
+    if _client_instance is None:
+        _client_instance = AIServiceClient(base_url=settings.AI_ENGINE_BASE_URL)
+    return _client_instance

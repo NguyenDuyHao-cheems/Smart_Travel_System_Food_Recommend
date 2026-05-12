@@ -104,7 +104,7 @@ _See [OnboardingRequest](#schemas)_
 
 ---
 
-### POST `/api/v1/ml/rank-candidates`
+### POST `/api/v1/ml/rank`
 
 **Rank Candidates**
 
@@ -120,7 +120,7 @@ Endpoint thực hiện Pipeline:
 
 Content-Type: `application/json`
 
-_See [RankRequest](#schemas)_
+_See [UserRankRequest](#schemas)_
 
 **Responses**
 
@@ -151,11 +151,11 @@ _See [RankRequest](#schemas)_
 
 Schema representing the structured response returned by the ai_engine.
 
-| Field              | Type              | Required | Description                                              |
-| ------------------ | ----------------- | -------- | -------------------------------------------------------- |
-| `vector`           | array of `number` | ✓        | The generated embedded vector representation of the text |
-| `extracted_budget` | `any`             |          | The budget extracted from the text, if any               |
-| `intent`           | `any`             |          | The extracted intent of the user search                  |
+| Field    | Type              | Required | Description                                              |
+| -------- | ----------------- | -------- | -------------------------------------------------------- |
+| `vector` | array of `number` | ✓        | The generated embedded vector representation of the text |
+| `budget` | `any`             |          | The budget extracted from the text, if any               |
+| `intent` | `any`             |          | The extracted intent of the user search                  |
 
 ### HTTPValidationError
 
@@ -200,24 +200,24 @@ Response schema returned after successful onboarding.
 | `fallback`            | `boolean` |          | True when the response is based on popular restaurants because no prior data exists. |
 | `popular_restaurants` | `any`     |          | Populated only when fallback=True.                                                   |
 
-### RankRequest
+### UserRankRequest
 
 | Field           | Type              | Required | Description                                                                |
 | --------------- | ----------------- | -------- | -------------------------------------------------------------------------- |
-| `user_id`       | `integer`         | ✓        | ID định danh của người dùng                                                |
-| `pref_vector`   | array of `number` | ✓        | Vector sở thích của người dùng để tính độ tương đồng                       |
+| `user_id`       | `string`          | ✓        | ID định danh của người dùng                                                |
 | `k`             | `integer`         |          | Số lượng kết quả nhà hàng tối đa cần trả về                                |
 | `offset`        | `integer`         |          | Vị trí bắt đầu của danh sách kết quả (dùng cho phân trang)                 |
 | `tags`          | array of `string` |          | Danh sách các thẻ phân loại (ví dụ: 'đồ ăn chay', 'không gian ngoài trời') |
-| `budget`        | `number`          |          | Mức chi phí tối đa dự kiến của người dùng                                  |
-| `user_location` | array of `number` |          | Tọa độ vị trí người dùng dạng [kinh độ, vĩ độ]                             |
+| `budget`        | `integer`         |          | Mức chi phí tối đa dự kiến của người dùng (VNĐ)                            |
+| `user_location` | array of `number` |          | Tọa độ vị trí người dùng dạng [vĩ độ, kinh độ]                             |
 | `radius`        | `number`          |          | Bán kính (km) được cho phép tìm kiếm xung quanh vị trí người dùng          |
 
 ### RankResponse
 
 | Field     | Type               | Required | Description                                                                  |
 | --------- | ------------------ | -------- | ---------------------------------------------------------------------------- |
-| `top_ids` | array of `integer` | ✓        | Danh sách ID các nhà hàng được gợi ý xếp hạng từ cao xuống thấp thông qua AI |
+| `ranked_ids` | array of `string` | ✓        | Danh sách ID các nhà hàng được gợi ý xếp hạng từ cao xuống thấp thông qua AI |
+| `scores`     | array of `number` |          | Điểm số tương ứng của các nhà hàng                                           |
 
 ### RecommendResult
 

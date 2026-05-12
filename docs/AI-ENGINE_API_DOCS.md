@@ -9,34 +9,11 @@
 
 ## Endpoints
 
-### POST `/api/v1/nlp/process`
-
-**Process Nlp**
-
-Takes user text, extracts intents and budget, and returns a
-PhoBERT vector embedding.
-
-**Tags:** `NLP`
-**Operation ID:** `process_nlp_api_v1_nlp_process_post`
-
-**Request Body**
-
-Content-Type: `application/json`
-
-_See [NLPRequest](#schemas)_
-
-**Responses**
-
-| Code  | Description         |
-| ----- | ------------------- |
-| `200` | Successful Response |
-| `422` | Validation Error    |
-
----
-
 ### POST `/api/v1/nlp/extract-intent`
 
 **Extract Intent**
+
+Unified endpoint to extract budget, intent and generate embeddings.
 
 **Tags:** `NLP`
 **Operation ID:** `extract_intent_api_v1_nlp_extract_intent_post`
@@ -96,38 +73,20 @@ _See [ExtractIntentRequest](#schemas)_
 
 ### ExtractIntentResponse
 
-| Field          | Type              | Required | Description |
-| -------------- | ----------------- | -------- | ----------- |
-| `raw_text`     | `string`          | ✓        |             |
-| `tags`         | array of `string` | ✓        |             |
-| `budget`       | `any`             |          |             |
-| `query_vector` | array of `number` | ✓        |             |
-| `lat`          | `any`             |          |             |
-| `lng`          | `any`             |          |             |
+| Field      | Type              | Required | Description                                              |
+| ---------- | ----------------- | -------- | -------------------------------------------------------- |
+| `raw_text` | `string`          | ✓        |                                                          |
+| `budget`   | `any`             |          |                                                          |
+| `vector`   | array of `number` | ✓        | The generated embedded vector representation of the text |
+| `intent`   | `string`          |          | The extracted intent of the user search                  |
+| `lat`      | `any`             |          |                                                          |
+| `lng`      | `any`             |          |                                                          |
 
 ### HTTPValidationError
 
 | Field    | Type                                       | Required | Description |
 | -------- | ------------------------------------------ | -------- | ----------- |
 | `detail` | array of _See [ValidationError](#schemas)_ |          |             |
-
-### NLPRequest
-
-Schema for the ai_engine to receive raw text from the core_backend.
-
-| Field  | Type     | Required | Description                       |
-| ------ | -------- | -------- | --------------------------------- |
-| `text` | `string` | ✓        | The raw user text to be processed |
-
-### NLPResponse
-
-Schema representing the structured AI output to be sent back to core_backend.
-
-| Field              | Type              | Required | Description                                              |
-| ------------------ | ----------------- | -------- | -------------------------------------------------------- |
-| `vector`           | array of `number` | ✓        | The generated embedded vector representation of the text |
-| `extracted_budget` | `any`             |          | The budget extracted from the text, if any               |
-| `intent`           | `any`             |          | The extracted intent of the user search                  |
 
 ### ValidationError
 

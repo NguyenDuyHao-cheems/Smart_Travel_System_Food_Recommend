@@ -1,75 +1,50 @@
 import pytest
 from app.main import app
 from fastapi.testclient import TestClient
-from app.domains.ranking.router import get_ranking_service
+from unittest.mock import patch
 
 client = TestClient(app)
 
-def test_rank_candidates_success():
-    class MockService:
-        def get_recommendations(self, db, request):
-            return [10, 20, 30]
-
-    app.dependency_overrides[get_ranking_service] = lambda: MockService()
+@patch('app.domains.ranking.ranking_service.RankingService.get_recommendations')
+def test_rank_candidates_success(mock_get_recommendations):
+    # Mock behavior of async function
+    async def mock_coro(*args, **kwargs):
+        return ["10", "20", "30"]
+    mock_get_recommendations.side_effect = mock_coro
     
     payload = {
-        "user_id": 1,
-        "pref_vector": [0.1, 0.2, 0.3],
+        "user_id": "1",
+        "user_location": [10.0, 106.0],
         "k": 5,
         "offset": 0,
         "tags": ["Phở", "Bún"],
-        "budget": 200.0,
-        "user_location": [10.0, 106.0],
+        "budget": 200,
         "radius": 5.0
     }
     
-    response = client.post("/api/v1/ml/rank-candidates", json=payload)
+    response = client.post("/api/v1/ml/rank", json=payload)
     assert response.status_code == 200
-    assert response.json() == {"top_ids": [10, 20, 30]}
-    
-    app.dependency_overrides.clear()
-
-def test_rank_candidates_default_params():
-    class MockService:
-        def get_recommendations(self, db, request):
-            return [1]
-
-    app.dependency_overrides[get_ranking_service] = lambda: MockService()
-    
-    payload = {
-        "user_id": 1,
-        "pref_vector": [0.1, 0.2, 0.3]
-    }
-    
-    response = client.post("/api/v1/ml/rank-candidates", json=payload)
-    assert response.status_code == 200
-    req_body = response.request.content
-    assert response.json() == {"top_ids": [1]}
-    
-    app.dependency_overrides.clear()
+    assert response.json() == {"ranked_ids": ["10", "20", "30"], "scores": None}
 
 def test_rank_candidates_validation_error():
     payload = {
-        "user_id": 1,
-        # missing pref_vector which is required
+        "user_id": "1",
+        # missing user_location which is required
     }
-    response = client.post("/api/v1/ml/rank-candidates", json=payload)
+    response = client.post("/api/v1/ml/rank", json=payload)
     assert response.status_code == 422
 
-def test_rank_candidates_internal_error():
-    class MockErrorService:
-        def get_recommendations(self, db, request):
-            raise Exception("Mock DB or calculation failure")
-            
-    app.dependency_overrides[get_ranking_service] = lambda: MockErrorService()
+@patch('app.domains.ranking.ranking_service.RankingService.get_recommendations')
+def test_rank_candidates_internal_error(mock_get_recommendations):
+    async def mock_coro(*args, **kwargs):
+        raise Exception("Mock DB or calculation failure")
+    mock_get_recommendations.side_effect = mock_coro
     
     payload = {
-        "user_id": 1,
-        "pref_vector": [0.1, 0.2, 0.3]
+        "user_id": "1",
+        "user_location": [10.0, 106.0]
     }
     
-    response = client.post("/api/v1/ml/rank-candidates", json=payload)
+    response = client.post("/api/v1/ml/rank", json=payload)
     assert response.status_code == 500
     assert response.json() == {"detail": "Internal server error. Please try again later."}
-    
-    app.dependency_overrides.clear()
