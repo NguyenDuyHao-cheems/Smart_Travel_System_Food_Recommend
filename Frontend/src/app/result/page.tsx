@@ -15,6 +15,7 @@ import {
   AlertTriangle,
   Info,
   Home,
+  X,
 } from 'lucide-react';
 import { Roboto } from 'next/font/google';
 import { useGeolocation } from '../../hooks/useGeolocation';
@@ -308,7 +309,9 @@ function ResultPageContent() {
   const [filteredCount, setFilteredCount] = useState(0);
   const [allergyWarning, setAllergyWarning] = useState<string>('');
 
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [showGuestNotice, setShowGuestNotice] = useState(true);
 
   // Distance filter state (client-side, default OFF)
   const [distanceFilterEnabled, setDistanceFilterEnabled] = useState(false);
@@ -348,12 +351,9 @@ function ResultPageContent() {
       const token = localStorage.getItem('access_token');
       const userId = localStorage.getItem('user_id');
 
-      if (!token) {
-        console.warn("Chưa đăng nhập, redirect về /auth");
-        router.push('/auth?redirect=/result');
-        return;
-      }
+      setIsLoggedIn(!!token);
 
+      // Note: Anonymous search allowed (no redirect)
       setIsLoading(true);
 
       // Thêm AbortController để chống treo (timeout sau 15 giây) nếu Backend/Database bị kẹt
@@ -436,7 +436,7 @@ function ResultPageContent() {
         <Header showBack={false} />
 
         {/* Budget + Distance filter bar */}
-        <div className="px-6 md:px-10 pt-4 pb-3 border-b border-gray-100 dark:border-gray-800 bg-[#F7F8FA] dark:bg-gray-900 flex flex-col gap-3">
+        <div className="px-6 md:px-10 py-5 border-b border-gray-100 dark:border-gray-800 bg-[#F7F8FA] dark:bg-gray-900 flex flex-wrap items-center gap-x-4 gap-y-4">
           <BudgetSelector
             value={budget}
             onChange={(newBudget) => {
@@ -474,7 +474,7 @@ function ResultPageContent() {
                   <motion.div
                     initial={{ opacity: 0, y: -20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="mb-10 max-w-2xl mx-auto"
+                    className="mb-10 max-w-4xl mx-auto"
                   >
                     {/* [2] Hiển thị metadata: fallback_applied === true -> show banner cảnh báo kèm fallback_reason, applied_budget, applied_radius_km dạng badge */}
                     {fallbackApplied && (
@@ -504,7 +504,30 @@ function ResultPageContent() {
                       </div>
                     )}
 
-                    {/* [4] Thêm ô input tìm kiếm lại (pre-fill từ query URL param q) -> cập nhật URL param -> re-fetch. Thêm nút "Quay lại trang chủ" */}
+                    {/* [4] Guest Notice: Redesigned to match reference image */}
+                    {!isLoggedIn && showGuestNotice && (
+                      <div className="mb-6 px-5 py-3 rounded-full bg-[#F0F7FF] dark:bg-blue-500/5 border border-[#E1EFFE] dark:border-blue-500/20 flex items-center gap-3 relative shadow-sm">
+                        <Sparkles className="w-5 h-5 text-blue-500 flex-shrink-0" />
+                        <p className="text-[13px] md:text-sm text-gray-600 dark:text-blue-200 pr-10 whitespace-nowrap">
+                          Bạn đang tìm kiếm với tư cách khách.{" "}
+                          <button
+                            onClick={() => router.push('/auth')}
+                            className="font-bold text-blue-600 dark:text-blue-400 underline hover:text-blue-700 transition-colors"
+                          >
+                            Đăng nhập ngay
+                          </button>
+                          {" "}để AI đề xuất món ăn chính xác theo khẩu vị và chế độ ăn của riêng bạn!
+                        </p>
+                        <button
+                          onClick={() => setShowGuestNotice(false)}
+                          className="absolute right-5 p-1 text-gray-400 hover:text-gray-600 dark:hover:text-blue-300 transition-colors"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )}
+
+                    {/* [5] Thêm ô input tìm kiếm lại */}
                     <div className="flex flex-col gap-3 mb-5">
                       <div className="flex justify-between items-center px-1">
                         <button onClick={() => router.push('/')} className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-orange-500 transition-colors">
