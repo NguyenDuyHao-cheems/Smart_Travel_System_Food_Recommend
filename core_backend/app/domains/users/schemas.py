@@ -101,6 +101,7 @@ class AuthResponse(BaseModel):
     message: str
     user_id: str
     username: str
+    avatar_url: Optional[str] = None
     access_token: str
     token_type: str = "bearer"
 

@@ -122,6 +122,9 @@ function AuthPageContent() {
         localStorage.setItem("access_token", data.access_token);
         localStorage.setItem("user_id", data.user_id);
         localStorage.setItem("username", data.username);
+        if (data.avatar_url) {
+          localStorage.setItem("user_avatar", data.avatar_url);
+        }
 
         // Check if user is new (Sign up)
         if (data.message.includes("Sign up")) {

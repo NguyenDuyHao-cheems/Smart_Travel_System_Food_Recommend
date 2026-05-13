@@ -208,6 +208,7 @@ class AuthService:
             
             user_info = resp.json()
             email = user_info.get("email")
+            picture = user_info.get("picture")  # Google profile picture URL
             if not email:
                 raise PermissionError("Email not found in Google profile.")
 
@@ -238,6 +239,7 @@ class AuthService:
             message=message,
             user_id=str(user.id),
             username=user.username,
+            avatar_url=picture,
             access_token=access_token,
             token_type="bearer",
         )

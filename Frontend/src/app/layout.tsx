@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Inter, Playfair_Display } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "../components/ThemeProvider";
-import { GoogleAuthProvider } from "../components/GoogleAuthProvider";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const playfair = Playfair_Display({ subsets: ["latin"], variable: "--font-playfair" });
@@ -26,9 +25,7 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <GoogleAuthProvider>
-            {children}
-          </GoogleAuthProvider>
+          {children}
         </ThemeProvider>
       </body>
     </html>
