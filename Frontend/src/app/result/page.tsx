@@ -464,9 +464,12 @@ function ResultPageContent() {
       }
 
       // If no cache or first time, show loading if not already restored
-      if (results.length === 0) {
+      if (results.length === 0 || isRefresh) {
         setIsLoading(true);
       }
+
+      // If it's a refresh, we want a minimum delay to show the "AI Vibe"
+      const startTime = Date.now();
 
       const token = localStorage.getItem('access_token');
       const userId = localStorage.getItem('user_id');
@@ -522,6 +525,16 @@ function ResultPageContent() {
         }
       } finally {
         clearTimeout(timeoutId);
+        
+        // Differentiated delay: 1.7s from home, 1.5s for refresh
+        const isFromHome = searchParams.get('from') === 'home';
+        const minWait = isFromHome ? 1700 : 1500;
+        
+        const elapsedTime = Date.now() - startTime;
+        if (elapsedTime < minWait) {
+          await new Promise(resolve => setTimeout(resolve, minWait - elapsedTime));
+        }
+        
         setIsLoading(false);
       }
     };

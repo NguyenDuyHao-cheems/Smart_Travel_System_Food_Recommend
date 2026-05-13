@@ -84,7 +84,7 @@ export default function Home() {
     e.preventDefault();
     if (!query.trim()) return;
     const budgetParam = budget !== 'auto' ? `&budget=${budget}` : '';
-    router.push(`/result?q=${encodeURIComponent(query)}${budgetParam}`);
+    router.push(`/result?q=${encodeURIComponent(query)}${budgetParam}&from=home`);
   };
 
   if (!mounted) return null;

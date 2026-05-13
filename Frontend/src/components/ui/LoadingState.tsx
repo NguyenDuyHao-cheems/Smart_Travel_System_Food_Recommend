@@ -5,10 +5,11 @@ import { motion } from 'framer-motion';
 import { Sparkles } from 'lucide-react';
 
 const AI_STATUS_MESSAGES = [
-  'Đang phân tích sở thích ẩm thực...',
-  'Tìm kiếm quán ăn gần bạn...',
-  'AI đang lọc kết quả tốt nhất...',
-  'Sắp xếp theo độ phù hợp...',
+  "Đang khởi tạo hệ thống phân tích toàn diện...",
+  "Đang quét dữ liệu ẩm thực trên toàn khu vực...",
+  "Đang phân tích thói quen và sở thích của bạn...",
+  "Đang tối ưu hóa danh sách gợi ý tốt nhất...",
+  "Sẵn sàng hiển thị kết quả cho bạn!",
 ];
 
 /* ── Skeleton Card ── */
@@ -83,7 +84,7 @@ function StatusText() {
       }, 300);
       return () => clearTimeout(timer);
     };
-    const interval = setInterval(cycle, 1200);
+    const interval = setInterval(cycle, 1800);
     return () => clearInterval(interval);
   }, []);
 
