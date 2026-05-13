@@ -16,7 +16,8 @@ from .schemas import (
     SignInRequest,
     SignUpRequest,
     GoogleAuthRequest,
-    AuthResponse
+    AuthResponse,
+    UserUpdateRequest
 )
 from .repository import UserOnboardingRepository, UserAccountRepository
 
@@ -173,6 +174,8 @@ class AuthService:
             message="Sign up successful",
             user_id=str(user.id),
             username=user.username,
+            full_name=user.full_name,
+            avatar_url=user.avatar_url,
             access_token=access_token,
             token_type="bearer",
         )
@@ -192,6 +195,8 @@ class AuthService:
             message="Sign in successful",
             user_id=str(user.id),
             username=user.username,
+            full_name=user.full_name,
+            avatar_url=user.avatar_url,
             access_token=access_token,
             token_type="bearer",
         )
@@ -208,6 +213,7 @@ class AuthService:
             
             user_info = resp.json()
             email = user_info.get("email")
+            name = user_info.get("name")
             picture = user_info.get("picture")  # Google profile picture URL
             if not email:
                 raise PermissionError("Email not found in Google profile.")
@@ -222,6 +228,12 @@ class AuthService:
             user = self._repo.create_user(
                 username=email,
                 password_hash=hash_password(str(uuid.uuid4()))
+            )
+            # Save Google info to DB
+            user = self._repo.update_user(
+                user_id=user.id,
+                full_name=name,
+                avatar_url=picture
             )
             message = "Sign up with Google successful"
         else:
@@ -239,7 +251,36 @@ class AuthService:
             message=message,
             user_id=str(user.id),
             username=user.username,
-            avatar_url=picture,
+            full_name=user.full_name,
+            avatar_url=user.avatar_url,
             access_token=access_token,
             token_type="bearer",
         )
+
+    def update_user(self, user_id: str, payload: UserUpdateRequest) -> AuthResponse:
+        password_hash = None
+        if payload.password:
+            password_hash = hash_password(payload.password)
+            
+        user = self._repo.update_user(
+            user_id=user_id,
+            full_name=payload.full_name,
+            avatar_url=payload.avatar_url,
+            password_hash=password_hash
+        )
+        
+        if not user:
+            raise ValueError("User not found.")
+            
+        return AuthResponse(
+            message="User updated successfully",
+            user_id=str(user.id),
+            username=user.username,
+            full_name=user.full_name,
+            avatar_url=user.avatar_url,
+            access_token="", # Optional: generate new token if needed
+            token_type="bearer"
+        )
+
+    def delete_account(self, user_id: str) -> bool:
+        return self._repo.delete_user(user_id)

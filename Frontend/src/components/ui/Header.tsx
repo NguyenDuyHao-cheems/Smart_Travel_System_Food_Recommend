@@ -2,15 +2,17 @@
 
 import React from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Bell, HelpCircle, Globe } from 'lucide-react';
+import { ArrowLeft, Bell, HelpCircle } from 'lucide-react';
 import { ThemeToggle } from '../ThemeToggle';
 import { UserDropdown } from '../UserDropdown';
 
 interface HeaderProps {
   showBack?: boolean;
+  username?: string | null;
+  avatar?: string | null;
 }
 
-export function Header({ showBack = false }: HeaderProps) {
+export function Header({ showBack = false, username, avatar }: HeaderProps) {
   const router = useRouter();
 
   return (
@@ -38,14 +40,9 @@ export function Header({ showBack = false }: HeaderProps) {
         </button>
         <button className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors cursor-pointer">
           <HelpCircle className="w-[18px] h-[18px]" />
+          <span className="font-medium">Hỗ trợ</span>
         </button>
-        <button className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors cursor-pointer">
-          <Globe className="w-[18px] h-[18px]" />
-          <span className="font-medium">Tiếng Việt</span>
-        </button>
-        <ThemeToggle />
-
-        <UserDropdown />
+        <UserDropdown username={username} avatar={avatar} />
       </div>
     </header>
   );

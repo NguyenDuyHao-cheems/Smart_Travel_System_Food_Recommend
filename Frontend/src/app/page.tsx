@@ -6,7 +6,6 @@ import Link from "next/link";
 import {
   Bell,
   Headset,
-  Globe,
   Search,
   Sparkles,
   AlertTriangle,
@@ -17,7 +16,6 @@ import {
 } from "lucide-react";
 import { Roboto } from "next/font/google";
 import { Sidebar } from "../components/Sidebar";
-import { ThemeToggle } from "../components/ThemeToggle";
 import { UserDropdown } from "../components/UserDropdown";
 import { BudgetSelector, type BudgetOption } from "../components/BudgetSelector";
 import { SurveyModal } from "../components/SurveyModal";
@@ -108,13 +106,6 @@ export default function Home() {
                 <Headset className="w-[18px] h-[18px]" />
                 <span className="font-medium">Hỗ trợ</span>
               </button>
-
-              <button className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors cursor-pointer">
-                <Globe className="w-[18px] h-[18px]" />
-                <span className="font-medium">Tiếng Việt</span>
-              </button>
-
-              <ThemeToggle />
 
               <UserDropdown />
             </div>
