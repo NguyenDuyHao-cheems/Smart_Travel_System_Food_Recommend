@@ -43,6 +43,7 @@ export interface RecommendResult {
   img: string;
   tags?: string[];
   restaurantName?: string;
+  google_maps_url?: string;
 }
 
 interface VibeTag {
@@ -95,12 +96,14 @@ function getMatchColor(match: string): string {
    Hero Result Card (#1 — AI TOP PICK)
    ───────────────────────────────────────────────────────────── */
 function HeroResultCard({ item }: { item: RecommendResult }) {
+  const router = useRouter();
   return (
     <motion.div
       initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
-      className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700 shadow-sm dark:shadow-none overflow-hidden hover:shadow-lg dark:hover:border-gray-600 transition-all duration-300 mb-8"
+      className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700 shadow-sm dark:shadow-none overflow-hidden hover:shadow-lg dark:hover:border-gray-600 transition-all duration-300 mb-8 cursor-pointer"
+      onClick={() => window.open(`/restaurant/${item.id}`, '_blank')}
     >
       {/* TOP PICK Badge */}
       <div className="px-6 pt-5">
@@ -118,12 +121,14 @@ function HeroResultCard({ item }: { item: RecommendResult }) {
             <span className="text-sm font-semibold text-gray-500 dark:text-gray-400">#1</span>
           </div>
 
-          {/* Food Name */}
-          <h2 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-1 tracking-tight">
+          {/* ĐÃ SỬA: Food/Restaurant Name chính nằm ở đây */}
+          <h2
+            className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-1 tracking-tight group-hover:text-orange-500 transition-colors"
+          >
             {item.name}
           </h2>
 
-          {/* Restaurant Name */}
+          {/* Restaurant Name (Dự phòng nếu sau này Backend tách riêng data) */}
           {item.restaurantName && (
             <p className="text-base font-semibold text-orange-500 mb-4">
               {item.restaurantName}
@@ -184,6 +189,7 @@ function HeroResultCard({ item }: { item: RecommendResult }) {
    Small Result Card (#2-#5)
    ───────────────────────────────────────────────────────────── */
 function SmallResultCard({ item, index }: { item: RecommendResult; index: number }) {
+  const router = useRouter();
   const tags = getTagsForItem(item, index);
   const matchColor = getMatchColor(item.match);
 
@@ -193,6 +199,7 @@ function SmallResultCard({ item, index }: { item: RecommendResult; index: number
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.1 }}
       className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm dark:shadow-none overflow-hidden hover:shadow-lg dark:hover:border-gray-600 transition-all duration-300 cursor-pointer group"
+      onClick={() => window.open(`/restaurant/${item.id}`, '_blank')}
     >
       {/* Image */}
       <div className="relative h-[180px] overflow-hidden">
@@ -228,12 +235,18 @@ function SmallResultCard({ item, index }: { item: RecommendResult; index: number
 
       {/* Info */}
       <div className="p-4">
-        <h3 className="text-base font-bold text-gray-800 dark:text-white mb-0.5 group-hover:text-orange-500 transition-colors">
+        {/* ĐÃ SỬA: Tích hợp sự kiện vào đây */}
+        <h3
+          className="text-base font-bold text-gray-800 dark:text-white mb-0.5 group-hover:text-orange-500 transition-colors"
+        >
           {item.name}
         </h3>
+
+        {/* Dự phòng */}
         {item.restaurantName && (
           <p className="text-xs font-semibold text-orange-500 mb-2">{item.restaurantName}</p>
         )}
+
         {item.reason && (
           <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed mb-3 line-clamp-2">
             {item.reason}
@@ -250,7 +263,6 @@ function SmallResultCard({ item, index }: { item: RecommendResult; index: number
     </motion.div>
   );
 }
-
 /* ─────────────────────────────────────────────────────────────
    Feature Bar (Bottom)
    ───────────────────────────────────────────────────────────── */
@@ -394,12 +406,14 @@ function ResultPageContent() {
           // TODO: Chờ team có trang /auth thì mở ra để bắt lỗi hết hạn token
           // router.push('/auth');
           setApiError('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại. (TODO: Redirect to /auth)');
+        } else if (res.status === 503) {
+          setApiError('Hệ thống AI đang khởi động, vui lòng đợi trong giây lát...');
         } else {
           setApiError('Hệ thống AI đang gặp sự cố. Vui lòng thử lại sau.');
         }
       } catch (error: any) {
         if (error.name === 'AbortError') {
-          setApiError('Quá thời gian kết nối (Timeout). Backend hoặc Database đang bị treo.');
+          setApiError('Quá thời gian kết nối (Timeout). Hệ thống AI có thể đang khởi động, vui lòng thử lại.');
         } else {
           setApiError('Không thể kết nối đến máy chủ. Hãy đảm bảo Backend đã được khởi động.');
         }

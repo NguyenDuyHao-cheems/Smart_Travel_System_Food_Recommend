@@ -37,10 +37,12 @@ async def get_health_status():
 from app.domains.search.router import router as search_router
 from app.domains.users.router import router as users_router
 from app.domains.ranking.router import router as ml_router
+from app.domains.restaurants.router import router as restaurants_router
 
 app.include_router(search_router, prefix="/api/v1", tags=["Search"])
 app.include_router(users_router, prefix="/api/v1/users", tags=["Users"])
 app.include_router(ml_router, prefix="/api/v1", tags=["ML"])
+app.include_router(restaurants_router, prefix="/api/v1/restaurants", tags=["Restaurants"])
 
 @app.get("/")
 def read_root():

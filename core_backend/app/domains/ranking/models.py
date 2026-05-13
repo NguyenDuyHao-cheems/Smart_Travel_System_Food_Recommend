@@ -29,6 +29,7 @@ class RestaurantModel(Base):
 
     image_url = Column(String, nullable=True)
     opening_hours = Column(String, nullable=True)
+    google_maps_url = Column(String, nullable=True)
 
     tag_match: bool = False  # non-DB field for boosting/ranking
 
@@ -91,4 +92,4 @@ class ReviewModel(Base):
     reviewer_name = Column(String, nullable=True)
     rating = Column(Float, nullable=True)
     text = Column(String, nullable=True)
-    date = Column(String, nullable=True)
+    date = Column(String, nullable=True)
