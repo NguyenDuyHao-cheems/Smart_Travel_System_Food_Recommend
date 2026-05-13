@@ -1,64 +1,105 @@
-"use client";
-import React from "react";
-import { Search, Menu, User, ChefHat } from "lucide-react";
-import { motion } from "motion/react";
-import { Playfair_Display } from "next/font/google";
-import { ThemeToggle } from "./ThemeToggle";
+'use client';
 
-const playfair = Playfair_Display({ subsets: ["latin"], weight: ["400", "600", "700"] });
+import React from 'react';
+import { useRouter } from 'next/navigation';
+import { ArrowLeft, User, Bell, HelpCircle, Globe } from 'lucide-react';
+import { ThemeToggle } from '../ThemeToggle';
 
-export function Header({ onLogoClick }: { onLogoClick?: () => void }) {
+interface HeaderProps {
+  showBack?: boolean;
+}
+
+export function Header({ showBack = false }: HeaderProps) {
+  const router = useRouter();
+  const [username, setUsername] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    const token = localStorage.getItem('access_token');
+    const storedUser = localStorage.getItem('username');
+    if (token) {
+      setUsername(storedUser || 'User');
+    }
+  }, []);
+
+  const handleLogout = () => {
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('user_id');
+    localStorage.removeItem('username');
+    localStorage.removeItem('food_recsys_userid');
+    setUsername(null);
+    router.push('/auth');
+  };
+
   return (
-    <motion.header
-      initial={{ y: -50, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-      transition={{ duration: 0.6, ease: "easeOut" }}
-      className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 py-4 lg:px-12 backdrop-blur-xl border-b border-slate-900/10 shadow-sm dark:shadow-none dark:border-white/5 bg-white/80 dark:bg-[#0B0F19]/60"
-    >
-      <div className="flex items-center gap-2 cursor-pointer" onClick={onLogoClick}>
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 via-orange-500 to-red-600 flex items-center justify-center shadow-[0_0_20px_rgba(245,158,11,0.3)]">
-          <ChefHat className="text-white w-6 h-6" />
-        </div>
-        <div className={`text-2xl font-bold tracking-tight ${playfair.className} ml-2`}>
-          <span className="bg-gradient-to-r from-amber-500 to-orange-400 bg-clip-text text-transparent">Vibe</span>
-          <span className="text-slate-800 dark:text-white">Food</span>
-        </div>
-      </div>
-
-      {/* Navigation links - Commented out for later use
-      <nav className="hidden md:flex items-center gap-8">
-        {[
-          "Explore",
-          "AI Picks",
-          "Michelin Guide",
-          "Experiences",
-        ].map((item) => (
-          <a
-            key={item}
-            href="#"
-            className="text-sm font-medium text-slate-500 dark:text-white/70 hover:text-slate-800 dark:hover:text-white transition-colors relative group"
-          >
-            {item}
-            <span className="absolute -bottom-2 left-0 w-0 h-0.5 bg-amber-500 transition-all group-hover:w-full rounded-full" />
-          </a>
-        ))}
-      </nav>
-      */}
-
+    <header className="sticky top-0 z-40 flex items-center justify-between px-8 h-[72px] bg-[#F7F8FA]/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-100/60 dark:border-gray-700/60 transition-colors duration-300">
+      {/* Left: Logo + Back */}
       <div className="flex items-center gap-4">
-        {/*
-        <button className="hidden md:flex items-center justify-center px-5 py-2.5 text-sm font-semibold rounded-full border border-cyan-500/30 bg-cyan-950/20 text-cyan-300 hover:bg-cyan-900/30 hover:border-cyan-400/50 hover:shadow-[0_0_15px_rgba(6,182,212,0.3)] transition-all">
-          Login
-        </button>
-        <button className="flex items-center justify-center w-10 h-10 rounded-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 hover:bg-slate-200 dark:hover:bg-white/10 transition-colors overflow-hidden">
-          <User className="w-5 h-5 text-slate-500 dark:text-white/70" />
-        </button>
-        <button className="md:hidden flex items-center justify-center w-10 h-10 text-slate-500 dark:text-white/70">
-          <Menu className="w-6 h-6" />
-        </button>
-        */}
-        <ThemeToggle />
+        {showBack && (
+          <button
+            onClick={() => router.back()}
+            className="flex items-center gap-2 px-4 py-2 rounded-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all cursor-pointer shadow-sm"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back
+          </button>
+        )}
+        <a
+          href="/"
+          className="flex items-center gap-2.5 group hover:opacity-90 transition-opacity cursor-pointer"
+        >
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-orange-400 to-orange-500 flex items-center justify-center shadow-md shadow-orange-200 dark:shadow-orange-500/20 group-hover:scale-105 transition-transform">
+            <span className="text-white text-lg">🍜</span>
+          </div>
+          <span className="text-xl font-bold text-gray-800 dark:text-white tracking-tight group-hover:text-orange-500 transition-colors">
+            Wanderbite
+          </span>
+        </a>
       </div>
-    </motion.header>
+
+      {/* Right: ThemeToggle */}
+      <div className="flex items-center gap-4">
+        {/* ══════════════════════════════════════════════════════
+            Top Bar Buttons
+            ══════════════════════════════════════════════════════ */}
+        <button className="relative w-9 h-9 rounded-full flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer">
+          <Bell className="w-[18px] h-[18px] text-gray-500 dark:text-gray-400" />
+        </button>
+        <button className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors cursor-pointer">
+          <HelpCircle className="w-[18px] h-[18px]" />
+        </button>
+        <button className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors cursor-pointer">
+          <Globe className="w-[18px] h-[18px]" />
+          <span className="font-medium">Tiếng Việt</span>
+        </button>
+        <ThemeToggle />
+
+        {username ? (
+          <div className="flex items-center gap-3 ml-2">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex items-center justify-center overflow-hidden">
+                <User className="w-5 h-5 text-gray-400" />
+              </div>
+              <span className="text-sm font-semibold text-gray-700 dark:text-gray-200 hidden sm:block">
+                {username}
+              </span>
+            </div>
+            <div className="h-4 w-px bg-gray-200 dark:bg-gray-700 mx-1"></div>
+            <button
+              onClick={handleLogout}
+              className="text-[13px] font-semibold text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400 transition-colors cursor-pointer"
+            >
+              Đăng xuất
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => router.push('/auth')}
+            className="ml-2 px-4 py-2 rounded-xl bg-orange-50 dark:bg-orange-500/10 text-orange-600 dark:text-orange-500 text-sm font-bold hover:bg-orange-100 dark:hover:bg-orange-500/20 transition-colors cursor-pointer"
+          >
+            Đăng nhập
+          </button>
+        )}
+      </div>
+    </header>
   );
 }
