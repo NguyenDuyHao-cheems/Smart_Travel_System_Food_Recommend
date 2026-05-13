@@ -156,6 +156,7 @@ export default function SettingsPage() {
       <div className={`flex-1 flex flex-col transition-all duration-300 ${isSidebarCollapsed ? 'ml-[80px]' : 'ml-[260px]'}`}>
         <Header 
           showBack={true} 
+          backPath={typeof window !== 'undefined' ? localStorage.getItem('last_search_url') || '/' : '/'}
           username={username} 
           avatar={avatar} 
           onProfileUpdate={(u, a) => {

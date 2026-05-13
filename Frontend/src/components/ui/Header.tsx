@@ -8,12 +8,21 @@ import { UserDropdown } from '../UserDropdown';
 
 interface HeaderProps {
   showBack?: boolean;
+  backPath?: string;
   username?: string | null;
   avatar?: string | null;
 }
 
-export function Header({ showBack = false, username, avatar }: HeaderProps) {
+export function Header({ showBack = false, backPath, username, avatar }: HeaderProps) {
   const router = useRouter();
+
+  const handleBack = () => {
+    if (backPath) {
+      router.push(backPath);
+    } else {
+      router.back();
+    }
+  };
 
   return (
     <header className="sticky top-0 z-40 flex items-center justify-between px-8 h-[72px] bg-[#F7F8FA]/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-100/60 dark:border-gray-700/60 transition-colors duration-300">
@@ -21,7 +30,7 @@ export function Header({ showBack = false, username, avatar }: HeaderProps) {
       <div className="flex items-center gap-4">
         {showBack && (
           <button
-            onClick={() => router.back()}
+            onClick={handleBack}
             className="flex items-center gap-2 px-4 py-2 rounded-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all cursor-pointer shadow-sm"
           >
             <ArrowLeft className="w-4 h-4" />

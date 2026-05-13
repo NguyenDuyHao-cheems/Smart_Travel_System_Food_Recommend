@@ -83,7 +83,7 @@ function StatusText() {
       }, 300);
       return () => clearTimeout(timer);
     };
-    const interval = setInterval(cycle, 1800);
+    const interval = setInterval(cycle, 1200);
     return () => clearInterval(interval);
   }, []);
 
@@ -112,7 +112,7 @@ export function LoadingState({ searchQuery, locError, getLocation }: LoadingStat
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0, y: -20 }}
-      transition={{ duration: 0.4 }}
+      transition={{ duration: 0.3 }}
     >
       {/* Title section */}
       <div className="flex flex-col items-center text-center mb-10">
@@ -151,7 +151,7 @@ export function LoadingState({ searchQuery, locError, getLocation }: LoadingStat
         <div className="mt-6 w-64 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
           <motion.div
             animate={{ x: ['-100%', '200%'] }}
-            transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
+            transition={{ duration: 1, repeat: Infinity, ease: 'easeInOut' }}
             className="h-full w-1/2 rounded-full bg-gradient-to-r from-transparent via-orange-400 to-transparent"
           />
         </div>
@@ -161,7 +161,7 @@ export function LoadingState({ searchQuery, locError, getLocation }: LoadingStat
       <HeroSkeleton />
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         {[0, 1, 2, 3].map(i => (
-          <SkeletonCard key={i} delay={i * 0.08} />
+          <SkeletonCard key={i} delay={i * 0.04} />
         ))}
       </div>
     </motion.div>

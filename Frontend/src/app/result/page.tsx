@@ -103,7 +103,7 @@ function HeroResultCard({ item }: { item: RecommendResult }) {
     <motion.div
       initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
+      transition={{ duration: 0.3 }}
       className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700 shadow-sm dark:shadow-none overflow-hidden hover:shadow-lg dark:hover:border-gray-600 transition-all duration-300 mb-8"
     >
       {/* TOP PICK Badge */}
@@ -207,7 +207,7 @@ function SmallResultCard({ item, index }: { item: RecommendResult; index: number
     <motion.div
       initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.1 }}
+      transition={{ delay: index * 0.05 }}
       className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm dark:shadow-none overflow-hidden hover:shadow-lg dark:hover:border-gray-600 transition-all duration-300 cursor-pointer group"
     >
       {/* Image */}
@@ -325,7 +325,18 @@ function ResultPageContent() {
   const queryFromUrl = searchParams.get('q') || '';
   const budgetFromUrl = (searchParams.get('budget') || 'auto') as BudgetOption;
 
-  const [isLoading, setIsLoading] = useState(true);
+  // Check for cache instantly to avoid flicker
+  const [isLoading, setIsLoading] = useState(() => {
+    if (typeof window === 'undefined') return true;
+    const searchParams = new URLSearchParams(window.location.search);
+    const q = searchParams.get('q');
+    const isRefresh = searchParams.get('refresh') === 'true';
+    if (q && !isRefresh) {
+      return !sessionStorage.getItem(`last_results_${q}`);
+    }
+    return true;
+  });
+  
   const [searchQuery, setSearchQuery] = useState(queryFromUrl || '');
   const [inputValue, setInputValue] = useState(searchQuery);
   const [budget, setBudget] = useState<BudgetOption>(budgetFromUrl);
@@ -338,6 +349,12 @@ function ResultPageContent() {
   const [allergyWarning, setAllergyWarning] = useState<string>('');
 
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  // Sync login status immediately on mount
+  useEffect(() => {
+    const token = localStorage.getItem('access_token');
+    setIsLoggedIn(!!token);
+  }, []);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [showGuestNotice, setShowGuestNotice] = useState(true);
 
@@ -360,7 +377,7 @@ function ResultPageContent() {
 
   const handleSearch = () => {
     if (inputValue.trim() !== '') {
-      router.push(`/result?q=${encodeURIComponent(inputValue)}&budget=${budget}`);
+      router.push(`/result?q=${encodeURIComponent(inputValue)}&budget=${budget}&refresh=true`);
     }
   };
 
@@ -368,23 +385,92 @@ function ResultPageContent() {
     getLocation();
   }, [getLocation]);
 
-  const [results, setResults] = useState<RecommendResult[]>([]);
+  const [results, setResults] = useState<RecommendResult[]>(() => {
+    if (typeof window === 'undefined') return [];
+    const searchParams = new URLSearchParams(window.location.search);
+    const q = searchParams.get('q');
+    const isRefresh = searchParams.get('refresh') === 'true';
+    if (q && !isRefresh) {
+      const cached = sessionStorage.getItem(`last_results_${q}`);
+      if (cached) {
+        try {
+          return JSON.parse(cached).results;
+        } catch (e) {
+          return [];
+        }
+      }
+    }
+    return [];
+  });
   const [apiError, setApiError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!location) return;
+    if (!searchQuery) return;
+    
+    const isRefresh = searchParams.get('refresh') === 'true';
+
+    // If it's a refresh or first time, show loading
+    if (isRefresh || !results.length) {
+      setIsLoading(true);
+    }
+
+    // Attempt instant restore from cache ONLY if NOT a refresh
+    if (!isRefresh) {
+      const lastData = sessionStorage.getItem(`last_results_${searchQuery}`);
+      if (lastData) {
+        try {
+          const data = JSON.parse(lastData);
+          setResults(data.results);
+          setFallbackApplied(data.fallback_applied || false);
+          setFallbackReason(data.fallback_reason || '');
+          setAppliedBudget(data.applied_budget ?? null);
+          setFilteredCount(data.filtered_out_count || 0);
+          setAllergyWarning(data.warning || '');
+          setApiError(null);
+          setIsLoading(false); 
+          return;
+        } catch (e) {
+          console.error("Cache restore failed", e);
+        }
+      }
+    } else {
+      // If it IS a refresh, clean the URL immediately so "Back" won't trigger it again
+      const newUrl = window.location.pathname + window.location.search.replace(/[&?]refresh=true/, '');
+      window.history.replaceState({}, '', newUrl);
+    }
+  }, [searchQuery, searchParams]);
+
+  useEffect(() => {
+    if (!location || !searchQuery) return;
 
     const fetchRecommendations = async () => {
-      // [1] Lấy token và user_id từ localStorage
+      const isRefresh = searchParams.get('refresh') === 'true';
+      const cacheKey = `search_${searchQuery}_${budget}_${location.lat}_${location.lng}`;
+      const cachedData = sessionStorage.getItem(cacheKey);
+      
+      // Use cache ONLY if not a manual refresh
+      if (cachedData && !isRefresh) {
+        // NO DELAY for back navigation, show instantly
+        const data = JSON.parse(cachedData);
+        setResults(data.results);
+        setFallbackApplied(data.fallback_applied || false);
+        setFallbackReason(data.fallback_reason || '');
+        setAppliedBudget(data.applied_budget ?? null);
+        setFilteredCount(data.filtered_out_count || 0);
+        setAllergyWarning(data.warning || '');
+        setApiError(null);
+        setIsLoading(false);
+        return;
+      }
+
+      // If no cache or first time, show loading if not already restored
+      if (results.length === 0) {
+        setIsLoading(true);
+      }
+
       const token = localStorage.getItem('access_token');
       const userId = localStorage.getItem('user_id');
 
-      setIsLoggedIn(!!token);
-
-      // Note: Anonymous search allowed (no redirect)
-      setIsLoading(true);
-
-      // Thêm AbortController để chống treo (timeout sau 15 giây) nếu Backend/Database bị kẹt
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 15000);
 
@@ -395,16 +481,13 @@ function ResultPageContent() {
           signal: controller.signal,
           headers: {
             'Content-Type': 'application/json',
-            // [1] Thêm header Authorization: Bearer <token>
             'Authorization': `Bearer ${token}`
           },
           body: JSON.stringify({
             query: searchQuery,
             lat: location.lat,
             lng: location.lng,
-            // [1] Include user_id từ localStorage vào request body
             user_id: userId || undefined,
-            // Đã cập nhật theo yêu cầu Hào: gửi format dạng integer
             budget: budget === 'auto' ? undefined : parseInt(budget, 10),
           }),
         });
@@ -416,15 +499,16 @@ function ResultPageContent() {
             setFallbackApplied(data.fallback_applied || false);
             setFallbackReason(data.fallback_reason || '');
             setAppliedBudget(data.applied_budget ?? null);
-
             setFilteredCount(data.filtered_out_count || 0);
             setAllergyWarning(data.warning || '');
             setApiError(null);
+            
+            sessionStorage.setItem(cacheKey, JSON.stringify(data));
+            sessionStorage.setItem(`last_results_${searchQuery}`, JSON.stringify(data));
+            localStorage.setItem('last_search_url', window.location.pathname + window.location.search);
           }
         } else if (res.status === 401) {
-          // TODO: Chờ team có trang /auth thì mở ra để bắt lỗi hết hạn token
-          // router.push('/auth');
-          setApiError('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại. (TODO: Redirect to /auth)');
+          setApiError('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
         } else if (res.status === 503) {
           setApiError('Hệ thống AI đang khởi động, vui lòng đợi trong giây lát...');
         } else {
@@ -443,7 +527,7 @@ function ResultPageContent() {
     };
 
     fetchRecommendations();
-  }, [location, searchQuery, budget]); // Re-fetch khi budget thay đổi
+  }, [location, searchQuery, budget]);
 
   // Client-side distance filter — no API re-fetch needed
   const displayResults = useMemo(() => {
@@ -471,7 +555,7 @@ function ResultPageContent() {
             value={budget}
             onChange={(newBudget) => {
               setBudget(newBudget);
-              router.push(`/result?q=${encodeURIComponent(inputValue)}&budget=${newBudget}`);
+              router.push(`/result?q=${encodeURIComponent(inputValue)}&budget=${newBudget}&refresh=true`);
             }}
           />
           <DistanceFilter
@@ -498,7 +582,7 @@ function ResultPageContent() {
                   key="results"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  transition={{ duration: 0.5 }}
+                  transition={{ duration: 0.3 }}
                 >
                   {/* ─── Title Section & Search Bar ─── */}
                   <motion.div

@@ -69,6 +69,8 @@ export default function Home() {
   useEffect(() => {
     setMounted(true);
     checkHealth();
+    // Clear last search when visiting home fresh
+    localStorage.removeItem('last_search_url');
   }, [checkHealth]);
 
   useEffect(() => {
