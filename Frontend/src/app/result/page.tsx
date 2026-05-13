@@ -38,6 +38,7 @@ export interface RecommendResult {
   name: string;
   match: string;
   dist: string;
+  distance_km?: number;
   price: string;
   rating: string;
   reason: string;
@@ -45,6 +46,7 @@ export interface RecommendResult {
   tags?: string[];
   restaurantName?: string;
   distance_km?: number;
+  google_maps_url?: string;
 }
 
 interface VibeTag {
@@ -121,13 +123,21 @@ function HeroResultCard({ item }: { item: RecommendResult }) {
           </div>
 
           {/* Food Name */}
-          <h2 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-1 tracking-tight">
+          <h2 
+            className={`text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-1 tracking-tight ${item.google_maps_url ? 'cursor-pointer hover:text-orange-500 transition-colors' : ''}`}
+            onClick={() => item.google_maps_url && window.open(item.google_maps_url, '_blank')}
+            title={item.google_maps_url ? "Xem trên Google Maps" : ""}
+          >
             {item.name}
           </h2>
 
           {/* Restaurant Name */}
           {item.restaurantName && (
-            <p className="text-base font-semibold text-orange-500 mb-4">
+            <p 
+              className={`text-base font-semibold text-orange-500 mb-4 ${item.google_maps_url ? 'cursor-pointer hover:text-orange-600 transition-colors' : ''}`}
+              onClick={() => item.google_maps_url && window.open(item.google_maps_url, '_blank')}
+              title={item.google_maps_url ? "Xem trên Google Maps" : ""}
+            >
               {item.restaurantName}
             </p>
           )}
@@ -160,7 +170,11 @@ function HeroResultCard({ item }: { item: RecommendResult }) {
 
         {/* Right: Image */}
         <div className="md:w-[380px] h-[280px] md:h-auto relative p-4">
-          <div className="w-full h-full rounded-2xl overflow-hidden relative">
+          <div
+            className={`w-full h-full rounded-2xl overflow-hidden relative ${item.google_maps_url ? 'cursor-pointer' : ''}`}
+            onClick={() => item.google_maps_url && window.open(item.google_maps_url, '_blank')}
+            title={item.google_maps_url ? "Xem trên Google Maps" : ""}
+          >
             <img
               src={item.img}
               alt={item.name}
@@ -197,13 +211,17 @@ function SmallResultCard({ item, index }: { item: RecommendResult; index: number
       className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm dark:shadow-none overflow-hidden hover:shadow-lg dark:hover:border-gray-600 transition-all duration-300 cursor-pointer group"
     >
       {/* Image */}
-      <div className="relative h-[180px] overflow-hidden">
+      <div
+        className="relative h-[180px] overflow-hidden"
+        onClick={() => item.google_maps_url && window.open(item.google_maps_url, '_blank')}
+        title={item.google_maps_url ? "Xem trên Google Maps" : ""}
+      >
         <img
           src={item.img}
           alt={item.name}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent pointer-events-none" />
 
         {/* Rank */}
         <span className="absolute top-3 left-3 inline-flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold bg-gray-700/90 text-white backdrop-blur-sm">
@@ -230,11 +248,21 @@ function SmallResultCard({ item, index }: { item: RecommendResult; index: number
 
       {/* Info */}
       <div className="p-4">
-        <h3 className="text-base font-bold text-gray-800 dark:text-white mb-0.5 group-hover:text-orange-500 transition-colors">
+        <h3 
+          className={`text-base font-bold text-gray-800 dark:text-white mb-0.5 transition-colors ${item.google_maps_url ? 'cursor-pointer hover:text-orange-500' : ''}`}
+          onClick={() => item.google_maps_url && window.open(item.google_maps_url, '_blank')}
+          title={item.google_maps_url ? "Xem trên Google Maps" : ""}
+        >
           {item.name}
         </h3>
         {item.restaurantName && (
-          <p className="text-xs font-semibold text-orange-500 mb-2">{item.restaurantName}</p>
+          <p 
+            className={`text-xs font-semibold text-orange-500 mb-2 ${item.google_maps_url ? 'cursor-pointer hover:text-orange-600 transition-colors' : ''}`}
+            onClick={() => item.google_maps_url && window.open(item.google_maps_url, '_blank')}
+            title={item.google_maps_url ? "Xem trên Google Maps" : ""}
+          >
+            {item.restaurantName}
+          </p>
         )}
         {item.reason && (
           <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed mb-3 line-clamp-2">
@@ -397,12 +425,14 @@ function ResultPageContent() {
           // TODO: Chờ team có trang /auth thì mở ra để bắt lỗi hết hạn token
           // router.push('/auth');
           setApiError('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại. (TODO: Redirect to /auth)');
+        } else if (res.status === 503) {
+          setApiError('Hệ thống AI đang khởi động, vui lòng đợi trong giây lát...');
         } else {
           setApiError('Hệ thống AI đang gặp sự cố. Vui lòng thử lại sau.');
         }
       } catch (error: any) {
         if (error.name === 'AbortError') {
-          setApiError('Quá thời gian kết nối (Timeout). Backend hoặc Database đang bị treo.');
+          setApiError('Quá thời gian kết nối (Timeout). Hệ thống AI có thể đang khởi động, vui lòng thử lại.');
         } else {
           setApiError('Không thể kết nối đến máy chủ. Hãy đảm bảo Backend đã được khởi động.');
         }

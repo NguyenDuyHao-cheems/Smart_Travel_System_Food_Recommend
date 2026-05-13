@@ -1,17 +1,23 @@
-services:
-  core_backend:
-    build: 
-      context: ./core_backend
-      dockerfile: Dockerfile
-    container_name: core_backend
-    ports:
-      - "8000:8000"
-    env_file:
-      - ./core_backend/.env
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+# ─────────────────────────────────────────────────────────────────────────────
+# Smart Travel System — Docker Compose (Development)
+#
+# Architecture:
+#   Browser → Frontend (:3000) → Core Backend (:8000) → AI Engine (:8001)
+#                                       ↓
+#                              PostgreSQL (Supabase Cloud)
+#
+# Usage:
+#   docker compose up --build        # Start all services
+#   docker compose up --build -d     # Start in background
+#   docker compose down              # Stop all services
+#   docker compose logs -f           # Follow logs
+# ─────────────────────────────────────────────────────────────────────────────
 
+services:
+  # ── AI Engine (:8001) ─────────────────────────────────────────────────────
+  # Must start first — core_backend depends on it
   ai_engine:
-    build: 
+    build:
       context: ./ai_engine
       dockerfile: Dockerfile
     container_name: ai_engine
@@ -19,4 +25,72 @@ services:
       - "8001:8001"
     env_file:
       - ./ai_engine/.env
+    volumes:
+      # Persist trained models across container rebuilds
+      - ./ai_engine/models:/app/models
     command: uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/api/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  # ── Core Backend (:8000) ──────────────────────────────────────────────────
+  core_backend:
+    build:
+      context: ./core_backend
+      dockerfile: Dockerfile
+    container_name: core_backend
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./core_backend/.env
+    environment:
+      # Override localhost fallback → use Docker service name resolution
+      - AI_ENGINE_BASE_URL=http://ai_engine:8001
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    depends_on:
+      ai_engine:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  # ── Frontend (:3000) ──────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./Frontend
+      dockerfile: Dockerfile
+      args:
+        # Baked into the JS bundle at build time
+        NEXT_PUBLIC_API_URL: http://localhost:8000
+    container_name: frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      core_backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:3000/"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - app-network
+
+# ── Network ────────────────────────────────────────────────────────────────────
+networks:
+  app-network:
+    driver: bridge

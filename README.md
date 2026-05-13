@@ -11,18 +11,17 @@
 ## 🛠 Yêu Cầu Hệ Thống (Prerequisites)
 
 - **Git**
-- **Docker** & **Docker Compose** (Dành cho việc chạy backend services)
+- **Docker desktop**
 - **Node.js** (Phiên bản LTS, >= 20.x) và **npm** (Hoặc yarn/pnpm, để chạy Frontend)
 - **Python** (>= 3.10) (Nếu muốn chạy backend thủ công trên máy thật)
 
 ## 🚀 Hướng Dẫn Cài Đặt & Khởi Chạy
-
-Bạn có 2 lựa chọn để phát triển: Chạy toàn bộ backend qua Docker và Frontend chạy ở máy local.
+Có thể chạy qua docker hoặc chạy cục bộ.
 
 ### Bước 1: Clone dự án
 
 ```bash
-git clone <repository_url>
+git clone <https://github.com/NguyenDuyHao-cheems/Smart_Travel_System_Food_Recommend.git>
 cd Smart_Travel_System_Food_Recommend
 ```
 
@@ -35,20 +34,72 @@ cp core_backend/.env.example core_backend/.env
 # Chỉnh sửa nếu có thiết lập đặc biệt cho ai_engine
 ```
 
-### Bước 3: Khởi chạy Backend Services bằng Docker Compose
+#### Đối với file .env trong core_backend
+- `DATABASE_URL`: đây là connection cho phép kết nối với cơ sở dữ liệu trên supabase. Để có được biến này, cần phải tạo một dự án trên supabase. Sau đó lấy connection string. Nó sẽ có dạng: `postgresql://user:password@host:5432/dbname` với phần password là password riêng của dự án đó trên supabase.
+- `SECRET_KEY`: đây là key bí mật dùng để mã hóa và giải mã JWT token. Để có được biến này, cần phải tạo một chuỗi ngẫu nhiên gồm 32 ký tự. Có thể sử dụng các trang web tạo chuỗi ngẫu nhiên để tạo ra chuỗi này.
+- Các biến còn lại có thể để mặc định.
+
+#### Đối với file .env trong ai_engine 
+- `AI_SERVICE_PORT`: có thể để 8001
+- `EMBEDDING_MODEL_NAME`: là model dùng để nhúng vector, có thể sử dụng `bkai-foundation-models/vietnamese-bi-encoder`
+- `HF_TOKEN`: được lấy từ trang access token của hugging face giúp tải model xuống nhanh hơn.
+- `LAMBDAMART_MODEL_PATH`: `models/lambdamart.lgb`
+- `GEMINI_API_KEY`: Được lấy từ trang AI Studio của google.
+- `GEMINI_MODEL_NAME`: tên model sử dụng qua API google, vd như: `gemini-flash-latest`
+
+#### Đối với frontend 
+- Có thể lấy mặc định như file `env.example` trong thư mục Frontend.
+### Bước 3: Khởi chạy toàn bộ hệ thống bằng Docker Compose
 
 ```bash
-docker-compose up -d --build
+docker compose up --build -d
+```
+### Kiểm tra trạng thái
+
+`docker compose ps`
+
+```
+ Kết quả mong đợi:
+ NAME           STATUS          PORTS
+ ai_engine      healthy         0.0.0.0:8001->8001/tcp
+ core_backend   healthy         0.0.0.0:8000->8000/tcp
 ```
 
-Lệnh này sẽ xây dựng và chạy 2 container:
+### Các endpoint truy cập
 
-- **Core Backend Service**: Hoạt động ở cổng `8000`. Truy cập Swagger UI tại [http://localhost:8000/docs](http://localhost:8000/docs).
-- **AI Engine Service**: Hoạt động ở cổng `8001`. Truy cập Swagger UI tại [http://localhost:8001/docs](http://localhost:8001/docs).
+- Frontend:     http://localhost:3000
+- Core backend:     http://localhost:8000/docs
+- AI Engine:    http://localhost:8001/docs
 
-### Bước 4: Khởi chạy Frontend
 
-Frontend hiện được xây dựng bằng Next.js, bạn cần khởi chạy thư mục `Frontend` ở máy tính:
+---
+
+## 🧰 Phát Triển Dịch Vụ Cục Bộ (Không dùng Docker)
+- Thực hiện cấu hình file env như ở **Bước 2**
+### core_backend
+```bash
+cd core_backend
+python -m venv venv
+
+# Active venv (Tùy hệ điều hành Window hoặc Linux/Mac)
+. venv/Scripts/activate  # Trên Windows (Git Bash/PowerShell)
+# source venv/bin/activate    # Trên Linux/Mac
+
+pip install -r requirements.txt
+uvicorn app.main:app --port 8000 --reload
+```
+### ai_engine
+
+```bash
+cd ai_engine
+python -m venv venv
+. venv/Scripts/activate
+pip install -r requirements.txt
+uvicorn app.main:app --port 8001 --reload
+```
+
+### Khởi chạy frontend cục bộ
+
 
 ```bash
 cd Frontend
@@ -57,37 +108,6 @@ npm install    # Hoặc yarn install
 npm run dev    # Chạy ở chế độ phát triển
 ```
 
-> [!TIP]
-> Nếu bạn gặp lỗi khi `npm install`, hãy đảm bảo bạn đang sử dụng **Node.js 20+** và **npm 10+**. Bạn có thể kiểm tra bằng lệnh `node -v` và `npm -v`.
 
-Ứng dụng web sẽ được phơi bày tại [http://localhost:3000](http://localhost:3000).
 
----
 
-## 🧰 Phát Triển Dịch Vụ Cục Bộ (Không dùng Docker)
-
-Nếu bạn chỉ muốn làm việc trên 1 service cụ thể (vd `core_backend`) và phân tích bug trực tiếp trên code base của mình:
-
-```bash
-cd core_backend
-python -m venv venv
-
-# Active venv (Tùy hệ điều hành Window hoặc Linux/Mac)
-source venv/Scripts/activate  # Trên Windows (Git Bash/PowerShell)
-# source venv/bin/activate    # Trên Linux/Mac
-
-pip install -r requirements.txt
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-```
-
-## 🤝 Đóng Góp (Contributing)
-
-Để đóng góp vào dự án:
-
-1. Đọc file [CONTRIBUTING.md](./CONTRIBUTING.md) để nắm quy định về chuẩn commit, code convention và quy trình tạo branch.
-2. Tạo một nhánh mới cho task của bạn: `git checkout -b feature/tên-tính-năng`.
-3. Commit code của bạn: `git commit -m "feat: Thêm tính năng XY"`.
-4. Push lên repo: `git push origin feature/tên-tính-năng`.
-5. Tạo Pull Request để các thành viên khác có thể review code.
-
-Chúc bạn đóng góp vui vẻ! 🎉

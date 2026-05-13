@@ -6,7 +6,7 @@ from app.domains.search.schemas import AIResponseData
 
 logger = logging.getLogger(__name__)
 
-_TIMEOUT = 10.0
+_TIMEOUT = 60.0
 
 
 async def embed_text(text: str) -> Optional[List[float]]:
@@ -45,42 +45,54 @@ class AIServiceClient:
         if not query.strip():
             return None
 
-        try:
-            response = await self._client.post(
-                "/api/v1/nlp/extract-intent",
-                json={"text": query},
-            )
-            response.raise_for_status()
-            return AIResponseData(**response.json())
-        except Exception as exc:
-            logger.error("AI engine unreachable for extraction: %s", exc)
-            return None
+        import asyncio
+        for attempt in range(3):
+            try:
+                response = await self._client.post(
+                    "/api/v1/nlp/extract-intent",
+                    json={"text": query},
+                )
+                response.raise_for_status()
+                return AIResponseData(**response.json())
+            except Exception as exc:
+                if attempt < 2:
+                    logger.warning("AI engine unreachable for extraction, retrying... (%d/3): %s", attempt + 1, exc)
+                    await asyncio.sleep(2)
+                else:
+                    logger.error("AI engine unreachable for extraction: %s", exc)
+                    return None
 
     async def embed_text(self, text: str) -> Optional[List[float]]:
         if not text.strip():
             return None
 
-        try:
-            response = await self._client.post(
-                "/api/v1/nlp/embed",
-                json={"text": text},
-            )
-            response.raise_for_status()
-            data = response.json()
-            vector = data.get("vector")
+        import asyncio
+        for attempt in range(3):
+            try:
+                response = await self._client.post(
+                    "/api/v1/nlp/embed",
+                    json={"text": text},
+                )
+                response.raise_for_status()
+                data = response.json()
+                vector = data.get("vector")
 
-            if vector and len(vector) == settings.VECTOR_DIM:
-                return vector
+                if vector and len(vector) == settings.VECTOR_DIM:
+                    return vector
 
-            logger.warning(
-                "AI vector dim mismatch: expected %d, got %d",
-                settings.VECTOR_DIM,
-                len(vector) if vector else 0,
-            )
-            return None
-        except Exception as exc:
-            logger.error("AI engine unreachable for embedding: %s", exc)
-            return None
+                logger.warning(
+                    "AI vector dim mismatch: expected %d, got %d",
+                    settings.VECTOR_DIM,
+                    len(vector) if vector else 0,
+                )
+                return None
+            except Exception as exc:
+                if attempt < 2:
+                    logger.warning("AI engine unreachable for embedding, retrying... (%d/3): %s", attempt + 1, exc)
+                    await asyncio.sleep(2)
+                else:
+                    logger.error("AI engine unreachable for embedding: %s", exc)
+                    return None
 
 
 # ---------------------------------------------------------------------------
