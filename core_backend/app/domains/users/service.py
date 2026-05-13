@@ -1,5 +1,7 @@
 import logging
 import math
+import httpx
+import uuid
 from typing import List, Optional
 
 from app.core.config import settings
@@ -13,6 +15,7 @@ from .schemas import (
     MockRestaurant,
     SignInRequest,
     SignUpRequest,
+    GoogleAuthRequest,
     AuthResponse
 )
 from .repository import UserOnboardingRepository, UserAccountRepository
@@ -187,6 +190,52 @@ class AuthService:
 
         return AuthResponse(
             message="Sign in successful",
+            user_id=str(user.id),
+            username=user.username,
+            access_token=access_token,
+            token_type="bearer",
+        )
+
+    async def google_auth(self, payload: GoogleAuthRequest) -> AuthResponse:
+        # 1. Verify Google token
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(
+                "https://www.googleapis.com/oauth2/v3/userinfo",
+                headers={"Authorization": f"Bearer {payload.access_token}"}
+            )
+            if resp.status_code != 200:
+                raise PermissionError("Invalid Google token.")
+            
+            user_info = resp.json()
+            email = user_info.get("email")
+            if not email:
+                raise PermissionError("Email not found in Google profile.")
+
+        # 2. Check if user exists (use email as username)
+        user = self._repo.get_by_username(email)
+        
+        # 3. Create user if not exists
+        if not user:
+            # For Google users, we use a random string as password_hash
+            # since they won't use traditional sign-in
+            user = self._repo.create_user(
+                username=email,
+                password_hash=hash_password(str(uuid.uuid4()))
+            )
+            message = "Sign up with Google successful"
+        else:
+            message = "Sign in with Google successful"
+
+        # 4. Generate JWT
+        access_token = create_access_token(
+            data={
+                "sub": str(user.id),
+                "username": user.username,
+            }
+        )
+
+        return AuthResponse(
+            message=message,
             user_id=str(user.id),
             username=user.username,
             access_token=access_token,

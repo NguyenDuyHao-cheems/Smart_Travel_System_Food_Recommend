@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from .schemas import OnboardingRequest, OnboardingResponse, SignUpRequest, SignInRequest, AuthResponse
+from .schemas import OnboardingRequest, OnboardingResponse, SignUpRequest, SignInRequest, GoogleAuthRequest, AuthResponse
 from .service import OnboardingService, AuthService
 from .repository import UserOnboardingRepository, UserAccountRepository
 
@@ -46,6 +46,17 @@ def sign_in(
 ) -> AuthResponse:
     try:
         return service.sign_in(payload)
+    except PermissionError as exc:
+        raise HTTPException(status_code=401, detail=str(exc))
+
+
+@router.post("/google_auth", response_model=AuthResponse)
+async def google_auth(
+    payload: GoogleAuthRequest,
+    service: AuthService = Depends(get_auth_service),
+) -> AuthResponse:
+    try:
+        return await service.google_auth(payload)
     except PermissionError as exc:
         raise HTTPException(status_code=401, detail=str(exc))
 
