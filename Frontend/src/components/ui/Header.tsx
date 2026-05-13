@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, User } from 'lucide-react';
+import { ArrowLeft, User, Bell, HelpCircle, Globe } from 'lucide-react';
 import { ThemeToggle } from '../ThemeToggle';
 
 interface HeaderProps {
@@ -31,7 +31,7 @@ export function Header({ showBack = false }: HeaderProps) {
   };
 
   return (
-    <header className="sticky top-0 z-40 flex items-center justify-between px-8 py-4 bg-[#F7F8FA]/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-100/60 dark:border-gray-700/60 transition-colors duration-300">
+    <header className="sticky top-0 z-40 flex items-center justify-between px-8 h-[72px] bg-[#F7F8FA]/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-100/60 dark:border-gray-700/60 transition-colors duration-300">
       {/* Left: Logo + Back */}
       <div className="flex items-center gap-4">
         {showBack && (
@@ -43,8 +43,8 @@ export function Header({ showBack = false }: HeaderProps) {
             Back
           </button>
         )}
-        <a 
-          href="/" 
+        <a
+          href="/"
           className="flex items-center gap-2.5 group hover:opacity-90 transition-opacity cursor-pointer"
         >
           <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-orange-400 to-orange-500 flex items-center justify-center shadow-md shadow-orange-200 dark:shadow-orange-500/20 group-hover:scale-105 transition-transform">
@@ -58,19 +58,21 @@ export function Header({ showBack = false }: HeaderProps) {
 
       {/* Right: ThemeToggle */}
       <div className="flex items-center gap-4">
-        {/* [HIDDEN] Top Bar Buttons — Uncomment khi kết nối chức năng */}
-        {/* <button className="relative w-9 h-9 rounded-full flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer">
+        {/* ══════════════════════════════════════════════════════
+            Top Bar Buttons
+            ══════════════════════════════════════════════════════ */}
+        <button className="relative w-9 h-9 rounded-full flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer">
           <Bell className="w-[18px] h-[18px] text-gray-500 dark:text-gray-400" />
-        </button> */}
-        {/* <button className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors cursor-pointer">
+        </button>
+        <button className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors cursor-pointer">
           <HelpCircle className="w-[18px] h-[18px]" />
-        </button> */}
-        {/* <button className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors cursor-pointer">
+        </button>
+        <button className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors cursor-pointer">
           <Globe className="w-[18px] h-[18px]" />
           <span className="font-medium">Tiếng Việt</span>
-        </button> */}
+        </button>
         <ThemeToggle />
-        
+
         {username ? (
           <div className="flex items-center gap-3 ml-2">
             <div className="flex items-center gap-2">
@@ -82,7 +84,7 @@ export function Header({ showBack = false }: HeaderProps) {
               </span>
             </div>
             <div className="h-4 w-px bg-gray-200 dark:bg-gray-700 mx-1"></div>
-            <button 
+            <button
               onClick={handleLogout}
               className="text-[13px] font-semibold text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400 transition-colors cursor-pointer"
             >
@@ -90,7 +92,7 @@ export function Header({ showBack = false }: HeaderProps) {
             </button>
           </div>
         ) : (
-          <button 
+          <button
             onClick={() => router.push('/auth')}
             className="ml-2 px-4 py-2 rounded-xl bg-orange-50 dark:bg-orange-500/10 text-orange-600 dark:text-orange-500 text-sm font-bold hover:bg-orange-100 dark:hover:bg-orange-500/20 transition-colors cursor-pointer"
           >

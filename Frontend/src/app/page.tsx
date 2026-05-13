@@ -4,22 +4,23 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
-  // [HIDDEN] Bell,
-  // [HIDDEN] Headphones,
-  // [HIDDEN] Globe,
+  Bell,
+  Headphones,
+  Globe,
   Search,
-  // [HIDDEN] Star,
-  // [HIDDEN] MapPin,
-  // [HIDDEN] Heart,
-  // [HIDDEN] Flame,
-  // [HIDDEN] Snowflake,
-  // [HIDDEN] HeartPulse,
-  // [HIDDEN] Coins,
-  // [HIDDEN] SlidersHorizontal,
-  // [HIDDEN] Brain,
-  // [HIDDEN] ShieldCheck,
+  Star,
+  MapPin,
+  Heart,
+  Flame,
+  Snowflake,
+  HeartPulse,
+  Coins,
+  SlidersHorizontal,
+  Brain,
+  ShieldCheck,
   Sparkles,
   User,
+  ChevronRight,
   // [HIDDEN] ChevronRight,
   AlertTriangle,
   CheckCircle2,
@@ -28,7 +29,7 @@ import {
   X,
 } from "lucide-react";
 import { Playfair_Display, Roboto } from "next/font/google";
-// [HIDDEN] import { Sidebar } from "../components/Sidebar";
+import { Sidebar } from "../components/Sidebar";
 import { ThemeToggle } from "../components/ThemeToggle";
 import { SurveyModal } from "../components/SurveyModal";
 import { BudgetSelector, type BudgetOption } from "../components/BudgetSelector";
@@ -155,7 +156,9 @@ const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000';
 export default function Home() {
   const [query, setQuery] = useState("");
   const [budget, setBudget] = useState<BudgetOption>('auto');
+  const [activeFilter, setActiveFilter] = useState("");
   const [username, setUsername] = useState<string | null>(null);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const router = useRouter();
 
   // ── System Health State ──
@@ -219,47 +222,36 @@ export default function Home() {
     <>
       <div className={`flex min-h-screen bg-[#F7F8FA] dark:bg-gray-900 transition-colors duration-300 ${roboto.className}`}>
         {/* ══════════════════════════════════════════════════════════
-          [HIDDEN] Sidebar — Uncomment khi các trang con hoạt động
+          Sidebar
           ══════════════════════════════════════════════════════════ */}
-        {/* <Sidebar /> */}
+        <Sidebar isCollapsed={isSidebarCollapsed} onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)} />
 
         {/* ── Main Content ── */}
-        {/* NOTE: Đã bỏ ml-[260px] vì sidebar đã ẩn */}
-        <div className="flex-1 flex flex-col">
+        <div className={`flex-1 flex flex-col transition-all duration-300 ${isSidebarCollapsed ? 'ml-[80px]' : 'ml-[260px]'}`}>
           {/* ─── Top Bar (Minimal — chỉ giữ ThemeToggle) ─── */}
-          <header className="sticky top-0 z-40 flex items-center justify-between px-8 py-4 bg-[#F7F8FA]/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-100/60 dark:border-gray-700/60 transition-colors duration-300">
-            {/* Logo - Clickable to Home (Force Reload) */}
-            <a 
-              href="/" 
-              className="flex items-center gap-2.5 group hover:opacity-90 transition-opacity cursor-pointer"
-            >
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-orange-400 to-orange-500 flex items-center justify-center shadow-md shadow-orange-200 dark:shadow-orange-500/20 group-hover:scale-105 transition-transform">
-                <span className="text-white text-lg">🍜</span>
-              </div>
-              <span className="text-xl font-bold text-gray-800 dark:text-white tracking-tight group-hover:text-orange-500 transition-colors">
-                Wanderbite
-              </span>
-            </a>
+          <header className="sticky top-0 z-40 flex items-center justify-between px-8 h-[72px] bg-[#F7F8FA]/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-100/60 dark:border-gray-700/60 transition-colors duration-300">
+            {/* Logo (Removed) */}
+            <div className="flex items-center gap-2.5"></div>
 
             {/* Right side — chỉ giữ ThemeToggle */}
             <div className="flex items-center gap-4">
               {/* ══════════════════════════════════════════════════════
-                [HIDDEN] Top Bar Buttons — Uncomment khi kết nối chức năng
+                Top Bar Buttons
                 ══════════════════════════════════════════════════════ */}
-              {/* <button className="relative w-9 h-9 rounded-full flex items-center justify-center hover:bg-gray-100 transition-colors cursor-pointer">
-              <Bell className="w-[18px] h-[18px] text-gray-500" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white" />
-            </button> */}
+              <button className="relative w-9 h-9 rounded-full flex items-center justify-center hover:bg-gray-100 transition-colors cursor-pointer">
+                <Bell className="w-[18px] h-[18px] text-gray-500" />
+                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white" />
+              </button>
 
-              {/* <button className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 transition-colors cursor-pointer">
-              <Headphones className="w-[18px] h-[18px]" />
-              <span className="font-medium">Hỗ trợ</span>
-            </button> */}
+              <button className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 transition-colors cursor-pointer">
+                <Headphones className="w-[18px] h-[18px]" />
+                <span className="font-medium">Hỗ trợ</span>
+              </button>
 
-              {/* <button className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 transition-colors cursor-pointer">
-              <Globe className="w-[18px] h-[18px]" />
-              <span className="font-medium">Tiếng Việt</span>
-            </button> */}
+              <button className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 transition-colors cursor-pointer">
+                <Globe className="w-[18px] h-[18px]" />
+                <span className="font-medium">Tiếng Việt</span>
+              </button>
 
               <ThemeToggle />
 
@@ -303,8 +295,8 @@ export default function Home() {
             <div
               role="alert"
               className={`flex items-center gap-3 px-5 py-3 text-sm font-medium border-b transition-colors duration-300 ${healthStatus === 'degraded'
-                  ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-700/40 text-amber-800 dark:text-amber-300'
-                  : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-700/40 text-red-800 dark:text-red-300'
+                ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-700/40 text-amber-800 dark:text-amber-300'
+                : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-700/40 text-red-800 dark:text-red-300'
                 }`}
             >
               <AlertTriangle className="w-4 h-4 flex-shrink-0" />
@@ -526,4 +518,3 @@ export default function Home() {
     </>
   );
 }
-
