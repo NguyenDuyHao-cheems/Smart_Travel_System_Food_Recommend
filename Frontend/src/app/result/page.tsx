@@ -326,7 +326,7 @@ function ResultPageContent() {
   const budgetFromUrl = (searchParams.get('budget') || 'auto') as BudgetOption;
 
   const [isLoading, setIsLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState(queryFromUrl || 'Tìm quán mì cay 7 cấp độ ở Làng Đại Học');
+  const [searchQuery, setSearchQuery] = useState(queryFromUrl || '');
   const [inputValue, setInputValue] = useState(searchQuery);
   const [budget, setBudget] = useState<BudgetOption>(budgetFromUrl);
 

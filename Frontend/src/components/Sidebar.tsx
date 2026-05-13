@@ -72,26 +72,6 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
           ))}
         </div>
 
-        {/* AI Suggestion Card */}
-        {!isCollapsed && (
-          <div className="mt-6 mx-1 p-4 bg-gradient-to-br from-orange-50 dark:from-orange-500/10 to-amber-50/60 dark:to-amber-500/5 rounded-2xl border border-orange-100/60 dark:border-orange-500/20 transition-all duration-300">
-            <div className="flex items-center gap-1.5 mb-2">
-              <span className="text-orange-500 font-semibold text-[13px]">
-                AI Gợi ý hôm nay ✨
-              </span>
-            </div>
-            <p className="text-[12px] text-gray-500 dark:text-gray-400 leading-relaxed mb-3">
-              Hôm nay trời nóng, thử món mát lạnh, thanh đạm nhé!
-            </p>
-            <div className="w-full h-[72px] rounded-xl overflow-hidden">
-              <img
-                src="https://images.unsplash.com/photo-1567337710282-00832b415979?w=400&h=200&fit=crop"
-                alt="Gợi ý món ăn"
-                className="w-full h-full object-cover"
-              />
-            </div>
-          </div>
-        )}
       </nav>
 
 
