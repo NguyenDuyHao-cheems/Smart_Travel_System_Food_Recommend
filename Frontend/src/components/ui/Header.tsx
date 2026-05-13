@@ -43,14 +43,17 @@ export function Header({ showBack = false }: HeaderProps) {
             Back
           </button>
         )}
-        <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-orange-400 to-orange-500 flex items-center justify-center shadow-md shadow-orange-200 dark:shadow-orange-500/20">
+        <a 
+          href="/" 
+          className="flex items-center gap-2.5 group hover:opacity-90 transition-opacity cursor-pointer"
+        >
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-orange-400 to-orange-500 flex items-center justify-center shadow-md shadow-orange-200 dark:shadow-orange-500/20 group-hover:scale-105 transition-transform">
             <span className="text-white text-lg">🍜</span>
           </div>
-          <span className="text-xl font-bold text-gray-800 dark:text-white tracking-tight">
+          <span className="text-xl font-bold text-gray-800 dark:text-white tracking-tight group-hover:text-orange-500 transition-colors">
             Wanderbite
           </span>
-        </div>
+        </a>
       </div>
 
       {/* Right: ThemeToggle */}
