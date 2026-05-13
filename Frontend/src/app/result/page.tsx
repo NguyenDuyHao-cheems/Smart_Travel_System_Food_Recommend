@@ -549,27 +549,31 @@ function ResultPageContent() {
       <div className={`flex-1 flex flex-col transition-all duration-300 ${isSidebarCollapsed ? 'ml-[80px]' : 'ml-[260px]'}`}>
         <Header showBack={false} />
 
-        {/* Budget + Distance filter bar */}
-        <div className="px-6 md:px-10 py-5 border-b border-gray-100 dark:border-gray-800 bg-[#F7F8FA] dark:bg-gray-900 flex flex-wrap items-center gap-x-4 gap-y-4">
-          <BudgetSelector
-            value={budget}
-            onChange={(newBudget) => {
-              setBudget(newBudget);
-              router.push(`/result?q=${encodeURIComponent(inputValue)}&budget=${newBudget}&refresh=true`);
-            }}
-          />
-          <DistanceFilter
-            enabled={distanceFilterEnabled}
-            onToggle={setDistanceFilterEnabled}
-            radius={distanceRadius}
-            onRadiusChange={setDistanceRadius}
-            totalCount={results.length}
-            filteredCount={displayResults.length}
-          />
-        </div>
-
-        <main className="flex-1 px-6 md:px-10 py-8 overflow-y-auto">
+        <main className="flex-1 px-4 md:px-8 py-8 overflow-y-auto">
           <div className="max-w-5xl mx-auto">
+            {/* ── Budget + Distance filter bar (Synchronized with other blocks) ── */}
+            {!isLoading && (
+              <div className="mb-6 p-2 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-3xl shadow-sm flex flex-wrap items-center gap-x-8 gap-y-4">
+                <div className="pl-4">
+                  <BudgetSelector
+                    value={budget}
+                    onChange={(newBudget) => {
+                      setBudget(newBudget);
+                      router.push(`/result?q=${encodeURIComponent(inputValue)}&budget=${newBudget}&refresh=true`);
+                    }}
+                  />
+                </div>
+                <DistanceFilter
+                  enabled={distanceFilterEnabled}
+                  onToggle={setDistanceFilterEnabled}
+                  radius={distanceRadius}
+                  onRadiusChange={setDistanceRadius}
+                  totalCount={results.length}
+                  filteredCount={displayResults.length}
+                />
+              </div>
+            )}
+
             <AnimatePresence mode="wait">
               {isLoading ? (
                 <LoadingState
