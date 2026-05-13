@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, User } from 'lucide-react';
+import { ArrowLeft, User, Bell, HelpCircle, Globe } from 'lucide-react';
 import { ThemeToggle } from '../ThemeToggle';
 
 interface HeaderProps {
@@ -31,7 +31,7 @@ export function Header({ showBack = false }: HeaderProps) {
   };
 
   return (
-    <header className="sticky top-0 z-40 flex items-center justify-between px-8 py-4 bg-[#F7F8FA]/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-100/60 dark:border-gray-700/60 transition-colors duration-300">
+    <header className="sticky top-0 z-40 flex items-center justify-between px-8 h-[72px] bg-[#F7F8FA]/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-100/60 dark:border-gray-700/60 transition-colors duration-300">
       {/* Left: Logo + Back */}
       <div className="flex items-center gap-4">
         {showBack && (
@@ -58,17 +58,19 @@ export function Header({ showBack = false }: HeaderProps) {
 
       {/* Right: ThemeToggle */}
       <div className="flex items-center gap-4">
-        {/* [HIDDEN] Top Bar Buttons — Uncomment khi kết nối chức năng */}
-        {/* <button className="relative w-9 h-9 rounded-full flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer">
+        {/* ══════════════════════════════════════════════════════
+            Top Bar Buttons
+            ══════════════════════════════════════════════════════ */}
+        <button className="relative w-9 h-9 rounded-full flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer">
           <Bell className="w-[18px] h-[18px] text-gray-500 dark:text-gray-400" />
-        </button> */}
-        {/* <button className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors cursor-pointer">
+        </button>
+        <button className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors cursor-pointer">
           <HelpCircle className="w-[18px] h-[18px]" />
-        </button> */}
-        {/* <button className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors cursor-pointer">
+        </button>
+        <button className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors cursor-pointer">
           <Globe className="w-[18px] h-[18px]" />
           <span className="font-medium">Tiếng Việt</span>
-        </button> */}
+        </button>
         <ThemeToggle />
         
         {username ? (
