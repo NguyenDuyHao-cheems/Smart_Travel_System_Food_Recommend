@@ -44,6 +44,7 @@ const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000';
 export default function Home() {
   const [query, setQuery] = useState("");
   const [budget, setBudget] = useState<BudgetOption>('auto');
+  const [activeFilter, setActiveFilter] = useState("");
   const [username, setUsername] = useState<string | null>(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const router = useRouter();
