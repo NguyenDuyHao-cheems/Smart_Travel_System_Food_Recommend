@@ -19,7 +19,8 @@ import {
   // [HIDDEN] ShieldCheck,
   Sparkles,
   User,
-  // [HIDDEN] ChevronRight,
+  Loader2,
+  AlertCircle
 } from "lucide-react";
 import { Playfair_Display, Roboto } from "next/font/google";
 // [HIDDEN] import { Sidebar } from "../components/Sidebar";
@@ -185,6 +186,8 @@ export default function Home() {
   const [query, setQuery] = useState("");
   const [budget, setBudget] = useState<BudgetOption>('auto');
   const [username, setUsername] = useState<string | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
   const router = useRouter();
 
   React.useEffect(() => {
@@ -204,12 +207,66 @@ export default function Home() {
     router.push('/auth');
   };
 
-  const handleSearch = (e: React.FormEvent) => {
+  const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!query.trim()) return;
-    // Truyền budget xuống URL để result page đọc và gửi API
-    const budgetParam = budget !== 'auto' ? `&budget=${budget}` : '';
-    router.push(`/result?q=${encodeURIComponent(query)}${budgetParam}`);
+    
+    setIsSearching(true);
+    setSearchError(null);
+    
+    try {
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        if (!navigator.geolocation) {
+          reject(new Error("Trình duyệt không hỗ trợ Geolocation"));
+        }
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0,
+        });
+      });
+      
+      const lat = position.coords.latitude;
+      const lng = position.coords.longitude;
+      
+      const token = localStorage.getItem('access_token');
+      const userId = localStorage.getItem('user_id');
+      
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+      const res = await fetch(`${apiUrl}/api/v1/search/recommend`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? {'Authorization': `Bearer ${token}`} : {})
+        },
+        body: JSON.stringify({
+          query,
+          lat,
+          lng,
+          user_id: userId || undefined,
+          budget: budget === 'auto' ? undefined : parseInt(budget as string, 10),
+        })
+      });
+      
+      if (!res.ok) {
+        throw new Error("Lỗi khi kết nối với AI, vui lòng thử lại!");
+      }
+      
+      const data = await res.json();
+      if (data.session_id) {
+        router.push(`/result?session_id=${data.session_id}`);
+      } else {
+        throw new Error("Server không trả về session_id.");
+      }
+      
+    } catch (err: any) {
+      setIsSearching(false);
+      let errorMsg = err.message || "Đã có lỗi xảy ra.";
+      if (err.code === 1) { // PERMISSION_DENIED
+        errorMsg = "Vui lòng cho phép truy cập vị trí để tìm quán gần bạn.";
+      }
+      setSearchError(errorMsg);
+    }
   };
 
   return (
@@ -298,7 +355,17 @@ export default function Home() {
               ✨
             </h1>
 
-            {/* Search Bar — ✅ HOẠT ĐỘNG: Nhập query → chuyển đến /result */}
+            {/* Search Error Alert */}
+            {searchError && (
+              <div className="mb-6 p-4 rounded-xl bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-red-700 dark:text-red-400 text-left">
+                  {searchError}
+                </p>
+              </div>
+            )}
+
+            {/* Search Bar — ✅ HOẠT ĐỘNG: Nhập query → gọi AI → redirect /result?session_id=... */}
             <form onSubmit={handleSearch} className="relative mb-6">
               <div className="flex items-center bg-white dark:bg-gray-800 rounded-full border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md dark:hover:shadow-none hover:border-gray-300 dark:hover:border-gray-600 transition-all focus-within:shadow-md focus-within:border-orange-300 dark:focus-within:border-orange-500/50 focus-within:ring-4 focus-within:ring-orange-50 dark:focus-within:ring-orange-500/10 dark:focus-within:shadow-[0_0_20px_rgba(255,143,0,0.15)]">
                 <div className="pl-5 pr-2">
@@ -479,6 +546,17 @@ export default function Home() {
 
     {/* Pop-up khảo sát — hiện lần đầu tiên user vào trang */}
     <SurveyModal />
+
+    {/* Màn hình Loading Overlay khi Search */}
+    {isSearching && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/80 dark:bg-gray-900/80 backdrop-blur-md">
+        <div className="flex flex-col items-center p-8 bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border border-gray-100 dark:border-gray-700">
+          <Loader2 className="w-12 h-12 text-orange-500 animate-spin mb-4" />
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Đang phân tích sở thích...</h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400">Vui lòng chờ AI tìm kiếm quán ăn phù hợp nhất quanh bạn</p>
+        </div>
+      </div>
+    )}
   </>
 );
 }

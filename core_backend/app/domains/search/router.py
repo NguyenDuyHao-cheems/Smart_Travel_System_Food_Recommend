@@ -34,3 +34,14 @@ async def recommend_food_with_gps(
     """
     return await search_service.process_recommend_query(request, db)
 
+@router.get("/search/sessions/{session_id}", response_model=SearchRecommendResponse)
+async def get_search_session(
+    session_id: str,
+    search_service: SearchService = Depends(get_search_service_dep),
+    db: Session = Depends(get_db)
+):
+    """
+    Fetch a previously saved search session by its ID.
+    Returns the exact same results without re-running AI.
+    """
+    return await search_service.get_session_by_id(session_id, db)

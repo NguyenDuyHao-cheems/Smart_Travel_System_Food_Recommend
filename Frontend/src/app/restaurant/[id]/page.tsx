@@ -75,10 +75,10 @@ export default function RestaurantDetailPage() {
         <h2 className="text-xl font-bold text-red-600 dark:text-red-400 mb-2">Lỗi tải dữ liệu</h2>
         <p className="text-gray-500 dark:text-gray-400 mb-6">{error || 'Không tìm thấy thông tin nhà hàng.'}</p>
         <button
-          onClick={() => window.close()}
+          onClick={() => router.back()}
           className="px-6 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-full transition-all font-medium shadow-md"
         >
-          Đóng trang này
+          Quay lại
         </button>
       </div>
     );
@@ -91,8 +91,8 @@ export default function RestaurantDetailPage() {
       {/* Header Bar */}
       <div className="bg-white dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700 px-6 py-4 sticky top-0 z-10 flex items-center shadow-sm">
         <button
-          onClick={() => window.close()}
-          title="Đóng trang này"
+          onClick={() => router.back()}
+          title="Quay lại"
           className="p-2 -ml-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors mr-4"
         >
           <ArrowLeft className="w-5 h-5 text-gray-700 dark:text-gray-300" />

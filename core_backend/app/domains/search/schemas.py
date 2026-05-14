@@ -40,6 +40,10 @@ class SearchRecommendResponse(BaseModel):
     toàn bộ kết quả sắp xếp theo semantic relevance.
     Việc lọc khoảng cách là tuỳ chọn phía Frontend dựa trên trường distance_km.
     """
+    session_id: str = Field(
+        ..., 
+        description="ID của search session vừa được tạo"
+    )
     results: List[RecommendResult]
     fallback_applied: bool = Field(
         default=False,

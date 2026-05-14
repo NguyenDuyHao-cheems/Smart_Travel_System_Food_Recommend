@@ -15,6 +15,8 @@ import {
   AlertTriangle,
   Info,
   Home,
+  Loader2,
+  AlertCircle
 } from 'lucide-react';
 import { Roboto } from 'next/font/google';
 import { useGeolocation } from '../../hooks/useGeolocation';
@@ -103,7 +105,7 @@ function HeroResultCard({ item }: { item: RecommendResult }) {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
       className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700 shadow-sm dark:shadow-none overflow-hidden hover:shadow-lg dark:hover:border-gray-600 transition-all duration-300 mb-8 cursor-pointer"
-      onClick={() => window.open(`/restaurant/${item.id}`, '_blank')}
+      onClick={() => router.push(`/restaurant/${item.id}`)}
     >
       {/* TOP PICK Badge */}
       <div className="px-6 pt-5">
@@ -199,7 +201,7 @@ function SmallResultCard({ item, index }: { item: RecommendResult; index: number
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.1 }}
       className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm dark:shadow-none overflow-hidden hover:shadow-lg dark:hover:border-gray-600 transition-all duration-300 cursor-pointer group"
-      onClick={() => window.open(`/restaurant/${item.id}`, '_blank')}
+      onClick={() => router.push(`/restaurant/${item.id}`)}
     >
       {/* Image */}
       <div className="relative h-[180px] overflow-hidden">
@@ -304,13 +306,11 @@ function FeatureBar() {
 function ResultPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const queryFromUrl = searchParams.get('q') || '';
-  const budgetFromUrl = (searchParams.get('budget') || 'auto') as BudgetOption;
+  const sessionId = searchParams.get('session_id');
 
   const [isLoading, setIsLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState(queryFromUrl || 'Tìm quán mì cay 7 cấp độ ở Làng Đại Học');
-  const [inputValue, setInputValue] = useState(searchQuery);
-  const [budget, setBudget] = useState<BudgetOption>(budgetFromUrl);
+  const [inputValue, setInputValue] = useState('');
+  const [budget, setBudget] = useState<BudgetOption>('auto');
 
   const [fallbackApplied, setFallbackApplied] = useState(false);
   const [fallbackReason, setFallbackReason] = useState<string>('');
@@ -323,72 +323,24 @@ function ResultPageContent() {
   const [distanceFilterEnabled, setDistanceFilterEnabled] = useState(false);
   const [distanceRadius, setDistanceRadius] = useState(2);
 
-  const { location, error: locError, isLoading: loadingLocation, getLocation } = useGeolocation();
-
-  // Sync URL params to state
-  useEffect(() => {
-    const q = searchParams.get('q') || '';
-    const b = (searchParams.get('budget') || 'auto') as BudgetOption;
-    if (q) {
-      setSearchQuery(q);
-      setInputValue(q);
-    }
-    setBudget(b);
-  }, [searchParams]);
-
-  const handleSearch = () => {
-    if (inputValue.trim() !== '') {
-      router.push(`/result?q=${encodeURIComponent(inputValue)}&budget=${budget}`);
-    }
-  };
-
-  useEffect(() => {
-    getLocation();
-  }, [getLocation]);
-
   const [results, setResults] = useState<RecommendResult[]>([]);
   const [apiError, setApiError] = useState<string | null>(null);
 
+  const [isSearching, setIsSearching] = useState(false);
+
+  // Fetch session data on mount
   useEffect(() => {
-    if (!location) return;
+    if (!sessionId) {
+      setApiError('Không tìm thấy phiên tìm kiếm (session_id).');
+      setIsLoading(false);
+      return;
+    }
 
-    const fetchRecommendations = async () => {
-      // [1] Lấy token và user_id từ localStorage
-      const token = localStorage.getItem('access_token');
-      const userId = localStorage.getItem('user_id');
-
-      if (!token) {
-        console.warn("Chưa đăng nhập, redirect về /auth");
-        router.push('/auth?redirect=/result');
-        return;
-      }
-
+    const fetchSession = async () => {
       setIsLoading(true);
-
-      // Thêm AbortController để chống treo (timeout sau 15 giây) nếu Backend/Database bị kẹt
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000);
-
       try {
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
-        const res = await fetch(`${apiUrl}/api/v1/search/recommend`, {
-          method: 'POST',
-          signal: controller.signal,
-          headers: {
-            'Content-Type': 'application/json',
-            // [1] Thêm header Authorization: Bearer <token>
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({
-            query: searchQuery,
-            lat: location.lat,
-            lng: location.lng,
-            // [1] Include user_id từ localStorage vào request body
-            user_id: userId || undefined,
-            // Đã cập nhật theo yêu cầu Hào: gửi format dạng integer
-            budget: budget === 'auto' ? undefined : parseInt(budget, 10),
-          }),
-        });
+        const res = await fetch(`${apiUrl}/api/v1/search/sessions/${sessionId}`);
 
         if (res.ok) {
           const data = await res.json();
@@ -397,34 +349,93 @@ function ResultPageContent() {
             setFallbackApplied(data.fallback_applied || false);
             setFallbackReason(data.fallback_reason || '');
             setAppliedBudget(data.applied_budget ?? null);
-
             setFilteredCount(data.filtered_out_count || 0);
             setAllergyWarning(data.warning || '');
             setApiError(null);
+            
+            // Optionally set query if your API returns it
+            if (data.query) {
+              setInputValue(data.query);
+            }
           }
-        } else if (res.status === 401) {
-          // TODO: Chờ team có trang /auth thì mở ra để bắt lỗi hết hạn token
-          // router.push('/auth');
-          setApiError('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại. (TODO: Redirect to /auth)');
-        } else if (res.status === 503) {
-          setApiError('Hệ thống AI đang khởi động, vui lòng đợi trong giây lát...');
+        } else if (res.status === 404) {
+          setApiError('Phiên tìm kiếm không tồn tại hoặc đã hết hạn.');
         } else {
-          setApiError('Hệ thống AI đang gặp sự cố. Vui lòng thử lại sau.');
+          setApiError('Hệ thống đang gặp sự cố. Vui lòng thử lại sau.');
         }
       } catch (error: any) {
-        if (error.name === 'AbortError') {
-          setApiError('Quá thời gian kết nối (Timeout). Hệ thống AI có thể đang khởi động, vui lòng thử lại.');
-        } else {
-          setApiError('Không thể kết nối đến máy chủ. Hãy đảm bảo Backend đã được khởi động.');
-        }
+        setApiError('Không thể kết nối đến máy chủ.');
       } finally {
-        clearTimeout(timeoutId);
         setIsLoading(false);
       }
     };
 
-    fetchRecommendations();
-  }, [location, searchQuery, budget]); // Re-fetch khi budget thay đổi
+    fetchSession();
+  }, [sessionId]);
+
+  // Handle Re-search directly on Result Page
+  const handleSearch = async () => {
+    if (!inputValue.trim()) return;
+    
+    setIsSearching(true);
+    setApiError(null);
+    
+    try {
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        if (!navigator.geolocation) {
+          reject(new Error("Trình duyệt không hỗ trợ Geolocation"));
+        }
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0,
+        });
+      });
+      
+      const lat = position.coords.latitude;
+      const lng = position.coords.longitude;
+      
+      const token = localStorage.getItem('access_token');
+      const userId = localStorage.getItem('user_id');
+      
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+      const res = await fetch(`${apiUrl}/api/v1/search/recommend`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? {'Authorization': `Bearer ${token}`} : {})
+        },
+        body: JSON.stringify({
+          query: inputValue,
+          lat,
+          lng,
+          user_id: userId || undefined,
+          budget: budget === 'auto' ? undefined : parseInt(budget as string, 10),
+        })
+      });
+      
+      if (!res.ok) {
+        throw new Error("Lỗi khi kết nối với AI, vui lòng thử lại!");
+      }
+      
+      const data = await res.json();
+      if (data.session_id) {
+        // Update URL, triggers re-fetch automatically via useEffect
+        router.push(`/result?session_id=${data.session_id}`);
+      } else {
+        throw new Error("Server không trả về session_id.");
+      }
+      
+    } catch (err: any) {
+      let errorMsg = err.message || "Đã có lỗi xảy ra.";
+      if (err.code === 1) { // PERMISSION_DENIED
+        errorMsg = "Vui lòng cho phép truy cập vị trí để tìm quán gần bạn.";
+      }
+      setApiError(errorMsg);
+    } finally {
+      setIsSearching(false);
+    }
+  };
 
   // Client-side distance filter — no API re-fetch needed
   const displayResults = useMemo(() => {
@@ -436,6 +447,7 @@ function ResultPageContent() {
   const gridItems = displayResults.slice(1, 5);
 
   return (
+    <>
     <div className={`flex min-h-screen bg-[#F7F8FA] dark:bg-gray-900 transition-colors duration-300 ${roboto.className}`}>
       {/* ══════════════════════════════════════════════════════════
           [HIDDEN] Sidebar — Uncomment khi các trang con hoạt động
@@ -469,11 +481,10 @@ function ResultPageContent() {
           <div className="max-w-5xl mx-auto">
             <AnimatePresence mode="wait">
               {isLoading ? (
-                <LoadingState
-                  searchQuery={searchQuery}
-                  locError={locError}
-                  getLocation={getLocation}
-                />
+                <div className="flex flex-col items-center justify-center py-20">
+                  <Loader2 className="w-10 h-10 text-orange-500 animate-spin mb-4" />
+                  <p className="text-gray-500 font-medium">Đang tải kết quả...</p>
+                </div>
               ) : (
                 <motion.div
                   key="results"
@@ -548,23 +559,7 @@ function ResultPageContent() {
                       </div>
                     </div>
 
-                    {/* GPS Status */}
-                    <div className="mt-5 flex justify-center text-sm">
-                      {loadingLocation && (
-                        <span className="text-orange-400 animate-pulse font-medium">Đang định vị GPS...</span>
-                      )}
-                      {locError && (
-                        <span className="text-red-400 font-medium">
-                          ⚠️ {locError}{' '}
-                          <button onClick={getLocation} className="underline hover:text-red-300 ml-1">Thử lại</button>
-                        </span>
-                      )}
-                      {location && !loadingLocation && !locError && (
-                        <span className="text-teal-500 dark:text-teal-400 flex items-center gap-1.5 font-medium">
-                          <MapPin className="w-4 h-4" /> Vị trí hiện tại: {location.lat.toFixed(4)}, {location.lng.toFixed(4)}
-                        </span>
-                      )}
-                    </div>
+                    {/* No longer showing GPS Status from hook since we don't use it on mount */}
                   </motion.div>
 
                   {/* ─── Results ─── */}
@@ -606,7 +601,6 @@ function ResultPageContent() {
                       <button
                         onClick={() => {
                           setInputValue('');
-                          setSearchQuery('');
                           document.querySelector('input')?.focus();
                         }}
                         className="px-6 py-2.5 bg-orange-50 dark:bg-orange-500/10 hover:bg-orange-100 dark:hover:bg-orange-500/20 text-orange-600 dark:text-orange-400 rounded-full transition-all font-semibold"
@@ -639,6 +633,18 @@ function ResultPageContent() {
         </main>
       </div>
     </div>
+
+      {/* Màn hình Loading Overlay khi Re-Search */}
+      {isSearching && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/80 dark:bg-gray-900/80 backdrop-blur-md">
+          <div className="flex flex-col items-center p-8 bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border border-gray-100 dark:border-gray-700">
+            <Loader2 className="w-12 h-12 text-orange-500 animate-spin mb-4" />
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Đang phân tích sở thích...</h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Vui lòng chờ AI tìm kiếm quán ăn phù hợp nhất quanh bạn</p>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 

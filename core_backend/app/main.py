@@ -1,11 +1,12 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.core.database import check_db_connection, engine
-from app.domains.users.models import Base as UserBase
+from app.core.database import check_db_connection, engine, Base
+from app.domains.users.models import UserAccount, UserOnboarding
+from app.domains.search.models import SearchSession
 from app.services.ai_client import get_ai_client
 
 # ── Create tables on startup (SQLite / Postgres compatible) ──────────────────
-UserBase.metadata.create_all(bind=engine)
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Smart Travel System - Food Recommend")
 

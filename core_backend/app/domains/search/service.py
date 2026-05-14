@@ -9,6 +9,7 @@ from .schemas import (
     SearchRecommendResponse,
     RecommendResult,
 )
+from .models import SearchSession
 from app.services.ai_client import AIServiceClient
 from app.services.recommendation_service import recommend
 
@@ -133,13 +134,62 @@ class SearchService:
             filtered_out_count,
         )
 
+        fallback_applied = recommend_results.get("fallback_applied", False)
+        
+        # Tạo kết quả response object (chưa có session_id)
+        results_list = [r.dict() for r in results]
+
+        # Lưu session vào Database
+        session_record = SearchSession(
+            user_id=request.user_id,
+            query=request.query,
+            lat=request.lat,
+            lng=request.lng,
+            budget=effective_budget,
+            results_json={
+                "results": results_list,
+                "fallback_applied": fallback_applied,
+                "fallback_reason": warning,
+                "applied_budget": effective_budget,
+                "filtered_out_count": filtered_out_count,
+                "warning": warning,
+            }
+        )
+        
+        if db:
+            db.add(session_record)
+            db.commit()
+            db.refresh(session_record)
+            session_id_str = str(session_record.id)
+        else:
+            # Fallback nếu không có DB, though DB dependency is provided via FastAPI
+            import uuid
+            session_id_str = str(uuid.uuid4())
+
         return SearchRecommendResponse(
+            session_id=session_id_str,
             results=results,
-            fallback_applied=recommend_results.get("fallback_applied", False),
+            fallback_applied=fallback_applied,
             fallback_reason=warning,
             applied_budget=effective_budget,
             filtered_out_count=filtered_out_count,
             warning=warning,
+        )
+
+    async def get_session_by_id(self, session_id: str, db: Session) -> SearchRecommendResponse:
+        session_record = db.query(SearchSession).filter(SearchSession.id == session_id).first()
+        if not session_record:
+            raise HTTPException(status_code=404, detail="Search session not found")
+            
+        data = session_record.results_json
+        return SearchRecommendResponse(
+            session_id=str(session_record.id),
+            results=[RecommendResult(**r) for r in data.get("results", [])],
+            fallback_applied=data.get("fallback_applied", False),
+            fallback_reason=data.get("fallback_reason"),
+            applied_budget=data.get("applied_budget"),
+            filtered_out_count=data.get("filtered_out_count"),
+            warning=data.get("warning"),
         )
 
     @staticmethod
