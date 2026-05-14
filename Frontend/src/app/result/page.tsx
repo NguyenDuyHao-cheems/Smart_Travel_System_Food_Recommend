@@ -674,9 +674,7 @@ function ResultPageContent() {
           )}
         </AnimatePresence>
       </div>
-    </main>
-      </div >
-    </div >
+    </div>
   );
 }
 

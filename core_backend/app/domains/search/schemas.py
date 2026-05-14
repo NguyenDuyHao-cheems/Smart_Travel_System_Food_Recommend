@@ -75,3 +75,25 @@ class AIResponseData(BaseModel):
     """
     vector: List[float] = Field(..., description="The generated embedded vector representation of the text")
     cleaned_query: str = Field(..., description="Query đã được Gemini làm sạch")
+
+class SessionCreateResponse(BaseModel):
+    """Response trả về khi tạo session tìm kiếm mới."""
+    session_id: str
+    results: List[RecommendResult]
+    fallback_applied: bool = False
+    fallback_reason: Optional[str] = None
+    applied_budget: Optional[int] = None
+    filtered_out_count: Optional[int] = None
+    warning: Optional[str] = None
+
+class SessionDataResponse(BaseModel):
+    """Response trả về khi truy vấn session đã lưu."""
+    session_id: str
+    query: str
+    results: List[RecommendResult]
+    fallback_applied: bool = False
+    fallback_reason: Optional[str] = None
+    applied_budget: Optional[int] = None
+    filtered_out_count: Optional[int] = None
+    warning: Optional[str] = None
+    created_at: Optional[str] = None
