@@ -41,11 +41,6 @@ def _build_onboarding_summary(record: UserOnboarding) -> str:
     return build_onboarding_text(
         favorite_dishes=record.favorite_dishes,
         spicy_level=record.spicy_level,
-        dietary_restrictions=record.dietary_restrictions,
-        is_vegetarian=record.is_vegetarian,
-        allergies=record.allergies,
-        budget=record.budget,
-        location=record.location,
     )
 
 

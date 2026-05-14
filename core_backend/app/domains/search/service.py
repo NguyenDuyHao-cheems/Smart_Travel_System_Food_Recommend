@@ -186,3 +186,37 @@ class SearchService:
             img=model.image_url or "/images/default_food.jpg",
             google_maps_url=getattr(model, 'google_maps_url', None),
         )
+
+    @staticmethod
+    def _extract_min_price(result: RecommendResult) -> int:
+        """Extract the minimum price in VND from a display price string like '49k - 89k'.
+
+        Returns a high sentinel (999_999_999) when parsing fails.
+        """
+        try:
+            price_str = result.price
+            if not price_str:
+                return 999_999_999
+            first_part = price_str.split("-")[0].strip().lower()
+            if "k" in first_part:
+                return int(first_part.replace("k", "").strip()) * 1000
+            if first_part.isdigit():
+                return int(first_part)
+            return 999_999_999
+        except Exception:
+            return 999_999_999
+
+    @staticmethod
+    def _extract_distance_km(result: RecommendResult) -> float:
+        """Extract numeric distance from a display string like '1.5 km'.
+
+        Returns a large sentinel (9999.0) when parsing fails.
+        """
+        try:
+            dist_str = result.dist
+            if not dist_str:
+                return 9999.0
+            numeric_part = dist_str.lower().replace("km", "").strip()
+            return float(numeric_part)
+        except Exception:
+            return 9999.0

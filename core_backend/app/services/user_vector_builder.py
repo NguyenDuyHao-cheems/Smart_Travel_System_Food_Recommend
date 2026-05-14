@@ -80,21 +80,15 @@ def build_onboarding_text(
     *,
     favorite_dishes: Optional[List[str]] = None,
     spicy_level: Optional[str] = None,
-    dietary_restrictions: Optional[List[str]] = None,
-    is_vegetarian: bool = False,
-    allergies: Optional[List[str]] = None,
-    budget: Optional[str] = None,
-    location: Optional[str] = None,
 ) -> str:
     """
     Build the onboarding text for embedding.
 
-    Currently, only favorite_dishes are used to form the preference vector
-    as other fields (spicy, budget, etc.) are planned for future integration
-    or filtered out to keep the vector focused on food preferences.
+    Note: dietary_restrictions, is_vegetarian, allergies, budget, and location
+    are filtered manually in the pipeline and not embedded here.
 
     Field order:
-        favorite_dishes
+        favorite_dishes → spicy_level
 
     Returns
     -------
@@ -107,6 +101,9 @@ def build_onboarding_text(
         cleaned = [s.strip() for s in favorite_dishes if s and s.strip()]
         if cleaned:
             parts.append(f"Tôi thích các món {', '.join(cleaned)}")
+
+    if spicy_level:
+        parts.append(f"với độ cay {spicy_level}")
 
     if not parts:
         return ""

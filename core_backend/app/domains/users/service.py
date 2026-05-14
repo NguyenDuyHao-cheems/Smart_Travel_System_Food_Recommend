@@ -111,11 +111,6 @@ class OnboardingService:
         text = build_onboarding_text(
             favorite_dishes=payload.favorite_dishes,
             spicy_level=payload.spicy_level,
-            dietary_restrictions=payload.dietary_restrictions,
-            is_vegetarian=payload.is_vegetarian,
-            allergies=payload.allergies,
-            budget=payload.budget,
-            location=payload.location,
         )
         return await embed_text(text)
 
@@ -130,11 +125,6 @@ class OnboardingService:
         text = build_onboarding_text(
             favorite_dishes=payload.favorite_dishes,
             spicy_level=payload.spicy_level,
-            dietary_restrictions=payload.dietary_restrictions,
-            is_vegetarian=payload.is_vegetarian,
-            allergies=payload.allergies,
-            budget=payload.budget,
-            location=payload.location,
         )
 
         dim = settings.VECTOR_DIM  # 768

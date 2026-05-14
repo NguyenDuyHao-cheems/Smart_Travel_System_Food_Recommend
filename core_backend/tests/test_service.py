@@ -71,68 +71,42 @@ class TestBuildOnboardingText:
         text = build_onboarding_text(
             favorite_dishes=["Phở bò", "Bún chả", "Bánh mì"],
             spicy_level="medium",
-            dietary_restrictions=[],
-            is_vegetarian=False,
-            allergies=[],
-            budget="medium",
-            location="Ho Chi Minh City",
         )
         assert "Tôi thích các món" in text
         assert "Phở bò" in text
         assert "Bún chả" in text
         assert "với độ cay medium" in text
-        assert "mức giá medium" in text
-        assert "ở khu vực Ho Chi Minh City" in text
 
-    def test_empty_lists_are_skipped(self):
+    def test_favorite_dishes_only(self):
         text = build_onboarding_text(
-            favorite_dishes=["Phở bò"],
-            spicy_level="mild",
-            dietary_restrictions=[],
-            allergies=[],
-            budget="low",
-            location="Đà Nẵng",
+            favorite_dishes=["Phở bò", "Bún chả"],
         )
-        assert "tôi ăn theo chế độ" not in text
-        assert "tôi bị dị ứng" not in text
+        assert "Tôi thích các món Phở bò, Bún chả" in text
 
-    def test_none_fields_are_skipped(self):
+    def test_spicy_level_only(self):
         text = build_onboarding_text(
-            favorite_dishes=["Bún"],
-            spicy_level=None,
-            dietary_restrictions=None,
-            allergies=None,
-            budget=None,
-            location=None,
+            favorite_dishes=None,
+            spicy_level="hot",
         )
-        assert "với độ cay" not in text
-        assert "mức giá" not in text
+        assert "với độ cay hot" in text
+
+    def test_empty_input_returns_empty(self):
+        text = build_onboarding_text()
+        assert text == ""
 
     def test_field_order_is_fixed(self):
         text = build_onboarding_text(
             favorite_dishes=["Phở"],
             spicy_level="hot",
-            dietary_restrictions=["vegan"],
-            allergies=["peanut"],
-            budget="high",
-            location="Hà Nội",
         )
-        positions = [
-            text.index("Tôi thích các món Phở"),
-            text.index("với độ cay hot"),
-            text.index("tôi ăn theo chế độ vegan"),
-            text.index("tôi bị dị ứng peanut"),
-            text.index("mức giá high"),
-            text.index("ở khu vực Hà Nội"),
-        ]
-        assert positions == sorted(positions)
+        pos_favorite = text.index("Tôi thích các món Phở")
+        pos_spicy = text.index("với độ cay hot")
+        assert pos_favorite < pos_spicy
 
     def test_no_raw_json(self):
         text = build_onboarding_text(
             favorite_dishes=["Bún bò"],
             spicy_level="medium",
-            budget="medium",
-            location="HCM",
         )
         assert "{" not in text
         assert "}" not in text
@@ -143,11 +117,9 @@ class TestBuildOnboardingText:
         text = build_onboarding_text(
             favorite_dishes=["Phở bò tái nạm"],
             spicy_level="medium",
-            budget="medium",
-            location="Thành phố Hồ Chí Minh",
         )
         assert "Phở bò tái nạm" in text
-        assert "Thành phố Hồ Chí Minh" in text
+        assert "với độ cay medium" in text
 
 
 # ── build_profile_text ────────────────────────────────────────────────────────
