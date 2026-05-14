@@ -1,18 +1,29 @@
+import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 import logging
 from app.nlp.embeddings import router as nlp_router
 from app.ranking.router import router as ranking_router
 from app.nlp.model_provider import get_embedding_model
+from app.ranking.router import get_ranking_service
 
 logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("Loading AI model on startup...")
-    get_embedding_model()
-    logger.info("AI model loaded successfully.")
+    logger.info("Initializing AI models...")
+    try:
+        # Preload the NLP embedding model
+        get_embedding_model()
+        logger.info("NLP Embedding model loaded successfully.")
+        
+        # Preload the Ranking models (LightFM + LambdaMART)
+        get_ranking_service()
+        logger.info("Ranking models loaded successfully.")
+    except Exception as e:
+        logger.error(f"Error loading AI models during startup: {e}")
     yield
+    logger.info("Shutting down AI Engine...")
 
 app = FastAPI(title="Smart Travel System - AI Engine", lifespan=lifespan)
 

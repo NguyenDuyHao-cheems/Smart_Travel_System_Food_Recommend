@@ -45,7 +45,6 @@ class DishModel(Base):
     name = Column(String, nullable=False)
     price = Column(Integer, nullable=False)
     image_url = Column(String, nullable=True)
-    ingredients = Column(JSON, default=[])
     allergens = Column(JSON, default=[])
     is_vegetarian = Column(Boolean, default=False)
     embedding_vector = Column(Vector(settings.VECTOR_DIM), nullable=True)

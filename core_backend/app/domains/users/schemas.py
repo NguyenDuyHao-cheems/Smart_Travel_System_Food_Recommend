@@ -92,11 +92,22 @@ class SignInRequest(BaseModel):
     password: str = Field(..., min_length=8, max_length=128)
 
 
+class GoogleAuthRequest(BaseModel):
+    access_token: str = Field(..., description="Google OAuth2 access token")
+
+
 class AuthResponse(BaseModel):
     status: str = "success"
     message: str
     user_id: str
     username: str
+    full_name: Optional[str] = None
+    avatar_url: Optional[str] = None
     access_token: str
     token_type: str = "bearer"
 
+
+class UserUpdateRequest(BaseModel):
+    full_name: Optional[str] = None
+    avatar_url: Optional[str] = None
+    password: Optional[str] = None
