@@ -144,8 +144,31 @@ function AuthPageContent() {
         setIsLoading(false);
       }
     },
-    onError: () => setErrorMsg("Đăng nhập Google không thành công. Vui lòng thử lại."),
+    onError: () => {
+      showShopeeError();
+    },
+    onNonOAuthError: (error) => {
+      console.log("Non-OAuth Error:", error);
+      showShopeeError();
+    },
   });
+
+  const showShopeeError = () => {
+    setErrorMsg("Đăng nhập Google không thành công. Vui lòng thử lại.");
+    toast.custom((t) => (
+      <div className="bg-black/70 backdrop-blur-md text-white px-5 py-4 rounded-2xl shadow-2xl flex items-center gap-4 border border-white/10 animate-in fade-in slide-in-from-top-4 duration-300">
+        <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center flex-shrink-0">
+          <span className="text-white text-xl font-black">!</span>
+        </div>
+        <p className="text-[15px] font-bold leading-tight">
+          Đăng nhập không thành công với Google
+        </p>
+      </div>
+    ), {
+      duration: 3000,
+      position: 'top-center'
+    });
+  };
 
   return (
     <div className={`min-h-screen flex items-center justify-center bg-[#F7F8FA] dark:bg-[#0A0D14] p-4 sm:p-8 ${roboto.className}`}>
