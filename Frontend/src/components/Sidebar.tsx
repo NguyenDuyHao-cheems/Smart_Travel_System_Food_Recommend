@@ -28,16 +28,22 @@ export function Sidebar({ isCollapsed, onToggle, username: propUsername, avatar:
   const [username, setUsername] = React.useState<string | null>(null);
   const [avatar, setAvatar] = React.useState<string | null>(null);
 
+  const [lastSearchUrl, setLastSearchUrl] = React.useState("/");
+  
   React.useEffect(() => {
     if (propUsername !== undefined) setUsername(propUsername);
     else setUsername(localStorage.getItem("username"));
 
     if (propAvatar !== undefined) setAvatar(propAvatar);
     else setAvatar(localStorage.getItem("user_avatar"));
+
+    // Check for last search URL to keep "Khám phá" persistent
+    const savedUrl = localStorage.getItem("last_search_url");
+    if (savedUrl) setLastSearchUrl(savedUrl);
   }, [propUsername, propAvatar]);
 
   const navItems = [
-    { icon: Compass, label: "Khám phá", active: pathname === "/" || pathname === "", href: "/" },
+    { icon: Compass, label: "Khám phá", active: pathname === "/" || pathname === "/result", href: lastSearchUrl },
     { icon: Heart, label: "Yêu thích", active: pathname === "/favorites", href: "/favorites" },
     { icon: Clock, label: "Lịch sử", active: pathname === "/history", href: "/history" },
     { icon: Sparkles, label: "Gợi ý cho bạn", active: pathname === "/recommendations", href: "/recommendations" },

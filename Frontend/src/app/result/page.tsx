@@ -354,7 +354,12 @@ function ResultPageContent() {
   useEffect(() => {
     const token = localStorage.getItem('access_token');
     setIsLoggedIn(!!token);
-  }, []);
+    
+    // Save current URL as the last search URL for the Back button in settings
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('last_search_url', window.location.pathname + window.location.search);
+    }
+  }, [searchParams]);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [showGuestNotice, setShowGuestNotice] = useState(true);
 

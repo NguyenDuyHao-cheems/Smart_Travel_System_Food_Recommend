@@ -248,12 +248,12 @@ function AccountSettings({
 }) {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [tempName, setTempName] = React.useState(username || "");
-  const isGoogleUser = typeof window !== 'undefined' ? localStorage.getItem("access_token")?.length && !localStorage.getItem("login_method") : false;
-  // Actually, a better way to check is via a specific flag
   const loginMethod = typeof window !== 'undefined' ? localStorage.getItem("login_method") : null;
-  const isLocalAccount = loginMethod !== "google";
+  const isGoogleUser = loginMethod === "google";
+  const isLocalAccount = !isGoogleUser;
 
   const [showPasswordModal, setShowPasswordModal] = React.useState(false);
+  const [showDeleteModal, setShowDeleteModal] = React.useState(false);
   const [passwords, setPasswords] = React.useState({ old: "", new: "", confirm: "" });
 
   const handlePasswordChange = async (e: React.FormEvent) => {
@@ -276,13 +276,8 @@ function AccountSettings({
   };
 
   const handleAccountDeletion = async () => {
-    const confirmed = window.confirm("BẠN CÓ CHẮC CHẮN MUỐN XÓA TÀI KHOẢN? Hành động này không thể hoàn tác và tất cả dữ liệu của bạn sẽ bị xóa vĩnh viễn.");
-    if (confirmed) {
-      const secondConfirm = window.confirm("Đây là lời nhắc cuối cùng. Nhấn OK để xác nhận xóa vĩnh viễn.");
-      if (secondConfirm) {
-        await onDeleteAccount();
-      }
-    }
+    setShowDeleteModal(false);
+    await onDeleteAccount();
   };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -395,6 +390,52 @@ function AccountSettings({
         )}
       </AnimatePresence>
 
+      {/* Delete Account Modal */}
+      <AnimatePresence>
+        {showDeleteModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowDeleteModal(false)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-md bg-white dark:bg-[#1A1F2B] rounded-[32px] p-8 shadow-2xl border border-gray-100 dark:border-gray-800"
+            >
+              <div className="w-16 h-16 bg-red-50 dark:bg-red-500/10 rounded-2xl flex items-center justify-center text-red-500 mb-6">
+                <Trash2 className="w-8 h-8" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Xác nhận xóa tài khoản?</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-8">
+                Hành động này <span className="text-red-500 font-bold uppercase">không thể hoàn tác</span>. 
+                Tất cả dữ liệu, lịch sử và tùy chỉnh của bạn sẽ bị xóa vĩnh viễn khỏi hệ thống.
+              </p>
+
+              <div className="flex gap-3">
+                <button 
+                  type="button"
+                  onClick={() => setShowDeleteModal(false)}
+                  className="flex-1 py-3.5 text-gray-500 dark:text-gray-400 text-sm font-bold rounded-2xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                >
+                  Hủy
+                </button>
+                <button 
+                  onClick={handleAccountDeletion}
+                  className="flex-1 py-3.5 bg-red-500 text-white text-sm font-bold rounded-2xl hover:bg-red-600 transition-all shadow-lg shadow-red-200 dark:shadow-none"
+                >
+                  Xác nhận xóa
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* Profile Info Card */}
       <div className="bg-white dark:bg-[#1A1F2B] rounded-[32px] p-8 shadow-sm border border-gray-100 dark:border-gray-800 relative overflow-hidden">
         <div className="flex justify-between items-start mb-8">
@@ -475,68 +516,72 @@ function AccountSettings({
               </div>
             </div>
           </div>
-        {/* Password Section */}
-        {isGoogleUser ? (
-          <div className="mt-10 p-6 rounded-3xl bg-blue-50/50 dark:bg-blue-500/5 border border-blue-100 dark:border-blue-500/10 flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-white dark:bg-gray-800 flex items-center justify-center shadow-sm border border-blue-100 dark:border-blue-500/10">
-              <img src="https://www.google.com/favicon.ico" className="w-6 h-6 grayscale opacity-70" alt="Google" />
-            </div>
-            <div>
-              <h4 className="text-sm font-bold text-gray-800 dark:text-gray-200">Tài khoản liên kết Google</h4>
-              <p className="text-[12px] text-gray-500 dark:text-gray-400">Bảo mật của bạn được quản lý bởi Google. Bạn không thể đổi mật khẩu tại đây.</p>
-            </div>
-          </div>
-        ) : (
-          <div 
-            onClick={() => setShowPasswordModal(true)}
-            className="mt-10 p-5 rounded-3xl bg-orange-50/50 dark:bg-orange-500/5 border border-orange-100/50 dark:border-orange-500/10 flex items-center justify-between group cursor-pointer hover:bg-orange-50 transition-colors"
-          >
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-white dark:bg-gray-800 flex items-center justify-center text-orange-500 shadow-sm border border-orange-100 dark:border-orange-500/20">
-                <Lock className="w-5 h-5" />
+        </div>
+
+        {/* Security & Danger Zone Section */}
+        <div className="mt-10 space-y-4">
+          {/* Password Section */}
+          {isGoogleUser ? (
+            <div className="p-6 rounded-[32px] bg-blue-50/50 dark:bg-blue-500/5 border border-blue-100 dark:border-blue-500/10 flex items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-white dark:bg-gray-800 flex items-center justify-center shadow-sm border border-blue-100 dark:border-blue-500/10">
+                <img src="https://www.google.com/favicon.ico" className="w-6 h-6 grayscale opacity-70" alt="Google" />
               </div>
               <div>
-                <h4 className="text-sm font-bold text-gray-800 dark:text-gray-200">Đổi mật khẩu</h4>
-                <p className="text-[12px] text-gray-500 dark:text-gray-400">Cập nhật mật khẩu định kỳ để bảo vệ tài khoản.</p>
+                <h4 className="text-sm font-bold text-gray-800 dark:text-gray-200">Tài khoản liên kết Google</h4>
+                <p className="text-[12px] text-gray-500 dark:text-gray-400">Bạn đang sử dụng tài khoản liên kết Google. Mọi cài đặt bảo mật và quản lý tài khoản sẽ được thực hiện tại trang cá nhân Google của bạn.</p>
               </div>
             </div>
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center text-gray-400 group-hover:text-orange-500 group-hover:bg-white dark:group-hover:bg-gray-800 transition-all">
-              <ChevronRight className="w-5 h-5" />
+          ) : (
+            <div 
+              onClick={() => setShowPasswordModal(true)}
+              className="p-5 rounded-[32px] bg-orange-50/50 dark:bg-orange-500/5 border border-orange-100/50 dark:border-orange-500/10 flex items-center justify-between group cursor-pointer hover:bg-orange-50 transition-colors"
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-white dark:bg-gray-800 flex items-center justify-center text-orange-500 shadow-sm border border-orange-100 dark:border-orange-500/20">
+                  <Lock className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-gray-800 dark:text-gray-200">Đổi mật khẩu</h4>
+                  <p className="text-[12px] text-gray-500 dark:text-gray-400">Cập nhật mật khẩu định kỳ để bảo vệ tài khoản.</p>
+                </div>
+              </div>
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center text-gray-400 group-hover:text-orange-500 group-hover:bg-white dark:group-hover:bg-gray-800 transition-all">
+                <ChevronRight className="w-5 h-5" />
+              </div>
             </div>
-          </div>
-        )}
-      </div>
+          )}
 
-        {/* Delete Account Banner */}
-        {isLocalAccount ? (
-          <div className="mt-4 p-5 rounded-3xl bg-red-50/50 dark:bg-red-500/5 border border-red-100/50 dark:border-red-500/10 flex items-center justify-between group cursor-pointer hover:bg-red-50 transition-colors">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-white dark:bg-gray-800 flex items-center justify-center text-red-500 shadow-sm border border-red-100 dark:border-red-500/20">
+          {/* Delete Account Banner */}
+          {isLocalAccount ? (
+            <div className="p-5 rounded-[32px] bg-red-50/50 dark:bg-red-500/5 border border-red-100/50 dark:border-red-500/10 flex items-center justify-between group cursor-pointer hover:bg-red-50 transition-colors">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-white dark:bg-gray-800 flex items-center justify-center text-red-500 shadow-sm border border-red-100 dark:border-red-500/20">
+                  <Trash2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-gray-800 dark:text-white">Xóa tài khoản</h4>
+                  <p className="text-[11px] text-gray-500 dark:text-gray-400">Hành động này không thể hoàn tác. Tất cả dữ liệu của bạn trên hệ thống sẽ bị xóa vĩnh viễn.</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowDeleteModal(true)}
+                className="px-4 py-2 bg-white dark:bg-gray-800 border border-red-100 dark:border-red-500/20 text-red-600 dark:text-red-400 text-xs font-bold rounded-xl hover:bg-red-600 hover:text-white transition-all cursor-pointer shadow-sm active:scale-95"
+              >
+                Xóa tài khoản
+              </button>
+            </div>
+          ) : (
+            <div className="p-5 rounded-[32px] bg-gray-50 dark:bg-gray-800/30 border border-gray-100 dark:border-gray-800 flex items-center gap-4 opacity-70">
+              <div className="w-12 h-12 rounded-2xl bg-white dark:bg-gray-800 flex items-center justify-center text-gray-400 shadow-sm border border-gray-100 dark:border-gray-700">
                 <Trash2 className="w-5 h-5" />
               </div>
               <div>
-                <h4 className="text-sm font-bold text-gray-800 dark:text-white">Xóa tài khoản</h4>
-                <p className="text-[11px] text-gray-500 dark:text-gray-400">Hành động này không thể hoàn tác. Tất cả dữ liệu sẽ bị xóa vĩnh viễn.</p>
+                <h4 className="text-sm font-bold text-gray-800 dark:text-gray-200">Xóa tài khoản</h4>
+                <p className="text-[11px] text-gray-500 dark:text-gray-400">Bạn đang sử dụng tài khoản liên kết Google. Mọi cài đặt bảo mật và quản lý tài khoản sẽ được thực hiện tại trang cá nhân Google của bạn.</p>
               </div>
             </div>
-            <button 
-              onClick={handleAccountDeletion}
-              className="px-6 py-2.5 bg-white dark:bg-gray-800 border border-red-100 dark:border-red-500/20 text-red-600 dark:text-red-400 text-xs font-bold rounded-xl hover:bg-red-600 hover:text-white transition-all cursor-pointer shadow-sm active:scale-95"
-            >
-              Xóa tài khoản
-            </button>
-          </div>
-        ) : (
-          <div className="mt-4 p-5 rounded-3xl bg-gray-50 dark:bg-gray-800/30 border border-gray-100 dark:border-gray-800 flex items-center gap-4 opacity-70">
-            <div className="w-12 h-12 rounded-2xl bg-white dark:bg-gray-800 flex items-center justify-center text-gray-400 shadow-sm border border-gray-100 dark:border-gray-700">
-              <Trash2 className="w-5 h-5" />
-            </div>
-            <div>
-              <h4 className="text-sm font-bold text-gray-800 dark:text-gray-200">Xóa tài khoản</h4>
-              <p className="text-[11px] text-gray-500 dark:text-gray-400">Tài khoản Google phải được quản lý thông qua thiết lập của Google.</p>
-            </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );
