@@ -5,22 +5,20 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   Bell,
-  Headphones,
-  Globe,
+  Headset,
   Search,
   Sparkles,
-  User,
   AlertTriangle,
-  CheckCircle2,
   Loader2,
   RefreshCw,
   X,
+  CheckCircle2,
 } from "lucide-react";
 import { Roboto } from "next/font/google";
 import { Sidebar } from "../components/Sidebar";
-import { ThemeToggle } from "../components/ThemeToggle";
-import { SurveyModal } from "../components/SurveyModal";
+import { UserDropdown } from "../components/UserDropdown";
 import { BudgetSelector, type BudgetOption } from "../components/BudgetSelector";
+import { SurveyModal } from "../components/SurveyModal";
 
 const roboto = Roboto({
   subsets: ["latin", "vietnamese"],
@@ -44,8 +42,6 @@ const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000';
 export default function Home() {
   const [query, setQuery] = useState("");
   const [budget, setBudget] = useState<BudgetOption>('auto');
-  const [activeFilter, setActiveFilter] = useState("");
-  const [username, setUsername] = useState<string | null>(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const router = useRouter();
 
@@ -72,10 +68,9 @@ export default function Home() {
 
   useEffect(() => {
     setMounted(true);
-    const token = localStorage.getItem('access_token');
-    const storedUser = localStorage.getItem('username');
-    if (token) setUsername(storedUser || 'User');
     checkHealth();
+    // Clear last search when visiting home fresh
+    localStorage.removeItem('last_search_url');
   }, [checkHealth]);
 
   useEffect(() => {
@@ -84,21 +79,15 @@ export default function Home() {
     return () => clearInterval(interval);
   }, [healthStatus, checkHealth]);
 
-  const handleLogout = () => {
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('user_id');
-    localStorage.removeItem('username');
-    localStorage.removeItem('food_recsys_userid');
-    setUsername(null);
-    router.push('/auth');
-  };
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (!query.trim()) return;
     const budgetParam = budget !== 'auto' ? `&budget=${budget}` : '';
-    router.push(`/result?q=${encodeURIComponent(query)}${budgetParam}`);
+    router.push(`/result?q=${encodeURIComponent(query)}${budgetParam}&from=home`);
   };
+
+  if (!mounted) return null;
 
   return (
     <>
@@ -110,53 +99,17 @@ export default function Home() {
             <div className="flex items-center gap-2.5"></div>
 
             <div className="flex items-center gap-4">
-              <button className="relative w-9 h-9 rounded-full flex items-center justify-center hover:bg-gray-100 transition-colors cursor-pointer">
-                <Bell className="w-[18px] h-[18px] text-gray-500" />
+              <button className="relative w-9 h-9 rounded-full flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer">
+                <Bell className="w-[18px] h-[18px] text-gray-500 dark:text-gray-400" />
                 <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white" />
               </button>
 
-              <button className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 transition-colors cursor-pointer">
-                <Headphones className="w-[18px] h-[18px]" />
+              <button className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors cursor-pointer">
+                <Headset className="w-[18px] h-[18px]" />
                 <span className="font-medium">Hỗ trợ</span>
               </button>
 
-              <button className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 transition-colors cursor-pointer">
-                <Globe className="w-[18px] h-[18px]" />
-                <span className="font-medium">Tiếng Việt</span>
-              </button>
-
-              <ThemeToggle />
-
-              {mounted ? (
-                username ? (
-                  <div className="flex items-center gap-3 ml-2">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex items-center justify-center overflow-hidden">
-                        <User className="w-5 h-5 text-gray-400" />
-                      </div>
-                      <span className="text-sm font-semibold text-gray-700 dark:text-gray-200 hidden sm:block">
-                        {username}
-                      </span>
-                    </div>
-                    <div className="h-4 w-px bg-gray-200 dark:bg-gray-700 mx-1"></div>
-                    <button
-                      onClick={handleLogout}
-                      className="text-[13px] font-semibold text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400 transition-colors cursor-pointer"
-                    >
-                      Đăng xuất
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => router.push('/auth')}
-                    className="ml-2 px-4 py-2 rounded-xl bg-orange-50 dark:bg-orange-500/10 text-orange-600 dark:text-orange-500 text-sm font-bold hover:bg-orange-100 dark:hover:bg-orange-500/20 transition-colors cursor-pointer"
-                  >
-                    Đăng nhập
-                  </button>
-                )
-              ) : (
-                <div className="ml-2 w-20 h-8 rounded-xl bg-gray-100 dark:bg-gray-800 animate-pulse" />
-              )}
+              <UserDropdown />
             </div>
           </header>
 

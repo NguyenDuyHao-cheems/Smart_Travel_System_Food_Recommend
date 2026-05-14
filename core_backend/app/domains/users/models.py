@@ -78,6 +78,8 @@ class UserAccount(Base):
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     username = Column(String, unique=True, nullable=False, index=True)
+    full_name = Column(String, nullable=True)
+    avatar_url = Column(String, nullable=True)
     password_hash = Column(String, nullable=False)
     preferences_vector = Column(Vector(settings.VECTOR_DIM), nullable=True)
     allergies = Column(JSON, nullable=True)

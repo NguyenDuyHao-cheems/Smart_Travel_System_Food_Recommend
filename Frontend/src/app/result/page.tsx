@@ -100,7 +100,7 @@ function HeroResultCard({ item, sessionId }: { item: RecommendResult; sessionId?
     <motion.div
       initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
+      transition={{ duration: 0.3 }}
       className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700 shadow-sm dark:shadow-none overflow-hidden hover:shadow-lg dark:hover:border-gray-600 transition-all duration-300 mb-8"
     >
       <div className="flex flex-col md:flex-row min-h-[340px]">
@@ -115,7 +115,7 @@ function HeroResultCard({ item, sessionId }: { item: RecommendResult; sessionId?
             </span>
           </div>
 
-          <h2 
+          <h2
             onClick={handleNavigate}
             className="text-2xl md:text-4xl font-bold text-gray-900 dark:text-white mb-2 leading-tight cursor-pointer hover:text-orange-500 transition-colors"
           >
@@ -153,7 +153,7 @@ function HeroResultCard({ item, sessionId }: { item: RecommendResult; sessionId?
 
         {/* Right: Image */}
         <div className="md:w-[380px] h-[280px] md:h-auto relative p-4">
-          <div 
+          <div
             onClick={handleNavigate}
             className="w-full h-full rounded-2xl overflow-hidden relative cursor-pointer"
           >
@@ -193,7 +193,7 @@ function SmallResultCard({ item, index, sessionId }: { item: RecommendResult; in
     <motion.div
       initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.1 }}
+      transition={{ delay: index * 0.05 }}
       className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm dark:shadow-none overflow-hidden hover:shadow-lg dark:hover:border-gray-600 transition-all duration-300 cursor-pointer group"
       onClick={handleNavigate}
     >
@@ -310,7 +310,24 @@ function ResultPageContent() {
   const queryFromUrl = searchParams.get('q') || '';
   const budgetFromUrl = (searchParams.get('budget') || 'auto') as BudgetOption;
 
-  const [isLoading, setIsLoading] = useState(true);
+  // Check for cache instantly to avoid flicker
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const [isLoading, setIsLoading] = useState(() => {
+    if (typeof window === 'undefined') return true;
+    const searchParams = new URLSearchParams(window.location.search);
+    const q = searchParams.get('q');
+    const isRefresh = searchParams.get('refresh') === 'true';
+    if (q && !isRefresh) {
+      return !sessionStorage.getItem(`last_results_${q}`);
+    }
+    return true;
+  });
+
   const [searchQuery, setSearchQuery] = useState(queryFromUrl || '');
   const [inputValue, setInputValue] = useState(searchQuery);
   const [budget, setBudget] = useState<BudgetOption>(budgetFromUrl);
@@ -323,13 +340,40 @@ function ResultPageContent() {
   const [allergyWarning, setAllergyWarning] = useState<string>('');
 
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  // Sync login status immediately on mount
+  useEffect(() => {
+    const token = localStorage.getItem('access_token');
+    setIsLoggedIn(!!token);
+
+    // Save current URL as the last search URL for the Back button in settings
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('last_search_url', window.location.pathname + window.location.search);
+    }
+  }, [searchParams]);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [showGuestNotice, setShowGuestNotice] = useState(true);
 
   const [distanceFilterEnabled, setDistanceFilterEnabled] = useState(false);
   const [distanceRadius, setDistanceRadius] = useState(2);
 
-  const [results, setResults] = useState<RecommendResult[]>([]);
+  const [results, setResults] = useState<RecommendResult[]>(() => {
+    if (typeof window === 'undefined') return [];
+    const searchParams = new URLSearchParams(window.location.search);
+    const q = searchParams.get('q');
+    const isRefresh = searchParams.get('refresh') === 'true';
+    if (q && !isRefresh) {
+      const cached = sessionStorage.getItem(`last_results_${q}`);
+      if (cached) {
+        try {
+          return JSON.parse(cached).results;
+        } catch (e) {
+          return [];
+        }
+      }
+    }
+    return [];
+  });
   const [apiError, setApiError] = useState<string | null>(null);
 
   const [isSearching, setIsSearching] = useState(false);
@@ -463,178 +507,176 @@ function ResultPageContent() {
           />
         </div>
 
-        <main className="flex-1 px-6 md:px-10 py-8 overflow-y-auto">
-          <div className="max-w-5xl mx-auto">
-            <AnimatePresence mode="wait">
-              {isLoading ? (
-                <LoadingState
-                  searchQuery={searchQuery}
-                  locError={null}
-                  getLocation={() => {}}
-                />
-              ) : (
-                <motion.div
-                  key="results"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 0.5 }}
-                >
-                  <motion.div
-                    initial={{ opacity: 0, y: -20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="mb-10 max-w-4xl mx-auto"
-                  >
-                    {fallbackApplied && (
-                      <div className="mb-6 flex items-start gap-3 p-4 rounded-xl bg-yellow-50 dark:bg-yellow-500/10 border border-yellow-200 dark:border-yellow-500/20">
-                        <Info className="w-5 h-5 text-yellow-600 dark:text-yellow-500 flex-shrink-0 mt-0.5" />
-                        <div>
-                          <p className="text-sm text-yellow-800 dark:text-yellow-200 leading-relaxed mb-2">
-                            <strong>AI đã mở rộng phạm vi tìm kiếm:</strong> {fallbackReason || 'Không tìm thấy kết quả chính xác theo yêu cầu khắt khe, chúng tôi đã mở rộng phạm vi và ngân sách để gợi ý cho bạn!'}
-                          </p>
-                          <div className="flex flex-wrap gap-2">
-                            {appliedBudget != null && (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-yellow-100 dark:bg-yellow-500/20 text-yellow-700 dark:text-yellow-300">
-                                💰 Ngân sách: {appliedBudget.toLocaleString('vi-VN')}đ
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                    {filteredCount > 0 && (
-                      <div className="mb-6 flex items-start gap-3 p-4 rounded-xl bg-orange-50 dark:bg-orange-500/10 border border-orange-200 dark:border-orange-500/20">
-                        <AlertTriangle className="w-5 h-5 text-orange-600 dark:text-orange-500 flex-shrink-0 mt-0.5" />
-                        <p className="text-sm text-orange-800 dark:text-orange-200 leading-relaxed">
-                          <strong>Cảnh báo Dị ứng:</strong> {allergyWarning || `Đã loại ${filteredCount} quán có thành phần gây dị ứng để đảm bảo an toàn.`}
-                        </p>
-                      </div>
-                    )}
-
-                    {!isLoggedIn && showGuestNotice && (
-                      <div className="mb-6 px-5 py-3 rounded-full bg-[#F0F7FF] dark:bg-blue-500/5 border border-[#E1EFFE] dark:border-blue-500/20 flex items-center gap-3 relative shadow-sm">
-                        <Sparkles className="w-5 h-5 text-blue-500 flex-shrink-0" />
-                        <p className="text-[13px] md:text-sm text-gray-600 dark:text-blue-200 pr-10 whitespace-nowrap">
-                          Bạn đang tìm kiếm với tư cách khách.{" "}
-                          <button
-                            onClick={() => router.push('/auth')}
-                            className="font-bold text-blue-600 dark:text-blue-400 underline hover:text-blue-700 transition-colors"
-                          >
-                            Đăng nhập ngay
-                          </button>
-                          {" "}để AI đề xuất món ăn chính xác theo khẩu vị và chế độ ăn của riêng bạn!
-                        </p>
-                        <button
-                          onClick={() => setShowGuestNotice(false)}
-                          className="absolute right-5 p-1 text-gray-400 hover:text-gray-600 dark:hover:text-blue-300 transition-colors"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      </div>
-                    )}
-
-                    <div className="flex flex-col gap-3 mb-5">
-                      <div className="flex justify-between items-center px-1">
-                        <button onClick={() => router.push('/')} className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-orange-500 transition-colors">
-                          <Home className="w-4 h-4" /> Quay lại trang chủ
-                        </button>
-                      </div>
-                      <div className="relative group">
-                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                          <Sparkles className="h-5 w-5 text-orange-500" />
-                        </div>
-                        <input
-                          type="text"
-                          value={inputValue}
-                          onChange={(e) => setInputValue(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') handleSearch();
-                          }}
-                          className="block w-full pl-11 pr-32 py-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl leading-5 bg-transparent placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 sm:text-base transition-all shadow-sm group-hover:shadow-md dark:text-white"
-                          placeholder="Bạn muốn ăn gì hôm nay?"
-                        />
-                        <div className="absolute inset-y-2 right-2">
-                          <button
-                            onClick={() => handleSearch()}
-                            className="flex items-center gap-2 px-5 py-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm h-full"
-                          >
-                            <Search className="w-4 h-4" />
-                            <span className="hidden sm:inline">Tìm lại</span>
-                          </button>
-                        </div>
+        <AnimatePresence mode="wait">
+          {(!mounted || isLoading) ? (
+            <LoadingState
+              searchQuery={searchQuery}
+              locError={null}
+              getLocation={() => { }}
+            />
+          ) : (
+            <motion.div
+              key="results"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.3 }}
+            >
+              <motion.div
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mb-10 max-w-4xl mx-auto"
+              >
+                {fallbackApplied && (
+                  <div className="mb-6 flex items-start gap-3 p-4 rounded-xl bg-yellow-50 dark:bg-yellow-500/10 border border-yellow-200 dark:border-yellow-500/20">
+                    <Info className="w-5 h-5 text-yellow-600 dark:text-yellow-500 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm text-yellow-800 dark:text-yellow-200 leading-relaxed mb-2">
+                        <strong>AI đã mở rộng phạm vi tìm kiếm:</strong> {fallbackReason || 'Không tìm thấy kết quả chính xác theo yêu cầu khắt khe, chúng tôi đã mở rộng phạm vi và ngân sách để gợi ý cho bạn!'}
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {appliedBudget != null && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-yellow-100 dark:bg-yellow-500/20 text-yellow-700 dark:text-yellow-300">
+                            💰 Ngân sách: {appliedBudget.toLocaleString('vi-VN')}đ
+                          </span>
+                        )}
                       </div>
                     </div>
-                  </motion.div>
+                  </div>
+                )}
+                {filteredCount > 0 && (
+                  <div className="mb-6 flex items-start gap-3 p-4 rounded-xl bg-orange-50 dark:bg-orange-500/10 border border-orange-200 dark:border-orange-500/20">
+                    <AlertTriangle className="w-5 h-5 text-orange-600 dark:text-orange-500 flex-shrink-0 mt-0.5" />
+                    <p className="text-sm text-orange-800 dark:text-orange-200 leading-relaxed">
+                      <strong>Cảnh báo Dị ứng:</strong> {allergyWarning || `Đã loại ${filteredCount} quán có thành phần gây dị ứng để đảm bảo an toàn.`}
+                    </p>
+                  </div>
+                )}
 
-                  {apiError ? (
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      className="p-10 border border-red-200 dark:border-red-500/20 bg-red-50 dark:bg-red-950/10 rounded-3xl text-center"
-                    >
-                      <div className="w-16 h-16 bg-red-100 dark:bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
-                        <Brain className="w-8 h-8 text-red-500" />
-                      </div>
-                      <h2 className="text-xl font-bold text-red-600 dark:text-red-400 mb-2">
-                        Lỗi kết nối
-                      </h2>
-                      <p className="text-red-500 dark:text-red-300/60 max-w-sm mx-auto mb-6">{apiError}</p>
+                {!isLoggedIn && showGuestNotice && (
+                  <div className="mb-6 px-5 py-3 rounded-full bg-[#F0F7FF] dark:bg-blue-500/5 border border-[#E1EFFE] dark:border-blue-500/20 flex items-center gap-3 relative shadow-sm">
+                    <Sparkles className="w-5 h-5 text-blue-500 flex-shrink-0" />
+                    <p className="text-[13px] md:text-sm text-gray-600 dark:text-blue-200 pr-10 whitespace-nowrap">
+                      Bạn đang tìm kiếm với tư cách khách.{" "}
                       <button
-                        onClick={() => window.location.reload()}
-                        className="px-6 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-full transition-all font-medium shadow-md"
+                        onClick={() => router.push('/auth')}
+                        className="font-bold text-blue-600 dark:text-blue-400 underline hover:text-blue-700 transition-colors"
                       >
-                        Thử kết nối lại
+                        Đăng nhập ngay
                       </button>
-                    </motion.div>
-                  ) : results.length === 0 ? (
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      className="py-20 text-center bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700 shadow-sm"
+                      {" "}để AI đề xuất món ăn chính xác theo khẩu vị và chế độ ăn của riêng bạn!
+                    </p>
+                    <button
+                      onClick={() => setShowGuestNotice(false)}
+                      className="absolute right-5 p-1 text-gray-400 hover:text-gray-600 dark:hover:text-blue-300 transition-colors"
                     >
-                      <div className="w-20 h-20 bg-gray-50 dark:bg-gray-900 rounded-full flex items-center justify-center mx-auto mb-6">
-                        <Search className="w-10 h-10 text-gray-400 dark:text-gray-500" />
-                      </div>
-                      <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-3">
-                        Không tìm thấy món nào!
-                      </h2>
-                      <p className="text-gray-500 dark:text-gray-400 max-w-md mx-auto mb-8 leading-relaxed">
-                        Rất tiếc, AI không tìm thấy kết quả nào phù hợp với yêu cầu hiện tại. Thử thay đổi từ khóa hoặc mở rộng ngân sách xem sao nhé?
-                      </p>
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
+
+                <div className="flex flex-col gap-3 mb-5">
+                  <div className="flex justify-between items-center px-1">
+                    <button onClick={() => router.push('/')} className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-orange-500 transition-colors">
+                      <Home className="w-4 h-4" /> Quay lại trang chủ
+                    </button>
+                  </div>
+                  <div className="relative group">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                      <Sparkles className="h-5 w-5 text-orange-500" />
+                    </div>
+                    <input
+                      type="text"
+                      value={inputValue}
+                      onChange={(e) => setInputValue(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleSearch();
+                      }}
+                      className="block w-full pl-11 pr-32 py-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl leading-5 bg-transparent placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 sm:text-base transition-all shadow-sm group-hover:shadow-md dark:text-white"
+                      placeholder="Bạn muốn ăn gì hôm nay?"
+                    />
+                    <div className="absolute inset-y-2 right-2">
                       <button
-                        onClick={() => {
-                          setInputValue('');
-                          setSearchQuery('');
-                          document.querySelector('input')?.focus();
-                        }}
-                        className="px-6 py-2.5 bg-orange-50 dark:bg-orange-500/10 hover:bg-orange-100 dark:hover:bg-orange-500/20 text-orange-600 dark:text-orange-400 rounded-full transition-all font-semibold"
+                        onClick={() => handleSearch()}
+                        className="flex items-center gap-2 px-5 py-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm h-full"
                       >
-                        Thử tìm từ khóa khác
+                        <Search className="w-4 h-4" />
+                        <span className="hidden sm:inline">Tìm lại</span>
                       </button>
-                    </motion.div>
-                  ) : (
-                    <>
-                      {/* Hero Card #1 */}
-                      {heroItem && <HeroResultCard item={heroItem} sessionId={sessionIdFromUrl} />}
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
 
-                      {/* Small Cards Grid #2+ */}
-                      {gridItems.length > 0 && (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                          {gridItems.map((item, idx) => (
-                            <SmallResultCard key={item.id || idx} item={item} index={idx} sessionId={sessionIdFromUrl} />
-                          ))}
-                        </div>
-                      )}
-
-                      <FeatureBar />
-                    </>
-                  )}
+              {apiError ? (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="p-10 border border-red-200 dark:border-red-500/20 bg-red-50 dark:bg-red-950/10 rounded-3xl text-center"
+                >
+                  <div className="w-16 h-16 bg-red-100 dark:bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <Brain className="w-8 h-8 text-red-500" />
+                  </div>
+                  <h2 className="text-xl font-bold text-red-600 dark:text-red-400 mb-2">
+                    Lỗi kết nối
+                  </h2>
+                  <p className="text-red-500 dark:text-red-300/60 max-w-sm mx-auto mb-6">{apiError}</p>
+                  <button
+                    onClick={() => window.location.reload()}
+                    className="px-6 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-full transition-all font-medium shadow-md"
+                  >
+                    Thử kết nối lại
+                  </button>
                 </motion.div>
+              ) : results.length === 0 ? (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="py-20 text-center bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700 shadow-sm"
+                >
+                  <div className="w-20 h-20 bg-gray-50 dark:bg-gray-900 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <Search className="w-10 h-10 text-gray-400 dark:text-gray-500" />
+                  </div>
+                  <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-3">
+                    Không tìm thấy món nào!
+                  </h2>
+                  <p className="text-gray-500 dark:text-gray-400 max-w-md mx-auto mb-8 leading-relaxed">
+                    Rất tiếc, AI không tìm thấy kết quả nào phù hợp với yêu cầu hiện tại. Thử thay đổi từ khóa hoặc mở rộng ngân sách xem sao nhé?
+                  </p>
+                  <button
+                    onClick={() => {
+                      setInputValue('');
+                      setSearchQuery('');
+                      document.querySelector('input')?.focus();
+                    }}
+                    className="px-6 py-2.5 bg-orange-50 dark:bg-orange-500/10 hover:bg-orange-100 dark:hover:bg-orange-500/20 text-orange-600 dark:text-orange-400 rounded-full transition-all font-semibold"
+                  >
+                    Thử tìm từ khóa khác
+                  </button>
+                </motion.div>
+              ) : (
+                <>
+                  {/* Hero Card #1 */}
+                  {heroItem && <HeroResultCard item={heroItem} sessionId={sessionIdFromUrl} />}
+
+                  {/* Small Cards Grid #2+ */}
+                  {gridItems.length > 0 && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                      {gridItems.map((item, idx) => (
+                        <SmallResultCard key={item.id || idx} item={item} index={idx} sessionId={sessionIdFromUrl} />
+                      ))}
+                    </div>
+                  )}
+
+                  <FeatureBar />
+                </>
               )}
-            </AnimatePresence>
-          </div>
-        </main>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
-    </div>
+    </main>
+      </div >
+    </div >
   );
 }
 
