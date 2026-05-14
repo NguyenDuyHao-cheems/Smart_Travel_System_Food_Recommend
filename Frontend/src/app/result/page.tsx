@@ -24,6 +24,10 @@ import { LoadingState } from '../../components/ui/LoadingState';
 import { BudgetSelector, type BudgetOption } from '../../components/BudgetSelector';
 import { DistanceFilter } from '../../components/DistanceFilter';
 import { Sidebar } from '../../components/Sidebar';
+import { favoriteService } from '../../services/favoriteService';
+import { historyService } from '../../services/historyService';
+import { AddToCollectionModal } from '../../components/AddToCollectionModal';
+import { toast } from 'sonner';
 
 const roboto = Roboto({
   subsets: ['latin', 'vietnamese'],
@@ -98,7 +102,31 @@ function getMatchColor(match: string): string {
 /* ─────────────────────────────────────────────────────────────
    Hero Result Card (#1 — AI TOP PICK)
    ───────────────────────────────────────────────────────────── */
-function HeroResultCard({ item }: { item: RecommendResult }) {
+function HeroResultCard({ item, onAddCollection }: { item: RecommendResult, onAddCollection: (item: RecommendResult) => void }) {
+  const [isFav, setIsFav] = useState(false);
+  const userId = typeof window !== 'undefined' ? localStorage.getItem('user_id') : null;
+
+  useEffect(() => {
+    if (userId) setIsFav(favoriteService.isFavorite(userId, item.name));
+  }, [userId, item.name]);
+
+  const toggleFav = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!userId) {
+      toast.error('Vui lòng đăng nhập để lưu yêu thích');
+      return;
+    }
+    if (isFav) {
+      favoriteService.removeFavorite(userId, item.name);
+      setIsFav(false);
+      toast.success('Đã xóa khỏi yêu thích');
+    } else {
+      favoriteService.addFavorite(userId, item);
+      setIsFav(true);
+      toast.success('Đã thêm vào yêu thích');
+    }
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 30 }}
@@ -183,11 +211,18 @@ function HeroResultCard({ item }: { item: RecommendResult }) {
           </div>
           {/* Bookmark & Heart */}
           <div className="absolute top-6 right-6 flex gap-2">
-            <button className="w-10 h-10 rounded-full bg-white/90 dark:bg-gray-900/80 border border-gray-200 dark:border-gray-700 flex items-center justify-center hover:scale-110 transition-all cursor-pointer shadow-sm">
-              <Bookmark className="w-5 h-5 text-gray-400 dark:text-gray-500" />
+            <button
+              onClick={(e) => { e.stopPropagation(); onAddCollection(item); }}
+              className="w-10 h-10 rounded-full bg-white/90 dark:bg-gray-900/80 border border-gray-200 dark:border-gray-700 flex items-center justify-center hover:scale-110 transition-all cursor-pointer shadow-sm"
+              title="Thêm vào bộ sưu tập"
+            >
+              <Bookmark className="w-5 h-5 text-indigo-500" />
             </button>
-            <button className="w-10 h-10 rounded-full bg-white/90 dark:bg-gray-900/80 border border-gray-200 dark:border-gray-700 flex items-center justify-center hover:scale-110 transition-all cursor-pointer shadow-sm">
-              <Heart className="w-5 h-5 text-red-400" fill="currentColor" />
+            <button
+              onClick={toggleFav}
+              className="w-10 h-10 rounded-full bg-white/90 dark:bg-gray-900/80 border border-gray-200 dark:border-gray-700 flex items-center justify-center hover:scale-110 transition-all cursor-pointer shadow-sm"
+            >
+              <Heart className={`w-5 h-5 ${isFav ? 'text-red-500 fill-current' : 'text-gray-400'}`} />
             </button>
           </div>
         </div>
@@ -199,9 +234,33 @@ function HeroResultCard({ item }: { item: RecommendResult }) {
 /* ─────────────────────────────────────────────────────────────
    Small Result Card (#2-#5)
    ───────────────────────────────────────────────────────────── */
-function SmallResultCard({ item, index }: { item: RecommendResult; index: number }) {
+function SmallResultCard({ item, index, onAddCollection }: { item: RecommendResult; index: number; onAddCollection: (item: RecommendResult) => void }) {
   const tags = getTagsForItem(item, index);
   const matchColor = getMatchColor(item.match);
+
+  const [isFav, setIsFav] = useState(false);
+  const userId = typeof window !== 'undefined' ? localStorage.getItem('user_id') : null;
+
+  useEffect(() => {
+    if (userId) setIsFav(favoriteService.isFavorite(userId, item.name));
+  }, [userId, item.name]);
+
+  const toggleFav = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!userId) {
+      toast.error('Vui lòng đăng nhập để lưu yêu thích');
+      return;
+    }
+    if (isFav) {
+      favoriteService.removeFavorite(userId, item.name);
+      setIsFav(false);
+      toast.success('Đã xóa khỏi yêu thích');
+    } else {
+      favoriteService.addFavorite(userId, item);
+      setIsFav(true);
+      toast.success('Đã thêm vào yêu thích');
+    }
+  };
 
   return (
     <motion.div
@@ -228,10 +287,23 @@ function SmallResultCard({ item, index }: { item: RecommendResult; index: number
           {index + 2}
         </span>
 
-        {/* Heart */}
-        <button className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/90 dark:bg-gray-900/80 flex items-center justify-center hover:scale-110 transition-all cursor-pointer shadow-sm">
-          <Heart className="w-4 h-4 text-red-400" />
-        </button>
+        {/* Heart & Bookmark */}
+        <div className="absolute top-3 right-3 flex flex-col gap-2">
+          <button
+            onClick={toggleFav}
+            className="w-8 h-8 rounded-full bg-white/90 dark:bg-gray-900/80 flex items-center justify-center hover:scale-110 transition-all cursor-pointer shadow-sm"
+            title="Lưu yêu thích"
+          >
+            <Heart className={`w-4 h-4 ${isFav ? 'text-red-500 fill-current' : 'text-gray-400'}`} />
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); onAddCollection(item); }}
+            className="w-8 h-8 rounded-full bg-white/90 dark:bg-gray-900/80 flex items-center justify-center hover:scale-110 hover:bg-indigo-50 transition-all cursor-pointer shadow-sm"
+            title="Thêm vào bộ sưu tập"
+          >
+            <Bookmark className="w-4 h-4 text-indigo-500" />
+          </button>
+        </div>
 
         {/* Bottom badges */}
         <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between">
@@ -342,7 +414,7 @@ function ResultPageContent() {
     }
     return true;
   });
-  
+
   const [searchQuery, setSearchQuery] = useState(queryFromUrl || '');
   const [inputValue, setInputValue] = useState(searchQuery);
   const [budget, setBudget] = useState<BudgetOption>(budgetFromUrl);
@@ -360,7 +432,7 @@ function ResultPageContent() {
   useEffect(() => {
     const token = localStorage.getItem('access_token');
     setIsLoggedIn(!!token);
-    
+
     // Save current URL as the last search URL for the Back button in settings
     if (typeof window !== 'undefined') {
       localStorage.setItem('last_search_url', window.location.pathname + window.location.search);
@@ -372,6 +444,8 @@ function ResultPageContent() {
   // Distance filter state (client-side, default OFF)
   const [distanceFilterEnabled, setDistanceFilterEnabled] = useState(false);
   const [distanceRadius, setDistanceRadius] = useState(2);
+
+  const [collectionModalItem, setCollectionModalItem] = useState<RecommendResult | null>(null);
 
   const { location, error: locError, isLoading: loadingLocation, getLocation } = useGeolocation();
 
@@ -417,7 +491,7 @@ function ResultPageContent() {
 
   useEffect(() => {
     if (!searchQuery) return;
-    
+
     const isRefresh = searchParams.get('refresh') === 'true';
 
     // If it's a refresh or first time, show loading
@@ -438,7 +512,7 @@ function ResultPageContent() {
           setFilteredCount(data.filtered_out_count || 0);
           setAllergyWarning(data.warning || '');
           setApiError(null);
-          setIsLoading(false); 
+          setIsLoading(false);
           return;
         } catch (e) {
           console.error("Cache restore failed", e);
@@ -458,7 +532,7 @@ function ResultPageContent() {
       const isRefresh = searchParams.get('refresh') === 'true';
       const cacheKey = `search_${searchQuery}_${budget}_${location.lat}_${location.lng}`;
       const cachedData = sessionStorage.getItem(cacheKey);
-      
+
       // Use cache ONLY if not a manual refresh
       if (cachedData && !isRefresh) {
         // NO DELAY for back navigation, show instantly
@@ -516,7 +590,12 @@ function ResultPageContent() {
             setFilteredCount(data.filtered_out_count || 0);
             setAllergyWarning(data.warning || '');
             setApiError(null);
-            
+
+            // Save search history
+            if (userId && searchQuery) {
+              historyService.addHistory(userId, searchQuery, budget, data.results.length);
+            }
+
             sessionStorage.setItem(cacheKey, JSON.stringify(data));
             sessionStorage.setItem(`last_results_${searchQuery}`, JSON.stringify(data));
             localStorage.setItem('last_search_url', window.location.pathname + window.location.search);
@@ -536,16 +615,16 @@ function ResultPageContent() {
         }
       } finally {
         clearTimeout(timeoutId);
-        
+
         // Differentiated delay: 1.7s from home, 1.5s for refresh
         const isFromHome = searchParams.get('from') === 'home';
         const minWait = isFromHome ? 1700 : 1500;
-        
+
         const elapsedTime = Date.now() - startTime;
         if (elapsedTime < minWait) {
           await new Promise(resolve => setTimeout(resolve, minWait - elapsedTime));
         }
-        
+
         setIsLoading(false);
       }
     };
@@ -771,13 +850,13 @@ function ResultPageContent() {
                   ) : (
                     <>
                       {/* Hero Card #1 */}
-                      {heroItem && <HeroResultCard item={heroItem} />}
+                      {heroItem && <HeroResultCard item={heroItem} onAddCollection={setCollectionModalItem} />}
 
                       {/* Small Cards Grid #2-#5 */}
                       {gridItems.length > 0 && (
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
                           {gridItems.map((item, idx) => (
-                            <SmallResultCard key={item.id || idx} item={item} index={idx} />
+                            <SmallResultCard key={item.id || idx} item={item} index={idx} onAddCollection={setCollectionModalItem} />
                           ))}
                         </div>
                       )}
@@ -792,6 +871,12 @@ function ResultPageContent() {
           </div>
         </main>
       </div>
+
+      <AddToCollectionModal
+        isOpen={!!collectionModalItem}
+        onClose={() => setCollectionModalItem(null)}
+        item={collectionModalItem}
+      />
     </div>
   );
 }

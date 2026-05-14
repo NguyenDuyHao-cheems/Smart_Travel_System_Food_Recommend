@@ -1,0 +1,132 @@
+"use client";
+
+import React, { useEffect, useState } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "./ui/dialog";
+import { collectionService, Collection } from "../services/collectionService";
+import { RecommendResult } from "../app/result/page";
+import { FolderPlus, Plus, Check } from "lucide-react";
+import { toast } from "sonner";
+
+interface AddToCollectionModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  item: RecommendResult | null;
+}
+
+export function AddToCollectionModal({ isOpen, onClose, item }: AddToCollectionModalProps) {
+  const [collections, setCollections] = useState<Collection[]>([]);
+  const [newCollectionName, setNewCollectionName] = useState("");
+  const [isCreating, setIsCreating] = useState(false);
+  const userId = typeof window !== "undefined" ? localStorage.getItem("user_id") : null;
+
+  useEffect(() => {
+    if (isOpen && userId) {
+      setCollections(collectionService.getCollections(userId));
+    }
+  }, [isOpen, userId]);
+
+  if (!item || !userId) return null;
+
+  const handleAddToCollection = (collectionId: string) => {
+    collectionService.addItemToCollection(userId, collectionId, item);
+    toast.success("Đã thêm vào bộ sưu tập");
+    onClose();
+  };
+
+  const handleCreateAndAdd = () => {
+    if (!newCollectionName.trim()) return;
+    const newColl = collectionService.createCollection(userId, newCollectionName.trim());
+    if (newColl) {
+      collectionService.addItemToCollection(userId, newColl.id, item);
+      toast.success("Đã tạo và thêm vào bộ sưu tập");
+      setNewCollectionName("");
+      setIsCreating(false);
+      onClose();
+    }
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-[400px]">
+        <DialogHeader>
+          <DialogTitle className="text-xl">Thêm vào bộ sưu tập</DialogTitle>
+          <DialogDescription>
+            Chọn bộ sưu tập để lưu "{item.name}"
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="py-2 max-h-[300px] overflow-y-auto space-y-2">
+          {collections.length === 0 && !isCreating ? (
+            <div className="text-center py-6 text-gray-500 dark:text-gray-400 text-sm">
+              Bạn chưa có bộ sưu tập nào.
+            </div>
+          ) : (
+            collections.map(coll => {
+              const isAdded = coll.items.some(i => i.name === item.name);
+              return (
+                <button
+                  key={coll.id}
+                  onClick={() => !isAdded && handleAddToCollection(coll.id)}
+                  disabled={isAdded}
+                  className={`w-full flex items-center justify-between p-3 rounded-xl border text-left transition-colors ${
+                    isAdded 
+                      ? 'bg-gray-50 dark:bg-gray-800/50 border-gray-100 dark:border-gray-800 opacity-70 cursor-not-allowed' 
+                      : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:border-indigo-500 dark:hover:border-indigo-500 cursor-pointer'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <FolderPlus className={`w-5 h-5 ${isAdded ? 'text-gray-400' : 'text-indigo-500'}`} />
+                    <span className={`font-medium ${isAdded ? 'text-gray-500 dark:text-gray-400' : 'text-gray-900 dark:text-white'}`}>
+                      {coll.name}
+                    </span>
+                  </div>
+                  {isAdded && <Check className="w-4 h-4 text-green-500" />}
+                </button>
+              );
+            })
+          )}
+        </div>
+
+        <div className="pt-2 border-t border-gray-100 dark:border-gray-800">
+          {!isCreating ? (
+            <button
+              onClick={() => setIsCreating(true)}
+              className="flex items-center gap-2 text-sm font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 transition-colors w-full p-2 cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              Tạo bộ sưu tập mới
+            </button>
+          ) : (
+            <div className="flex items-center gap-2 mt-2">
+              <input
+                type="text"
+                value={newCollectionName}
+                onChange={(e) => setNewCollectionName(e.target.value)}
+                placeholder="Tên bộ sưu tập..."
+                className="flex-1 px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleCreateAndAdd();
+                  if (e.key === 'Escape') setIsCreating(false);
+                }}
+              />
+              <button
+                onClick={handleCreateAndAdd}
+                disabled={!newCollectionName.trim()}
+                className="px-4 py-2 bg-indigo-500 hover:bg-indigo-600 disabled:bg-indigo-300 text-white text-sm font-semibold rounded-lg transition-colors cursor-pointer"
+              >
+                Lưu
+              </button>
+            </div>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
