@@ -10,16 +10,14 @@ def test_process_search_query_success(client):
     ) as mock_ai:
         mock_ai.return_value = AIResponseData(
             vector=[1.0, 2.0, 3.0],
-            budget=50000,
-            intent="Mì cay",
+            cleaned_query="mì cay",
         )
 
         response = client.post("/api/v1/search/process", json={"query": "Tôi muốn ăn mì cay"})
         assert response.status_code == 200
         data = response.json()
-        assert data["intent"] == "Mì cay"
+        assert data["cleaned_query"] == "mì cay"
         assert len(data["vector"]) == 3
-        assert data["budget"] == 50000
 
 
 def test_process_search_query_ai_unavailable(client):
@@ -73,8 +71,7 @@ def test_process_recommend_query_success_without_fallback(client):
     ) as mock_recommend:
         mock_ai.return_value = AIResponseData(
             vector=[1.0, 2.0, 3.0],
-            budget=50000,
-            intent="Mì cay",
+            cleaned_query="mì cay",
         )
         mock_recommend.return_value = _mock_recommend_results(
             results=["1", "2", "3"],
@@ -94,8 +91,7 @@ def test_process_recommend_query_success_without_fallback(client):
         assert "results" in data
         assert len(data["results"]) >= 1
         assert data["fallback_applied"] is False
-        assert data["applied_radius_km"] == SearchService.DEFAULT_RADIUS_KM
-        assert data["applied_budget"] == 50000
+        assert data["applied_budget"] == SearchService.DEFAULT_BUDGET_VND
 
         # Verify recommend was called with query_vector
         call_kwargs = mock_recommend.call_args
@@ -113,8 +109,7 @@ def test_process_recommend_query_budget_no_longer_triggers_memory_fallback(clien
         strict_budget = 30000
         mock_ai.return_value = AIResponseData(
             vector=[1.0, 2.0, 3.0],
-            budget=strict_budget,
-            intent="Mì cay",
+            cleaned_query="mì cay dưới 30k",
         )
         mock_recommend.return_value = _mock_recommend_results(
             results=["1", "2"],
@@ -135,8 +130,7 @@ def test_process_recommend_query_budget_no_longer_triggers_memory_fallback(clien
         assert len(data["results"]) >= 1
         assert data["fallback_applied"] is False
         assert data["fallback_reason"] is None
-        assert data["applied_radius_km"] == SearchService.DEFAULT_RADIUS_KM
-        assert data["applied_budget"] == strict_budget
+        assert data["applied_budget"] == SearchService.DEFAULT_BUDGET_VND
 
 
 def test_process_recommend_query_ai_unavailable(client):
@@ -158,22 +152,20 @@ def test_process_recommend_query_ai_unavailable(client):
         assert response.json()["detail"] == "AI engine is currently unavailable."
 
 
-def test_process_recommend_query_nearest_fallback_when_radius_filters_out_all_results(client):
+def test_process_recommend_query_empty_results_from_recommend(client):
+    """When recommend() returns empty results, response should still be valid."""
     with patch(
         "app.services.ai_client.AIServiceClient.extract_intent_and_vectorize",
         new_callable=AsyncMock,
     ) as mock_ai, patch(
         "app.domains.search.service.recommend",
         new_callable=AsyncMock,
-    ) as mock_recommend, patch.object(SearchService, "DEFAULT_RADIUS_KM", 0.1), patch.object(
-        SearchService, "FALLBACK_RADIUS_KM", 0.1
-    ):
+    ) as mock_recommend:
         mock_ai.return_value = AIResponseData(
             vector=[1.0, 2.0, 3.0],
-            budget=50000,
-            intent="Mì cay",
+            cleaned_query="mì cay",
         )
-        # recommend returns empty results (DB returned nothing in tiny radius)
+        # recommend returns empty results
         mock_recommend.return_value = _mock_recommend_results(results=[])
 
         response = client.post(
@@ -188,9 +180,7 @@ def test_process_recommend_query_nearest_fallback_when_radius_filters_out_all_re
         assert response.status_code == 200
         data = response.json()
         assert "results" in data
-        # Now results come from recommend() which returned empty →
-        # SearchService fallback logic applies on the empty safe_results list
-        assert data["fallback_applied"] is True or len(data["results"]) == 0
+        assert len(data["results"]) == 0
 
 
 # ── Budget priority tests ─────────────────────────────────────────────────────
@@ -207,8 +197,7 @@ def test_user_budget_takes_priority_over_ai_budget(client):
     ) as mock_recommend:
         mock_ai.return_value = AIResponseData(
             vector=[1.0, 2.0, 3.0],
-            budget=30000,       # AI extracts 30k from query text
-            intent="search_food",
+            cleaned_query="mì cay",
         )
         mock_recommend.return_value = _mock_recommend_results(
             results=["1"],
@@ -246,8 +235,7 @@ def test_ai_budget_used_when_user_omits_budget(client):
     ) as mock_recommend:
         mock_ai.return_value = AIResponseData(
             vector=[1.0, 2.0, 3.0],
-            budget=50000,       # AI extracts 50k
-            intent="search_food",
+            cleaned_query="mì cay dưới 50k",
         )
         mock_recommend.return_value = _mock_recommend_results(
             results=["1"],
@@ -265,11 +253,8 @@ def test_ai_budget_used_when_user_omits_budget(client):
 
         assert response.status_code == 200
         data = response.json()
-        assert data["applied_budget"] == 50000
-
-        # Verify recommend received AI budget
-        call_kwargs = mock_recommend.call_args
-        assert call_kwargs.kwargs.get("budget") == 50000
+        # No user budget, AI doesn't extract budget -> default used
+        assert data["applied_budget"] == SearchService.DEFAULT_BUDGET_VND
 
 
 def test_default_budget_when_both_user_and_ai_absent(client):
@@ -283,8 +268,7 @@ def test_default_budget_when_both_user_and_ai_absent(client):
     ) as mock_recommend:
         mock_ai.return_value = AIResponseData(
             vector=[1.0, 2.0, 3.0],
-            budget=None,        # AI extracts no budget
-            intent="search_food",
+            cleaned_query="mì cay",
         )
         mock_recommend.return_value = _mock_recommend_results(
             results=["1"],
@@ -316,8 +300,7 @@ def test_user_budget_zero_means_unlimited(client):
     ) as mock_recommend:
         mock_ai.return_value = AIResponseData(
             vector=[1.0, 2.0, 3.0],
-            budget=50000,
-            intent="search_food",
+            cleaned_query="mì cay",
         )
         mock_recommend.return_value = _mock_recommend_results(
             results=["1"],
@@ -329,13 +312,12 @@ def test_user_budget_zero_means_unlimited(client):
                 "query": "Tôi muốn ăn mì cay",
                 "lat": 10.8700,
                 "lng": 106.8031,
-                "budget": 0,  # Explicitly 0 -> unlimited
+                "budget": 0,  # Explicitly 0 -> treated as no specific budget -> default
             },
         )
 
         assert response.status_code == 200
         data = response.json()
-        # budget=0 should be used (not AI's 50k), and treated as None (unlimited)
-        # So it should NOT trigger fallback because any price is fine
+        # budget=0 is not > 0, so default budget is used
         assert data["fallback_applied"] is False
-        assert data["applied_budget"] is None  # None indicates unlimited in response
+        assert data["applied_budget"] == SearchService.DEFAULT_BUDGET_VND
