@@ -159,10 +159,6 @@ export default function SettingsPage() {
           backPath={typeof window !== 'undefined' ? localStorage.getItem('last_search_url') || '/' : '/'}
           username={username} 
           avatar={avatar} 
-          onProfileUpdate={(u, a) => {
-            if (u) setUsername(u);
-            if (a) setAvatar(a);
-          }}
         />
 
         <main className="flex-1 px-8 py-8 overflow-y-auto">
