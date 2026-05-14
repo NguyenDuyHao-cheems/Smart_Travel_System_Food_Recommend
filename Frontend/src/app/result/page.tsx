@@ -326,6 +326,12 @@ function ResultPageContent() {
   const budgetFromUrl = (searchParams.get('budget') || 'auto') as BudgetOption;
 
   // Check for cache instantly to avoid flicker
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const [isLoading, setIsLoading] = useState(() => {
     if (typeof window === 'undefined') return true;
     const searchParams = new URLSearchParams(window.location.search);
@@ -570,7 +576,7 @@ function ResultPageContent() {
         <main className="flex-1 px-4 md:px-8 py-8 overflow-y-auto">
           <div className="max-w-5xl mx-auto">
             {/* ── Budget + Distance filter bar (Synchronized with other blocks) ── */}
-            {!isLoading && (
+            {mounted && !isLoading && (
               <div className="mb-6 p-2 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-3xl shadow-sm flex flex-wrap items-center gap-x-8 gap-y-4">
                 <div className="pl-4">
                   <BudgetSelector
@@ -593,7 +599,7 @@ function ResultPageContent() {
             )}
 
             <AnimatePresence mode="wait">
-              {isLoading ? (
+              {(!mounted || isLoading) ? (
                 <LoadingState
                   searchQuery={searchQuery}
                   locError={locError}
