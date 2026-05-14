@@ -41,8 +41,6 @@ class RankingService:
         retrieval = RetrievalService(db)
         rows = retrieval.get_candidates(
             budget=request.budget,
-            user_location=request.user_location,
-            radius=request.radius,
             query_vector=getattr(request, "query_vector", None),
             query_text=getattr(request, "query", ""),
         )

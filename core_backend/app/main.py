@@ -4,6 +4,10 @@ from app.core.database import check_db_connection, engine, Base
 from app.domains.users.models import Base as UserBase
 from app.services.ai_client import get_ai_client
 
+# ── Import models trước create_all ──────────────────────────────────────
+import app.domains.search.models
+import app.domains.ranking.models
+
 # ── Create tables on startup (SQLite / Postgres compatible) ──────────────────
 UserBase.metadata.create_all(bind=engine)
 Base.metadata.create_all(bind=engine)
@@ -41,10 +45,12 @@ async def get_health_status():
 from app.domains.search.router import router as search_router
 from app.domains.users.router import router as users_router
 from app.domains.ranking.router import router as ml_router
+from app.domains.restaurants.router import router as restaurants_router
 
 app.include_router(search_router, prefix="/api/v1", tags=["Search"])
 app.include_router(users_router, prefix="/api/v1/users", tags=["Users"])
 app.include_router(ml_router, prefix="/api/v1", tags=["ML"])
+app.include_router(restaurants_router, prefix="/api/v1", tags=["Restaurants"])
 
 @app.get("/")
 def read_root():
