@@ -23,6 +23,10 @@ import { BudgetSelector, type BudgetOption } from '../../components/BudgetSelect
 import { DistanceFilter } from '../../components/DistanceFilter';
 import { Sidebar } from '../../components/Sidebar';
 import { SearchLoadingOverlay } from '../../components/ui/SearchLoadingOverlay';
+import { favoriteService } from '../../services/favoriteService';
+import { historyService } from '../../services/historyService';
+import { AddToCollectionModal } from '../../components/AddToCollectionModal';
+import { toast } from 'sonner';
 
 const roboto = Roboto({
   subsets: ['latin', 'vietnamese'],
@@ -91,10 +95,34 @@ function getMatchColor(match: string): string {
 /* ─────────────────────────────────────────────────────────────
    Hero Result Card (#1 — AI TOP PICK)
    ───────────────────────────────────────────────────────────── */
-function HeroResultCard({ item, sessionId }: { item: RecommendResult; sessionId?: string }) {
+function HeroResultCard({ item, sessionId, onAddCollection }: { item: RecommendResult; sessionId?: string; onAddCollection: (item: RecommendResult) => void }) {
   const router = useRouter();
   const handleNavigate = () => {
     router.push(`/restaurant/${item.id}${sessionId ? `?session_id=${sessionId}` : ''}`);
+  };
+
+  const [isFav, setIsFav] = useState(false);
+  const userId = typeof window !== 'undefined' ? localStorage.getItem('user_id') : null;
+
+  useEffect(() => {
+    if (userId) setIsFav(favoriteService.isFavorite(userId, item.name));
+  }, [userId, item.name]);
+
+  const toggleFav = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!userId) {
+      toast.error('Vui lòng đăng nhập để lưu yêu thích');
+      return;
+    }
+    if (isFav) {
+      favoriteService.removeFavorite(userId, item.name);
+      setIsFav(false);
+      toast.success('Đã xóa khỏi yêu thích');
+    } else {
+      favoriteService.addFavorite(userId, item);
+      setIsFav(true);
+      toast.success('Đã thêm vào yêu thích');
+    }
   };
 
   return (
@@ -165,11 +193,18 @@ function HeroResultCard({ item, sessionId }: { item: RecommendResult; sessionId?
             />
           </div>
           <div className="absolute top-6 right-6 flex gap-2">
-            <button className="w-10 h-10 rounded-full bg-white/90 dark:bg-gray-900/80 border border-gray-200 dark:border-gray-700 flex items-center justify-center hover:scale-110 transition-all cursor-pointer shadow-sm">
-              <Bookmark className="w-5 h-5 text-gray-400 dark:text-gray-500" />
+            <button
+              onClick={(e) => { e.stopPropagation(); onAddCollection(item); }}
+              className="w-10 h-10 rounded-full bg-white/90 dark:bg-gray-900/80 border border-gray-200 dark:border-gray-700 flex items-center justify-center hover:scale-110 transition-all cursor-pointer shadow-sm"
+              title="Thêm vào bộ sưu tập"
+            >
+              <Bookmark className="w-5 h-5 text-indigo-500" />
             </button>
-            <button className="w-10 h-10 rounded-full bg-white/90 dark:bg-gray-900/80 border border-gray-200 dark:border-gray-700 flex items-center justify-center hover:scale-110 transition-all cursor-pointer shadow-sm">
-              <Heart className="w-5 h-5 text-red-400" fill="currentColor" />
+            <button
+              onClick={toggleFav}
+              className="w-10 h-10 rounded-full bg-white/90 dark:bg-gray-900/80 border border-gray-200 dark:border-gray-700 flex items-center justify-center hover:scale-110 transition-all cursor-pointer shadow-sm"
+            >
+              <Heart className={`w-5 h-5 ${isFav ? 'text-red-500 fill-current' : 'text-gray-400'}`} />
             </button>
           </div>
         </div>
@@ -181,13 +216,37 @@ function HeroResultCard({ item, sessionId }: { item: RecommendResult; sessionId?
 /* ─────────────────────────────────────────────────────────────
    Small Result Card (#2-#5)
    ───────────────────────────────────────────────────────────── */
-function SmallResultCard({ item, index, sessionId }: { item: RecommendResult; index: number; sessionId?: string }) {
+function SmallResultCard({ item, index, sessionId, onAddCollection }: { item: RecommendResult; index: number; sessionId?: string; onAddCollection: (item: RecommendResult) => void }) {
   const router = useRouter();
   const tags = getTagsForItem(item, index);
   const matchColor = getMatchColor(item.match);
 
   const handleNavigate = () => {
     router.push(`/restaurant/${item.id}${sessionId ? `?session_id=${sessionId}` : ''}`);
+  };
+
+  const [isFav, setIsFav] = useState(false);
+  const userId = typeof window !== 'undefined' ? localStorage.getItem('user_id') : null;
+
+  useEffect(() => {
+    if (userId) setIsFav(favoriteService.isFavorite(userId, item.name));
+  }, [userId, item.name]);
+
+  const toggleFav = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!userId) {
+      toast.error('Vui lòng đăng nhập để lưu yêu thích');
+      return;
+    }
+    if (isFav) {
+      favoriteService.removeFavorite(userId, item.name);
+      setIsFav(false);
+      toast.success('Đã xóa khỏi yêu thích');
+    } else {
+      favoriteService.addFavorite(userId, item);
+      setIsFav(true);
+      toast.success('Đã thêm vào yêu thích');
+    }
   };
 
   return (
@@ -210,9 +269,23 @@ function SmallResultCard({ item, index, sessionId }: { item: RecommendResult; in
           {index + 2}
         </span>
 
-        <button className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/90 dark:bg-gray-900/80 flex items-center justify-center hover:scale-110 transition-all cursor-pointer shadow-sm">
-          <Heart className="w-4 h-4 text-red-400" />
-        </button>
+        {/* Heart & Bookmark */}
+        <div className="absolute top-3 right-3 flex flex-col gap-2">
+          <button
+            onClick={toggleFav}
+            className="w-8 h-8 rounded-full bg-white/90 dark:bg-gray-900/80 flex items-center justify-center hover:scale-110 transition-all cursor-pointer shadow-sm"
+            title="Lưu yêu thích"
+          >
+            <Heart className={`w-4 h-4 ${isFav ? 'text-red-500 fill-current' : 'text-gray-400'}`} />
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); onAddCollection(item); }}
+            className="w-8 h-8 rounded-full bg-white/90 dark:bg-gray-900/80 flex items-center justify-center hover:scale-110 hover:bg-indigo-50 transition-all cursor-pointer shadow-sm"
+            title="Thêm vào bộ sưu tập"
+          >
+            <Bookmark className="w-4 h-4 text-indigo-500" />
+          </button>
+        </div>
 
         <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between">
           <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold ${matchColor} text-white`}>
@@ -337,6 +410,8 @@ function ResultPageContent() {
   const [distanceFilterEnabled, setDistanceFilterEnabled] = useState(false);
   const [distanceRadius, setDistanceRadius] = useState(2);
 
+  const [collectionModalItem, setCollectionModalItem] = useState<RecommendResult | null>(null);
+
   const [results, setResults] = useState<RecommendResult[]>([]);
   const [apiError, setApiError] = useState<string | null>(null);
 
@@ -376,6 +451,7 @@ function ResultPageContent() {
         console.error("Load session error:", err);
         setApiError('Không thể kết nối đến máy chủ.');
       } finally {
+
         setIsLoading(false);
       }
     };
@@ -621,13 +697,13 @@ function ResultPageContent() {
               ) : (
                 <>
                   {/* Hero Card #1 */}
-                  {heroItem && <HeroResultCard item={heroItem} sessionId={sessionIdFromUrl} />}
+                  {heroItem && <HeroResultCard item={heroItem} sessionId={sessionIdFromUrl} onAddCollection={setCollectionModalItem} />}
 
                   {/* Small Cards Grid #2+ */}
                   {gridItems.length > 0 && (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                       {gridItems.map((item, idx) => (
-                        <SmallResultCard key={item.id || idx} item={item} index={idx} sessionId={sessionIdFromUrl} />
+                        <SmallResultCard key={item.id || idx} item={item} index={idx} sessionId={sessionIdFromUrl} onAddCollection={setCollectionModalItem} />
                       ))}
                     </div>
                   )}
@@ -639,6 +715,12 @@ function ResultPageContent() {
           )}
         </AnimatePresence>
       </div>
+
+      <AddToCollectionModal
+        isOpen={!!collectionModalItem}
+        onClose={() => setCollectionModalItem(null)}
+        item={collectionModalItem}
+      />
     </div>
   );
 }
