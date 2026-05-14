@@ -94,6 +94,7 @@ export default function RestaurantDetailPage() {
             src={restaurant.image_url || 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&q=80'}
             alt={restaurant.name}
             fill
+            sizes="100vw"
             className="object-cover"
             priority
           />
@@ -165,6 +166,7 @@ export default function RestaurantDetailPage() {
                             src={dish.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80'}
                             alt={dish.name}
                             fill
+                            sizes="(max-width: 768px) 100vw, 96px"
                             className="object-cover rounded-2xl"
                           />
                         </div>
