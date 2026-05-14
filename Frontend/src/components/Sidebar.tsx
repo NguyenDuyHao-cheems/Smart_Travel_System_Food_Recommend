@@ -20,19 +20,25 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
     <aside className={`fixed left-0 top-0 bottom-0 ${isCollapsed ? 'w-[80px]' : 'w-[260px]'} bg-white dark:bg-gray-900 border-r border-gray-100 dark:border-gray-800 flex flex-col z-50 shadow-sm transition-all duration-300`}>
       {/* Logo */}
       <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'justify-start'} px-5 h-[72px] border-b border-gray-50 dark:border-gray-800 transition-all duration-300 relative`}>
-        <div className={`flex items-center gap-2.5 ${isCollapsed ? 'hidden' : 'flex'}`}>
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-orange-400 to-orange-500 flex items-center justify-center shadow-md shadow-orange-200 dark:shadow-orange-500/20">
+        <a 
+          href="/" 
+          className={`flex items-center gap-2.5 ${isCollapsed ? 'hidden' : 'flex'} group hover:opacity-80 transition-opacity`}
+        >
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-orange-400 to-orange-500 flex items-center justify-center shadow-md shadow-orange-200 dark:shadow-orange-500/20 group-hover:scale-105 transition-transform">
             <span className="text-white text-lg">🍜</span>
           </div>
           <span className="text-xl font-bold text-gray-800 dark:text-white tracking-tight">
             Wanderbite
           </span>
-        </div>
+        </a>
 
         {isCollapsed && (
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-orange-400 to-orange-500 flex items-center justify-center shadow-md shadow-orange-200 dark:shadow-orange-500/20">
+          <a 
+            href="/" 
+            className="w-9 h-9 rounded-xl bg-gradient-to-br from-orange-400 to-orange-500 flex items-center justify-center shadow-md shadow-orange-200 dark:shadow-orange-500/20 hover:scale-105 transition-transform cursor-pointer"
+          >
             <span className="text-white text-lg">🍜</span>
-          </div>
+          </a>
         )}
 
         <button 
@@ -66,26 +72,6 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
           ))}
         </div>
 
-        {/* AI Suggestion Card */}
-        {!isCollapsed && (
-          <div className="mt-6 mx-1 p-4 bg-gradient-to-br from-orange-50 dark:from-orange-500/10 to-amber-50/60 dark:to-amber-500/5 rounded-2xl border border-orange-100/60 dark:border-orange-500/20 transition-all duration-300">
-            <div className="flex items-center gap-1.5 mb-2">
-              <span className="text-orange-500 font-semibold text-[13px]">
-                AI Gợi ý hôm nay ✨
-              </span>
-            </div>
-            <p className="text-[12px] text-gray-500 dark:text-gray-400 leading-relaxed mb-3">
-              Hôm nay trời nóng, thử món mát lạnh, thanh đạm nhé!
-            </p>
-            <div className="w-full h-[72px] rounded-xl overflow-hidden">
-              <img
-                src="https://images.unsplash.com/photo-1567337710282-00832b415979?w=400&h=200&fit=crop"
-                alt="Gợi ý món ăn"
-                className="w-full h-full object-cover"
-              />
-            </div>
-          </div>
-        )}
       </nav>
 
 

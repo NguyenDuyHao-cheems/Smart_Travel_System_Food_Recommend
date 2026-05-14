@@ -123,7 +123,7 @@ function HeroResultCard({ item }: { item: RecommendResult }) {
           </div>
 
           {/* Food Name */}
-          <h2 
+          <h2
             className={`text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-1 tracking-tight ${item.google_maps_url ? 'cursor-pointer hover:text-orange-500 transition-colors' : ''}`}
             onClick={() => item.google_maps_url && window.open(item.google_maps_url, '_blank')}
             title={item.google_maps_url ? "Xem trên Google Maps" : ""}
@@ -133,7 +133,7 @@ function HeroResultCard({ item }: { item: RecommendResult }) {
 
           {/* Restaurant Name */}
           {item.restaurantName && (
-            <p 
+            <p
               className={`text-base font-semibold text-orange-500 mb-4 ${item.google_maps_url ? 'cursor-pointer hover:text-orange-600 transition-colors' : ''}`}
               onClick={() => item.google_maps_url && window.open(item.google_maps_url, '_blank')}
               title={item.google_maps_url ? "Xem trên Google Maps" : ""}
@@ -248,7 +248,7 @@ function SmallResultCard({ item, index }: { item: RecommendResult; index: number
 
       {/* Info */}
       <div className="p-4">
-        <h3 
+        <h3
           className={`text-base font-bold text-gray-800 dark:text-white mb-0.5 transition-colors ${item.google_maps_url ? 'cursor-pointer hover:text-orange-500' : ''}`}
           onClick={() => item.google_maps_url && window.open(item.google_maps_url, '_blank')}
           title={item.google_maps_url ? "Xem trên Google Maps" : ""}
@@ -256,7 +256,7 @@ function SmallResultCard({ item, index }: { item: RecommendResult; index: number
           {item.name}
         </h3>
         {item.restaurantName && (
-          <p 
+          <p
             className={`text-xs font-semibold text-orange-500 mb-2 ${item.google_maps_url ? 'cursor-pointer hover:text-orange-600 transition-colors' : ''}`}
             onClick={() => item.google_maps_url && window.open(item.google_maps_url, '_blank')}
             title={item.google_maps_url ? "Xem trên Google Maps" : ""}
@@ -326,7 +326,7 @@ function ResultPageContent() {
   const budgetFromUrl = (searchParams.get('budget') || 'auto') as BudgetOption;
 
   const [isLoading, setIsLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState(queryFromUrl || 'Tìm quán mì cay 7 cấp độ ở Làng Đại Học');
+  const [searchQuery, setSearchQuery] = useState(queryFromUrl || '');
   const [inputValue, setInputValue] = useState(searchQuery);
   const [budget, setBudget] = useState<BudgetOption>(budgetFromUrl);
 

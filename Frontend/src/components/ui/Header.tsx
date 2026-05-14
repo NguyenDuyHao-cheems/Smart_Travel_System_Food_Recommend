@@ -43,17 +43,6 @@ export function Header({ showBack = false }: HeaderProps) {
             Back
           </button>
         )}
-        <a 
-          href="/" 
-          className="flex items-center gap-2.5 group hover:opacity-90 transition-opacity cursor-pointer"
-        >
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-orange-400 to-orange-500 flex items-center justify-center shadow-md shadow-orange-200 dark:shadow-orange-500/20 group-hover:scale-105 transition-transform">
-            <span className="text-white text-lg">🍜</span>
-          </div>
-          <span className="text-xl font-bold text-gray-800 dark:text-white tracking-tight group-hover:text-orange-500 transition-colors">
-            Wanderbite
-          </span>
-        </a>
       </div>
 
       {/* Right: ThemeToggle */}
@@ -72,7 +61,7 @@ export function Header({ showBack = false }: HeaderProps) {
           <span className="font-medium">Tiếng Việt</span>
         </button>
         <ThemeToggle />
-        
+
         {username ? (
           <div className="flex items-center gap-3 ml-2">
             <div className="flex items-center gap-2">
@@ -84,7 +73,7 @@ export function Header({ showBack = false }: HeaderProps) {
               </span>
             </div>
             <div className="h-4 w-px bg-gray-200 dark:bg-gray-700 mx-1"></div>
-            <button 
+            <button
               onClick={handleLogout}
               className="text-[13px] font-semibold text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400 transition-colors cursor-pointer"
             >
@@ -92,7 +81,7 @@ export function Header({ showBack = false }: HeaderProps) {
             </button>
           </div>
         ) : (
-          <button 
+          <button
             onClick={() => router.push('/auth')}
             className="ml-2 px-4 py-2 rounded-xl bg-orange-50 dark:bg-orange-500/10 text-orange-600 dark:text-orange-500 text-sm font-bold hover:bg-orange-100 dark:hover:bg-orange-500/20 transition-colors cursor-pointer"
           >
