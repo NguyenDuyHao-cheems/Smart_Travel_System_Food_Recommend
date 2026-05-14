@@ -3,6 +3,7 @@
 import React, { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useGoogleLogin, GoogleOAuthProvider } from "@react-oauth/google";
+import { toast } from "sonner";
 import { Roboto } from "next/font/google";
 import {
   User,
@@ -83,10 +84,14 @@ function AuthPageContent() {
 
       const data = await res.json();
 
-      // A/B: Thành công -> Lưu token
+      // A/B: Thành công -> Lưu token và thông tin người dùng
       localStorage.setItem("access_token", data.access_token);
       localStorage.setItem("user_id", data.user_id);
-      localStorage.setItem("username", data.username || username);
+      localStorage.setItem("username", data.full_name || data.username || username);
+      localStorage.setItem("login_method", "local");
+      if (data.avatar_url) {
+        localStorage.setItem("user_avatar", data.avatar_url);
+      }
 
       // Chuyển hướng: Nếu là Đăng ký mới -> Ép buộc sang trang Onboarding để làm khảo sát
       if (mode === "signup") {
@@ -95,7 +100,7 @@ function AuthPageContent() {
         router.push(redirectPath);
       }
     } catch (err: any) {
-      setErrorMsg(err.message || "Có lỗi xảy ra, vui lòng thử lại.");
+      toast.error(err.message || "Có lỗi xảy ra, vui lòng thử lại.");
     } finally {
       setIsLoading(false);
     }
@@ -121,7 +126,8 @@ function AuthPageContent() {
         const data = await res.json();
         localStorage.setItem("access_token", data.access_token);
         localStorage.setItem("user_id", data.user_id);
-        localStorage.setItem("username", data.username);
+        localStorage.setItem("username", data.full_name || data.username);
+        localStorage.setItem("login_method", "google");
         if (data.avatar_url) {
           localStorage.setItem("user_avatar", data.avatar_url);
         }
@@ -133,7 +139,7 @@ function AuthPageContent() {
           router.push(redirectPath);
         }
       } catch (err: any) {
-        setErrorMsg(err.message || "Có lỗi xảy ra khi đăng nhập Google.");
+        toast.error(err.message || "Có lỗi xảy ra khi đăng nhập Google.");
       } finally {
         setIsLoading(false);
       }

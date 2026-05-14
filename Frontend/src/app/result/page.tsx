@@ -103,7 +103,7 @@ function HeroResultCard({ item }: { item: RecommendResult }) {
     <motion.div
       initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
+      transition={{ duration: 0.3 }}
       className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700 shadow-sm dark:shadow-none overflow-hidden hover:shadow-lg dark:hover:border-gray-600 transition-all duration-300 mb-8"
     >
       {/* TOP PICK Badge */}
@@ -207,7 +207,7 @@ function SmallResultCard({ item, index }: { item: RecommendResult; index: number
     <motion.div
       initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.1 }}
+      transition={{ delay: index * 0.05 }}
       className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm dark:shadow-none overflow-hidden hover:shadow-lg dark:hover:border-gray-600 transition-all duration-300 cursor-pointer group"
     >
       {/* Image */}
@@ -325,7 +325,18 @@ function ResultPageContent() {
   const queryFromUrl = searchParams.get('q') || '';
   const budgetFromUrl = (searchParams.get('budget') || 'auto') as BudgetOption;
 
-  const [isLoading, setIsLoading] = useState(true);
+  // Check for cache instantly to avoid flicker
+  const [isLoading, setIsLoading] = useState(() => {
+    if (typeof window === 'undefined') return true;
+    const searchParams = new URLSearchParams(window.location.search);
+    const q = searchParams.get('q');
+    const isRefresh = searchParams.get('refresh') === 'true';
+    if (q && !isRefresh) {
+      return !sessionStorage.getItem(`last_results_${q}`);
+    }
+    return true;
+  });
+  
   const [searchQuery, setSearchQuery] = useState(queryFromUrl || '');
   const [inputValue, setInputValue] = useState(searchQuery);
   const [budget, setBudget] = useState<BudgetOption>(budgetFromUrl);
@@ -338,6 +349,12 @@ function ResultPageContent() {
   const [allergyWarning, setAllergyWarning] = useState<string>('');
 
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  // Sync login status immediately on mount
+  useEffect(() => {
+    const token = localStorage.getItem('access_token');
+    setIsLoggedIn(!!token);
+  }, []);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [showGuestNotice, setShowGuestNotice] = useState(true);
 
@@ -360,7 +377,7 @@ function ResultPageContent() {
 
   const handleSearch = () => {
     if (inputValue.trim() !== '') {
-      router.push(`/result?q=${encodeURIComponent(inputValue)}&budget=${budget}`);
+      router.push(`/result?q=${encodeURIComponent(inputValue)}&budget=${budget}&refresh=true`);
     }
   };
 
@@ -368,23 +385,95 @@ function ResultPageContent() {
     getLocation();
   }, [getLocation]);
 
-  const [results, setResults] = useState<RecommendResult[]>([]);
+  const [results, setResults] = useState<RecommendResult[]>(() => {
+    if (typeof window === 'undefined') return [];
+    const searchParams = new URLSearchParams(window.location.search);
+    const q = searchParams.get('q');
+    const isRefresh = searchParams.get('refresh') === 'true';
+    if (q && !isRefresh) {
+      const cached = sessionStorage.getItem(`last_results_${q}`);
+      if (cached) {
+        try {
+          return JSON.parse(cached).results;
+        } catch (e) {
+          return [];
+        }
+      }
+    }
+    return [];
+  });
   const [apiError, setApiError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!location) return;
+    if (!searchQuery) return;
+    
+    const isRefresh = searchParams.get('refresh') === 'true';
+
+    // If it's a refresh or first time, show loading
+    if (isRefresh || !results.length) {
+      setIsLoading(true);
+    }
+
+    // Attempt instant restore from cache ONLY if NOT a refresh
+    if (!isRefresh) {
+      const lastData = sessionStorage.getItem(`last_results_${searchQuery}`);
+      if (lastData) {
+        try {
+          const data = JSON.parse(lastData);
+          setResults(data.results);
+          setFallbackApplied(data.fallback_applied || false);
+          setFallbackReason(data.fallback_reason || '');
+          setAppliedBudget(data.applied_budget ?? null);
+          setFilteredCount(data.filtered_out_count || 0);
+          setAllergyWarning(data.warning || '');
+          setApiError(null);
+          setIsLoading(false); 
+          return;
+        } catch (e) {
+          console.error("Cache restore failed", e);
+        }
+      }
+    } else {
+      // If it IS a refresh, clean the URL immediately so "Back" won't trigger it again
+      const newUrl = window.location.pathname + window.location.search.replace(/[&?]refresh=true/, '');
+      window.history.replaceState({}, '', newUrl);
+    }
+  }, [searchQuery, searchParams]);
+
+  useEffect(() => {
+    if (!location || !searchQuery) return;
 
     const fetchRecommendations = async () => {
-      // [1] Lấy token và user_id từ localStorage
+      const isRefresh = searchParams.get('refresh') === 'true';
+      const cacheKey = `search_${searchQuery}_${budget}_${location.lat}_${location.lng}`;
+      const cachedData = sessionStorage.getItem(cacheKey);
+      
+      // Use cache ONLY if not a manual refresh
+      if (cachedData && !isRefresh) {
+        // NO DELAY for back navigation, show instantly
+        const data = JSON.parse(cachedData);
+        setResults(data.results);
+        setFallbackApplied(data.fallback_applied || false);
+        setFallbackReason(data.fallback_reason || '');
+        setAppliedBudget(data.applied_budget ?? null);
+        setFilteredCount(data.filtered_out_count || 0);
+        setAllergyWarning(data.warning || '');
+        setApiError(null);
+        setIsLoading(false);
+        return;
+      }
+
+      // If no cache or first time, show loading if not already restored
+      if (results.length === 0 || isRefresh) {
+        setIsLoading(true);
+      }
+
+      // If it's a refresh, we want a minimum delay to show the "AI Vibe"
+      const startTime = Date.now();
+
       const token = localStorage.getItem('access_token');
       const userId = localStorage.getItem('user_id');
 
-      setIsLoggedIn(!!token);
-
-      // Note: Anonymous search allowed (no redirect)
-      setIsLoading(true);
-
-      // Thêm AbortController để chống treo (timeout sau 15 giây) nếu Backend/Database bị kẹt
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 15000);
 
@@ -395,16 +484,13 @@ function ResultPageContent() {
           signal: controller.signal,
           headers: {
             'Content-Type': 'application/json',
-            // [1] Thêm header Authorization: Bearer <token>
             'Authorization': `Bearer ${token}`
           },
           body: JSON.stringify({
             query: searchQuery,
             lat: location.lat,
             lng: location.lng,
-            // [1] Include user_id từ localStorage vào request body
             user_id: userId || undefined,
-            // Đã cập nhật theo yêu cầu Hào: gửi format dạng integer
             budget: budget === 'auto' ? undefined : parseInt(budget, 10),
           }),
         });
@@ -416,15 +502,16 @@ function ResultPageContent() {
             setFallbackApplied(data.fallback_applied || false);
             setFallbackReason(data.fallback_reason || '');
             setAppliedBudget(data.applied_budget ?? null);
-
             setFilteredCount(data.filtered_out_count || 0);
             setAllergyWarning(data.warning || '');
             setApiError(null);
+            
+            sessionStorage.setItem(cacheKey, JSON.stringify(data));
+            sessionStorage.setItem(`last_results_${searchQuery}`, JSON.stringify(data));
+            localStorage.setItem('last_search_url', window.location.pathname + window.location.search);
           }
         } else if (res.status === 401) {
-          // TODO: Chờ team có trang /auth thì mở ra để bắt lỗi hết hạn token
-          // router.push('/auth');
-          setApiError('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại. (TODO: Redirect to /auth)');
+          setApiError('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
         } else if (res.status === 503) {
           setApiError('Hệ thống AI đang khởi động, vui lòng đợi trong giây lát...');
         } else {
@@ -438,12 +525,22 @@ function ResultPageContent() {
         }
       } finally {
         clearTimeout(timeoutId);
+        
+        // Differentiated delay: 1.7s from home, 1.5s for refresh
+        const isFromHome = searchParams.get('from') === 'home';
+        const minWait = isFromHome ? 1700 : 1500;
+        
+        const elapsedTime = Date.now() - startTime;
+        if (elapsedTime < minWait) {
+          await new Promise(resolve => setTimeout(resolve, minWait - elapsedTime));
+        }
+        
         setIsLoading(false);
       }
     };
 
     fetchRecommendations();
-  }, [location, searchQuery, budget]); // Re-fetch khi budget thay đổi
+  }, [location, searchQuery, budget]);
 
   // Client-side distance filter — no API re-fetch needed
   const displayResults = useMemo(() => {
@@ -465,27 +562,31 @@ function ResultPageContent() {
       <div className={`flex-1 flex flex-col transition-all duration-300 ${isSidebarCollapsed ? 'ml-[80px]' : 'ml-[260px]'}`}>
         <Header showBack={false} />
 
-        {/* Budget + Distance filter bar */}
-        <div className="px-6 md:px-10 py-5 border-b border-gray-100 dark:border-gray-800 bg-[#F7F8FA] dark:bg-gray-900 flex flex-wrap items-center gap-x-4 gap-y-4">
-          <BudgetSelector
-            value={budget}
-            onChange={(newBudget) => {
-              setBudget(newBudget);
-              router.push(`/result?q=${encodeURIComponent(inputValue)}&budget=${newBudget}`);
-            }}
-          />
-          <DistanceFilter
-            enabled={distanceFilterEnabled}
-            onToggle={setDistanceFilterEnabled}
-            radius={distanceRadius}
-            onRadiusChange={setDistanceRadius}
-            totalCount={results.length}
-            filteredCount={displayResults.length}
-          />
-        </div>
-
-        <main className="flex-1 px-6 md:px-10 py-8 overflow-y-auto">
+        <main className="flex-1 px-4 md:px-8 py-8 overflow-y-auto">
           <div className="max-w-5xl mx-auto">
+            {/* ── Budget + Distance filter bar (Synchronized with other blocks) ── */}
+            {!isLoading && (
+              <div className="mb-6 p-2 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-3xl shadow-sm flex flex-wrap items-center gap-x-8 gap-y-4">
+                <div className="pl-4">
+                  <BudgetSelector
+                    value={budget}
+                    onChange={(newBudget) => {
+                      setBudget(newBudget);
+                      router.push(`/result?q=${encodeURIComponent(inputValue)}&budget=${newBudget}&refresh=true`);
+                    }}
+                  />
+                </div>
+                <DistanceFilter
+                  enabled={distanceFilterEnabled}
+                  onToggle={setDistanceFilterEnabled}
+                  radius={distanceRadius}
+                  onRadiusChange={setDistanceRadius}
+                  totalCount={results.length}
+                  filteredCount={displayResults.length}
+                />
+              </div>
+            )}
+
             <AnimatePresence mode="wait">
               {isLoading ? (
                 <LoadingState
@@ -498,7 +599,7 @@ function ResultPageContent() {
                   key="results"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  transition={{ duration: 0.5 }}
+                  transition={{ duration: 0.3 }}
                 >
                   {/* ─── Title Section & Search Bar ─── */}
                   <motion.div

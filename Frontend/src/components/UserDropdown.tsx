@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { User, LogOut, Settings, ChevronDown, UserCircle } from "lucide-react";
 
-export function UserDropdown() {
+export function UserDropdown({ username: propUsername, avatar: propAvatar }: { username?: string | null, avatar?: string | null }) {
   const [isOpen, setIsOpen] = useState(false);
   const [username, setUsername] = useState<string | null>(null);
   const [avatar, setAvatar] = useState<string | null>(null);
@@ -13,13 +13,11 @@ export function UserDropdown() {
   const router = useRouter();
 
   useEffect(() => {
-    const storedUser = localStorage.getItem("username");
-    const token = localStorage.getItem("access_token");
-    const storedAvatar = localStorage.getItem("user_avatar");
-    if (token) {
-      setUsername(storedUser || "User");
-      setAvatar(storedAvatar);
-    }
+    if (propUsername !== undefined && propUsername !== null) setUsername(propUsername);
+    else setUsername(localStorage.getItem("username"));
+
+    if (propAvatar !== undefined && propAvatar !== null) setAvatar(propAvatar);
+    else setAvatar(localStorage.getItem("user_avatar"));
 
     // Click outside to close
     const handleClickOutside = (event: MouseEvent) => {
@@ -29,7 +27,7 @@ export function UserDropdown() {
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  }, [propUsername, propAvatar]);
 
   const handleLogout = () => {
     localStorage.removeItem("access_token");
@@ -87,13 +85,12 @@ export function UserDropdown() {
               <p className="text-sm font-bold text-gray-900 dark:text-white truncate">{username}</p>
             </div>
 
-            <button className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors text-left">
+            <button 
+              onClick={() => router.push("/profile")}
+              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors text-left cursor-pointer"
+            >
               <UserCircle className="w-4 h-4" />
               Hồ sơ cá nhân
-            </button>
-            <button className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors text-left">
-              <Settings className="w-4 h-4" />
-              Cài đặt
             </button>
 
             <div className="h-px bg-gray-100 dark:border-gray-800 my-1 mx-2" />
