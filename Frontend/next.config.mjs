@@ -1,6 +1,19 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: 'standalone', // Required for Docker multi-stage build
   turbopack: {}, // Suppresses the warning about custom webpack configs in Turbopack mode
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'mms.img.susercontent.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'images.unsplash.com',
+      },
+    ],
+  },
   webpack: (config, { dev }) => {
     if (dev) {
       config.watchOptions = {

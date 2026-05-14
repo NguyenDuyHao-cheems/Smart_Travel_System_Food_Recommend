@@ -29,6 +29,7 @@ class RestaurantModel(Base):
 
     image_url = Column(String, nullable=True)
     opening_hours = Column(String, nullable=True)
+    google_maps_url = Column(String, nullable=True)
 
     tag_match: bool = False  # non-DB field for boosting/ranking
 
@@ -44,7 +45,6 @@ class DishModel(Base):
     name = Column(String, nullable=False)
     price = Column(Integer, nullable=False)
     image_url = Column(String, nullable=True)
-    ingredients = Column(JSON, default=[])
     allergens = Column(JSON, default=[])
     is_vegetarian = Column(Boolean, default=False)
     embedding_vector = Column(Vector(settings.VECTOR_DIM), nullable=True)

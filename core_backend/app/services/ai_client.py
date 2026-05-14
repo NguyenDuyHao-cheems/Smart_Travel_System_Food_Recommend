@@ -6,7 +6,7 @@ from app.domains.search.schemas import AIResponseData
 
 logger = logging.getLogger(__name__)
 
-_TIMEOUT = 10.0
+_TIMEOUT = 60.0
 
 
 async def embed_text(text: str) -> Optional[List[float]]:

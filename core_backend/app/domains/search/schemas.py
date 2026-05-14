@@ -32,6 +32,7 @@ class RecommendResult(BaseModel):
     rating: str
     reason: str
     img: str
+    google_maps_url: Optional[str] = None
 
 class SearchRecommendResponse(BaseModel):
     """

@@ -59,9 +59,24 @@ class SearchService:
             budget=effective_budget,
             user_location=[request.lat, request.lng],
             tag_name=request.tag_name,
+            cleaned_query=ai_response.cleaned_query,
         )
 
         raw_candidates = recommend_results["results"][:15]
+        
+        # --- DEBUG: In ra 15 candidates ở terminal ---
+        print("\n" + "="*50)
+        print("DEBUG: 15 CANDIDATES TỪ RECOMMENDATION")
+        print("="*50)
+        for i, c in enumerate(raw_candidates):
+            c_id = getattr(c, 'id', 'N/A')
+            c_name = getattr(c, 'name', 'N/A')
+            c_score = getattr(c, 'ranking_score', None)
+            c_dist = getattr(c, 'distance', None)
+            print(f"[{i+1}] ID: {c_id} | Name: {c_name} | RankScore: {c_score} | Distance(pgvector): {c_dist}")
+        print("="*50 + "\n")
+        # ---------------------------------------------
+
         filtered_out_count = recommend_results["filtered_out_count"]
         warning = recommend_results.get("warning")
 
@@ -85,9 +100,17 @@ class SearchService:
                     match_pct = 95
                 match_str = f"{match_pct}%"
             elif hasattr(model, "distance") and model.distance is not None:
-                match_pct = max(0, min(100, int((1.0 - model.distance) * 100)))
-                if match_pct < 15:
-                    # Loại bỏ kết quả có cosine similarity quá thấp (<15%)
+                # Cosine distance trong pgvector: [0, 2]
+                # Cosine similarity = 1.0 - distance: [-1, 1]
+                similarity = 1.0 - model.distance
+                
+                # Map similarity [-1, 1] sang [0, 100]%
+                match_pct = max(0, min(100, int((similarity + 1.0) / 2.0 * 100)))
+                
+                # Logic cũ: loại bỏ nếu similarity < 0.15
+                # Với công thức mới, similarity = 0.15 => match_pct = 57.5%
+                if match_pct < 57:
+                    # Loại bỏ kết quả có cosine similarity quá thấp
                     continue
                 match_str = f"{match_pct}%"
             else:
@@ -161,4 +184,39 @@ class SearchService:
             rating=str(model.rating_avg) if model.rating_avg else "Mới",
             reason="Phù hợp với tìm kiếm của bạn",
             img=model.image_url or "/images/default_food.jpg",
+            google_maps_url=getattr(model, 'google_maps_url', None),
         )
+
+    @staticmethod
+    def _extract_min_price(result: RecommendResult) -> int:
+        """Extract the minimum price in VND from a display price string like '49k - 89k'.
+
+        Returns a high sentinel (999_999_999) when parsing fails.
+        """
+        try:
+            price_str = result.price
+            if not price_str:
+                return 999_999_999
+            first_part = price_str.split("-")[0].strip().lower()
+            if "k" in first_part:
+                return int(first_part.replace("k", "").strip()) * 1000
+            if first_part.isdigit():
+                return int(first_part)
+            return 999_999_999
+        except Exception:
+            return 999_999_999
+
+    @staticmethod
+    def _extract_distance_km(result: RecommendResult) -> float:
+        """Extract numeric distance from a display string like '1.5 km'.
+
+        Returns a large sentinel (9999.0) when parsing fails.
+        """
+        try:
+            dist_str = result.dist
+            if not dist_str:
+                return 9999.0
+            numeric_part = dist_str.lower().replace("km", "").strip()
+            return float(numeric_part)
+        except Exception:
+            return 9999.0

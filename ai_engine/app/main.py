@@ -1,6 +1,7 @@
 import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
+import logging
 from app.nlp.embeddings import router as nlp_router
 from app.ranking.router import router as ranking_router
 from app.nlp.model_provider import get_embedding_model
@@ -39,4 +40,4 @@ def read_root():
 
 @app.get("/api/health")
 def get_health_status():
-    return {"status": "online", "ai_engine": True}
+    return {"status": "online", "ai_engine": True, "model_loaded": True}

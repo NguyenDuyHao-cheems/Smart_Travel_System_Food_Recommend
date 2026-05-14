@@ -5,10 +5,11 @@ import { motion } from 'framer-motion';
 import { Sparkles } from 'lucide-react';
 
 const AI_STATUS_MESSAGES = [
-  'Đang phân tích sở thích ẩm thực...',
-  'Tìm kiếm quán ăn gần bạn...',
-  'AI đang lọc kết quả tốt nhất...',
-  'Sắp xếp theo độ phù hợp...',
+  "Đang khởi tạo hệ thống phân tích toàn diện...",
+  "Đang quét dữ liệu ẩm thực trên toàn khu vực...",
+  "Đang phân tích thói quen và sở thích của bạn...",
+  "Đang tối ưu hóa danh sách gợi ý tốt nhất...",
+  "Sẵn sàng hiển thị kết quả cho bạn!",
 ];
 
 /* ── Skeleton Card ── */
@@ -112,7 +113,7 @@ export function LoadingState({ searchQuery, locError, getLocation }: LoadingStat
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0, y: -20 }}
-      transition={{ duration: 0.4 }}
+      transition={{ duration: 0.3 }}
     >
       {/* Title section */}
       <div className="flex flex-col items-center text-center mb-10">
@@ -151,7 +152,7 @@ export function LoadingState({ searchQuery, locError, getLocation }: LoadingStat
         <div className="mt-6 w-64 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
           <motion.div
             animate={{ x: ['-100%', '200%'] }}
-            transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
+            transition={{ duration: 1, repeat: Infinity, ease: 'easeInOut' }}
             className="h-full w-1/2 rounded-full bg-gradient-to-r from-transparent via-orange-400 to-transparent"
           />
         </div>
@@ -161,7 +162,7 @@ export function LoadingState({ searchQuery, locError, getLocation }: LoadingStat
       <HeroSkeleton />
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         {[0, 1, 2, 3].map(i => (
-          <SkeletonCard key={i} delay={i * 0.08} />
+          <SkeletonCard key={i} delay={i * 0.04} />
         ))}
       </div>
     </motion.div>

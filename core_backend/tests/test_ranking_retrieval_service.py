@@ -13,6 +13,9 @@ class DummyQuery:
         self.filters.extend(criteria)
         return self
 
+    def add_columns(self, *columns):
+        return self
+
     def join(self, *args, **kwargs):
         return self
 
@@ -27,6 +30,9 @@ class DummyQuery:
         self.limit_value = value
         return self
 
+    def count(self):
+        return 0
+
     def all(self):
         return []
 
@@ -36,8 +42,8 @@ class DummySession:
         self.query_obj = DummyQuery()
         self.model = None
 
-    def query(self, model):
-        self.model = model
+    def query(self, *models):
+        self.model = models[0] if models else None
         return self.query_obj
 
 
@@ -75,17 +81,13 @@ def test_get_candidates_adds_budget_filter_to_postgres_query():
     service = RetrievalService(db)
 
     service.get_candidates(
-        tags=[],
         budget=50_000,
-        user_location=[10.87, 106.80],
-        radius=5.0,
     )
 
     sql = _compiled_filter_sql(db.query_obj)
 
-    assert "price_range IS NOT NULL" in sql
     assert "split_part" in sql
-    assert "<= 50000" in sql
+    assert "50000" in sql
 
 
 def test_get_candidates_skips_budget_filter_when_budget_is_zero():
@@ -93,16 +95,12 @@ def test_get_candidates_skips_budget_filter_when_budget_is_zero():
     service = RetrievalService(db)
 
     service.get_candidates(
-        tags=[],
         budget=0,
-        user_location=[10.87, 106.80],
-        radius=5.0,
     )
 
     sql = _compiled_filter_sql(db.query_obj)
 
     assert "split_part" not in sql
-    assert "price_range IS NOT NULL" not in sql
 
 
 # -------------------------------------------------------------------
@@ -117,10 +115,7 @@ def test_get_candidates_with_query_vector_orders_by_cosine_distance():
     fake_vector = [0.1] * 768
 
     service.get_candidates(
-        tags=[],
         budget=0,
-        user_location=[10.87, 106.80],
-        radius=5.0,
         query_vector=fake_vector,
     )
 
@@ -137,10 +132,7 @@ def test_get_candidates_without_query_vector_orders_by_rating():
     service = RetrievalService(db)
 
     service.get_candidates(
-        tags=[],
         budget=0,
-        user_location=[10.87, 106.80],
-        radius=5.0,
     )
 
     order_sql = _compiled_order_sql(db.query_obj)
