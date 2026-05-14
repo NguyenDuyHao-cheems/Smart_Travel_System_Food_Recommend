@@ -1,0 +1,144 @@
+"use client";
+
+import React from "react";
+import { RecommendResult } from "../app/result/page";
+import { Heart, MapPin, Trash2, Plus } from "lucide-react";
+import { favoriteService } from "../services/favoriteService";
+import { toast } from "sonner";
+import { AddToCollectionModal } from "./AddToCollectionModal";
+
+interface FoodCardProps {
+  item: RecommendResult;
+  userId: string;
+  onRemove?: (item: RecommendResult) => void;
+  showRemove?: boolean;
+  showAddCollection?: boolean;
+  onAddCollection?: (item: RecommendResult) => void;
+}
+
+export function FoodCard({ item, userId, onRemove, showRemove, showAddCollection = true, onAddCollection }: FoodCardProps) {
+  const [isFav, setIsFav] = React.useState(false);
+  const [isCollectionModalOpen, setIsCollectionModalOpen] = React.useState(false);
+
+  React.useEffect(() => {
+    if (userId) {
+      setIsFav(favoriteService.isFavorite(userId, item.name));
+    }
+  }, [userId, item.name]);
+
+  const toggleFavorite = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!userId) {
+      toast.error("Vui lòng đăng nhập để sử dụng chức năng này");
+      return;
+    }
+    if (isFav) {
+      favoriteService.removeFavorite(userId, item.name);
+      setIsFav(false);
+      toast.success("Đã xóa khỏi yêu thích");
+    } else {
+      favoriteService.addFavorite(userId, item);
+      setIsFav(true);
+      toast.success("Đã thêm vào yêu thích");
+    }
+  };
+
+  return (
+    <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden group relative flex flex-col">
+      <div 
+        className="relative h-[180px] overflow-hidden cursor-pointer"
+        onClick={() => item.google_maps_url && window.open(item.google_maps_url, '_blank')}
+      >
+        <img
+          src={item.img || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=600&auto=format&fit=crop"}
+          alt={item.name}
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent pointer-events-none" />
+        
+        {/* Actions top right */}
+        <div className="absolute top-3 right-3 flex flex-col gap-2">
+          {!showRemove && (
+            <button 
+              onClick={toggleFavorite}
+              className="w-8 h-8 rounded-full bg-white/90 dark:bg-gray-900/80 flex items-center justify-center hover:scale-110 transition-all shadow-sm"
+            >
+              <Heart className={`w-4 h-4 ${isFav ? 'text-red-500 fill-current' : 'text-gray-400'}`} />
+            </button>
+          )}
+          {showRemove && onRemove && (
+            <button 
+              onClick={(e) => { e.stopPropagation(); onRemove(item); }}
+              className="w-8 h-8 rounded-full bg-white/90 dark:bg-gray-900/80 flex items-center justify-center hover:scale-110 hover:bg-red-50 transition-all shadow-sm"
+              title="Xóa"
+            >
+              <Trash2 className="w-4 h-4 text-red-500" />
+            </button>
+          )}
+          {showAddCollection && (
+            <button 
+              onClick={(e) => { 
+                e.stopPropagation(); 
+                if (!userId) {
+                  toast.error("Vui lòng đăng nhập để sử dụng chức năng này");
+                  return;
+                }
+                setIsCollectionModalOpen(true);
+                if (onAddCollection) onAddCollection(item);
+              }}
+              className="w-8 h-8 rounded-full bg-white/90 dark:bg-gray-900/80 flex items-center justify-center hover:scale-110 hover:bg-orange-50 transition-all shadow-sm"
+              title="Thêm vào bộ sưu tập"
+            >
+              <Plus className="w-4 h-4 text-orange-500" />
+            </button>
+          )}
+        </div>
+
+        {/* Badges bottom */}
+        <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between pointer-events-none">
+          {item.match && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-orange-500 text-white">
+              ⭐ {item.match} Match
+            </span>
+          )}
+          {item.dist && (
+            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-semibold bg-white/90 dark:bg-gray-900/80 text-teal-600 dark:text-teal-400 backdrop-blur-sm">
+              <MapPin className="w-3 h-3" /> {item.dist}
+            </span>
+          )}
+        </div>
+      </div>
+
+      <div className="p-4 flex-1 flex flex-col">
+        <h3 className="text-base font-bold text-gray-800 dark:text-white mb-1 line-clamp-1">
+          {item.name}
+        </h3>
+        {item.restaurantName && (
+          <p className="text-xs font-semibold text-orange-500 mb-2 line-clamp-1">
+            {item.restaurantName}
+          </p>
+        )}
+        {item.reason && (
+          <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed mb-3 line-clamp-2 flex-1">
+            {item.reason}
+          </p>
+        )}
+        {item.tags && item.tags.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mt-auto pt-2">
+            {item.tags.map(tag => (
+              <span key={tag} className="px-2 py-1 rounded-full text-[10px] font-medium bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300">
+                {tag}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <AddToCollectionModal 
+        isOpen={isCollectionModalOpen} 
+        onClose={() => setIsCollectionModalOpen(false)} 
+        item={item} 
+      />
+    </div>
+  );
+}

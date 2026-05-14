@@ -1,13 +1,15 @@
 "use client";
 import React from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Compass, Heart, Clock, Sparkles, FolderOpen, ChevronLeft } from "lucide-react";
 
 const navItems = [
-  { icon: Compass, label: "Khám phá", active: true },
-  { icon: Heart, label: "Yêu thích", active: false },
-  { icon: Clock, label: "Lịch sử", active: false },
-  { icon: Sparkles, label: "Gợi ý cho bạn", active: false },
-  { icon: FolderOpen, label: "Bộ sưu tập", active: false },
+  { icon: Compass, label: "Khám phá", href: "/" },
+  { icon: Heart, label: "Yêu thích", href: "/favorites" },
+  { icon: Clock, label: "Lịch sử", href: "/history" },
+  { icon: Sparkles, label: "Gợi ý cho bạn", href: "/recommendations" },
+  { icon: FolderOpen, label: "Bộ sưu tập", href: "/collections" },
 ];
 
 interface SidebarProps {
@@ -16,6 +18,8 @@ interface SidebarProps {
 }
 
 export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
+  const pathname = usePathname();
+
   return (
     <aside className={`fixed left-0 top-0 bottom-0 ${isCollapsed ? 'w-[80px]' : 'w-[260px]'} bg-white dark:bg-gray-900 border-r border-gray-100 dark:border-gray-800 flex flex-col z-50 shadow-sm transition-all duration-300`}>
       {/* Logo */}
@@ -52,24 +56,28 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
       {/* Navigation */}
       <nav className="flex-1 px-3 pt-4 overflow-y-auto">
         <div className="flex flex-col gap-1">
-          {navItems.map((item) => (
-            <button
-              key={item.label}
-              className={`flex items-center ${isCollapsed ? 'justify-center px-0' : 'gap-3 px-4'} py-3 rounded-xl text-[14px] font-medium transition-all cursor-pointer w-full ${
-                item.active
-                  ? "bg-orange-50 dark:bg-orange-500/10 text-orange-600 dark:text-orange-500 shadow-sm shadow-orange-100 dark:shadow-none"
-                  : "text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-200"
-              }`}
-              title={isCollapsed ? item.label : undefined}
-            >
-              <item.icon
-                className={`w-[18px] h-[18px] ${
-                  item.active ? "text-orange-500" : "text-gray-400"
+          {navItems.map((item) => {
+            const isActive = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href));
+            return (
+              <Link
+                key={item.label}
+                href={item.href}
+                className={`flex items-center ${isCollapsed ? 'justify-center px-0' : 'gap-3 px-4'} py-3 rounded-xl text-[14px] font-medium transition-all cursor-pointer w-full ${
+                  isActive
+                    ? "bg-orange-50 dark:bg-orange-500/10 text-orange-600 dark:text-orange-500 shadow-sm shadow-orange-100 dark:shadow-none"
+                    : "text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-200"
                 }`}
-              />
-              {!isCollapsed && <span>{item.label}</span>}
-            </button>
-          ))}
+                title={isCollapsed ? item.label : undefined}
+              >
+                <item.icon
+                  className={`w-[18px] h-[18px] flex-shrink-0 ${
+                    isActive ? "text-orange-500" : "text-gray-400"
+                  }`}
+                />
+                {!isCollapsed && <span className="truncate">{item.label}</span>}
+              </Link>
+            );
+          })}
         </div>
 
       </nav>
