@@ -130,7 +130,7 @@ class SearchService:
         logger.info("Saved search session: id=%s", session_obj.id)
 
         return SessionCreateResponse(
-            session_id=session_obj.id,
+            session_id=str(session_obj.id),
             results=results,
             fallback_applied=recommend_results.get("fallback_applied", False),
             fallback_reason=fallback_reason,
@@ -161,7 +161,7 @@ class SearchService:
         results = [RecommendResult(**r) for r in data.get("results", [])]
         
         return SessionDataResponse(
-            session_id=obj.id,
+            session_id=str(obj.id),
             query=obj.query,
             results=results,
             fallback_applied=data.get("fallback_applied", False),

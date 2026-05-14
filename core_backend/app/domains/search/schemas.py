@@ -1,5 +1,7 @@
 from pydantic import BaseModel, Field
-from typing import List, Optional
+from typing import List, Optional, Union
+from uuid import UUID
+from datetime import datetime
 
 class SearchRequest(BaseModel):
     """
@@ -78,7 +80,7 @@ class AIResponseData(BaseModel):
 
 class SessionCreateResponse(BaseModel):
     """Response trả về khi tạo session tìm kiếm mới."""
-    session_id: str
+    session_id: Union[str, UUID]
     results: List[RecommendResult]
     fallback_applied: bool = False
     fallback_reason: Optional[str] = None
@@ -88,7 +90,7 @@ class SessionCreateResponse(BaseModel):
 
 class SessionDataResponse(BaseModel):
     """Response trả về khi truy vấn session đã lưu."""
-    session_id: str
+    session_id: Union[str, UUID]
     query: str
     results: List[RecommendResult]
     fallback_applied: bool = False
@@ -96,4 +98,4 @@ class SessionDataResponse(BaseModel):
     applied_budget: Optional[int] = None
     filtered_out_count: Optional[int] = None
     warning: Optional[str] = None
-    created_at: Optional[str] = None
+    created_at: Optional[datetime] = None

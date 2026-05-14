@@ -19,6 +19,7 @@ import { Sidebar } from "../components/Sidebar";
 import { UserDropdown } from "../components/UserDropdown";
 import { BudgetSelector, type BudgetOption } from "../components/BudgetSelector";
 import { SurveyModal } from "../components/SurveyModal";
+import { SearchLoadingOverlay } from "../components/ui/SearchLoadingOverlay";
 
 const roboto = Roboto({
   subsets: ["latin", "vietnamese"],
@@ -50,6 +51,11 @@ export default function Home() {
   const [healthData, setHealthData] = useState<HealthData | null>(null);
   const [healthBannerDismissed, setHealthBannerDismissed] = useState(false);
 
+  // ── Search & Loading State ──
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchLoadingMsg, setSearchLoadingMsg] = useState("Đang phân tích sở thích của bạn...");
+  const [apiError, setApiError] = useState<string | null>(null);
+
   const checkHealth = useCallback(async () => {
     setHealthStatus('loading');
     try {
@@ -80,11 +86,59 @@ export default function Home() {
   }, [healthStatus, checkHealth]);
 
 
-  const handleSearch = (e: React.FormEvent) => {
+  const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!query.trim()) return;
-    const budgetParam = budget !== 'auto' ? `&budget=${budget}` : '';
-    router.push(`/result?q=${encodeURIComponent(query)}${budgetParam}&from=home`);
+    
+    setIsSearching(true);
+    setApiError(null);
+
+    try {
+      setSearchLoadingMsg("Đang xác định vị trí của bạn...");
+      const gps: { lat: number, lng: number } = await new Promise((resolve, reject) => {
+        if (!navigator.geolocation) return reject(new Error("Trình duyệt không hỗ trợ GPS."));
+        navigator.geolocation.getCurrentPosition(
+          (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+          (err) => reject(err),
+          { timeout: 10000 }
+        );
+      });
+
+      setSearchLoadingMsg("AI đang phân tích khẩu vị của bạn...");
+      const token = localStorage.getItem('access_token');
+      const userId = localStorage.getItem('user_id');
+
+      const res = await fetch(`${BACKEND_URL}/api/v1/search/recommend`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token ? `Bearer ${token}` : '',
+        },
+        body: JSON.stringify({
+          query: query,
+          lat: gps.lat,
+          lng: gps.lng,
+          user_id: userId || undefined,
+          budget: budget === 'auto' ? undefined : parseInt(budget, 10),
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setSearchLoadingMsg("Đã có kết quả! Đang chuyển hướng...");
+        router.push(`/result?session_id=${data.session_id}`);
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || "Không thể kết nối với hệ thống AI.");
+      }
+    } catch (err: any) {
+      console.error("Search error:", err);
+      let msg = "Lỗi kết nối AI. Vui lòng thử lại.";
+      if (err.code === 1) msg = "Vui lòng cho phép GPS để tìm nhà hàng.";
+      else if (err.message) msg = err.message;
+      setApiError(msg);
+      setIsSearching(false);
+    }
   };
 
   if (!mounted) return null;
@@ -145,6 +199,23 @@ export default function Home() {
                 onClick={() => setHealthBannerDismissed(true)}
                 title="Đóng"
                 className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-black/10 dark:hover:bg-white/10 transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
+          {isSearching && <SearchLoadingOverlay message={searchLoadingMsg} />}
+
+          {apiError && (
+            <div className="mx-8 mt-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700/40 rounded-xl flex items-center justify-between">
+              <div className="flex items-center gap-3 text-red-800 dark:text-red-300">
+                <AlertTriangle className="w-5 h-5" />
+                <span className="text-sm font-medium">{apiError}</span>
+              </div>
+              <button 
+                onClick={() => setApiError(null)}
+                className="text-red-400 hover:text-red-600 transition-colors"
               >
                 <X className="w-4 h-4" />
               </button>

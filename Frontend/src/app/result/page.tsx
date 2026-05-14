@@ -22,6 +22,7 @@ import { LoadingState } from '../../components/ui/LoadingState';
 import { BudgetSelector, type BudgetOption } from '../../components/BudgetSelector';
 import { DistanceFilter } from '../../components/DistanceFilter';
 import { Sidebar } from '../../components/Sidebar';
+import { SearchLoadingOverlay } from '../../components/ui/SearchLoadingOverlay';
 
 const roboto = Roboto({
   subsets: ['latin', 'vietnamese'],
@@ -251,25 +252,6 @@ function SmallResultCard({ item, index, sessionId }: { item: RecommendResult; in
   );
 }
 
-function SearchLoadingOverlay({ message }: { message: string }) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-      <div className="flex flex-col items-center gap-5 bg-white dark:bg-gray-800 rounded-3xl px-10 py-10 shadow-2xl border border-gray-100 dark:border-gray-700 max-w-sm w-full mx-4">
-        <div className="relative w-16 h-16">
-          <div className="absolute inset-0 rounded-full border-4 border-orange-100 dark:border-orange-500/20" />
-          <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-orange-500 animate-spin" />
-          <div className="absolute inset-0 flex items-center justify-center">
-            <Sparkles className="w-6 h-6 text-orange-500" />
-          </div>
-        </div>
-        <div className="text-center">
-          <p className="text-base font-semibold text-gray-800 dark:text-white">{message}</p>
-          <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">Vui lòng không đóng trang này</p>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function FeatureBar() {
   const features = [
@@ -307,8 +289,6 @@ function ResultPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const sessionIdFromUrl = searchParams.get('session_id') || '';
-  const queryFromUrl = searchParams.get('q') || '';
-  const budgetFromUrl = (searchParams.get('budget') || 'auto') as BudgetOption;
 
   // Check for cache instantly to avoid flicker
   const [mounted, setMounted] = useState(false);
@@ -328,9 +308,9 @@ function ResultPageContent() {
     return true;
   });
 
-  const [searchQuery, setSearchQuery] = useState(queryFromUrl || '');
-  const [inputValue, setInputValue] = useState(searchQuery);
-  const [budget, setBudget] = useState<BudgetOption>(budgetFromUrl);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [inputValue, setInputValue] = useState('');
+  const [budget, setBudget] = useState<BudgetOption>('auto');
 
   const [fallbackApplied, setFallbackApplied] = useState(false);
   const [fallbackReason, setFallbackReason] = useState<string>('');
@@ -357,36 +337,21 @@ function ResultPageContent() {
   const [distanceFilterEnabled, setDistanceFilterEnabled] = useState(false);
   const [distanceRadius, setDistanceRadius] = useState(2);
 
-  const [results, setResults] = useState<RecommendResult[]>(() => {
-    if (typeof window === 'undefined') return [];
-    const searchParams = new URLSearchParams(window.location.search);
-    const q = searchParams.get('q');
-    const isRefresh = searchParams.get('refresh') === 'true';
-    if (q && !isRefresh) {
-      const cached = sessionStorage.getItem(`last_results_${q}`);
-      if (cached) {
-        try {
-          return JSON.parse(cached).results;
-        } catch (e) {
-          return [];
-        }
-      }
-    }
-    return [];
-  });
+  const [results, setResults] = useState<RecommendResult[]>([]);
   const [apiError, setApiError] = useState<string | null>(null);
 
   const [isSearching, setIsSearching] = useState(false);
   const [searchLoadingMsg, setSearchLoadingMsg] = useState("Đang phân tích sở thích của bạn...");
 
   useEffect(() => {
-    if (!sessionIdFromUrl) return;
+    if (!sessionIdFromUrl) {
+      setIsLoading(false);
+      return;
+    }
 
     const loadSession = async () => {
       setIsLoading(true);
       setApiError(null);
-      const token = localStorage.getItem('access_token');
-      setIsLoggedIn(!!token);
       try {
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
         const res = await fetch(`${apiUrl}/api/v1/search/sessions/${sessionIdFromUrl}`, {
@@ -402,13 +367,13 @@ function ResultPageContent() {
           setAppliedBudget(data.applied_budget ?? null);
           setFilteredCount(data.filtered_out_count || 0);
           setAllergyWarning(data.warning || '');
-          setApiError(null);
         } else if (res.status === 404) {
-          setApiError('Không tìm thấy phiên tìm kiếm. Link có thể đã hết hạn.');
+          setApiError('Không tìm thấy phiên tìm kiếm. Link có thể đã hết hạn hoặc không tồn tại.');
         } else {
           setApiError('Lỗi khi tải kết quả. Vui lòng thử lại.');
         }
-      } catch {
+      } catch (err) {
+        console.error("Load session error:", err);
         setApiError('Không thể kết nối đến máy chủ.');
       } finally {
         setIsLoading(false);
