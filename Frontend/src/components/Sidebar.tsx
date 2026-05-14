@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Compass, Heart, Clock, Sparkles, FolderOpen, ChevronLeft } from "lucide-react";
+import { Compass, Heart, Clock, Sparkles, FolderOpen, ChevronLeft, Settings, MoreVertical } from "lucide-react";
 
 const navItems = [
   { icon: Compass, label: "Khám phá", href: "/" },
