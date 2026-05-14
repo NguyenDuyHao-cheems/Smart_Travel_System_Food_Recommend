@@ -1,108 +1,206 @@
--- WARNING: This schema is for context only and is not meant to be run.
--- Table order and constraints may not be valid for execution.
+## Table `dishes`
 
-CREATE TABLE public.dishes (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  res_id uuid,
-  name character varying NOT NULL,
-  price integer NOT NULL,
-  image_url text,
-  allergens jsonb DEFAULT '[]'::jsonb,
-  is_vegetarian boolean DEFAULT false,
-  embedding_vector USER-DEFINED,
-  CONSTRAINT dishes_pkey PRIMARY KEY (id),
-  CONSTRAINT dishes_res_id_fkey FOREIGN KEY (res_id) REFERENCES public.restaurants(id)
-);
-CREATE TABLE public.res_tags (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  res_id uuid,
-  tag_id uuid,
-  CONSTRAINT res_tags_pkey PRIMARY KEY (id),
-  CONSTRAINT res_tags_res_id_fkey FOREIGN KEY (res_id) REFERENCES public.restaurants(id),
-  CONSTRAINT res_tags_tag_id_fkey FOREIGN KEY (tag_id) REFERENCES public.tags(id),
-  CONSTRAINT fk_res_tags_res FOREIGN KEY (res_id) REFERENCES public.restaurants(id),
-  CONSTRAINT fk_res_tags_tag FOREIGN KEY (tag_id) REFERENCES public.tags(id)
-);
-CREATE TABLE public.restaurants (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  name character varying NOT NULL,
-  address text NOT NULL,
-  lat double precision,
-  lng double precision,
-  price_range character varying,
-  opening_hours character varying,
-  image_url text,
-  rating_avg double precision DEFAULT 0.0,
-  sentiment_score double precision DEFAULT 0.0,
-  is_active boolean DEFAULT true,
-  embedding_vector USER-DEFINED,
-  total_reviews integer,
-  open_time time without time zone,
-  close_time time without time zone,
-  timezone text DEFAULT 'Asia/Ho_Chi_Minh'::text,
-  is_open_now boolean,
-  google_maps_url text,
-  top_reviews jsonb,
-  is_vegetarian boolean DEFAULT false,
-  CONSTRAINT restaurants_pkey PRIMARY KEY (id)
-);
-CREATE TABLE public.reviews (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  res_id uuid,
-  reviewer_name character varying,
-  rating numeric CHECK (rating IS NULL OR rating >= 0::numeric AND rating <= 10::numeric),
-  text text,
-  date timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT reviews_pkey PRIMARY KEY (id),
-  CONSTRAINT reviews_res_id_fkey FOREIGN KEY (res_id) REFERENCES public.restaurants(id),
-  CONSTRAINT fk_reviews_restaurant FOREIGN KEY (res_id) REFERENCES public.restaurants(id)
-);
-CREATE TABLE public.tags (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  name character varying NOT NULL UNIQUE,
-  CONSTRAINT tags_pkey PRIMARY KEY (id)
-);
-CREATE TABLE public.user_interactions (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  anonymous_id text,
-  user_id uuid,
-  res_id uuid,
-  dish_id uuid,
-  action_type character varying NOT NULL,
-  duration_sec integer,
-  created_at timestamp with time zone DEFAULT now(),
-  metadata jsonb,
-  CONSTRAINT user_interactions_pkey PRIMARY KEY (id),
-  CONSTRAINT user_interactions_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id),
-  CONSTRAINT user_interactions_res_id_fkey FOREIGN KEY (res_id) REFERENCES public.restaurants(id),
-  CONSTRAINT user_interactions_dish_id_fkey FOREIGN KEY (dish_id) REFERENCES public.dishes(id)
-);
-CREATE TABLE public.user_onboardings (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  anonymous_id text UNIQUE,
-  user_id uuid UNIQUE,
-  favorite_dishes jsonb,
-  spicy_level character varying,
-  dietary_restrictions jsonb,
-  allergies jsonb,
-  budget character varying,
-  location character varying,
-  age integer,
-  preferences_vector USER-DEFINED,
-  created_at timestamp with time zone DEFAULT now(),
-  updated_at timestamp with time zone DEFAULT now(),
-  completed_at timestamp with time zone,
-  is_vegetarian boolean DEFAULT false,
-  CONSTRAINT user_onboardings_pkey PRIMARY KEY (id),
-  CONSTRAINT user_onboardings_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
-);
-CREATE TABLE public.users (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  username character varying NOT NULL UNIQUE,
-  password_hash character varying,
-  preferences_vector USER-DEFINED,
-  allergies jsonb,
-  created_at timestamp with time zone DEFAULT now(),
-  updated_at timestamp with time zone DEFAULT now(),
-  CONSTRAINT users_pkey PRIMARY KEY (id)
-);
+### Columns
+
+| Name | Type | Constraints |
+|------|------|-------------|
+| `id` | `uuid` | Primary |
+| `res_id` | `uuid` |  Nullable |
+| `name` | `varchar` |  |
+| `price` | `int4` |  |
+| `image_url` | `text` |  Nullable |
+| `allergens` | `jsonb` |  Nullable |
+| `is_vegetarian` | `bool` |  Nullable |
+| `embedding_vector` | `halfvec` |  Nullable |
+
+## Table `res_tags`
+
+### Columns
+
+| Name | Type | Constraints |
+|------|------|-------------|
+| `id` | `uuid` | Primary |
+| `res_id` | `uuid` |  Nullable |
+| `tag_id` | `uuid` |  Nullable |
+
+## Table `restaurants`
+
+### Columns
+
+| Name | Type | Constraints |
+|------|------|-------------|
+| `id` | `uuid` | Primary |
+| `name` | `varchar` |  |
+| `address` | `text` |  |
+| `lat` | `float8` |  Nullable |
+| `lng` | `float8` |  Nullable |
+| `price_range` | `varchar` |  Nullable |
+| `opening_hours` | `varchar` |  Nullable |
+| `image_url` | `text` |  Nullable |
+| `rating_avg` | `float8` |  Nullable |
+| `sentiment_score` | `float8` |  Nullable |
+| `is_active` | `bool` |  Nullable |
+| `embedding_vector` | `vector` |  Nullable |
+| `total_reviews` | `int4` |  Nullable |
+| `open_time` | `time` |  Nullable |
+| `close_time` | `time` |  Nullable |
+| `timezone` | `text` |  Nullable |
+| `is_open_now` | `bool` |  Nullable |
+| `google_maps_url` | `text` |  Nullable |
+| `top_reviews` | `jsonb` |  Nullable |
+| `is_vegetarian` | `bool` |  Nullable |
+
+## Table `reviews`
+
+### Columns
+
+| Name | Type | Constraints |
+|------|------|-------------|
+| `id` | `uuid` | Primary |
+| `res_id` | `uuid` |  Nullable |
+| `reviewer_name` | `varchar` |  Nullable |
+| `rating` | `numeric` |  Nullable |
+| `text` | `text` |  Nullable |
+| `date` | `timestamptz` |  Nullable |
+
+## Table `search_session_results`
+
+### Columns
+
+| Name | Type | Constraints |
+|------|------|-------------|
+| `id` | `uuid` | Primary |
+| `search_session_id` | `uuid` |  |
+| `res_id` | `uuid` |  Nullable |
+| `dish_id` | `uuid` |  Nullable |
+| `rank` | `int4` |  Nullable |
+| `score` | `float8` |  Nullable |
+| `reason` | `text` |  Nullable |
+| `created_at` | `timestamptz` |  Nullable |
+
+## Table `search_sessions`
+
+### Columns
+
+| Name | Type | Constraints |
+|------|------|-------------|
+| `id` | `uuid` | Primary |
+| `user_id` | `uuid` |  Nullable |
+| `query` | `varchar` |  |
+| `lat` | `float8` |  |
+| `lng` | `float8` |  |
+| `budget` | `int4` |  Nullable |
+| `created_at` | `timestamptz` |  Nullable |
+| `anonymous_id` | `text` |  Nullable |
+| `normalized_query` | `text` |  Nullable |
+| `filters_json` | `jsonb` |  Nullable |
+| `result_count` | `int4` |  Nullable |
+| `response_ms` | `int4` |  Nullable |
+
+## Table `tags`
+
+### Columns
+
+| Name | Type | Constraints |
+|------|------|-------------|
+| `id` | `uuid` | Primary |
+| `name` | `varchar` |  Unique |
+
+## Table `user_collection_items`
+
+### Columns
+
+| Name | Type | Constraints |
+|------|------|-------------|
+| `id` | `uuid` | Primary |
+| `collection_id` | `uuid` |  |
+| `user_id` | `uuid` |  |
+| `res_id` | `uuid` |  Nullable |
+| `dish_id` | `uuid` |  Nullable |
+| `item_type` | `varchar` |  |
+| `note` | `text` |  Nullable |
+| `created_at` | `timestamptz` |  Nullable |
+
+## Table `user_collections`
+
+### Columns
+
+| Name | Type | Constraints |
+|------|------|-------------|
+| `id` | `uuid` | Primary |
+| `user_id` | `uuid` |  |
+| `name` | `varchar` |  |
+| `description` | `text` |  Nullable |
+| `created_at` | `timestamptz` |  Nullable |
+| `updated_at` | `timestamptz` |  Nullable |
+
+## Table `user_favorites`
+
+### Columns
+
+| Name | Type | Constraints |
+|------|------|-------------|
+| `id` | `uuid` | Primary |
+| `user_id` | `uuid` |  |
+| `res_id` | `uuid` |  |
+| `created_at` | `timestamptz` |  Nullable |
+
+## Table `user_interactions`
+
+### Columns
+
+| Name | Type | Constraints |
+|------|------|-------------|
+| `id` | `uuid` | Primary |
+| `anonymous_id` | `text` |  Nullable |
+| `user_id` | `uuid` |  Nullable |
+| `res_id` | `uuid` |  Nullable |
+| `dish_id` | `uuid` |  Nullable |
+| `action_type` | `varchar` |  |
+| `duration_sec` | `int4` |  Nullable |
+| `created_at` | `timestamptz` |  Nullable |
+| `metadata` | `jsonb` |  Nullable |
+| `search_session_id` | `uuid` |  Nullable |
+
+## Table `user_onboardings`
+
+### Columns
+
+| Name | Type | Constraints |
+|------|------|-------------|
+| `id` | `uuid` | Primary |
+| `anonymous_id` | `text` |  Nullable Unique |
+| `user_id` | `uuid` |  Nullable Unique |
+| `favorite_dishes` | `jsonb` |  Nullable |
+| `spicy_level` | `varchar` |  Nullable |
+| `dietary_restrictions` | `jsonb` |  Nullable |
+| `allergies` | `jsonb` |  Nullable |
+| `budget` | `varchar` |  Nullable |
+| `location` | `varchar` |  Nullable |
+| `age` | `int4` |  Nullable |
+| `preferences_vector` | `vector` |  Nullable |
+| `created_at` | `timestamptz` |  Nullable |
+| `updated_at` | `timestamptz` |  Nullable |
+| `completed_at` | `timestamptz` |  Nullable |
+| `is_vegetarian` | `bool` |  Nullable |
+| `onboarding_version` | `varchar` |  Nullable |
+
+## Table `users`
+
+### Columns
+
+| Name | Type | Constraints |
+|------|------|-------------|
+| `id` | `uuid` | Primary |
+| `username` | `varchar` |  Unique |
+| `password_hash` | `varchar` |  Nullable |
+| `preferences_vector` | `vector` |  Nullable |
+| `allergies` | `jsonb` |  Nullable |
+| `created_at` | `timestamptz` |  Nullable |
+| `updated_at` | `timestamptz` |  Nullable |
+| `full_name` | `varchar` |  Nullable |
+| `avatar_url` | `varchar` |  Nullable |
+| `email` | `varchar` |  Nullable |
+| `status` | `varchar` |  Nullable |
+
+Đang hiển thị 385952575755250170.
