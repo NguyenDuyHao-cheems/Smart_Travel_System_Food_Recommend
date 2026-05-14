@@ -10,7 +10,6 @@ import {
   Bookmark,
   Brain,
   ShieldCheck,
-  ExternalLink,
   Search,
   AlertTriangle,
   Info,
@@ -18,7 +17,6 @@ import {
   X,
 } from 'lucide-react';
 import { Roboto } from 'next/font/google';
-import { useGeolocation } from '../../hooks/useGeolocation';
 import { Header } from '../../components/ui/Header';
 import { LoadingState } from '../../components/ui/LoadingState';
 import { BudgetSelector, type BudgetOption } from '../../components/BudgetSelector';
@@ -30,11 +28,8 @@ const roboto = Roboto({
   weight: ['300', '400', '500', '700', '900'],
 });
 
-/* ─────────────────────────────────────────────────────────────
-   Tag helpers — derive tags from AI reason text
-   ───────────────────────────────────────────────────────────── */
 export interface RecommendResult {
-  id: string | number;
+  id: string;
   name: string;
   match: string;
   dist: string;
@@ -45,7 +40,6 @@ export interface RecommendResult {
   img: string;
   tags?: string[];
   restaurantName?: string;
-  distance_km?: number;
   google_maps_url?: string;
 }
 
@@ -72,17 +66,15 @@ const VIBE_TAGS: VibeTag[] = [
 ];
 
 function getTagsForItem(item: RecommendResult, index: number): VibeTag[] {
-  // If API returns tags, use them; otherwise pick 2-3 based on index
   if (item.tags && Array.isArray(item.tags)) {
     return item.tags.map((t: string) => VIBE_TAGS.find(v => v.label.toLowerCase() === t.toLowerCase()) || VIBE_TAGS[0]);
   }
-  // Fallback: deterministic selection based on index
   const sets = [
-    [VIBE_TAGS[0], VIBE_TAGS[1], VIBE_TAGS[2]], // Spicy, AC, Comfort Food
-    [VIBE_TAGS[1], VIBE_TAGS[3], VIBE_TAGS[5]], // AC, Seafood, Popular
-    [VIBE_TAGS[1], VIBE_TAGS[4], VIBE_TAGS[7]], // AC, Sweet, Classic
-    [VIBE_TAGS[6], VIBE_TAGS[9], VIBE_TAGS[7]], // Cheap, Local, Classic
-    [VIBE_TAGS[0], VIBE_TAGS[1], VIBE_TAGS[8]], // Spicy, AC, Trendy
+    [VIBE_TAGS[0], VIBE_TAGS[1], VIBE_TAGS[2]],
+    [VIBE_TAGS[1], VIBE_TAGS[3], VIBE_TAGS[5]],
+    [VIBE_TAGS[1], VIBE_TAGS[4], VIBE_TAGS[7]],
+    [VIBE_TAGS[6], VIBE_TAGS[9], VIBE_TAGS[7]],
+    [VIBE_TAGS[0], VIBE_TAGS[1], VIBE_TAGS[8]],
   ];
   return sets[index % sets.length];
 }
@@ -98,7 +90,12 @@ function getMatchColor(match: string): string {
 /* ─────────────────────────────────────────────────────────────
    Hero Result Card (#1 — AI TOP PICK)
    ───────────────────────────────────────────────────────────── */
-function HeroResultCard({ item }: { item: RecommendResult }) {
+function HeroResultCard({ item, sessionId }: { item: RecommendResult; sessionId?: string }) {
+  const router = useRouter();
+  const handleNavigate = () => {
+    router.push(`/restaurant/${item.id}${sessionId ? `?session_id=${sessionId}` : ''}`);
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 30 }}
@@ -106,43 +103,31 @@ function HeroResultCard({ item }: { item: RecommendResult }) {
       transition={{ duration: 0.5 }}
       className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700 shadow-sm dark:shadow-none overflow-hidden hover:shadow-lg dark:hover:border-gray-600 transition-all duration-300 mb-8"
     >
-      {/* TOP PICK Badge */}
-      <div className="px-6 pt-5">
-        <span className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-bold bg-orange-500 text-white shadow-md shadow-orange-200 dark:shadow-orange-500/30">
-          ⭐ AI TOP PICK - {item.match} Match
-        </span>
-      </div>
-
-      <div className="flex flex-col md:flex-row">
+      <div className="flex flex-col md:flex-row min-h-[340px]">
         {/* Left: Info */}
-        <div className="flex-1 p-6 md:p-8">
-          {/* Rank */}
-          <div className="flex items-center gap-2 mb-3">
-            <span className="text-amber-400 text-lg">👍</span>
-            <span className="text-sm font-semibold text-gray-500 dark:text-gray-400">#1</span>
+        <div className="flex-1 p-8 md:p-10 flex flex-col justify-center">
+          <div className="flex items-center gap-2 mb-4">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-orange-100 dark:bg-orange-500/20 text-orange-600 dark:text-orange-400">
+              <Sparkles className="w-3.5 h-3.5" /> AI TOP PICK
+            </span>
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-teal-50 dark:bg-teal-500/15 text-teal-600 dark:text-teal-400">
+              🤖 {item.match} Match
+            </span>
           </div>
 
-          {/* Food Name */}
-          <h2
-            className={`text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-1 tracking-tight ${item.google_maps_url ? 'cursor-pointer hover:text-orange-500 transition-colors' : ''}`}
-            onClick={() => item.google_maps_url && window.open(item.google_maps_url, '_blank')}
-            title={item.google_maps_url ? "Xem trên Google Maps" : ""}
+          <h2 
+            onClick={handleNavigate}
+            className="text-2xl md:text-4xl font-bold text-gray-900 dark:text-white mb-2 leading-tight cursor-pointer hover:text-orange-500 transition-colors"
           >
             {item.name}
           </h2>
 
-          {/* Restaurant Name */}
           {item.restaurantName && (
-            <p
-              className={`text-base font-semibold text-orange-500 mb-4 ${item.google_maps_url ? 'cursor-pointer hover:text-orange-600 transition-colors' : ''}`}
-              onClick={() => item.google_maps_url && window.open(item.google_maps_url, '_blank')}
-              title={item.google_maps_url ? "Xem trên Google Maps" : ""}
-            >
+            <p className="text-base font-semibold text-orange-500 mb-4 cursor-pointer hover:text-orange-600 transition-colors" onClick={handleNavigate}>
               {item.restaurantName}
             </p>
           )}
 
-          {/* Distance Badge */}
           {item.dist && (
             <div className="mb-5">
               <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-teal-50 dark:bg-teal-500/15 text-teal-600 dark:text-teal-400 border border-teal-200 dark:border-teal-500/30">
@@ -151,14 +136,12 @@ function HeroResultCard({ item }: { item: RecommendResult }) {
             </div>
           )}
 
-          {/* AI Description */}
           {item.reason && (
             <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed mb-6 max-w-md">
               {item.reason}
             </p>
           )}
 
-          {/* Tags */}
           <div className="flex flex-wrap gap-2">
             {getTagsForItem(item, 0).map(tag => (
               <span key={tag.label} className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium ${tag.bgLight} ${tag.bgDark} ${tag.text} border ${tag.border}`}>
@@ -170,10 +153,9 @@ function HeroResultCard({ item }: { item: RecommendResult }) {
 
         {/* Right: Image */}
         <div className="md:w-[380px] h-[280px] md:h-auto relative p-4">
-          <div
-            className={`w-full h-full rounded-2xl overflow-hidden relative ${item.google_maps_url ? 'cursor-pointer' : ''}`}
-            onClick={() => item.google_maps_url && window.open(item.google_maps_url, '_blank')}
-            title={item.google_maps_url ? "Xem trên Google Maps" : ""}
+          <div 
+            onClick={handleNavigate}
+            className="w-full h-full rounded-2xl overflow-hidden relative cursor-pointer"
           >
             <img
               src={item.img}
@@ -181,7 +163,6 @@ function HeroResultCard({ item }: { item: RecommendResult }) {
               className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
             />
           </div>
-          {/* Bookmark & Heart */}
           <div className="absolute top-6 right-6 flex gap-2">
             <button className="w-10 h-10 rounded-full bg-white/90 dark:bg-gray-900/80 border border-gray-200 dark:border-gray-700 flex items-center justify-center hover:scale-110 transition-all cursor-pointer shadow-sm">
               <Bookmark className="w-5 h-5 text-gray-400 dark:text-gray-500" />
@@ -199,9 +180,14 @@ function HeroResultCard({ item }: { item: RecommendResult }) {
 /* ─────────────────────────────────────────────────────────────
    Small Result Card (#2-#5)
    ───────────────────────────────────────────────────────────── */
-function SmallResultCard({ item, index }: { item: RecommendResult; index: number }) {
+function SmallResultCard({ item, index, sessionId }: { item: RecommendResult; index: number; sessionId?: string }) {
+  const router = useRouter();
   const tags = getTagsForItem(item, index);
   const matchColor = getMatchColor(item.match);
+
+  const handleNavigate = () => {
+    router.push(`/restaurant/${item.id}${sessionId ? `?session_id=${sessionId}` : ''}`);
+  };
 
   return (
     <motion.div
@@ -209,13 +195,9 @@ function SmallResultCard({ item, index }: { item: RecommendResult; index: number
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.1 }}
       className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm dark:shadow-none overflow-hidden hover:shadow-lg dark:hover:border-gray-600 transition-all duration-300 cursor-pointer group"
+      onClick={handleNavigate}
     >
-      {/* Image */}
-      <div
-        className="relative h-[180px] overflow-hidden"
-        onClick={() => item.google_maps_url && window.open(item.google_maps_url, '_blank')}
-        title={item.google_maps_url ? "Xem trên Google Maps" : ""}
-      >
+      <div className="relative h-[180px] overflow-hidden">
         <img
           src={item.img}
           alt={item.name}
@@ -223,17 +205,14 @@ function SmallResultCard({ item, index }: { item: RecommendResult; index: number
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent pointer-events-none" />
 
-        {/* Rank */}
         <span className="absolute top-3 left-3 inline-flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold bg-gray-700/90 text-white backdrop-blur-sm">
           {index + 2}
         </span>
 
-        {/* Heart */}
         <button className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/90 dark:bg-gray-900/80 flex items-center justify-center hover:scale-110 transition-all cursor-pointer shadow-sm">
           <Heart className="w-4 h-4 text-red-400" />
         </button>
 
-        {/* Bottom badges */}
         <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between">
           <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold ${matchColor} text-white`}>
             🤖 {item.match} Match
@@ -246,21 +225,12 @@ function SmallResultCard({ item, index }: { item: RecommendResult; index: number
         </div>
       </div>
 
-      {/* Info */}
       <div className="p-4">
-        <h3
-          className={`text-base font-bold text-gray-800 dark:text-white mb-0.5 transition-colors ${item.google_maps_url ? 'cursor-pointer hover:text-orange-500' : ''}`}
-          onClick={() => item.google_maps_url && window.open(item.google_maps_url, '_blank')}
-          title={item.google_maps_url ? "Xem trên Google Maps" : ""}
-        >
+        <h3 className="text-base font-bold text-gray-800 dark:text-white mb-0.5 transition-colors cursor-pointer group-hover:text-orange-500">
           {item.name}
         </h3>
         {item.restaurantName && (
-          <p
-            className={`text-xs font-semibold text-orange-500 mb-2 ${item.google_maps_url ? 'cursor-pointer hover:text-orange-600 transition-colors' : ''}`}
-            onClick={() => item.google_maps_url && window.open(item.google_maps_url, '_blank')}
-            title={item.google_maps_url ? "Xem trên Google Maps" : ""}
-          >
+          <p className="text-xs font-semibold text-orange-500 mb-2">
             {item.restaurantName}
           </p>
         )}
@@ -281,9 +251,26 @@ function SmallResultCard({ item, index }: { item: RecommendResult; index: number
   );
 }
 
-/* ─────────────────────────────────────────────────────────────
-   Feature Bar (Bottom)
-   ───────────────────────────────────────────────────────────── */
+function SearchLoadingOverlay({ message }: { message: string }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+      <div className="flex flex-col items-center gap-5 bg-white dark:bg-gray-800 rounded-3xl px-10 py-10 shadow-2xl border border-gray-100 dark:border-gray-700 max-w-sm w-full mx-4">
+        <div className="relative w-16 h-16">
+          <div className="absolute inset-0 rounded-full border-4 border-orange-100 dark:border-orange-500/20" />
+          <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-orange-500 animate-spin" />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <Sparkles className="w-6 h-6 text-orange-500" />
+          </div>
+        </div>
+        <div className="text-center">
+          <p className="text-base font-semibold text-gray-800 dark:text-white">{message}</p>
+          <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">Vui lòng không đóng trang này</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function FeatureBar() {
   const features = [
     { icon: Sparkles, bg: 'bg-orange-100 dark:bg-orange-500/20', color: 'text-orange-500', title: 'AI-Powered Recommendations', desc: 'Personalized just for you' },
@@ -316,12 +303,10 @@ function FeatureBar() {
   );
 }
 
-/* ═════════════════════════════════════════════════════════════
-   MAIN RESULT PAGE
-   ═════════════════════════════════════════════════════════════ */
 function ResultPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const sessionIdFromUrl = searchParams.get('session_id') || '';
   const queryFromUrl = searchParams.get('q') || '';
   const budgetFromUrl = (searchParams.get('budget') || 'auto') as BudgetOption;
 
@@ -341,137 +326,131 @@ function ResultPageContent() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [showGuestNotice, setShowGuestNotice] = useState(true);
 
-  // Distance filter state (client-side, default OFF)
   const [distanceFilterEnabled, setDistanceFilterEnabled] = useState(false);
   const [distanceRadius, setDistanceRadius] = useState(2);
-
-  const { location, error: locError, isLoading: loadingLocation, getLocation } = useGeolocation();
-
-  // Sync URL params to state
-  useEffect(() => {
-    const q = searchParams.get('q') || '';
-    const b = (searchParams.get('budget') || 'auto') as BudgetOption;
-    if (q) {
-      setSearchQuery(q);
-      setInputValue(q);
-    }
-    setBudget(b);
-  }, [searchParams]);
-
-  const handleSearch = () => {
-    if (inputValue.trim() !== '') {
-      router.push(`/result?q=${encodeURIComponent(inputValue)}&budget=${budget}`);
-    }
-  };
-
-  useEffect(() => {
-    getLocation();
-  }, [getLocation]);
 
   const [results, setResults] = useState<RecommendResult[]>([]);
   const [apiError, setApiError] = useState<string | null>(null);
 
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchLoadingMsg, setSearchLoadingMsg] = useState("Đang phân tích sở thích của bạn...");
+
   useEffect(() => {
-    if (!location) return;
+    if (!sessionIdFromUrl) return;
 
-    const fetchRecommendations = async () => {
-      // [1] Lấy token và user_id từ localStorage
-      const token = localStorage.getItem('access_token');
-      const userId = localStorage.getItem('user_id');
-
-      setIsLoggedIn(!!token);
-
-      // Note: Anonymous search allowed (no redirect)
+    const loadSession = async () => {
       setIsLoading(true);
-
-      // Thêm AbortController để chống treo (timeout sau 15 giây) nếu Backend/Database bị kẹt
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000);
-
+      setApiError(null);
+      const token = localStorage.getItem('access_token');
+      setIsLoggedIn(!!token);
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
-        const res = await fetch(`${apiUrl}/api/v1/search/recommend`, {
-          method: 'POST',
-          signal: controller.signal,
-          headers: {
-            'Content-Type': 'application/json',
-            // [1] Thêm header Authorization: Bearer <token>
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({
-            query: searchQuery,
-            lat: location.lat,
-            lng: location.lng,
-            // [1] Include user_id từ localStorage vào request body
-            user_id: userId || undefined,
-            // Đã cập nhật theo yêu cầu Hào: gửi format dạng integer
-            budget: budget === 'auto' ? undefined : parseInt(budget, 10),
-          }),
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+        const res = await fetch(`${apiUrl}/api/v1/search/sessions/${sessionIdFromUrl}`, {
+          signal: AbortSignal.timeout(10000),
         });
-
         if (res.ok) {
           const data = await res.json();
-          if (data && data.results) {
-            setResults(data.results);
-            setFallbackApplied(data.fallback_applied || false);
-            setFallbackReason(data.fallback_reason || '');
-            setAppliedBudget(data.applied_budget ?? null);
-
-            setFilteredCount(data.filtered_out_count || 0);
-            setAllergyWarning(data.warning || '');
-            setApiError(null);
-          }
-        } else if (res.status === 401) {
-          // TODO: Chờ team có trang /auth thì mở ra để bắt lỗi hết hạn token
-          // router.push('/auth');
-          setApiError('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại. (TODO: Redirect to /auth)');
-        } else if (res.status === 503) {
-          setApiError('Hệ thống AI đang khởi động, vui lòng đợi trong giây lát...');
+          setSearchQuery(data.query);
+          setInputValue(data.query);
+          setResults(data.results || []);
+          setFallbackApplied(data.fallback_applied || false);
+          setFallbackReason(data.fallback_reason || '');
+          setAppliedBudget(data.applied_budget ?? null);
+          setFilteredCount(data.filtered_out_count || 0);
+          setAllergyWarning(data.warning || '');
+          setApiError(null);
+        } else if (res.status === 404) {
+          setApiError('Không tìm thấy phiên tìm kiếm. Link có thể đã hết hạn.');
         } else {
-          setApiError('Hệ thống AI đang gặp sự cố. Vui lòng thử lại sau.');
+          setApiError('Lỗi khi tải kết quả. Vui lòng thử lại.');
         }
-      } catch (error: any) {
-        if (error.name === 'AbortError') {
-          setApiError('Quá thời gian kết nối (Timeout). Hệ thống AI có thể đang khởi động, vui lòng thử lại.');
-        } else {
-          setApiError('Không thể kết nối đến máy chủ. Hãy đảm bảo Backend đã được khởi động.');
-        }
+      } catch {
+        setApiError('Không thể kết nối đến máy chủ.');
       } finally {
-        clearTimeout(timeoutId);
         setIsLoading(false);
       }
     };
 
-    fetchRecommendations();
-  }, [location, searchQuery, budget]); // Re-fetch khi budget thay đổi
+    loadSession();
+  }, [sessionIdFromUrl]);
 
-  // Client-side distance filter — no API re-fetch needed
+  const handleSearch = async (overrideQuery?: string, overrideBudget?: BudgetOption) => {
+    const finalQuery = (overrideQuery ?? inputValue).trim();
+    const finalBudget = overrideBudget ?? budget;
+
+    if (finalQuery === '') return;
+
+    setIsSearching(true);
+    setApiError(null);
+
+    try {
+      setSearchLoadingMsg("Đang xác định vị trí của bạn...");
+      const gps: { lat: number, lng: number } = await new Promise((resolve, reject) => {
+        if (!navigator.geolocation) return reject(new Error("Trình duyệt không hỗ trợ GPS."));
+        navigator.geolocation.getCurrentPosition(
+          (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+          (err) => reject(err),
+          { timeout: 10000 }
+        );
+      });
+
+      setSearchLoadingMsg("AI đang phân tích khẩu vị của bạn...");
+      const token = localStorage.getItem('access_token');
+      const userId = localStorage.getItem('user_id');
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
+      const res = await fetch(`${apiUrl}/api/v1/search/recommend`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          query: finalQuery,
+          lat: gps.lat,
+          lng: gps.lng,
+          user_id: userId || undefined,
+          budget: finalBudget === 'auto' ? undefined : parseInt(finalBudget, 10),
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setSearchLoadingMsg("Đã có kết quả mới! Đang chuẩn bị...");
+        router.push(`/result?session_id=${data.session_id}`);
+      } else {
+        throw new Error("Không thể kết nối với hệ thống AI.");
+      }
+    } catch (err: any) {
+      const msg = err.code === 1 ? "Vui lòng cho phép GPS để tìm nhà hàng." : "Lỗi kết nối AI. Vui lòng thử lại.";
+      setApiError(msg);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
   const displayResults = useMemo(() => {
     if (!distanceFilterEnabled) return results;
     return results.filter((r) => (r.distance_km ?? 0) <= distanceRadius);
   }, [results, distanceFilterEnabled, distanceRadius]);
 
   const heroItem = displayResults[0];
-  const gridItems = displayResults.slice(1, 5);
+  const gridItems = displayResults.slice(1);
 
   return (
     <div className={`flex min-h-screen bg-[#F7F8FA] dark:bg-gray-900 transition-colors duration-300 ${roboto.className}`}>
-      {/* ══════════════════════════════════════════════════════════
-          Sidebar
-          ══════════════════════════════════════════════════════════ */}
+      {isSearching && <SearchLoadingOverlay message={searchLoadingMsg} />}
       <Sidebar isCollapsed={isSidebarCollapsed} onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)} />
 
-      {/* ── Main Content ── */}
       <div className={`flex-1 flex flex-col transition-all duration-300 ${isSidebarCollapsed ? 'ml-[80px]' : 'ml-[260px]'}`}>
         <Header showBack={false} />
 
-        {/* Budget + Distance filter bar */}
         <div className="px-6 md:px-10 py-5 border-b border-gray-100 dark:border-gray-800 bg-[#F7F8FA] dark:bg-gray-900 flex flex-wrap items-center gap-x-4 gap-y-4">
           <BudgetSelector
             value={budget}
             onChange={(newBudget) => {
               setBudget(newBudget);
-              router.push(`/result?q=${encodeURIComponent(inputValue)}&budget=${newBudget}`);
+              handleSearch(inputValue, newBudget);
             }}
           />
           <DistanceFilter
@@ -490,8 +469,8 @@ function ResultPageContent() {
               {isLoading ? (
                 <LoadingState
                   searchQuery={searchQuery}
-                  locError={locError}
-                  getLocation={getLocation}
+                  locError={null}
+                  getLocation={() => {}}
                 />
               ) : (
                 <motion.div
@@ -500,13 +479,11 @@ function ResultPageContent() {
                   animate={{ opacity: 1 }}
                   transition={{ duration: 0.5 }}
                 >
-                  {/* ─── Title Section & Search Bar ─── */}
                   <motion.div
                     initial={{ opacity: 0, y: -20 }}
                     animate={{ opacity: 1, y: 0 }}
                     className="mb-10 max-w-4xl mx-auto"
                   >
-                    {/* [2] Hiển thị metadata: fallback_applied === true -> show banner cảnh báo kèm fallback_reason, applied_budget, applied_radius_km dạng badge */}
                     {fallbackApplied && (
                       <div className="mb-6 flex items-start gap-3 p-4 rounded-xl bg-yellow-50 dark:bg-yellow-500/10 border border-yellow-200 dark:border-yellow-500/20">
                         <Info className="w-5 h-5 text-yellow-600 dark:text-yellow-500 flex-shrink-0 mt-0.5" />
@@ -524,7 +501,6 @@ function ResultPageContent() {
                         </div>
                       </div>
                     )}
-                    {/* [3] Hiển thị filtered_out_count và warning (allergy filter) nếu có */}
                     {filteredCount > 0 && (
                       <div className="mb-6 flex items-start gap-3 p-4 rounded-xl bg-orange-50 dark:bg-orange-500/10 border border-orange-200 dark:border-orange-500/20">
                         <AlertTriangle className="w-5 h-5 text-orange-600 dark:text-orange-500 flex-shrink-0 mt-0.5" />
@@ -534,7 +510,6 @@ function ResultPageContent() {
                       </div>
                     )}
 
-                    {/* [4] Guest Notice: Redesigned to match reference image */}
                     {!isLoggedIn && showGuestNotice && (
                       <div className="mb-6 px-5 py-3 rounded-full bg-[#F0F7FF] dark:bg-blue-500/5 border border-[#E1EFFE] dark:border-blue-500/20 flex items-center gap-3 relative shadow-sm">
                         <Sparkles className="w-5 h-5 text-blue-500 flex-shrink-0" />
@@ -557,7 +532,6 @@ function ResultPageContent() {
                       </div>
                     )}
 
-                    {/* [5] Thêm ô input tìm kiếm lại */}
                     <div className="flex flex-col gap-3 mb-5">
                       <div className="flex justify-between items-center px-1">
                         <button onClick={() => router.push('/')} className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-orange-500 transition-colors">
@@ -580,7 +554,7 @@ function ResultPageContent() {
                         />
                         <div className="absolute inset-y-2 right-2">
                           <button
-                            onClick={handleSearch}
+                            onClick={() => handleSearch()}
                             className="flex items-center gap-2 px-5 py-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm h-full"
                           >
                             <Search className="w-4 h-4" />
@@ -589,27 +563,8 @@ function ResultPageContent() {
                         </div>
                       </div>
                     </div>
-
-                    {/* GPS Status */}
-                    <div className="mt-5 flex justify-center text-sm">
-                      {loadingLocation && (
-                        <span className="text-orange-400 animate-pulse font-medium">Đang định vị GPS...</span>
-                      )}
-                      {locError && (
-                        <span className="text-red-400 font-medium">
-                          ⚠️ {locError}{' '}
-                          <button onClick={getLocation} className="underline hover:text-red-300 ml-1">Thử lại</button>
-                        </span>
-                      )}
-                      {location && !loadingLocation && !locError && (
-                        <span className="text-teal-500 dark:text-teal-400 flex items-center gap-1.5 font-medium">
-                          <MapPin className="w-4 h-4" /> Vị trí hiện tại: {location.lat.toFixed(4)}, {location.lng.toFixed(4)}
-                        </span>
-                      )}
-                    </div>
                   </motion.div>
 
-                  {/* ─── Results ─── */}
                   {apiError ? (
                     <motion.div
                       initial={{ opacity: 0 }}
@@ -659,18 +614,17 @@ function ResultPageContent() {
                   ) : (
                     <>
                       {/* Hero Card #1 */}
-                      {heroItem && <HeroResultCard item={heroItem} />}
+                      {heroItem && <HeroResultCard item={heroItem} sessionId={sessionIdFromUrl} />}
 
-                      {/* Small Cards Grid #2-#5 */}
+                      {/* Small Cards Grid #2+ */}
                       {gridItems.length > 0 && (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                           {gridItems.map((item, idx) => (
-                            <SmallResultCard key={item.id || idx} item={item} index={idx} />
+                            <SmallResultCard key={item.id || idx} item={item} index={idx} sessionId={sessionIdFromUrl} />
                           ))}
                         </div>
                       )}
 
-                      {/* Feature Bar */}
                       <FeatureBar />
                     </>
                   )}
@@ -684,9 +638,6 @@ function ResultPageContent() {
   );
 }
 
-/* ══════════════════════════════════════════════════════════
-    MAIN RESULT PAGE (wraps client component in Suspense)
-    ══════════════════════════════════════════════════════════ */
 export default function ResultPage() {
   return (
     <Suspense fallback={
