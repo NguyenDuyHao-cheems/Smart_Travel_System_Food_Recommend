@@ -23,6 +23,8 @@ import { BudgetSelector, type BudgetOption } from '../../components/BudgetSelect
 import { DistanceFilter } from '../../components/DistanceFilter';
 import { Sidebar } from '../../components/Sidebar';
 import { SearchLoadingOverlay } from '../../components/ui/SearchLoadingOverlay';
+import { SearchBar } from '../../components/SearchBar';
+import { useSearchState, SearchMode } from '../../hooks/useSearchState';
 import { favoriteService } from '../../services/favoriteService';
 import { historyService } from '../../services/historyService';
 import { AddToCollectionModal } from '../../components/AddToCollectionModal';
@@ -95,10 +97,14 @@ function getMatchColor(match: string): string {
 /* ─────────────────────────────────────────────────────────────
    Hero Result Card (#1 — AI TOP PICK)
    ───────────────────────────────────────────────────────────── */
-function HeroResultCard({ item, sessionId, onAddCollection }: { item: RecommendResult; sessionId?: string; onAddCollection: (item: RecommendResult) => void }) {
+function HeroResultCard({ item, sessionId, searchMode, onAddCollection }: { item: RecommendResult; sessionId?: string; searchMode?: SearchMode; onAddCollection: (item: RecommendResult) => void }) {
   const router = useRouter();
   const handleNavigate = () => {
-    router.push(`/restaurant/${item.id}${sessionId ? `?session_id=${sessionId}` : ''}`);
+    const params = new URLSearchParams();
+    if (sessionId) params.set('session_id', sessionId);
+    if (searchMode) params.set('mode', searchMode);
+    const qs = params.toString();
+    router.push(`/restaurant/${item.id}${qs ? `?${qs}` : ''}`);
   };
 
   const [isFav, setIsFav] = useState(false);
@@ -216,13 +222,17 @@ function HeroResultCard({ item, sessionId, onAddCollection }: { item: RecommendR
 /* ─────────────────────────────────────────────────────────────
    Small Result Card (#2-#5)
    ───────────────────────────────────────────────────────────── */
-function SmallResultCard({ item, index, sessionId, onAddCollection }: { item: RecommendResult; index: number; sessionId?: string; onAddCollection: (item: RecommendResult) => void }) {
+function SmallResultCard({ item, index, sessionId, searchMode, onAddCollection }: { item: RecommendResult; index: number; sessionId?: string; searchMode?: SearchMode; onAddCollection: (item: RecommendResult) => void }) {
   const router = useRouter();
   const tags = getTagsForItem(item, index);
   const matchColor = getMatchColor(item.match);
 
   const handleNavigate = () => {
-    router.push(`/restaurant/${item.id}${sessionId ? `?session_id=${sessionId}` : ''}`);
+    const params = new URLSearchParams();
+    if (sessionId) params.set('session_id', sessionId);
+    if (searchMode) params.set('mode', searchMode);
+    const qs = params.toString();
+    router.push(`/restaurant/${item.id}${qs ? `?${qs}` : ''}`);
   };
 
   const [isFav, setIsFav] = useState(false);
@@ -382,7 +392,7 @@ function ResultPageContent() {
   });
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [inputValue, setInputValue] = useState('');
+  const { query: inputValue, setQuery: setInputValue, searchMode, setSearchMode } = useSearchState("");
   const [budget, setBudget] = useState<BudgetOption>('auto');
 
   const [fallbackApplied, setFallbackApplied] = useState(false);
@@ -496,13 +506,14 @@ function ResultPageContent() {
           lng: gps.lng,
           user_id: userId || undefined,
           budget: finalBudget === 'auto' ? undefined : parseInt(finalBudget, 10),
+          search_mode: searchMode,
         }),
       });
 
       if (res.ok) {
         const data = await res.json();
         setSearchLoadingMsg("Đã có kết quả mới! Đang chuẩn bị...");
-        router.push(`/result?session_id=${data.session_id}`);
+        router.push(`/result?session_id=${data.session_id}&mode=${searchMode}`);
       } else {
         throw new Error("Không thể kết nối với hệ thống AI.");
       }
@@ -621,29 +632,15 @@ function ResultPageContent() {
                       <Home className="w-4 h-4" /> Quay lại trang chủ
                     </button>
                   </div>
-                  <div className="relative group">
-                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                      <Sparkles className="h-5 w-5 text-orange-500" />
-                    </div>
-                    <input
-                      type="text"
-                      value={inputValue}
-                      onChange={(e) => setInputValue(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') handleSearch();
-                      }}
-                      className="block w-full pl-11 pr-32 py-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl leading-5 bg-transparent placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 sm:text-base transition-all shadow-sm group-hover:shadow-md dark:text-white"
-                      placeholder="Bạn muốn ăn gì hôm nay?"
+                  <div className="relative group flex">
+                    <SearchBar
+                      query={inputValue}
+                      setQuery={setInputValue}
+                      searchMode={searchMode}
+                      setSearchMode={setSearchMode}
+                      onSearch={() => handleSearch()}
+                      compact={true}
                     />
-                    <div className="absolute inset-y-2 right-2">
-                      <button
-                        onClick={() => handleSearch()}
-                        className="flex items-center gap-2 px-5 py-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm h-full"
-                      >
-                        <Search className="w-4 h-4" />
-                        <span className="hidden sm:inline">Tìm lại</span>
-                      </button>
-                    </div>
                   </div>
                 </div>
               </motion.div>
@@ -697,13 +694,13 @@ function ResultPageContent() {
               ) : (
                 <>
                   {/* Hero Card #1 */}
-                  {heroItem && <HeroResultCard item={heroItem} sessionId={sessionIdFromUrl} onAddCollection={setCollectionModalItem} />}
+                  {heroItem && <HeroResultCard item={heroItem} sessionId={sessionIdFromUrl} searchMode={searchMode} onAddCollection={setCollectionModalItem} />}
 
                   {/* Small Cards Grid #2+ */}
                   {gridItems.length > 0 && (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                       {gridItems.map((item, idx) => (
-                        <SmallResultCard key={item.id || idx} item={item} index={idx} sessionId={sessionIdFromUrl} onAddCollection={setCollectionModalItem} />
+                        <SmallResultCard key={item.id || idx} item={item} index={idx} sessionId={sessionIdFromUrl} searchMode={searchMode} onAddCollection={setCollectionModalItem} />
                       ))}
                     </div>
                   )}
