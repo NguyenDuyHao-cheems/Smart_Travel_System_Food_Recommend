@@ -107,11 +107,33 @@ export function Sidebar({ isCollapsed, onToggle, username: propUsername, avatar:
               </Link>
             );
           })}
+          {/* [FIX-CONFLICT]: Đưa nút Cài đặt (bottomNavItems) lên phía trên thẻ AI Card để bố cục hợp lý hơn */}
+          {bottomNavItems.map((item) => {
+            const isActive = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href));
+            return (
+              <Link
+                key={item.label}
+                href={item.href}
+                className={`flex items-center ${isCollapsed ? 'justify-center px-0' : 'gap-3 px-4'} py-3 rounded-xl text-[14px] font-medium transition-all cursor-pointer w-full ${isActive
+                    ? "bg-orange-50 dark:bg-orange-500/10 text-orange-600 dark:text-orange-500 shadow-sm shadow-orange-100 dark:shadow-none"
+                    : "text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-200"
+                  }`}
+                title={isCollapsed ? item.label : undefined}
+              >
+                <item.icon
+                  className={`w-[18px] h-[18px] flex-shrink-0 ${isActive ? "text-orange-500" : "text-gray-400"
+                    }`}
+                />
+                {!isCollapsed && <span className="truncate">{item.label}</span>}
+              </Link>
+            );
+          })}
         </div>
 
         {/* AI Card */}
+        {/* [FIX-CONFLICT]: Bổ sung mt-6 mb-6 để tạo khoảng hở giữa nút Cài đặt, thẻ AI Card và Footer */}
         {!isCollapsed && (
-          <div className="mx-2 p-4 rounded-2xl bg-orange-50/50 dark:bg-orange-500/5 border border-orange-100/50 dark:border-orange-500/10 relative overflow-hidden group">
+          <div className="mt-6 mb-6 mx-2 p-4 rounded-2xl bg-orange-50/50 dark:bg-orange-500/5 border border-orange-100/50 dark:border-orange-500/10 relative overflow-hidden group">
             <div className="relative z-10">
               <h4 className="text-[13px] font-bold text-gray-800 dark:text-gray-200 flex items-center gap-1.5 mb-1.5">
                 AI Wanderbite <Sparkles className="w-3 h-3 text-orange-500" />
