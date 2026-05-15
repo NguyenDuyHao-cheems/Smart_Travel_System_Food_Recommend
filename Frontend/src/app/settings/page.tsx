@@ -10,6 +10,8 @@ import {
   Bell, 
   Shield, 
   MapPin, 
+  Heart,
+  Sparkles,
   Link as LinkIcon,
   Camera,
   Upload,
@@ -27,6 +29,14 @@ import {
 import { Sidebar } from "../../components/Sidebar";
 import { Header } from "../../components/ui/Header";
 import { Roboto } from "next/font/google";
+import {
+  defaultSettings,
+  settingsService,
+  SETTINGS_UPDATED_EVENT,
+  type DefaultBudget,
+  type SettingsLanguage,
+  type UserSettings,
+} from "../../services/settingsService";
 
 const roboto = Roboto({
   subsets: ["latin", "vietnamese"],
@@ -141,7 +151,9 @@ export default function SettingsPage() {
   const tabs = [
     { id: "account", label: "Tài khoản", icon: User },
     { id: "appearance", label: "Giao diện", icon: Palette },
+    { id: "notifications", label: "Thông báo", icon: Bell },
     { id: "privacy", label: "Quyền riêng tư", icon: Shield },
+    { id: "location", label: "Vị trí", icon: MapPin },
   ];
 
   return (
@@ -207,7 +219,10 @@ export default function SettingsPage() {
                       />
                     )}
                     {activeTab === "appearance" && <AppearanceSettings />}
-                    {!["account", "appearance"].includes(activeTab) && (
+                    {activeTab === "notifications" && <NotificationSettings />}
+                    {activeTab === "privacy" && <PrivacySettings />}
+                    {activeTab === "location" && <LocationSettings />}
+                    {!["account", "appearance", "notifications", "privacy", "location"].includes(activeTab) && (
                       <div className="bg-white dark:bg-[#1A1F2B] rounded-[32px] p-12 text-center shadow-sm border border-gray-100 dark:border-gray-800">
                         <div className="w-16 h-16 bg-gray-50 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-400">
                           <Settings className="w-8 h-8" />
@@ -585,6 +600,7 @@ function AccountSettings({
 
 function AppearanceSettings() {
   const { theme, setTheme } = useTheme();
+  const { settings, updateSettings } = useUserSettings();
 
   const themes = [
     { id: "light", label: "Sáng", icon: Sun, desc: "Trải nghiệm sáng" },
@@ -623,15 +639,100 @@ function AppearanceSettings() {
 
         <div className="mt-8 pt-8 border-t border-gray-50 dark:border-gray-800">
           <label className="text-[13px] font-bold text-gray-400 uppercase tracking-wider block mb-3">Ngôn ngữ</label>
-          <div className="relative">
-            <div className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl px-5 py-3.5 flex items-center justify-between cursor-pointer group">
-              <div className="flex items-center gap-3">
-                <Globe className="w-5 h-5 text-gray-400" />
-                <span className="text-sm font-bold text-gray-800 dark:text-white">Tiếng Việt</span>
-              </div>
-              <ChevronRight className="w-4 h-4 text-gray-400 group-hover:translate-x-1 transition-transform" />
-            </div>
+          <div className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl px-5 py-3.5 flex items-center gap-3">
+            <Globe className="w-5 h-5 text-gray-400" />
+            <select
+              value={settings.language}
+              onChange={(event) => updateSettings({ language: event.target.value as SettingsLanguage })}
+              className="flex-1 bg-transparent text-sm font-bold text-gray-800 dark:text-white outline-none"
+            >
+              <option value="vi">Tiếng Việt</option>
+              <option value="en">English</option>
+            </select>
+            <ChevronRight className="w-4 h-4 text-gray-400" />
           </div>
+          <p className="text-[11px] text-gray-400 mt-2">
+            Tùy chọn này đang được lưu cục bộ và sẵn sàng đổi sang API khi có backend settings.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function useUserSettings() {
+  const [settings, setSettings] = React.useState<UserSettings>(defaultSettings);
+  const [userId, setUserId] = React.useState("guest");
+
+  React.useEffect(() => {
+    const currentUserId = localStorage.getItem("user_id") || "guest";
+    setUserId(currentUserId);
+
+    const loadSettings = async () => {
+      setSettings(await settingsService.getSettings(currentUserId));
+    };
+
+    loadSettings();
+    window.addEventListener(SETTINGS_UPDATED_EVENT, loadSettings);
+    window.addEventListener("storage", loadSettings);
+
+    return () => {
+      window.removeEventListener(SETTINGS_UPDATED_EVENT, loadSettings);
+      window.removeEventListener("storage", loadSettings);
+    };
+  }, []);
+
+  const updateSettings = React.useCallback(
+    async (updates: Partial<UserSettings>) => {
+      const nextSettings = await settingsService.updateSettings(userId, updates);
+      setSettings(nextSettings);
+      return nextSettings;
+    },
+    [userId],
+  );
+
+  const resetSettings = React.useCallback(async () => {
+    const nextSettings = await settingsService.resetSettings(userId);
+    setSettings(nextSettings);
+    return nextSettings;
+  }, [userId]);
+
+  return { settings, updateSettings, resetSettings };
+}
+
+function NotificationSettings() {
+  const { settings, updateSettings } = useUserSettings();
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-white dark:bg-[#1A1F2B] rounded-[32px] p-8 shadow-sm border border-gray-100 dark:border-gray-800">
+        <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-1">Thông báo</h2>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-8">
+          Quản lý các loại thông báo trong ứng dụng. Các tùy chọn này không ghi vào database.
+        </p>
+
+        <div className="space-y-4">
+          <SettingToggleRow
+            icon={Sparkles}
+            title="Kết quả tìm kiếm AI"
+            desc="Nhận thông báo khi có kết quả, fallback hoặc cảnh báo liên quan đến tìm kiếm."
+            active={settings.notificationSearch}
+            onToggle={(active) => updateSettings({ notificationSearch: active })}
+          />
+          <SettingToggleRow
+            icon={Bell}
+            title="Hỗ trợ"
+            desc="Nhận cập nhật khi ticket hỗ trợ được tạo hoặc thay đổi trạng thái."
+            active={settings.notificationSupport}
+            onToggle={(active) => updateSettings({ notificationSupport: active })}
+          />
+          <SettingToggleRow
+            icon={Heart}
+            title="Yêu thích và bộ sưu tập"
+            desc="Nhận nhắc nhở khi lưu quán, món ăn hoặc thêm vào bộ sưu tập."
+            active={settings.notificationFavorites}
+            onToggle={(active) => updateSettings({ notificationFavorites: active })}
+          />
         </div>
       </div>
     </div>
@@ -639,33 +740,152 @@ function AppearanceSettings() {
 }
 
 function PrivacySettings() {
-  return (
-    <div className="bg-white dark:bg-[#1A1F2B] rounded-[32px] p-8 shadow-sm border border-gray-100 dark:border-gray-800">
-      <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-1">Quyền riêng tư</h2>
-      <p className="text-sm text-gray-500 dark:text-gray-400 mb-8">Quản lý quyền và dữ liệu cá nhân của bạn.</p>
+  const { settings, updateSettings, resetSettings } = useUserSettings();
 
-      <div className="space-y-4">
-        {[
-          { icon: MapPin, title: "Cho phép truy cập vị trí", desc: "Wanderbite cần quyền này để gợi ý món ăn gần bạn.", active: true },
-          { icon: ShieldCheck, title: "Cho phép dùng dữ liệu cá nhân hóa AI", desc: "Giúp AI hiểu bạn hơn để đưa ra gợi ý chính xác và phù hợp.", active: false }
-        ].map((item, idx) => (
-          <div key={idx} className="flex items-center justify-between p-5 rounded-3xl bg-gray-50/50 dark:bg-gray-800/30 border border-gray-50 dark:border-gray-800">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-white dark:bg-gray-800 flex items-center justify-center text-teal-500 shadow-sm border border-gray-100 dark:border-gray-800">
-                <item.icon className="w-5 h-5" />
-              </div>
-              <div>
-                <h4 className="text-sm font-bold text-gray-800 dark:text-white">{item.title}</h4>
-                <p className="text-[11px] text-gray-500 dark:text-gray-400">{item.desc}</p>
-              </div>
-            </div>
-            <div className={`w-12 h-6 rounded-full relative cursor-pointer transition-colors ${item.active ? 'bg-orange-500' : 'bg-gray-200 dark:bg-gray-700'}`}>
-              <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${item.active ? 'left-7' : 'left-1'}`} />
-            </div>
-          </div>
-        ))}
+  const handleReset = async () => {
+    await resetSettings();
+    toast.success("Đã khôi phục cài đặt mặc định.");
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-white dark:bg-[#1A1F2B] rounded-[32px] p-8 shadow-sm border border-gray-100 dark:border-gray-800">
+        <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-1">Quyền riêng tư</h2>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-8">
+          Quản lý quyền và dữ liệu cá nhân hóa. Phần này chỉ lưu trạng thái ở trình duyệt.
+        </p>
+
+        <div className="space-y-4">
+          <SettingToggleRow
+            icon={MapPin}
+            title="Cho phép truy cập vị trí"
+            desc="Dùng cho gợi ý gần bạn và bộ lọc khoảng cách mặc định."
+            active={settings.allowLocation}
+            onToggle={(active) => updateSettings({ allowLocation: active })}
+          />
+          <SettingToggleRow
+            icon={ShieldCheck}
+            title="Cho phép cá nhân hóa AI"
+            desc="Cho phép UI dùng sở thích cục bộ để gợi ý trải nghiệm phù hợp hơn."
+            active={settings.allowAiPersonalization}
+            onToggle={(active) => updateSettings({ allowAiPersonalization: active })}
+          />
+        </div>
+      </div>
+
+      <div className="bg-white dark:bg-[#1A1F2B] rounded-[32px] p-6 shadow-sm border border-gray-100 dark:border-gray-800 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <h3 className="text-sm font-bold text-gray-900 dark:text-white">Khôi phục cài đặt mặc định</h3>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            Chỉ đặt lại các tùy chọn settings cục bộ, không xóa tài khoản hay dữ liệu backend.
+          </p>
+        </div>
+        <button
+          onClick={handleReset}
+          className="px-4 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 text-gray-700 dark:text-gray-300 text-xs font-bold rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+        >
+          Đặt lại
+        </button>
       </div>
     </div>
   );
 }
 
+function LocationSettings() {
+  const { settings, updateSettings } = useUserSettings();
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="bg-white dark:bg-[#1A1F2B] rounded-[32px] p-8 shadow-sm border border-gray-100 dark:border-gray-800">
+        <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-1">Vị trí và phạm vi</h2>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-8">
+          Thiết lập mặc định cho các bộ lọc tìm kiếm phía giao diện.
+        </p>
+
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <label className="text-[13px] font-bold text-gray-400 uppercase tracking-wider">
+              Bán kính mặc định
+            </label>
+            <span className="text-sm font-black text-orange-500">{settings.defaultRadiusKm} km</span>
+          </div>
+          <input
+            type="range"
+            min={1}
+            max={20}
+            step={1}
+            value={settings.defaultRadiusKm}
+            onChange={(event) => updateSettings({ defaultRadiusKm: Number(event.target.value) })}
+            className="w-full accent-orange-500"
+          />
+          <div className="flex justify-between text-[11px] text-gray-400 mt-2">
+            <span>1 km</span>
+            <span>20 km</span>
+          </div>
+        </div>
+
+        <div className="mt-8 pt-8 border-t border-gray-50 dark:border-gray-800">
+          <label className="text-[13px] font-bold text-gray-400 uppercase tracking-wider block mb-3">
+            Ngân sách mặc định
+          </label>
+          <select
+            value={settings.defaultBudget}
+            onChange={(event) => updateSettings({ defaultBudget: event.target.value as DefaultBudget })}
+            className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl px-5 py-3.5 text-sm font-bold text-gray-800 dark:text-white outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all"
+          >
+            <option value="auto">Tự động</option>
+            <option value="30000">Dưới 30k</option>
+            <option value="50000">Dưới 50k</option>
+            <option value="100000">Dưới 100k</option>
+          </select>
+        </div>
+      </div>
+
+      <div className="bg-white dark:bg-[#1A1F2B] rounded-[32px] p-8 shadow-sm border border-gray-100 dark:border-gray-800">
+        <div className="w-12 h-12 rounded-2xl bg-teal-50 dark:bg-teal-500/10 flex items-center justify-center text-teal-500 mb-5">
+          <MapPin className="w-6 h-6" />
+        </div>
+        <h3 className="text-base font-bold text-gray-900 dark:text-white mb-2">Ghi chú triển khai</h3>
+        <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
+          Các giá trị này hiện là preference local. Khi backend có endpoint settings, chỉ cần đổi service lưu trữ mà không cần đổi lại UI.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function SettingToggleRow({
+  icon: Icon,
+  title,
+  desc,
+  active,
+  onToggle,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  title: string;
+  desc: string;
+  active: boolean;
+  onToggle: (active: boolean) => void;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-4 p-5 rounded-3xl bg-gray-50/50 dark:bg-gray-800/30 border border-gray-50 dark:border-gray-800">
+      <div className="flex items-center gap-4">
+        <div className="w-12 h-12 rounded-2xl bg-white dark:bg-gray-800 flex items-center justify-center text-teal-500 shadow-sm border border-gray-100 dark:border-gray-800">
+          <Icon className="w-5 h-5" />
+        </div>
+        <div>
+          <h4 className="text-sm font-bold text-gray-800 dark:text-white">{title}</h4>
+          <p className="text-[11px] text-gray-500 dark:text-gray-400">{desc}</p>
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={() => onToggle(!active)}
+        className={`w-12 h-6 rounded-full relative transition-colors flex-shrink-0 ${active ? 'bg-orange-500' : 'bg-gray-200 dark:bg-gray-700'}`}
+        aria-pressed={active}
+      >
+        <span className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${active ? 'left-7' : 'left-1'}`} />
+      </button>
+    </div>
+  );
+}
