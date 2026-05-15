@@ -43,7 +43,18 @@ export default function HistoryPage() {
   };
 
   const handleSearchAgain = (item: SearchHistoryItem) => {
-    router.push(`/result?q=${encodeURIComponent(item.query)}&budget=${item.budget}`);
+    const params = new URLSearchParams();
+    if (item.sessionId) {
+      params.set("session_id", item.sessionId);
+      if (item.searchMode) params.set("mode", item.searchMode);
+      router.push(`/result?${params.toString()}`);
+      return;
+    }
+
+    params.set("q", item.query);
+    params.set("budget", String(item.budget));
+    if (item.searchMode) params.set("mode", item.searchMode);
+    router.push(`/result?${params.toString()}`);
   };
 
   return (

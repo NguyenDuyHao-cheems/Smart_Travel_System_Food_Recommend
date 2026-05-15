@@ -4,27 +4,50 @@ export interface SearchHistoryItem {
   budget: string | number;
   createdAt: number;
   resultCount?: number;
+  sessionId?: string;
+  searchMode?: "basic" | "emotion";
 }
 
 const HISTORY_KEY = "wanderbite_history";
 
+function parseHistory(data: string | null): Record<string, SearchHistoryItem[]> {
+  if (!data) return {};
+  try {
+    return JSON.parse(data) as Record<string, SearchHistoryItem[]>;
+  } catch {
+    return {};
+  }
+}
+
 export const historyService = {
   getHistory: (userId: string): SearchHistoryItem[] => {
     if (typeof window === "undefined") return [];
-    const data = localStorage.getItem(HISTORY_KEY);
-    if (!data) return [];
-    const allHistory = JSON.parse(data) as Record<string, SearchHistoryItem[]>;
+    const allHistory = parseHistory(localStorage.getItem(HISTORY_KEY));
     return allHistory[userId] || [];
   },
 
-  addHistory: (userId: string, query: string, budget: string | number, resultCount?: number) => {
+  addHistory: (
+    userId: string,
+    query: string,
+    budget: string | number,
+    resultCount?: number,
+    sessionId?: string,
+    searchMode?: "basic" | "emotion"
+  ) => {
     if (typeof window === "undefined" || !query.trim()) return;
-    const data = localStorage.getItem(HISTORY_KEY);
-    const allHistory: Record<string, SearchHistoryItem[]> = data ? JSON.parse(data) : {};
+    const allHistory = parseHistory(localStorage.getItem(HISTORY_KEY));
     if (!allHistory[userId]) allHistory[userId] = [];
     
-    // Avoid exact duplicate at the top
+    // Keep the newest session metadata without duplicating the top item.
     if (allHistory[userId].length > 0 && allHistory[userId][0].query === query && allHistory[userId][0].budget === budget) {
+      allHistory[userId][0] = {
+        ...allHistory[userId][0],
+        createdAt: Date.now(),
+        resultCount,
+        sessionId,
+        searchMode,
+      };
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(allHistory));
       return;
     }
 
@@ -33,7 +56,9 @@ export const historyService = {
       query,
       budget,
       createdAt: Date.now(),
-      resultCount
+      resultCount,
+      sessionId,
+      searchMode
     };
 
     allHistory[userId] = [newItem, ...allHistory[userId]];
@@ -48,9 +73,7 @@ export const historyService = {
 
   removeHistoryItem: (userId: string, id: string) => {
     if (typeof window === "undefined") return;
-    const data = localStorage.getItem(HISTORY_KEY);
-    if (!data) return;
-    const allHistory: Record<string, SearchHistoryItem[]> = JSON.parse(data);
+    const allHistory = parseHistory(localStorage.getItem(HISTORY_KEY));
     if (allHistory[userId]) {
       allHistory[userId] = allHistory[userId].filter(item => item.id !== id);
       localStorage.setItem(HISTORY_KEY, JSON.stringify(allHistory));
@@ -59,9 +82,7 @@ export const historyService = {
 
   clearHistory: (userId: string) => {
     if (typeof window === "undefined") return;
-    const data = localStorage.getItem(HISTORY_KEY);
-    if (!data) return;
-    const allHistory: Record<string, SearchHistoryItem[]> = JSON.parse(data);
+    const allHistory = parseHistory(localStorage.getItem(HISTORY_KEY));
     allHistory[userId] = [];
     localStorage.setItem(HISTORY_KEY, JSON.stringify(allHistory));
   }

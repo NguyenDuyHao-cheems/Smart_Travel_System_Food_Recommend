@@ -512,6 +512,16 @@ function ResultPageContent() {
 
       if (res.ok) {
         const data = await res.json();
+        if (userId) {
+          historyService.addHistory(
+            userId,
+            finalQuery,
+            finalBudget,
+            Array.isArray(data.results) ? data.results.length : undefined,
+            data.session_id,
+            searchMode
+          );
+        }
         setSearchLoadingMsg("Đã có kết quả mới! Đang chuẩn bị...");
         router.push(`/result?session_id=${data.session_id}&mode=${searchMode}`);
       } else {

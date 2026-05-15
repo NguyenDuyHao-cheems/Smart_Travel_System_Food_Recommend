@@ -22,6 +22,7 @@ import { SurveyModal } from "../components/SurveyModal";
 import { SearchLoadingOverlay } from "../components/ui/SearchLoadingOverlay";
 import { SearchBar } from "../components/SearchBar";
 import { useSearchState } from "../hooks/useSearchState";
+import { historyService } from "../services/historyService";
 
 const roboto = Roboto({
   subsets: ["latin", "vietnamese"],
@@ -128,6 +129,16 @@ export default function Home() {
 
       if (res.ok) {
         const data = await res.json();
+        if (userId) {
+          historyService.addHistory(
+            userId,
+            query,
+            budget,
+            Array.isArray(data.results) ? data.results.length : undefined,
+            data.session_id,
+            searchMode
+          );
+        }
         setSearchLoadingMsg("Đã có kết quả! Đang chuyển hướng...");
         router.push(`/result?session_id=${data.session_id}&mode=${searchMode}`);
       } else {
