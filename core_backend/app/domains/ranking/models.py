@@ -29,6 +29,8 @@ class RestaurantModel(Base):
 
     image_url = Column(String, nullable=True)
     opening_hours = Column(String, nullable=True)
+    open_time = Column(String, nullable=True)
+    close_time = Column(String, nullable=True)
     google_maps_url = Column(String, nullable=True)
 
     tag_match: bool = False  # non-DB field for boosting/ranking

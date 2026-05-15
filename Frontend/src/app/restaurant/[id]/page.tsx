@@ -3,15 +3,16 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  ArrowLeft, 
-  MapPin, 
-  Navigation, 
-  Star, 
-  Clock, 
+import {
+  ArrowLeft,
+  MapPin,
+  Navigation,
+  Star,
+  Clock,
   UtensilsCrossed,
   Info,
-  ChevronRight
+  ChevronRight,
+  X
 } from 'lucide-react';
 import Image from 'next/image';
 
@@ -22,6 +23,14 @@ interface Dish {
   image_url: string;
 }
 
+interface Review {
+  id: string;
+  reviewer_name: string;
+  rating: number;
+  text: string;
+  date: string;
+}
+
 interface Restaurant {
   id: string;
   name: string;
@@ -29,8 +38,15 @@ interface Restaurant {
   google_maps_url: string;
   image_url: string;
   rating_avg: number;
+  total_reviews: number;
+  price_range: string | null;
+  open_time: string | null;
+  close_time: string | null;
+  is_open_now: boolean;
   lat?: number;
   lng?: number;
+  tags: string[];
+  reviews: Review[];
   dishes: Dish[];
 }
 
@@ -38,13 +54,14 @@ export default function RestaurantDetailPage() {
   const params = useParams();
   const searchParams = useSearchParams();
   const router = useRouter();
-  
+
   const restaurantId = params.id as string;
   const sessionId = searchParams.get('session_id');
 
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isMapModalOpen, setIsMapModalOpen] = useState(false);
 
   useEffect(() => {
     const fetchDetail = async () => {
@@ -65,8 +82,9 @@ export default function RestaurantDetailPage() {
   }, [restaurantId]);
 
   const handleBack = () => {
+    const mode = searchParams.get('mode');
     if (sessionId) {
-      router.push(`/result?session_id=${sessionId}`);
+      router.push(`/result?session_id=${sessionId}${mode ? `&mode=${mode}` : ''}`);
     } else {
       router.push('/');
     }
@@ -81,7 +99,7 @@ export default function RestaurantDetailPage() {
       {/* ── Header / Hero Section ── */}
       <div className="relative h-[40vh] md:h-[50vh] w-full">
         {/* Back Button */}
-        <button 
+        <button
           onClick={handleBack}
           className="absolute top-6 left-6 z-20 p-3 bg-white/90 dark:bg-gray-800/90 backdrop-blur-md rounded-full shadow-lg hover:scale-110 transition-transform"
         >
@@ -112,12 +130,21 @@ export default function RestaurantDetailPage() {
             <div className="flex flex-wrap items-center gap-4 text-sm md:text-base opacity-90">
               <div className="flex items-center gap-1">
                 <Star className="w-5 h-5 text-yellow-400 fill-yellow-400" />
-                <span className="font-semibold">{restaurant.rating_avg.toFixed(1)}</span>
+                <span className="font-semibold">
+                  {restaurant.rating_avg.toFixed(1)} 
+                  {restaurant.total_reviews > 0 && <span className="font-normal text-gray-200 ml-1">({restaurant.total_reviews} đánh giá)</span>}
+                </span>
               </div>
               <div className="flex items-center gap-1">
                 <MapPin className="w-5 h-5 text-red-400" />
                 <span>{restaurant.address}</span>
               </div>
+              {restaurant.price_range && (
+                <div className="flex items-center gap-1">
+                  <span className="w-5 h-5 flex items-center justify-center text-green-400 font-bold text-lg">$</span>
+                  <span className="font-medium">{restaurant.price_range}</span>
+                </div>
+              )}
             </div>
           </motion.div>
         </div>
@@ -126,14 +153,20 @@ export default function RestaurantDetailPage() {
       {/* ── Main Content ── */}
       <div className="max-w-7xl mx-auto px-6 -mt-8 relative z-10">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          
+
           {/* Left Column: Menu & Details */}
           <div className="lg:col-span-2 space-y-10">
-            
+
             {/* Quick Actions (Mobile Sticky bottom alternative) */}
             <div className="flex gap-4">
-              <button 
-                onClick={() => window.open(restaurant.google_maps_url, '_blank')}
+              <button
+                onClick={() => {
+                  if (restaurant.google_maps_url) {
+                    window.open(restaurant.google_maps_url, '_blank');
+                  } else {
+                    window.open(`https://maps.google.com/?q=${encodeURIComponent(restaurant.address)}`, '_blank');
+                  }
+                }}
                 className="flex-1 md:flex-none flex items-center justify-center gap-2 px-8 py-4 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-2xl shadow-xl shadow-orange-500/20 transition-all transform hover:-translate-y-1"
               >
                 <Navigation className="w-5 h-5" />
@@ -192,38 +225,54 @@ export default function RestaurantDetailPage() {
               </div>
             </section>
 
-            {/* Map Section */}
-            <section className="pb-10">
+            {/* Reviews Section */}
+            <section className="pt-6 border-t border-gray-100 dark:border-gray-800">
               <div className="flex items-center gap-3 mb-6">
-                <div className="p-2 bg-blue-100 dark:bg-blue-500/20 rounded-lg">
-                  <MapPin className="w-6 h-6 text-blue-500" />
+                <div className="p-2 bg-yellow-100 dark:bg-yellow-500/20 rounded-lg">
+                  <Star className="w-6 h-6 text-yellow-500 fill-yellow-500" />
                 </div>
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Vị trí nhà hàng</h2>
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Bình luận từ thực khách</h2>
               </div>
-              <div className="w-full h-[400px] rounded-3xl overflow-hidden border border-gray-200 dark:border-gray-700 shadow-inner bg-gray-200 dark:bg-gray-800 relative">
-                {/* Bản đồ không còn lớp phủ mờ, hiển thị sắc nét 100% */}
-                <iframe
-                  width="100%"
-                  height="100%"
-                  style={{ border: 0 }}
-                  loading="lazy"
-                  allowFullScreen
-                  referrerPolicy="no-referrer-when-downgrade"
-                  src={
-                    restaurant.lat && restaurant.lng 
-                      ? `https://maps.google.com/maps?q=${restaurant.lat},${restaurant.lng}&hl=vi&z=16&output=embed`
-                      : `https://maps.google.com/maps?q=${encodeURIComponent(restaurant.address)}&hl=vi&z=16&output=embed`
-                  }
-                ></iframe>
-                
-                {/* Nhãn thông tin nhỏ gọn ở góc, không che khuất vị trí trung tâm */}
-                <div className="absolute bottom-4 left-4 z-10 pointer-events-none">
-                   <p className="text-[10px] uppercase tracking-wider font-bold bg-white/90 dark:bg-gray-800/90 text-gray-500 px-3 py-1.5 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700">
-                      Google Maps Interactive
-                   </p>
-                </div>
+
+              <div className="space-y-4">
+                {restaurant.reviews && restaurant.reviews.length > 0 ? (
+                  restaurant.reviews.map((review, idx) => (
+                    <motion.div
+                      key={review.id || idx}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: idx * 0.1 }}
+                      className="bg-white dark:bg-gray-800 p-5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700"
+                    >
+                      <div className="flex justify-between items-start mb-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-gradient-to-br from-orange-400 to-pink-500 rounded-full flex items-center justify-center text-white font-bold">
+                            {(review.reviewer_name || "Ẩn danh").charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <p className="font-bold text-gray-900 dark:text-white text-sm">{review.reviewer_name || "Thực khách ẩn danh"}</p>
+                            <p className="text-xs text-gray-400">{review.date || "Gần đây"}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1 px-2 py-1 bg-yellow-50 dark:bg-yellow-500/10 rounded-lg">
+                          <Star className="w-3.5 h-3.5 text-yellow-500 fill-yellow-500" />
+                          <span className="text-sm font-bold text-yellow-700 dark:text-yellow-500">{review.rating?.toFixed(1) || "5.0"}</span>
+                        </div>
+                      </div>
+                      <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed">
+                        {review.text || "Người dùng không để lại lời bình luận nào."}
+                      </p>
+                    </motion.div>
+                  ))
+                ) : (
+                  <div className="py-8 text-center bg-gray-50 dark:bg-gray-800/30 rounded-2xl border border-dashed border-gray-200 dark:border-gray-700">
+                    <p className="text-gray-500">Chưa có bình luận nào cho nhà hàng này.</p>
+                  </div>
+                )}
               </div>
             </section>
+
+            {/* Removed Map Section from here */}
           </div>
 
           {/* Right Column: Sidebar Info */}
@@ -233,36 +282,142 @@ export default function RestaurantDetailPage() {
                 <Info className="w-5 h-5 text-orange-500" />
                 Thông tin chung
               </h3>
-              <div className="space-y-4">
+              <div className="space-y-5">
                 <div className="flex items-start gap-3">
-                  <Clock className="w-5 h-5 text-gray-400 mt-0.5" />
-                  <div>
+                  <Clock className="w-5 h-5 text-gray-400 mt-0.5 flex-shrink-0" />
+                  <div className="flex-1">
                     <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">Giờ mở cửa</p>
-                    <p className="text-xs text-gray-500">08:00 - 22:00 (Hàng ngày)</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <p className="text-xs text-gray-500">
+                        {restaurant.open_time && restaurant.close_time 
+                          ? `${restaurant.open_time} - ${restaurant.close_time}` 
+                          : 'Đang cập nhật'}
+                      </p>
+                      {restaurant.is_open_now ? (
+                        <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400">
+                          Đang mở cửa
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400">
+                          Đã đóng cửa
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
-                <div className="flex items-start gap-3">
-                  <UtensilsCrossed className="w-5 h-5 text-gray-400 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">Phong cách</p>
-                    <p className="text-xs text-gray-500">Ẩm thực địa phương, Hiện đại</p>
+                
+                {restaurant.tags && restaurant.tags.length > 0 && (
+                  <div className="flex items-start gap-3 pt-4 border-t border-gray-100 dark:border-gray-700">
+                    <UtensilsCrossed className="w-5 h-5 text-gray-400 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Phân loại</p>
+                      <div className="flex flex-wrap gap-2">
+                        {restaurant.tags.map((tag, i) => (
+                          <span key={i} className="px-3 py-1 text-[11px] font-bold uppercase tracking-wider bg-orange-50 dark:bg-orange-500/10 text-orange-600 dark:text-orange-400 rounded-full border border-orange-100 dark:border-orange-500/20">
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             </div>
 
-            {/* Support Box */}
-            <div className="bg-gradient-to-br from-orange-500 to-pink-500 p-6 rounded-3xl text-white">
-              <h3 className="font-bold mb-2">Cần đặt chỗ trước?</h3>
-              <p className="text-xs opacity-90 mb-4">Hãy gọi cho chúng tôi để được giữ chỗ tốt nhất cho bữa tối của bạn.</p>
-              <button className="w-full py-3 bg-white/20 hover:bg-white/30 backdrop-blur-md rounded-xl font-bold transition-colors">
-                Gọi 1900 xxxx
-              </button>
+            {/* Map Section */}
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700">
+              <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-gray-900 dark:text-white">
+                <MapPin className="w-5 h-5 text-blue-500" />
+                Vị trí nhà hàng
+              </h3>
+              <div 
+                className="w-full h-[300px] rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-700 shadow-inner bg-gray-200 dark:bg-gray-800 relative group cursor-pointer"
+                onClick={() => setIsMapModalOpen(true)}
+              >
+                {/* Transparent overlay to capture clicks */}
+                <div className="absolute inset-0 z-10 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                  <div className="opacity-0 group-hover:opacity-100 bg-white dark:bg-gray-800 px-4 py-2 rounded-full font-bold text-sm shadow-lg transition-opacity flex items-center gap-2 text-gray-800 dark:text-gray-200">
+                    <MapPin className="w-4 h-4 text-orange-500" />
+                    Phóng to bản đồ
+                  </div>
+                </div>
+                {/* Bản đồ không còn lớp phủ mờ, hiển thị sắc nét 100% */}
+                <iframe
+                  width="100%"
+                  height="100%"
+                  style={{ border: 0 }}
+                  loading="lazy"
+                  allowFullScreen
+                  referrerPolicy="no-referrer-when-downgrade"
+                  src={
+                    restaurant.lat && restaurant.lng
+                      ? `https://maps.google.com/maps?q=${restaurant.lat},${restaurant.lng}&hl=vi&z=16&output=embed`
+                      : `https://maps.google.com/maps?q=${encodeURIComponent(restaurant.address)}&hl=vi&z=16&output=embed`
+                  }
+                ></iframe>
+
+                {/* Nhãn thông tin nhỏ gọn ở góc, không che khuất vị trí trung tâm */}
+                <div className="absolute bottom-3 left-3 z-10 pointer-events-none">
+                  <p className="text-[9px] uppercase tracking-wider font-bold bg-white/90 dark:bg-gray-800/90 text-gray-500 px-2 py-1 rounded-md shadow-sm border border-gray-100 dark:border-gray-700">
+                    Interactive
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
 
         </div>
       </div>
+
+      {/* ── Map Modal ── */}
+      <AnimatePresence>
+        {isMapModalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-10 bg-black/60 backdrop-blur-sm"
+            onClick={() => setIsMapModalOpen(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              className="relative w-full max-w-5xl h-[80vh] bg-white dark:bg-gray-900 rounded-3xl overflow-hidden shadow-2xl flex flex-col"
+            >
+              <div className="p-4 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center bg-gray-50 dark:bg-gray-950">
+                <h3 className="text-lg md:text-xl font-bold flex items-center gap-2 text-gray-900 dark:text-white">
+                  <MapPin className="w-6 h-6 text-orange-500" />
+                  Bản đồ: {restaurant.name}
+                </h3>
+                <button 
+                  onClick={() => setIsMapModalOpen(false)}
+                  className="p-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-800 dark:hover:bg-gray-700 rounded-full transition-colors text-gray-700 dark:text-gray-300"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="flex-1 w-full bg-gray-200 dark:bg-gray-800 relative">
+                <iframe
+                  width="100%"
+                  height="100%"
+                  style={{ border: 0 }}
+                  loading="lazy"
+                  allowFullScreen
+                  referrerPolicy="no-referrer-when-downgrade"
+                  src={
+                    restaurant.lat && restaurant.lng
+                      ? `https://maps.google.com/maps?q=${restaurant.lat},${restaurant.lng}&hl=vi&z=16&output=embed`
+                      : `https://maps.google.com/maps?q=${encodeURIComponent(restaurant.address)}&hl=vi&z=16&output=embed`
+                  }
+                ></iframe>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
     </div>
   );
 }
@@ -296,7 +451,7 @@ function ErrorState({ message, onBack }: { message: string; onBack: () => void }
         </div>
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Oops! Có lỗi xảy ra</h2>
         <p className="text-gray-500 mb-8">{message}</p>
-        <button 
+        <button
           onClick={onBack}
           className="px-8 py-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-full font-bold hover:scale-105 transition-transform"
         >
