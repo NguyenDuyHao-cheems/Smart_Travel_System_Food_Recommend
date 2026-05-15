@@ -61,6 +61,7 @@ class SearchService:
             user_location=[request.lat, request.lng],
             tag_name=request.tag_name,
             cleaned_query=ai_response.cleaned_query,
+            search_mode=request.search_mode,
         )
 
         raw_candidates = recommend_results["results"][:15]
@@ -91,7 +92,7 @@ class SearchService:
                 match_str = "95%"
 
             results.append(
-                self._map_to_recommend_result(model, request.lat, request.lng, match_str)
+                self._map_to_recommend_result(model, request.lat, request.lng, match_str, request.search_mode)
             )
 
         logger.debug("Search: query=%r, mapped=%d, filtered_out=%d", request.query, len(results), filtered_out_count)
@@ -113,7 +114,8 @@ class SearchService:
             "fallback_reason": fallback_reason,
             "applied_budget": effective_budget,
             "filtered_out_count": filtered_out_count,
-            "warning": warning
+            "warning": warning,
+            "search_mode": request.search_mode,
         }
 
         session_obj = SearchSession(
@@ -173,7 +175,13 @@ class SearchService:
         )
 
     @staticmethod
-    def _map_to_recommend_result(model, user_lat: float, user_lng: float, match_str: str = "95%") -> RecommendResult:
+    def _map_to_recommend_result(
+        model,
+        user_lat: float,
+        user_lng: float,
+        match_str: str = "95%",
+        search_mode: str = "basic",
+    ) -> RecommendResult:
         import math
 
         lat2, lng2 = float(model.lat or 0), float(model.lng or 0)
@@ -194,6 +202,10 @@ class SearchService:
         else:
             price_display = "Liên hệ"
 
+        reason = "Phù hợp với tìm kiếm của bạn"
+        if search_mode == "emotion":
+            reason = "Phù hợp với cảm xúc của bạn và có đánh giá tích cực"
+
         return RecommendResult(
             id=str(model.id),
             name=model.name or "Không rõ tên",
@@ -202,7 +214,7 @@ class SearchService:
             distance_km=round(dist_km, 2),
             price=price_display,
             rating=str(model.rating_avg) if model.rating_avg else "Mới",
-            reason="Phù hợp với tìm kiếm của bạn",
+            reason=reason,
             img=model.image_url or "/images/default_food.jpg",
             google_maps_url=getattr(model, "google_maps_url", None),
         )

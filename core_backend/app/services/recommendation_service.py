@@ -22,6 +22,7 @@ async def recommend(
     user_location: Optional[List[float]] = None,
     tag_name: Optional[str] = None,
     cleaned_query: str = "",
+    search_mode: str = "basic",
 ):
     """
     Recommendation pipeline:
@@ -47,6 +48,7 @@ async def recommend(
         query_text=query,
         tag_name=tag_name,
         cleaned_query=cleaned_query,
+        search_mode=search_mode,
     )
 
     if not raw_candidates:

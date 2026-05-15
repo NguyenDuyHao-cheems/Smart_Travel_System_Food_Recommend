@@ -15,6 +15,7 @@ from sqlalchemy import cast, func, Integer, case, or_, and_
 from .models import RestaurantModel, DishModel
 
 _MAX_RETRIEVAL = 500
+_SENTIMENT_BOOST_MAX = 0.18
 
 logger = logging.getLogger(__name__)
 
@@ -64,6 +65,41 @@ def extract_tag(query_text: str) -> Optional[str]:
     return None
 
 
+def _normalize_sentiment_score(score) -> float:
+    """
+    Normalize stored sentiment to [0, 1].
+
+    The project data has used a few compatible scales over time:
+    - -1..1 for model-style sentiment
+    - 0..10 for DB-enriched restaurant sentiment
+    - -100..100 for integer-scaled ranking experiments
+    """
+    if score is None:
+        return 0.5
+
+    try:
+        value = float(score)
+    except (TypeError, ValueError):
+        return 0.5
+
+    if -1.0 <= value <= 1.0:
+        normalized = (value + 1.0) / 2.0
+    elif 0.0 <= value <= 10.0:
+        normalized = value / 10.0
+    elif -100.0 <= value <= 100.0:
+        normalized = (value / 100.0 + 1.0) / 2.0
+    else:
+        normalized = 0.5
+
+    return max(0.0, min(1.0, normalized))
+
+
+def _sentiment_distance_boost(score) -> float:
+    normalized = _normalize_sentiment_score(score)
+    positive_strength = max(0.0, normalized - 0.5) * 2.0
+    return positive_strength * _SENTIMENT_BOOST_MAX
+
+
 class RetrievalService:
     def __init__(self, db: Session):
         self.db = db
@@ -75,6 +111,7 @@ class RetrievalService:
         query_text: str = "",
         tag_name: Optional[str] = None,
         cleaned_query: str = "",
+        search_mode: str = "basic",
     ):
         """
         Retrieval từ Postgres với semantic ordering (relevance-first).
@@ -218,11 +255,24 @@ class RetrievalService:
                 if not tag_filter_applied and model.tag_match:
                     model.distance = max(0.0, model.distance - 0.3)
 
+                if search_mode == "emotion":
+                    sentiment_boost = _sentiment_distance_boost(getattr(model, "sentiment_score", None))
+                    model.sentiment_boost_applied = sentiment_boost > 0
+                    if sentiment_boost:
+                        model.distance = max(0.0, model.distance - sentiment_boost)
+
                 candidates.append(model)
                 
             candidates.sort(key=lambda x: x.distance)
             return candidates
         else:
+            if search_mode == "emotion":
+                query = query.order_by(
+                    RestaurantModel.sentiment_score.desc().nullslast(),
+                    RestaurantModel.rating_avg.desc().nullslast(),
+                )
+                return query.limit(_MAX_RETRIEVAL).all()
+
             query = query.order_by(
                 RestaurantModel.rating_avg.desc().nullslast()
             )

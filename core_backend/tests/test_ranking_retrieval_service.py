@@ -1,6 +1,10 @@
 from sqlalchemy.dialects import postgresql
 
-from app.domains.ranking.retrieval_service import RetrievalService
+from app.domains.ranking.retrieval_service import (
+    RetrievalService,
+    _normalize_sentiment_score,
+    _sentiment_distance_boost,
+)
 
 
 class DummyQuery:
@@ -140,3 +144,24 @@ def test_get_candidates_without_query_vector_orders_by_rating():
 
     filter_sql = _compiled_filter_sql(db.query_obj)
     assert "embedding_vector" not in filter_sql
+
+
+def test_get_candidates_emotion_mode_without_vector_orders_by_sentiment_then_rating():
+    db = DummySession()
+    service = RetrievalService(db)
+
+    service.get_candidates(
+        budget=0,
+        search_mode="emotion",
+    )
+
+    order_sql = _compiled_order_sql(db.query_obj)
+    assert "sentiment_score" in order_sql
+    assert "rating_avg" in order_sql
+
+
+def test_sentiment_boost_only_rewards_positive_scores():
+    assert _normalize_sentiment_score(5.0) == 0.5
+    assert _normalize_sentiment_score(10.0) == 1.0
+    assert _sentiment_distance_boost(5.0) == 0.0
+    assert _sentiment_distance_boost(10.0) > 0.0

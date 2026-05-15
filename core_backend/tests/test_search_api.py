@@ -40,6 +40,7 @@ class MockRestaurantModel:
         self.lng = 106.80
         self.price_range = "50000"
         self.rating_avg = 4.5
+        self.sentiment_score = 8.0
         self.image_url = ""
         self.distance = 0.1
         self.ranking_score = 1.5
@@ -96,6 +97,55 @@ def test_process_recommend_query_success_without_fallback(client):
         # Verify recommend was called with query_vector
         call_kwargs = mock_recommend.call_args
         assert call_kwargs.kwargs.get("query_vector") == [1.0, 2.0, 3.0]
+        assert call_kwargs.kwargs.get("search_mode") == "basic"
+
+
+def test_process_recommend_query_passes_emotion_mode_and_reason(client):
+    with patch(
+        "app.services.ai_client.AIServiceClient.extract_intent_and_vectorize",
+        new_callable=AsyncMock,
+    ) as mock_ai, patch(
+        "app.domains.search.service.recommend",
+        new_callable=AsyncMock,
+    ) as mock_recommend:
+        mock_ai.return_value = AIResponseData(
+            vector=[1.0, 2.0, 3.0],
+            cleaned_query="tra sua, lau thai",
+        )
+        mock_recommend.return_value = _mock_recommend_results(
+            results=["1"],
+        )
+
+        response = client.post(
+            "/api/v1/search/recommend",
+            json={
+                "query": "Toi dang buon muon an gi do",
+                "lat": 10.8700,
+                "lng": 106.8031,
+                "search_mode": "emotion",
+            },
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["results"][0]["reason"] == "Phù hợp với cảm xúc của bạn và có đánh giá tích cực"
+
+        call_kwargs = mock_recommend.call_args
+        assert call_kwargs.kwargs.get("search_mode") == "emotion"
+
+
+def test_process_recommend_query_rejects_invalid_search_mode(client):
+    response = client.post(
+        "/api/v1/search/recommend",
+        json={
+            "query": "Toi muon an mi cay",
+            "lat": 10.8700,
+            "lng": 106.8031,
+            "search_mode": "advanced",
+        },
+    )
+
+    assert response.status_code == 422
 
 
 def test_process_recommend_query_budget_no_longer_triggers_memory_fallback(client):

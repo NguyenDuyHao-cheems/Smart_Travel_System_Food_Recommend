@@ -1,7 +1,10 @@
 from pydantic import BaseModel, Field
-from typing import List, Optional, Union
+from typing import List, Literal, Optional, Union
 from uuid import UUID
 from datetime import datetime
+
+SearchMode = Literal["basic", "emotion"]
+
 
 class SearchRequest(BaseModel):
     """
@@ -19,7 +22,7 @@ class SearchRecommendRequest(BaseModel):
     user_id: Optional[str] = Field(None, description="Optional user ID for personalized filtering")
     budget: Optional[int] = Field(None, ge=0, description="Optional explicit budget in VND from user. Takes priority over AI-extracted budget.")
     tag_name: Optional[str] = Field(None, description="Optional tag name for explicit filtering (e.g., 'gà', 'phở')")
-    search_mode: Optional[str] = Field("basic", description="Loại tìm kiếm (basic hoặc emotion)")
+    search_mode: SearchMode = Field("basic", description="Loại tìm kiếm (basic hoặc emotion)")
 
 class RecommendResult(BaseModel):
     """
