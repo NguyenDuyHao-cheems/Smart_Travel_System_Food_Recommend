@@ -2,8 +2,9 @@
 
 import React from "react";
 import { RecommendResult } from "../app/result/page";
-import { Heart, MapPin, Trash2, Plus } from "lucide-react";
+import { Heart, MapPin, Trash2, Plus, Check, Bookmark } from "lucide-react";
 import { favoriteService } from "../services/favoriteService";
+import { collectionService } from "../services/collectionService";
 import { toast } from "sonner";
 import { AddToCollectionModal } from "./AddToCollectionModal";
 
@@ -18,13 +19,22 @@ interface FoodCardProps {
 
 export function FoodCard({ item, userId, onRemove, showRemove, showAddCollection = true, onAddCollection }: FoodCardProps) {
   const [isFav, setIsFav] = React.useState(false);
+  const [isInColl, setIsInColl] = React.useState(false);
   const [isCollectionModalOpen, setIsCollectionModalOpen] = React.useState(false);
 
   React.useEffect(() => {
     if (userId) {
       setIsFav(favoriteService.isFavorite(userId, item.name));
+      // [FIX-CONFLICT]: Kiểm tra xem item đã có trong bất kỳ collection nào chưa để render icon Check
+      setIsInColl(collectionService.isInAnyCollection(userId, item.name));
     }
   }, [userId, item.name]);
+
+  const refreshCollectionStatus = () => {
+    if (userId) {
+      setIsInColl(collectionService.isInAnyCollection(userId, item.name));
+    }
+  };
 
   const toggleFavorite = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -83,13 +93,24 @@ export function FoodCard({ item, userId, onRemove, showRemove, showAddCollection
                   toast.error("Vui lòng đăng nhập để sử dụng chức năng này");
                   return;
                 }
+                // [FIX-CONFLICT]: Ngăn không cho mở Modal nếu món ăn đã có trong bộ sưu tập (tránh thêm trùng lặp), hiển thị toast với icon Bookmark
+                if (isInColl) {
+                  toast.info("Món ăn này đã có trong bộ sưu tập của bạn.", {
+                    icon: <Bookmark className="w-4 h-4" />
+                  });
+                  return;
+                }
                 setIsCollectionModalOpen(true);
                 if (onAddCollection) onAddCollection(item);
               }}
-              className="w-8 h-8 rounded-full bg-white/90 dark:bg-gray-900/80 flex items-center justify-center hover:scale-110 hover:bg-orange-50 transition-all shadow-sm"
-              title="Thêm vào bộ sưu tập"
+              className={`w-8 h-8 rounded-full bg-white/90 dark:bg-gray-900/80 flex items-center justify-center hover:scale-110 transition-all shadow-sm ${isInColl ? 'hover:bg-yellow-50' : 'hover:bg-orange-50'}`}
+              title={isInColl ? "Đã có trong bộ sưu tập" : "Thêm vào bộ sưu tập"}
             >
-              <Plus className="w-4 h-4 text-orange-500" />
+              {isInColl ? (
+                <Check className="w-4 h-4 text-yellow-500" />
+              ) : (
+                <Plus className="w-4 h-4 text-orange-500" />
+              )}
             </button>
           )}
         </div>
@@ -138,6 +159,7 @@ export function FoodCard({ item, userId, onRemove, showRemove, showAddCollection
         isOpen={isCollectionModalOpen} 
         onClose={() => setIsCollectionModalOpen(false)} 
         item={item} 
+        onSuccess={refreshCollectionStatus}
       />
     </div>
   );
