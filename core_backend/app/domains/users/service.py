@@ -2,7 +2,9 @@ import logging
 import math
 import httpx
 import uuid
+import shortuuid
 from typing import List, Optional
+
 
 from app.core.config import settings
 from app.core.security import hash_password, verify_password, create_access_token
@@ -285,6 +287,14 @@ class UserInteractionService:
     def log_interaction(
         self, payload: UserInteractionRequest, user_id: Optional[str] = None
     ) -> UserInteractionResponse:
+        # Decode search_session_id if it's a short ID
+        decoded_session_id = payload.search_session_id
+        if decoded_session_id and len(decoded_session_id) < 36:
+            try:
+                decoded_session_id = str(shortuuid.decode(decoded_session_id))
+            except Exception:
+                pass
+
         interaction = self._repo.create_interaction(
             action_type=payload.action_type,
             anonymous_id=payload.anonymous_id,
@@ -292,8 +302,9 @@ class UserInteractionService:
             res_id=payload.res_id,
             duration_sec=payload.duration_sec,
             metadata=payload.metadata,
-            search_session_id=payload.search_session_id,
+            search_session_id=decoded_session_id,
         )
+
         return UserInteractionResponse(
             interaction_id=str(interaction.id)
         )

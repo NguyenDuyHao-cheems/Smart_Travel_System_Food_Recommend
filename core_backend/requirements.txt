@@ -12,3 +12,5 @@ numpy
 python-jose[cryptography]
 bcrypt
 requests
+shortuuid
+
