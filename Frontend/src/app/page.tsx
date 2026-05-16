@@ -14,6 +14,7 @@ import { useSearchState } from "../hooks/useSearchState";
 import { historyService } from "../services/historyService";
 import { FoodCard } from "../components/FoodCard";
 import { RecommendResult } from "./result/page";
+import { useOptimizedLocation } from "../hooks/useOptimizedLocation";
 
 /* ── Types ── */
 type HealthStatus = "loading" | "ok" | "degraded" | "error";
@@ -87,6 +88,7 @@ export default function Home() {
   const { query, setQuery, searchMode, setSearchMode } = useSearchState("");
   const [budget, setBudget] = useState<BudgetOption>("auto");
   const router = useRouter();
+  const { getOptimizedLocation } = useOptimizedLocation();
 
   const [healthStatus, setHealthStatus] = useState<HealthStatus>("loading");
   const [healthData, setHealthData] = useState<HealthData | null>(null);
@@ -136,17 +138,12 @@ export default function Home() {
     try {
       setSearchLoadingMsg("Đang xác định vị trí của bạn...");
 
-      // ✅ FIX: fallback to HCM coords instead of rejecting on GPS error
-      const gps = await new Promise<{ lat: number; lng: number }>((resolve) => {
-        if (!navigator.geolocation) {
-          return resolve({ lat: 10.762622, lng: 106.660172 });
-        }
-        navigator.geolocation.getCurrentPosition(
-          (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-          () => resolve({ lat: 10.762622, lng: 106.660172 }),
-          { timeout: 5000 }
-        );
-      });
+      const gps = await getOptimizedLocation();
+      if (!gps) {
+        setApiError("Không thể xác định vị trí thực tế của bạn. Vui lòng kiểm tra quyền truy cập GPS để tiếp tục.");
+        setIsSearching(false);
+        return;
+      }
 
       setSearchLoadingMsg("AI đang phân tích khẩu vị của bạn...");
       const token = localStorage.getItem("access_token");
