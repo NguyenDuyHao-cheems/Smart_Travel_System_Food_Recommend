@@ -21,6 +21,11 @@ class SearchRecommendRequest(BaseModel):
     tag_name: Optional[str] = Field(None, description="Optional tag name for explicit filtering (e.g., 'gà', 'phở')")
     search_mode: Optional[str] = Field("basic", description="Loại tìm kiếm (basic hoặc emotion)")
 
+class AllergenDishWarning(BaseModel):
+    """Thông tin chi tiết món ăn gây dị ứng trong 1 quán."""
+    dish_name: str
+    matched_allergens: List[str]
+
 class RecommendResult(BaseModel):
     """
     Schema định dạng đầu ra 1 quán ăn cho UI.
@@ -35,7 +40,9 @@ class RecommendResult(BaseModel):
     rating: str
     reason: str
     img: str
+    total_reviews: Optional[int] = 0
     google_maps_url: Optional[str] = None
+    allergen_warning: Optional[List[AllergenDishWarning]] = None
 
 class SearchRecommendResponse(BaseModel):
     """
@@ -59,7 +66,11 @@ class SearchRecommendResponse(BaseModel):
     )
     filtered_out_count: Optional[int] = Field(
         None,
-        description="Số lượng quán bị loại do dị ứng."
+        description="Số lượng quán bị loại (Legacy, hiện bằng 0)."
+    )
+    allergen_flagged_count: Optional[int] = Field(
+        0,
+        description="Số lượng quán có món gây dị ứng."
     )
     warning: Optional[str] = Field(
         None,
@@ -87,6 +98,7 @@ class SessionCreateResponse(BaseModel):
     fallback_reason: Optional[str] = None
     applied_budget: Optional[int] = None
     filtered_out_count: Optional[int] = None
+    allergen_flagged_count: Optional[int] = 0
     warning: Optional[str] = None
 
 class SessionDataResponse(BaseModel):
@@ -98,5 +110,6 @@ class SessionDataResponse(BaseModel):
     fallback_reason: Optional[str] = None
     applied_budget: Optional[int] = None
     filtered_out_count: Optional[int] = None
+    allergen_flagged_count: Optional[int] = 0
     warning: Optional[str] = None
     created_at: Optional[datetime] = None

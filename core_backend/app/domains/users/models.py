@@ -86,3 +86,17 @@ class UserAccount(Base):
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc),
                         onupdate=lambda: datetime.now(timezone.utc))
+
+class UserInteraction(Base):
+    __tablename__ = "user_interactions"
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    anonymous_id = Column(String, nullable=True, index=True)
+    user_id = Column(String, ForeignKey("users.id"), nullable=True, index=True)
+    res_id = Column(String, nullable=True, index=True)
+    action_type = Column(String, nullable=False, index=True)
+    duration_sec = Column(Integer, nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    metadata_ = Column("metadata", JSON, nullable=True)
+    search_session_id = Column(String, nullable=True, index=True)
+

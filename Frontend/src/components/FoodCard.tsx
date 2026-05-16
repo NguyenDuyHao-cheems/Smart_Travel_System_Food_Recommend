@@ -2,10 +2,12 @@
 
 import React from "react";
 import { RecommendResult } from "../app/result/page";
-import { Heart, MapPin, Trash2, Plus } from "lucide-react";
+import { Heart, MapPin, Trash2, Plus, Check, Bookmark } from "lucide-react";
 import { favoriteService } from "../services/favoriteService";
+import { collectionService } from "../services/collectionService";
 import { toast } from "sonner";
 import { AddToCollectionModal } from "./AddToCollectionModal";
+import { interactionService } from "../services/interactionService";
 
 interface FoodCardProps {
   item: RecommendResult;
@@ -18,13 +20,22 @@ interface FoodCardProps {
 
 export function FoodCard({ item, userId, onRemove, showRemove, showAddCollection = true, onAddCollection }: FoodCardProps) {
   const [isFav, setIsFav] = React.useState(false);
+  const [isInColl, setIsInColl] = React.useState(false);
   const [isCollectionModalOpen, setIsCollectionModalOpen] = React.useState(false);
 
   React.useEffect(() => {
     if (userId) {
       setIsFav(favoriteService.isFavorite(userId, item.name));
+      // [FIX-CONFLICT]: Kiểm tra xem item đã có trong bất kỳ collection nào chưa để render icon Check
+      setIsInColl(collectionService.isInAnyCollection(userId, item.name));
     }
   }, [userId, item.name]);
+
+  const refreshCollectionStatus = () => {
+    if (userId) {
+      setIsInColl(collectionService.isInAnyCollection(userId, item.name));
+    }
+  };
 
   const toggleFavorite = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -43,11 +54,23 @@ export function FoodCard({ item, userId, onRemove, showRemove, showAddCollection
     }
   };
 
+  const handleCardClick = () => {
+    interactionService.logInteraction({
+      res_id: item.id,
+      action_type: "VIEW_RESTAURANT",
+      metadata: { source: "food_card_click" }
+    });
+    
+    if (item.google_maps_url) {
+      window.open(item.google_maps_url, '_blank');
+    }
+  };
+
   return (
     <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden group relative flex flex-col">
       <div 
         className="relative h-[180px] overflow-hidden cursor-pointer"
-        onClick={() => item.google_maps_url && window.open(item.google_maps_url, '_blank')}
+        onClick={handleCardClick}
       >
         <img
           src={item.img || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=600&auto=format&fit=crop"}
@@ -83,13 +106,24 @@ export function FoodCard({ item, userId, onRemove, showRemove, showAddCollection
                   toast.error("Vui lòng đăng nhập để sử dụng chức năng này");
                   return;
                 }
+                // [FIX-CONFLICT]: Ngăn không cho mở Modal nếu món ăn đã có trong bộ sưu tập (tránh thêm trùng lặp), hiển thị toast với icon Bookmark
+                if (isInColl) {
+                  toast.info("Món ăn này đã có trong bộ sưu tập của bạn.", {
+                    icon: <Bookmark className="w-4 h-4" />
+                  });
+                  return;
+                }
                 setIsCollectionModalOpen(true);
                 if (onAddCollection) onAddCollection(item);
               }}
-              className="w-8 h-8 rounded-full bg-white/90 dark:bg-gray-900/80 flex items-center justify-center hover:scale-110 hover:bg-orange-50 transition-all shadow-sm"
-              title="Thêm vào bộ sưu tập"
+              className={`w-8 h-8 rounded-full bg-white/90 dark:bg-gray-900/80 flex items-center justify-center hover:scale-110 transition-all shadow-sm ${isInColl ? 'hover:bg-yellow-50' : 'hover:bg-orange-50'}`}
+              title={isInColl ? "Đã có trong bộ sưu tập" : "Thêm vào bộ sưu tập"}
             >
-              <Plus className="w-4 h-4 text-orange-500" />
+              {isInColl ? (
+                <Check className="w-4 h-4 text-yellow-500" />
+              ) : (
+                <Plus className="w-4 h-4 text-orange-500" />
+              )}
             </button>
           )}
         </div>
@@ -103,7 +137,7 @@ export function FoodCard({ item, userId, onRemove, showRemove, showAddCollection
           )}
           {item.dist && (
             <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-semibold bg-white/90 dark:bg-gray-900/80 text-teal-600 dark:text-teal-400 backdrop-blur-sm">
-              <MapPin className="w-3 h-3" /> {item.dist}
+              <MapPin className="w-3 h-3" /> {item.dist} {item.total_reviews !== undefined && item.total_reviews > 0 && `(${item.total_reviews})`}
             </span>
           )}
         </div>
@@ -138,6 +172,7 @@ export function FoodCard({ item, userId, onRemove, showRemove, showAddCollection
         isOpen={isCollectionModalOpen} 
         onClose={() => setIsCollectionModalOpen(false)} 
         item={item} 
+        onSuccess={refreshCollectionStatus}
       />
     </div>
   );

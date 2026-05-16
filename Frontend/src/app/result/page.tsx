@@ -26,14 +26,21 @@ import { SearchLoadingOverlay } from '../../components/ui/SearchLoadingOverlay';
 import { SearchBar } from '../../components/SearchBar';
 import { useSearchState, SearchMode } from '../../hooks/useSearchState';
 import { favoriteService } from '../../services/favoriteService';
+import { collectionService } from '../../services/collectionService';
 import { historyService } from '../../services/historyService';
 import { AddToCollectionModal } from '../../components/AddToCollectionModal';
 import { toast } from 'sonner';
+import { interactionService } from '../../services/interactionService';
 
 const roboto = Roboto({
   subsets: ['latin', 'vietnamese'],
   weight: ['300', '400', '500', '700', '900'],
 });
+
+export interface AllergenDishWarning {
+  dish_name: string;
+  matched_allergens: string[];
+}
 
 export interface RecommendResult {
   id: string;
@@ -45,9 +52,11 @@ export interface RecommendResult {
   rating: string;
   reason: string;
   img: string;
+  total_reviews?: number;
   tags?: string[];
   restaurantName?: string;
   google_maps_url?: string;
+  allergen_warning?: AllergenDishWarning[];
 }
 
 interface VibeTag {
@@ -72,18 +81,25 @@ const VIBE_TAGS: VibeTag[] = [
   { label: 'Local', emoji: '📍', bgLight: 'bg-orange-50', bgDark: 'dark:bg-orange-500/10', text: 'text-orange-500', border: 'border-orange-100 dark:border-orange-500/20' },
 ];
 
+const DEFAULT_TAG_STYLES = [
+  { emoji: '🏷️', bgLight: 'bg-gray-50', bgDark: 'dark:bg-gray-500/10', text: 'text-gray-600 dark:text-gray-400', border: 'border-gray-200 dark:border-gray-500/20' },
+  { emoji: '✨', bgLight: 'bg-indigo-50', bgDark: 'dark:bg-indigo-500/10', text: 'text-indigo-600 dark:text-indigo-400', border: 'border-indigo-100 dark:border-indigo-500/20' },
+  { emoji: '🌿', bgLight: 'bg-emerald-50', bgDark: 'dark:bg-emerald-500/10', text: 'text-emerald-600 dark:text-emerald-400', border: 'border-emerald-100 dark:border-emerald-500/20' }
+];
+
 function getTagsForItem(item: RecommendResult, index: number): VibeTag[] {
-  if (item.tags && Array.isArray(item.tags)) {
-    return item.tags.map((t: string) => VIBE_TAGS.find(v => v.label.toLowerCase() === t.toLowerCase()) || VIBE_TAGS[0]);
+  if (item.tags && Array.isArray(item.tags) && item.tags.length > 0) {
+    return item.tags.map((t: string, i: number) => {
+      const found = VIBE_TAGS.find(v => v.label.toLowerCase() === t.toLowerCase());
+      if (found) return found;
+      const defaultStyle = DEFAULT_TAG_STYLES[i % DEFAULT_TAG_STYLES.length];
+      return {
+        label: t,
+        ...defaultStyle
+      };
+    });
   }
-  const sets = [
-    [VIBE_TAGS[0], VIBE_TAGS[1], VIBE_TAGS[2]],
-    [VIBE_TAGS[1], VIBE_TAGS[3], VIBE_TAGS[5]],
-    [VIBE_TAGS[1], VIBE_TAGS[4], VIBE_TAGS[7]],
-    [VIBE_TAGS[6], VIBE_TAGS[9], VIBE_TAGS[7]],
-    [VIBE_TAGS[0], VIBE_TAGS[1], VIBE_TAGS[8]],
-  ];
-  return sets[index % sets.length];
+  return [];
 }
 
 function getMatchColor(match: string): string {
@@ -97,22 +113,41 @@ function getMatchColor(match: string): string {
 /* ─────────────────────────────────────────────────────────────
    Hero Result Card (#1 — AI TOP PICK)
    ───────────────────────────────────────────────────────────── */
-function HeroResultCard({ item, sessionId, searchMode, onAddCollection }: { item: RecommendResult; sessionId?: string; searchMode?: SearchMode; onAddCollection: (item: RecommendResult) => void }) {
+function HeroResultCard({ item, sessionId, searchMode, onAddCollection, isModalOpen }: { item: RecommendResult; sessionId?: string; searchMode?: SearchMode; onAddCollection: (item: RecommendResult) => void; isModalOpen: boolean }) {
   const router = useRouter();
   const handleNavigate = () => {
     const params = new URLSearchParams();
     if (sessionId) params.set('session_id', sessionId);
     if (searchMode) params.set('mode', searchMode);
     const qs = params.toString();
+    
+    // Log interaction before navigating
+    interactionService.logInteraction({
+      res_id: item.id,
+      action_type: "CLICK_SEARCH_RESULT",
+      search_session_id: sessionId || undefined,
+      metadata: { source: "hero_card" }
+    });
+    
     router.push(`/restaurant/${item.id}${qs ? `?${qs}` : ''}`);
   };
 
   const [isFav, setIsFav] = useState(false);
+  const [isInColl, setIsInColl] = useState(false);
   const userId = typeof window !== 'undefined' ? localStorage.getItem('user_id') : null;
 
   useEffect(() => {
-    if (userId) setIsFav(favoriteService.isFavorite(userId, item.name));
+    if (userId) {
+      setIsFav(favoriteService.isFavorite(userId, item.name));
+      setIsInColl(collectionService.isInAnyCollection(userId, item.name));
+    }
   }, [userId, item.name]);
+
+  useEffect(() => {
+    if (userId && !isModalOpen) {
+      setIsInColl(collectionService.isInAnyCollection(userId, item.name));
+    }
+  }, [isModalOpen, userId, item.name]);
 
   const toggleFav = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -148,6 +183,11 @@ function HeroResultCard({ item, sessionId, searchMode, onAddCollection }: { item
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-teal-50 dark:bg-teal-500/15 text-teal-600 dark:text-teal-400">
               🤖 {item.match} Match
             </span>
+            {item.allergen_warning && item.allergen_warning.length > 0 && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-500/30">
+                <AlertTriangle className="w-3.5 h-3.5" /> {item.allergen_warning.length} món cần lưu ý
+              </span>
+            )}
           </div>
 
           <h2
@@ -164,10 +204,15 @@ function HeroResultCard({ item, sessionId, searchMode, onAddCollection }: { item
           )}
 
           {item.dist && (
-            <div className="mb-5">
+            <div className="mb-5 flex items-center gap-2">
               <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-teal-50 dark:bg-teal-500/15 text-teal-600 dark:text-teal-400 border border-teal-200 dark:border-teal-500/30">
                 <MapPin className="w-3.5 h-3.5" /> {item.dist}
               </span>
+              {item.total_reviews !== undefined && item.total_reviews > 0 && (
+                <span className="text-xs text-gray-400 dark:text-gray-500 font-medium">
+                  ({item.total_reviews} đánh giá)
+                </span>
+              )}
             </div>
           )}
 
@@ -200,11 +245,21 @@ function HeroResultCard({ item, sessionId, searchMode, onAddCollection }: { item
           </div>
           <div className="absolute top-6 right-6 flex gap-2">
             <button
-              onClick={(e) => { e.stopPropagation(); onAddCollection(item); }}
-              className="w-10 h-10 rounded-full bg-white/90 dark:bg-gray-900/80 border border-gray-200 dark:border-gray-700 flex items-center justify-center hover:scale-110 transition-all cursor-pointer shadow-sm"
-              title="Thêm vào bộ sưu tập"
+              onClick={(e) => { 
+                e.stopPropagation(); 
+                // [FIX-CONFLICT]: Ngăn không cho mở Modal nếu món ăn đã có trong bộ sưu tập (tránh thêm trùng lặp), hiển thị toast với icon Bookmark
+                if (isInColl) {
+                  toast.info("Món ăn này đã có trong bộ sưu tập của bạn.", {
+                    icon: <Bookmark className="w-4 h-4" />
+                  });
+                  return;
+                }
+                onAddCollection(item); 
+              }}
+              className={`w-10 h-10 rounded-full bg-white/90 dark:bg-gray-900/80 border border-gray-200 dark:border-gray-700 flex items-center justify-center hover:scale-110 transition-all cursor-pointer shadow-sm ${isInColl ? 'hover:bg-yellow-50' : 'hover:bg-indigo-50'}`}
+              title={isInColl ? "Đã có trong bộ sưu tập" : "Thêm vào bộ sưu tập"}
             >
-              <Bookmark className="w-5 h-5 text-indigo-500" />
+              <Bookmark className={`w-5 h-5 ${isInColl ? 'text-yellow-500 fill-current' : 'text-indigo-500'}`} />
             </button>
             <button
               onClick={toggleFav}
@@ -222,7 +277,8 @@ function HeroResultCard({ item, sessionId, searchMode, onAddCollection }: { item
 /* ─────────────────────────────────────────────────────────────
    Small Result Card (#2-#5)
    ───────────────────────────────────────────────────────────── */
-function SmallResultCard({ item, index, sessionId, searchMode, onAddCollection }: { item: RecommendResult; index: number; sessionId?: string; searchMode?: SearchMode; onAddCollection: (item: RecommendResult) => void }) {
+// [FIX-CONFLICT]: Tương tự HeroResultCard, bổ sung prop isModalOpen và state isInColl cho SmallResultCard
+function SmallResultCard({ item, index, sessionId, searchMode, onAddCollection, isModalOpen }: { item: RecommendResult; index: number; sessionId?: string; searchMode?: SearchMode; onAddCollection: (item: RecommendResult) => void; isModalOpen: boolean }) {
   const router = useRouter();
   const tags = getTagsForItem(item, index);
   const matchColor = getMatchColor(item.match);
@@ -232,15 +288,34 @@ function SmallResultCard({ item, index, sessionId, searchMode, onAddCollection }
     if (sessionId) params.set('session_id', sessionId);
     if (searchMode) params.set('mode', searchMode);
     const qs = params.toString();
+
+    // Log interaction before navigating
+    interactionService.logInteraction({
+      res_id: item.id,
+      action_type: "CLICK_SEARCH_RESULT",
+      search_session_id: sessionId || undefined,
+      metadata: { source: "small_card", rank: index + 2 }
+    });
+
     router.push(`/restaurant/${item.id}${qs ? `?${qs}` : ''}`);
   };
 
   const [isFav, setIsFav] = useState(false);
+  const [isInColl, setIsInColl] = useState(false);
   const userId = typeof window !== 'undefined' ? localStorage.getItem('user_id') : null;
 
   useEffect(() => {
-    if (userId) setIsFav(favoriteService.isFavorite(userId, item.name));
+    if (userId) {
+      setIsFav(favoriteService.isFavorite(userId, item.name));
+      setIsInColl(collectionService.isInAnyCollection(userId, item.name));
+    }
   }, [userId, item.name]);
+
+  useEffect(() => {
+    if (userId && !isModalOpen) {
+      setIsInColl(collectionService.isInAnyCollection(userId, item.name));
+    }
+  }, [isModalOpen, userId, item.name]);
 
   const toggleFav = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -289,11 +364,21 @@ function SmallResultCard({ item, index, sessionId, searchMode, onAddCollection }
             <Heart className={`w-4 h-4 ${isFav ? 'text-red-500 fill-current' : 'text-gray-400'}`} />
           </button>
           <button
-            onClick={(e) => { e.stopPropagation(); onAddCollection(item); }}
-            className="w-8 h-8 rounded-full bg-white/90 dark:bg-gray-900/80 flex items-center justify-center hover:scale-110 hover:bg-indigo-50 transition-all cursor-pointer shadow-sm"
-            title="Thêm vào bộ sưu tập"
+            onClick={(e) => { 
+              e.stopPropagation(); 
+              // [FIX-CONFLICT]: Ngăn không cho mở Modal nếu món ăn đã có trong bộ sưu tập (tránh thêm trùng lặp), hiển thị toast với icon Bookmark
+              if (isInColl) {
+                toast.info("Món ăn này đã có trong bộ sưu tập của bạn.", {
+                  icon: <Bookmark className="w-4 h-4" />
+                });
+                return;
+              }
+              onAddCollection(item); 
+            }}
+            className={`w-8 h-8 rounded-full bg-white/90 dark:bg-gray-900/80 flex items-center justify-center hover:scale-110 transition-all cursor-pointer shadow-sm ${isInColl ? 'hover:bg-yellow-50' : 'hover:bg-indigo-50'}`}
+            title={isInColl ? "Đã có trong bộ sưu tập" : "Thêm vào bộ sưu tập"}
           >
-            <Bookmark className="w-4 h-4 text-indigo-500" />
+            <Bookmark className={`w-4 h-4 ${isInColl ? 'text-yellow-500 fill-current' : 'text-indigo-500'}`} />
           </button>
         </div>
 
@@ -301,9 +386,14 @@ function SmallResultCard({ item, index, sessionId, searchMode, onAddCollection }
           <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold ${matchColor} text-white`}>
             🤖 {item.match} Match
           </span>
+          {item.allergen_warning && item.allergen_warning.length > 0 && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-500 text-white shadow-sm border border-amber-600">
+              ⚠️ {item.allergen_warning.length} lưu ý
+            </span>
+          )}
           {item.dist && (
             <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-semibold bg-white/90 dark:bg-gray-900/80 text-teal-600 dark:text-teal-400 backdrop-blur-sm">
-              📍 {item.dist}
+              📍 {item.dist} {item.total_reviews !== undefined && item.total_reviews > 0 && `(${item.total_reviews})`}
             </span>
           )}
         </div>
@@ -384,7 +474,11 @@ function ResultPageContent() {
     if (typeof window === 'undefined') return true;
     const searchParams = new URLSearchParams(window.location.search);
     const q = searchParams.get('q');
+    const sessionId = searchParams.get('session_id');
     const isRefresh = searchParams.get('refresh') === 'true';
+    if (sessionId && !isRefresh) {
+      if (sessionStorage.getItem(`session_data_${sessionId}`)) return false;
+    }
     if (q && !isRefresh) {
       return !sessionStorage.getItem(`last_results_${q}`);
     }
@@ -400,6 +494,7 @@ function ResultPageContent() {
   const [appliedBudget, setAppliedBudget] = useState<number | null>(null);
 
   const [filteredCount, setFilteredCount] = useState(0);
+  const [allergenFlaggedCount, setAllergyFlaggedCount] = useState(0);
   const [allergyWarning, setAllergyWarning] = useState<string>('');
 
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -422,7 +517,16 @@ function ResultPageContent() {
 
   const [collectionModalItem, setCollectionModalItem] = useState<RecommendResult | null>(null);
 
-  const [results, setResults] = useState<RecommendResult[]>([]);
+  const [results, setResults] = useState<RecommendResult[]>(() => {
+    if (typeof window === 'undefined') return [];
+    const searchParams = new URLSearchParams(window.location.search);
+    const sessionId = searchParams.get('session_id');
+    if (sessionId) {
+      const cached = sessionStorage.getItem(`session_data_${sessionId}`);
+      if (cached) return JSON.parse(cached).results || [];
+    }
+    return [];
+  });
   const [apiError, setApiError] = useState<string | null>(null);
 
   const [isSearching, setIsSearching] = useState(false);
@@ -435,6 +539,23 @@ function ResultPageContent() {
     }
 
     const loadSession = async () => {
+      // [FIX-CONFLICT]: Thêm logic Cache (sessionStorage) để lấy dữ liệu có sẵn, giúp chuyển trang không bị giật/flash loading state
+      const cached = sessionStorage.getItem(`session_data_${sessionIdFromUrl}`);
+      if (cached) {
+        const data = JSON.parse(cached);
+        setSearchQuery(data.query);
+        setInputValue(data.query);
+        setResults(data.results || []);
+        setFallbackApplied(data.fallback_applied || false);
+        setFallbackReason(data.fallback_reason || '');
+        setAppliedBudget(data.applied_budget ?? null);
+        setFilteredCount(data.filtered_out_count || 0);
+        setAllergyFlaggedCount(data.allergen_flagged_count || 0);
+        setAllergyWarning(data.warning || '');
+        setIsLoading(false);
+        return;
+      }
+
       setIsLoading(true);
       setApiError(null);
       try {
@@ -444,6 +565,7 @@ function ResultPageContent() {
         });
         if (res.ok) {
           const data = await res.json();
+          sessionStorage.setItem(`session_data_${sessionIdFromUrl}`, JSON.stringify(data));
           setSearchQuery(data.query);
           setInputValue(data.query);
           setResults(data.results || []);
@@ -451,6 +573,7 @@ function ResultPageContent() {
           setFallbackReason(data.fallback_reason || '');
           setAppliedBudget(data.applied_budget ?? null);
           setFilteredCount(data.filtered_out_count || 0);
+          setAllergyFlaggedCount(data.allergen_flagged_count || 0);
           setAllergyWarning(data.warning || '');
         } else if (res.status === 404) {
           setApiError('Không tìm thấy phiên tìm kiếm. Link có thể đã hết hạn hoặc không tồn tại.');
@@ -461,13 +584,12 @@ function ResultPageContent() {
         console.error("Load session error:", err);
         setApiError('Không thể kết nối đến máy chủ.');
       } finally {
-
         setIsLoading(false);
       }
     };
 
     loadSession();
-  }, [sessionIdFromUrl]);
+  }, [sessionIdFromUrl, setInputValue]);
 
   const handleSearch = async (overrideQuery?: string, overrideBudget?: BudgetOption) => {
     const finalQuery = (overrideQuery ?? inputValue).trim();
@@ -536,8 +658,19 @@ function ResultPageContent() {
   };
 
   const displayResults = useMemo(() => {
-    if (!distanceFilterEnabled) return results;
-    return results.filter((r) => (r.distance_km ?? 0) <= distanceRadius);
+    let filtered = results;
+    if (distanceFilterEnabled) {
+      filtered = filtered.filter((r) => (r.distance_km ?? 0) <= distanceRadius);
+    }
+    
+    // [FIX-CONFLICT]: Thêm logic lọc bỏ các kết quả bị trùng lặp tên (remove duplicates by name) để hiển thị danh sách sạch hơn
+    const seen = new Set();
+    return filtered.filter(item => {
+      if (!item.name) return true;
+      const duplicate = seen.has(item.name);
+      seen.add(item.name);
+      return !duplicate;
+    });
   }, [results, distanceFilterEnabled, distanceRadius]);
 
   const heroItem = displayResults[0];
@@ -605,11 +738,11 @@ function ResultPageContent() {
                     </div>
                   </div>
                 )}
-                {filteredCount > 0 && (
-                  <div className="mb-6 flex items-start gap-3 p-4 rounded-xl bg-orange-50 dark:bg-orange-500/10 border border-orange-200 dark:border-orange-500/20">
-                    <AlertTriangle className="w-5 h-5 text-orange-600 dark:text-orange-500 flex-shrink-0 mt-0.5" />
-                    <p className="text-sm text-orange-800 dark:text-orange-200 leading-relaxed">
-                      <strong>Cảnh báo Dị ứng:</strong> {allergyWarning || `Đã loại ${filteredCount} quán có thành phần gây dị ứng để đảm bảo an toàn.`}
+                {allergenFlaggedCount > 0 && (
+                  <div className="mb-6 flex items-start gap-3 p-4 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 shadow-sm">
+                    <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-500 flex-shrink-0 mt-0.5" />
+                    <p className="text-sm text-amber-900 dark:text-amber-200 leading-relaxed">
+                      <strong>Lưu ý Dị ứng:</strong> Có {allergenFlaggedCount} quán ăn có chứa thành phần gây dị ứng cho bạn. AI đã đánh dấu rõ <strong>"⚠️ Cảnh báo"</strong> trên từng quán để bạn dễ dàng nhận biết.
                     </p>
                   </div>
                 )}
@@ -704,13 +837,13 @@ function ResultPageContent() {
               ) : (
                 <>
                   {/* Hero Card #1 */}
-                  {heroItem && <HeroResultCard item={heroItem} sessionId={sessionIdFromUrl} searchMode={searchMode} onAddCollection={setCollectionModalItem} />}
+                  {heroItem && <HeroResultCard item={heroItem} sessionId={sessionIdFromUrl} searchMode={searchMode} onAddCollection={setCollectionModalItem} isModalOpen={!!collectionModalItem} />}
 
                   {/* Small Cards Grid #2+ */}
                   {gridItems.length > 0 && (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                       {gridItems.map((item, idx) => (
-                        <SmallResultCard key={item.id || idx} item={item} index={idx} sessionId={sessionIdFromUrl} searchMode={searchMode} onAddCollection={setCollectionModalItem} />
+                        <SmallResultCard key={item.id || idx} item={item} index={idx} sessionId={sessionIdFromUrl} searchMode={searchMode} onAddCollection={setCollectionModalItem} isModalOpen={!!collectionModalItem} />
                       ))}
                     </div>
                   )}

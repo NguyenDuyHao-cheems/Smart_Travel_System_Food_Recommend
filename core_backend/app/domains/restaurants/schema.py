@@ -1,5 +1,5 @@
-from pydantic import BaseModel
-from typing import List, Optional
+from pydantic import BaseModel, field_validator
+from typing import List, Optional, Any
 from uuid import UUID
 
 class DishResponse(BaseModel):
@@ -7,6 +7,20 @@ class DishResponse(BaseModel):
     name: str
     price: int
     image_url: Optional[str] = None
+    allergens: Optional[List[str]] = None
+
+    @field_validator('allergens', mode='before')
+    @classmethod
+    def normalize_allergens(cls, v: Any) -> Optional[List[str]]:
+        """Safely convert allergens from any format to List[str]."""
+        if v is None:
+            return None
+        if isinstance(v, list):
+            return [str(item) for item in v if item]
+        if isinstance(v, str):
+            # Handle comma-separated string
+            return [a.strip() for a in v.split(',') if a.strip()]
+        return None
 
     class Config:
         from_attributes = True

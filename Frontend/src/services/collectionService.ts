@@ -90,5 +90,15 @@ export const collectionService = {
         localStorage.setItem(COLLECTIONS_KEY, JSON.stringify(allColls));
       }
     }
+  },
+
+  // [FIX-CONFLICT]: Bổ sung hàm isInAnyCollection để kiểm tra xem một món ăn đã nằm trong bộ sưu tập nào chưa
+  isInAnyCollection: (userId: string, itemName: string): boolean => {
+    if (typeof window === "undefined") return false;
+    const data = localStorage.getItem(COLLECTIONS_KEY);
+    if (!data) return false;
+    const allColls = JSON.parse(data) as Record<string, Collection[]>;
+    const userColls = allColls[userId] || [];
+    return userColls.some(coll => coll.items.some(item => item.name === itemName));
   }
 };

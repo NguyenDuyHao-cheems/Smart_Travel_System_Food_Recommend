@@ -88,7 +88,8 @@ export function Sidebar({ isCollapsed, onToggle, username: propUsername, avatar:
       <nav className="flex-1 px-3 pt-4 overflow-y-auto">
         <div className="flex flex-col gap-1">
           {navItems.map((item) => {
-            const isActive = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href));
+            // [FIX-CONFLICT]: Cập nhật logic isActive để ưu tiên thuộc tính item.active, sửa lỗi highlight sai mục trên Sidebar
+            const isActive = item.active !== undefined ? item.active : (pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href)));
             return (
               <Link
                 key={item.label}
@@ -108,10 +109,10 @@ export function Sidebar({ isCollapsed, onToggle, username: propUsername, avatar:
             );
           })}
         </div>
-
         {/* AI Card */}
+        {/* [FIX-CONFLICT]: Thêm mt-6 mb-6 để tạo khoảng cách, tránh thẻ AI đè lên menu phía trên */}
         {!isCollapsed && (
-          <div className="mx-2 p-4 rounded-2xl bg-orange-50/50 dark:bg-orange-500/5 border border-orange-100/50 dark:border-orange-500/10 relative overflow-hidden group">
+          <div className="mt-6 mb-6 mx-2 p-4 rounded-2xl bg-orange-50/50 dark:bg-orange-500/5 border border-orange-100/50 dark:border-orange-500/10 relative overflow-hidden group">
             <div className="relative z-10">
               <h4 className="text-[13px] font-bold text-gray-800 dark:text-gray-200 flex items-center gap-1.5 mb-1.5">
                 AI Wanderbite <Sparkles className="w-3 h-3 text-orange-500" />
@@ -130,30 +131,6 @@ export function Sidebar({ isCollapsed, onToggle, username: propUsername, avatar:
           </div>
         )}
       </nav>
-
-      {/* User Profile Footer */}
-      <div className={`p-4 border-t border-gray-50 dark:border-gray-800 ${isCollapsed ? 'flex justify-center' : ''}`}>
-        <div className={`flex items-center ${isCollapsed ? '' : 'gap-3'} w-full`}>
-          <div className="w-9 h-9 rounded-full bg-orange-100 dark:bg-orange-500/20 overflow-hidden flex-shrink-0">
-            {avatar ? (
-              <img src={avatar} alt={username || "User"} className="w-full h-full object-cover" />
-            ) : (
-              <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${username || 'User'}`} alt="User" className="w-full h-full object-cover" />
-            )}
-          </div>
-          {!isCollapsed && (
-            <div className="flex-1 min-w-0">
-              <h5 className="text-sm font-bold text-gray-800 dark:text-white truncate">{username || "Guest"}</h5>
-              <span className="text-[11px] text-gray-500 dark:text-gray-400">{username ? "Thành viên" : "Khách"}</span>
-            </div>
-          )}
-          {!isCollapsed && (
-            <button className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors text-gray-400">
-              <MoreVertical className="w-4 h-4" />
-            </button>
-          )}
-        </div>
-      </div>
     </aside>
   );
 }
