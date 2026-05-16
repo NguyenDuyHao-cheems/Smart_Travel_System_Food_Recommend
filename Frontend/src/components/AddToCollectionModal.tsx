@@ -17,9 +17,10 @@ interface AddToCollectionModalProps {
   isOpen: boolean;
   onClose: () => void;
   item: RecommendResult | null;
+  onSuccess?: () => void;
 }
 
-export function AddToCollectionModal({ isOpen, onClose, item }: AddToCollectionModalProps) {
+export function AddToCollectionModal({ isOpen, onClose, item, onSuccess }: AddToCollectionModalProps) {
   const [collections, setCollections] = useState<Collection[]>([]);
   const [newCollectionName, setNewCollectionName] = useState("");
   const [isCreating, setIsCreating] = useState(false);
@@ -33,20 +34,22 @@ export function AddToCollectionModal({ isOpen, onClose, item }: AddToCollectionM
 
   if (!item || !userId) return null;
 
+  // [FIX-CONFLICT]: Bổ sung hàm handleAddToCollection (bị mất) để xử lý việc chọn bộ sưu tập có sẵn và gọi callback onSuccess
   const handleAddToCollection = (collectionId: string) => {
     collectionService.addItemToCollection(userId, collectionId, item);
     toast.success("Đã thêm vào bộ sưu tập");
+    if (onSuccess) onSuccess();
     onClose();
   };
 
   const handleCreateAndAdd = () => {
-    if (!newCollectionName.trim()) return;
     const newColl = collectionService.createCollection(userId, newCollectionName.trim());
     if (newColl) {
       collectionService.addItemToCollection(userId, newColl.id, item);
       toast.success("Đã tạo và thêm vào bộ sưu tập");
       setNewCollectionName("");
       setIsCreating(false);
+      if (onSuccess) onSuccess();
       onClose();
     }
   };
