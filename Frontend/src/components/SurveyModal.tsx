@@ -68,10 +68,10 @@ export function SurveyModal() {
         {/* TODO: Thêm form câu hỏi khảo sát thật vào đây */}
         {/* TODO: Ví dụ: Bạn thường ăn gì? Bạn thích vị gì? Dị ứng thực phẩm? */}
         <div className="bg-brand-muted dark:bg-brand/10 border border-brand-muted dark:border-brand/20 rounded-2xl p-4 mb-6 text-center">
-          <p className="text-sm text-brand-hover dark:text-brand font-medium">
+          <p className="text-sm text-brand-hover dark:text-[#E6DFD5] font-medium">
             🚧 Khảo sát đang được xây dựng
           </p>
-          <p className="text-xs text-brand dark:text-brand mt-1">
+          <p className="text-xs text-brand dark:text-[#E6DFD5] mt-1">
             Tính năng đầy đủ sẽ sớm ra mắt!
           </p>
         </div>

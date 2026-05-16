@@ -54,7 +54,7 @@ export function UserDropdown({
     return (
       <button
         onClick={() => router.push("/auth")}
-        className="ml-2 px-4 py-2 rounded-xl bg-brand-muted dark:bg-brand/10 text-brand-hover dark:text-brand text-sm font-bold hover:bg-brand-muted/80 dark:hover:bg-brand/20 transition-colors cursor-pointer border border-brand-muted dark:border-brand/20"
+        className="ml-2 px-4 py-2 rounded-xl bg-brand-muted dark:bg-brand/10 text-brand-hover dark:text-[#E6DFD5] text-sm font-bold hover:bg-brand-muted/80 dark:hover:bg-brand/20 transition-colors cursor-pointer border border-brand-muted dark:border-brand/20"
       >
         Đăng nhập
       </button>

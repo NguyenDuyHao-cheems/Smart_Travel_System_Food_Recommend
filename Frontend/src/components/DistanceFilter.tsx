@@ -59,14 +59,14 @@ export function DistanceFilter({
           onClick={handleToggle}
           className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-all duration-200 ${
             enabled
-              ? 'bg-brand-muted dark:bg-brand/10 border-brand/30 dark:border-brand/30 text-brand-hover dark:text-brand shadow-sm shadow-brand/10 dark:shadow-none'
+              ? 'bg-brand-muted dark:bg-brand/10 border-brand/30 dark:border-brand/30 text-brand-hover dark:text-[#E6DFD5] shadow-sm shadow-brand/10 dark:shadow-none'
               : 'bg-white dark:bg-[#3D312A] border-gray-200 dark:border-[#4D3D32] text-gray-600 dark:text-[#9A8A7A] hover:border-brand/70 hover:text-brand-hover'
           }`}
         >
           <MapPin className="w-4 h-4" />
           Lọc quán ở gần tôi
           {enabled && (
-            <span className="bg-brand/10 dark:bg-brand/20 rounded-full px-2 py-0.5 text-[10px] font-bold text-brand-hover dark:text-brand ml-1">
+            <span className="bg-brand/10 dark:bg-brand/20 rounded-full px-2 py-0.5 text-[10px] font-bold text-brand-hover dark:text-[#E6DFD5] ml-1">
               {radius} km
             </span>
           )}
@@ -75,7 +75,7 @@ export function DistanceFilter({
         {enabled && (
           <button
             onClick={() => setShowPanel((p) => !p)}
-            className="inline-flex items-center gap-1 text-xs font-bold text-brand-hover dark:text-brand hover:bg-brand-muted dark:hover:bg-brand/10 px-2 py-1 rounded-lg transition-colors"
+            className="inline-flex items-center gap-1 text-xs font-bold text-brand-hover dark:text-[#E6DFD5] hover:bg-brand-muted dark:hover:bg-brand/10 px-2 py-1 rounded-lg transition-colors"
           >
             <SlidersHorizontal className="w-3.5 h-3.5" />
             Tuỳ chỉnh
@@ -88,7 +88,7 @@ export function DistanceFilter({
         {enabled && (
           <span className="text-[11px] text-gray-500 dark:text-[#9A8A7A] whitespace-nowrap ml-auto">
             Hiển thị{' '}
-            <span className="font-bold text-brand-hover dark:text-brand">
+            <span className="font-bold text-brand-hover dark:text-[#E6DFD5]">
               {filteredCount}
             </span>
             /{totalCount} quán

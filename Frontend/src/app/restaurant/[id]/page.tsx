@@ -345,7 +345,7 @@ export default function RestaurantDetailPage() {
                       <p className="text-sm font-semibold text-gray-700 dark:text-[#C8BFB0] mb-2">Phân loại</p>
                       <div className="flex flex-wrap gap-2">
                         {restaurant.tags.map((tag, i) => (
-                          <span key={i} className="px-3 py-1 text-[11px] font-bold uppercase tracking-wider bg-brand-muted dark:bg-brand/10 text-brand-hover dark:text-brand rounded-full border border-brand-muted dark:border-brand/20">
+                          <span key={i} className="px-3 py-1 text-[11px] font-bold uppercase tracking-wider bg-brand-muted dark:bg-brand/10 text-brand-hover dark:text-[#E6DFD5] rounded-full border border-brand-muted dark:border-brand/20">
                             {tag}
                           </span>
                         ))}

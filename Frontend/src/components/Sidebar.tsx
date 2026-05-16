@@ -144,7 +144,7 @@ export function Sidebar({
                   isCollapsed ? "justify-center px-0" : "gap-3 px-4"
                 } py-3 rounded-xl text-[14px] font-medium transition-all cursor-pointer w-full ${
                   isActive
-                    ? "bg-brand-muted dark:bg-brand/10 text-brand-hover dark:text-brand shadow-sm shadow-brand/10"
+                    ? "bg-brand-muted dark:bg-brand/10 text-brand-hover dark:text-[#E6DFD5] shadow-sm shadow-brand/10"
                     : "text-gray-500 dark:text-[#9A8A7A] hover:bg-gray-50 dark:hover:bg-[#3D312A]/60 hover:text-gray-700 dark:hover:text-[#E6DFD5]"
                 }`}
                 title={isCollapsed ? item.label : undefined}
@@ -170,7 +170,7 @@ export function Sidebar({
               <p className="text-[11px] text-[#7A6A5A] dark:text-[#9A8A7A] leading-relaxed mb-3">
                 Để AI hiểu bạn hơn, hãy cập nhật sở thích thường xuyên nhé!
               </p>
-              <button className="w-full py-2 bg-white dark:bg-[#3D312A] border border-brand-muted dark:border-brand/20 text-brand dark:text-brand text-[11px] font-bold rounded-xl hover:bg-brand-muted/50 dark:hover:bg-brand/10 transition-colors shadow-sm cursor-pointer">
+              <button className="w-full py-2 bg-white dark:bg-[#3D312A] border border-brand-muted dark:border-brand/20 text-brand dark:text-[#E6DFD5] text-[11px] font-bold rounded-xl hover:bg-brand-muted/50 dark:hover:bg-brand/10 transition-colors shadow-sm cursor-pointer">
                 Cập nhật ngay
               </button>
             </div>
@@ -193,7 +193,7 @@ export function Sidebar({
                   isCollapsed ? "justify-center px-0" : "gap-3 px-4"
                 } py-3 rounded-xl text-[14px] font-medium transition-all cursor-pointer w-full ${
                   isActive
-                    ? "bg-brand-muted dark:bg-brand/10 text-brand-hover dark:text-brand shadow-sm shadow-brand/10"
+                    ? "bg-brand-muted dark:bg-brand/10 text-brand-hover dark:text-[#E6DFD5] shadow-sm shadow-brand/10"
                     : "text-gray-500 dark:text-[#9A8A7A] hover:bg-gray-50 dark:hover:bg-[#3D312A]/60 hover:text-gray-700 dark:hover:text-[#E6DFD5]"
                 }`}
                 title={isCollapsed ? item.label : undefined}

@@ -138,7 +138,7 @@ export default function CollectionsPage() {
         </div>
         <button 
           onClick={() => setIsCreateModalOpen(true)}
-          className="flex items-center gap-2 px-5 py-2.5 bg-brand-muted dark:bg-brand/10 hover:bg-brand-muted dark:hover:bg-brand/20 text-brand-hover dark:text-brand rounded-xl font-semibold transition-colors shadow-sm cursor-pointer"
+          className="flex items-center gap-2 px-5 py-2.5 bg-brand-muted dark:bg-brand/10 hover:bg-brand-muted dark:hover:bg-brand/20 text-brand-hover dark:text-[#E6DFD5] rounded-xl font-semibold transition-colors shadow-sm cursor-pointer"
         >
           <Plus className="w-5 h-5" />
           Tạo bộ sưu tập

@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
@@ -92,7 +92,7 @@ function StatusText() {
     <motion.p
       animate={{ opacity: visible ? 1 : 0 }}
       transition={{ duration: 0.25 }}
-      className="text-sm font-medium text-brand dark:text-brand"
+      className="text-sm font-medium text-brand dark:text-[#E6DFD5]"
     >
       {AI_STATUS_MESSAGES[msgIdx]}
     </motion.p>

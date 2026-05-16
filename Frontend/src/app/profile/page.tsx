@@ -64,7 +64,7 @@ export default function ProfilePage() {
                   <div>
                     <h1 className="text-3xl font-black text-gray-900 dark:text-[#E6DFD5] tracking-tight mb-1">{username || "Linh Nguyen"}</h1>
                     <p className="text-gray-500 dark:text-[#9A8A7A] font-medium flex items-center gap-2 text-sm">
-                      <span className="px-2.5 py-0.5 rounded-full bg-brand-muted dark:bg-brand/20 text-brand-hover dark:text-brand font-bold text-[10px] uppercase tracking-wider">Bậc thầy Phở</span>
+                      <span className="px-2.5 py-0.5 rounded-full bg-brand-muted dark:bg-brand/20 text-brand-hover dark:text-[#E6DFD5] font-bold text-[10px] uppercase tracking-wider">Bậc thầy Phở</span>
                       • Tham gia từ tháng 5, 2024
                     </p>
                   </div>

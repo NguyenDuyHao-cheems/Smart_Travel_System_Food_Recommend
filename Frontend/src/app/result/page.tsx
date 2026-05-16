@@ -63,14 +63,14 @@ const VIBE_TAGS: VibeTag[] = [
   { label: 'Sweet', emoji: '💕', bgLight: 'bg-pink-50', bgDark: 'dark:bg-pink-500/10', text: 'text-pink-500', border: 'border-pink-100 dark:border-pink-500/20' },
   { label: 'Popular', emoji: '⭐', bgLight: 'bg-amber-50', bgDark: 'dark:bg-brand/10', text: 'text-amber-600 dark:text-amber-400', border: 'border-amber-100 dark:border-amber-500/20' },
   { label: 'Cheap', emoji: '💰', bgLight: 'bg-green-50', bgDark: 'dark:bg-green-500/10', text: 'text-green-600 dark:text-green-400', border: 'border-green-100 dark:border-green-500/20' },
-  { label: 'Classic', emoji: '🏛️', bgLight: 'bg-brand-muted', bgDark: 'dark:bg-brand/10', text: 'text-brand-hover dark:text-brand', border: 'border-teal-100 dark:border-brand/20' },
+  { label: 'Classic', emoji: '🏛️', bgLight: 'bg-brand-muted', bgDark: 'dark:bg-brand/10', text: 'text-brand-hover dark:text-[#E6DFD5]', border: 'border-teal-100 dark:border-brand/20' },
   { label: 'Trendy', emoji: '🔥', bgLight: 'bg-violet-50', bgDark: 'dark:bg-violet-500/10', text: 'text-violet-500 dark:text-violet-400', border: 'border-violet-100 dark:border-violet-500/20' },
   { label: 'Local', emoji: '📍', bgLight: 'bg-brand-muted', bgDark: 'dark:bg-brand/10', text: 'text-brand', border: 'border-brand-muted dark:border-brand/20' },
 ];
 
 const DEFAULT_TAG_STYLES = [
   { emoji: '🏷️', bgLight: 'bg-gray-50', bgDark: 'dark:bg-gray-500/10', text: 'text-gray-600 dark:text-[#9A8A7A]', border: 'border-gray-200 dark:border-gray-500/20' },
-  { emoji: '✨', bgLight: 'bg-brand-muted', bgDark: 'dark:bg-brand/10', text: 'text-brand-hover dark:text-brand', border: 'border-indigo-100 dark:border-indigo-500/20' },
+  { emoji: '✨', bgLight: 'bg-brand-muted', bgDark: 'dark:bg-brand/10', text: 'text-brand-hover dark:text-[#E6DFD5]', border: 'border-indigo-100 dark:border-indigo-500/20' },
   { emoji: '🌿', bgLight: 'bg-emerald-50', bgDark: 'dark:bg-emerald-500/10', text: 'text-emerald-600 dark:text-emerald-400', border: 'border-emerald-100 dark:border-emerald-500/20' }
 ];
 
@@ -164,10 +164,10 @@ function HeroResultCard({ item, sessionId, searchMode, onAddCollection, isModalO
         {/* Left: Info */}
         <div className="flex-1 p-8 md:p-10 flex flex-col justify-center">
           <div className="flex items-center gap-2 mb-4">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-brand-muted dark:bg-brand/20 text-brand-hover dark:text-brand">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-brand-muted dark:bg-brand/20 text-brand-hover dark:text-[#E6DFD5]">
               <Sparkles className="w-3.5 h-3.5" /> AI TOP PICK
             </span>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-brand-muted dark:bg-brand/15 text-brand-hover dark:text-brand">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-brand-muted dark:bg-brand/15 text-brand-hover dark:text-[#E6DFD5]">
               🤖 {item.match} Match
             </span>
           </div>
@@ -187,7 +187,7 @@ function HeroResultCard({ item, sessionId, searchMode, onAddCollection, isModalO
 
           {item.dist && (
             <div className="mb-5 flex items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-brand-muted dark:bg-brand/15 text-brand-hover dark:text-brand border border-brand/30 dark:border-brand/30">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-brand-muted dark:bg-brand/15 text-brand-hover dark:text-[#E6DFD5] border border-brand/30 dark:border-brand/30">
                 <MapPin className="w-3.5 h-3.5" /> {item.dist}
               </span>
               {item.total_reviews !== undefined && item.total_reviews > 0 && (
@@ -369,7 +369,7 @@ function SmallResultCard({ item, index, sessionId, searchMode, onAddCollection, 
             🤖 {item.match} Match
           </span>
           {item.dist && (
-            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-semibold bg-white/90 dark:bg-[#2A2420]/80 text-brand-hover dark:text-brand backdrop-blur-sm">
+            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-semibold bg-white/90 dark:bg-[#2A2420]/80 text-brand-hover dark:text-[#E6DFD5] backdrop-blur-sm">
               📍 {item.dist} {item.total_reviews !== undefined && item.total_reviews > 0 && `(${item.total_reviews})`}
             </span>
           )}
@@ -712,7 +712,7 @@ function ResultPageContent() {
               )}
               {filteredCount > 0 && (
                 <div className="mb-6 flex items-start gap-3 p-4 rounded-xl bg-brand-muted dark:bg-brand/10 border border-brand/50 dark:border-brand/20">
-                  <AlertTriangle className="w-5 h-5 text-brand-hover dark:text-brand flex-shrink-0 mt-0.5" />
+                  <AlertTriangle className="w-5 h-5 text-brand-hover dark:text-[#E6DFD5] flex-shrink-0 mt-0.5" />
                   <p className="text-sm text-brand-hover dark:text-[#E6DFD5] leading-relaxed">
                     <strong>Cảnh báo Dị ứng:</strong> {allergyWarning || `Đã loại ${filteredCount} quán có thành phần gây dị ứng để đảm bảo an toàn.`}
                   </p>
@@ -801,7 +801,7 @@ function ResultPageContent() {
                     setSearchQuery('');
                     document.querySelector('input')?.focus();
                   }}
-                  className="px-6 py-2.5 bg-brand-muted dark:bg-brand/10 hover:bg-brand-muted dark:hover:bg-brand/20 text-brand-hover dark:text-brand rounded-full transition-all font-semibold"
+                  className="px-6 py-2.5 bg-brand-muted dark:bg-brand/10 hover:bg-brand-muted dark:hover:bg-brand/20 text-brand-hover dark:text-[#E6DFD5] rounded-full transition-all font-semibold"
                 >
                   Thử tìm từ khóa khác
                 </button>

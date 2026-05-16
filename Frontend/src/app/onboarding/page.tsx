@@ -340,8 +340,8 @@ function BasicInfoSection({ formData, setSingleItem }: { formData: OnboardingDat
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 p-1">
       <div className="space-y-3 group">
-        <label className="flex items-center gap-2 font-medium text-[#9A8A7A] dark:text-[#E6DFD5]/80 transition-colors group-focus-within:text-brand-hover dark:group-focus-within:text-brand">
-          <IconUser className="text-cyan-500 dark:text-brand/80 group-focus-within:text-brand-hover dark:group-focus-within:text-cyan-300 transition-colors" size={18} /> Độ tuổi của bạn (*)
+        <label className="flex items-center gap-2 font-medium text-[#9A8A7A] dark:text-[#E6DFD5]/80 transition-colors group-focus-within:text-brand-hover dark:group-focus-within:text-[#E6DFD5]">
+          <IconUser className="text-cyan-500 dark:text-[#C8BFB0] group-focus-within:text-brand-hover dark:group-focus-within:text-cyan-300 transition-colors" size={18} /> Độ tuổi của bạn (*)
         </label>
         <div className="relative">
           <input
@@ -356,8 +356,8 @@ function BasicInfoSection({ formData, setSingleItem }: { formData: OnboardingDat
         </div>
       </div>
       <div className="space-y-3 group">
-        <label className="flex items-center gap-2 font-medium text-[#9A8A7A] dark:text-[#E6DFD5]/80 transition-colors group-focus-within:text-brand-hover dark:group-focus-within:text-brand">
-          <IconMapPin className="text-cyan-500 dark:text-brand/80 group-focus-within:text-brand-hover dark:group-focus-within:text-cyan-300 transition-colors" size={18} /> Khu vực hiện tại (*)
+        <label className="flex items-center gap-2 font-medium text-[#9A8A7A] dark:text-[#E6DFD5]/80 transition-colors group-focus-within:text-brand-hover dark:group-focus-within:text-[#E6DFD5]">
+          <IconMapPin className="text-cyan-500 dark:text-[#C8BFB0] group-focus-within:text-brand-hover dark:group-focus-within:text-cyan-300 transition-colors" size={18} /> Khu vực hiện tại (*)
         </label>
         <div className="relative">
             <input
@@ -382,8 +382,8 @@ function FavoriteDishes({ selected, onChange }: { selected: string[], onChange: 
         {FAV_DISH_CATEGORIES.map((cat, idx) => {
           let themeClasses = "";
           let DotColor = "";
-          if (idx === 0) { themeClasses = "from-brand-muted dark:from-brand/5 border-brand/10 dark:border-brand/20 hover:border-brand/20 dark:hover:border-brand/40 text-brand-hover dark:text-brand/80 dark:shadow-[inset_0_0_20px_rgba(249,115,22,0.02)]"; DotColor = "bg-brand shadow-sm dark:bg-brand/80 dark:shadow-[0_0_8px_rgba(249,115,22,0.8)]"; } // Đặc sản VN
-          else if (idx === 1) { themeClasses = "from-indigo-50 dark:from-indigo-900/10 border-indigo-900/10 dark:border-indigo-500/20 hover:border-indigo-900/20 dark:hover:border-indigo-500/40 text-brand-hover dark:text-brand/80 dark:shadow-[inset_0_0_20px_rgba(99,102,241,0.02)]"; DotColor = "bg-brand shadow-sm dark:bg-brand/80 dark:shadow-[0_0_8px_rgba(99,102,241,0.8)]"; } // Á Âu
+          if (idx === 0) { themeClasses = "from-brand-muted dark:from-brand/5 border-brand/10 dark:border-brand/20 hover:border-brand/20 dark:hover:border-brand/40 text-brand-hover dark:text-[#C8BFB0] dark:shadow-[inset_0_0_20px_rgba(249,115,22,0.02)]"; DotColor = "bg-brand shadow-sm dark:bg-brand/80 dark:shadow-[0_0_8px_rgba(249,115,22,0.8)]"; } // Đặc sản VN
+          else if (idx === 1) { themeClasses = "from-indigo-50 dark:from-indigo-900/10 border-indigo-900/10 dark:border-indigo-500/20 hover:border-indigo-900/20 dark:hover:border-indigo-500/40 text-brand-hover dark:text-[#C8BFB0] dark:shadow-[inset_0_0_20px_rgba(99,102,241,0.02)]"; DotColor = "bg-brand shadow-sm dark:bg-brand/80 dark:shadow-[0_0_8px_rgba(99,102,241,0.8)]"; } // Á Âu
           else if (idx === 2) { themeClasses = "from-pink-50 dark:from-pink-900/10 border-pink-900/10 dark:border-pink-500/20 hover:border-pink-900/20 dark:hover:border-pink-500/40 text-pink-600 dark:text-pink-400/80 dark:shadow-[inset_0_0_20px_rgba(236,72,153,0.02)]"; DotColor = "bg-pink-500 shadow-sm dark:bg-pink-500/80 dark:shadow-[0_0_8px_rgba(236,72,153,0.8)]"; } // Ăn Vặt
           else { themeClasses = "from-sky-50 dark:from-sky-900/10 border-sky-900/10 dark:border-sky-500/20 hover:border-sky-900/20 dark:hover:border-sky-500/40 text-sky-600 dark:text-sky-400/80 dark:shadow-[inset_0_0_20px_rgba(14,165,233,0.02)]"; DotColor = "bg-sky-500 shadow-sm dark:bg-sky-500/80 dark:shadow-[0_0_8px_rgba(14,165,233,0.8)]"; } // Tráng miệng
 
@@ -428,7 +428,7 @@ function SpicyLevelPicker({ selected, onChange }: { selected: SpicyLevel, onChan
         <div className="absolute -top-4 -right-4 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
           <IconFlame size={120} />
         </div>
-        <div className="text-[12px] font-bold text-brand-hover dark:text-brand/80 mb-5 tracking-widest uppercase flex items-center gap-2">
+        <div className="text-[12px] font-bold text-brand-hover dark:text-[#C8BFB0] mb-5 tracking-widest uppercase flex items-center gap-2">
           <div className="w-2 h-2 rounded-full bg-brand shadow-sm dark:bg-brand/80 dark:shadow-[0_0_8px_rgba(249,115,22,0.8)] animate-pulse"></div>
           Kháng Hỏa Tùy Chỉnh
         </div>
@@ -440,7 +440,7 @@ function SpicyLevelPicker({ selected, onChange }: { selected: SpicyLevel, onChan
                 key={opt.id}
                 onClick={() => onChange(opt.id)}
                 className={`px-5 py-3 rounded-full font-semibold transition-all duration-300 border ${isActive
-                  ? 'border-brand bg-brand-muted text-brand-hover shadow-sm dark:border-brand/50 dark:bg-brand/20 dark:text-brand dark:shadow-[0_0_15px_rgba(249,115,22,0.2)] scale-[1.02]'
+                  ? 'border-brand bg-brand-muted text-brand-hover shadow-sm dark:border-brand/50 dark:bg-brand/20 dark:text-[#E6DFD5] dark:shadow-[0_0_15px_rgba(249,115,22,0.2)] scale-[1.02]'
                   : 'border-[#4D3D32]/10 bg-white text-[#9A8A7A] hover:border-brand/20 hover:bg-brand-muted hover:text-brand-hover dark:border-white/10 dark:bg-white/5 dark:text-[#E6DFD5]/50 dark:hover:border-brand/30 dark:hover:bg-white/10 dark:hover:text-white/80'
                   }`}
               >

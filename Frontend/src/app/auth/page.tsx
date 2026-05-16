@@ -330,7 +330,7 @@ function AuthPageContent() {
                     <input type="checkbox" className="w-4 h-4 rounded text-brand border-gray-300 focus:ring-brand" />
                     <span className="text-[13px] font-medium text-gray-600 dark:text-[#9A8A7A]">Remember me</span>
                   </label>
-                  <a href="#" className="text-[13px] font-semibold text-brand-hover dark:text-brand hover:underline">
+                  <a href="#" className="text-[13px] font-semibold text-brand-hover dark:text-[#E6DFD5] hover:underline">
                     Forgot password?
                   </a>
                 </div>
@@ -386,7 +386,7 @@ function AuthPageContent() {
               {mode === "signin" ? "Don't have an account?" : "Already have an account?"}{" "}
               <button
                 onClick={() => { setMode(mode === "signin" ? "signup" : "signin"); setErrorMsg(""); }}
-                className="font-bold text-brand-hover dark:text-brand hover:underline cursor-pointer"
+                className="font-bold text-brand-hover dark:text-[#E6DFD5] hover:underline cursor-pointer"
               >
                 {mode === "signin" ? "Sign up" : "Sign in"}
               </button>
