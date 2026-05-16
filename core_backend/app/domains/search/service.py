@@ -90,8 +90,10 @@ class SearchService:
             else:
                 match_str = "95%"
 
+            req_tags = request.tag_name or ai_response.cleaned_query
+
             results.append(
-                self._map_to_recommend_result(model, request.lat, request.lng, match_str)
+                self._map_to_recommend_result(model, request.lat, request.lng, match_str, request_tags=req_tags)
             )
 
         logger.debug("Search: query=%r, mapped=%d, filtered_out=%d", request.query, len(results), filtered_out_count)
@@ -173,7 +175,7 @@ class SearchService:
         )
 
     @staticmethod
-    def _map_to_recommend_result(model, user_lat: float, user_lng: float, match_str: str = "95%") -> RecommendResult:
+    def _map_to_recommend_result(model, user_lat: float, user_lng: float, match_str: str = "95%", request_tags: str = None) -> RecommendResult:
         import math
 
         lat2, lng2 = float(model.lat or 0), float(model.lng or 0)
@@ -202,7 +204,35 @@ class SearchService:
             distance_km=round(dist_km, 2),
             price=price_display,
             rating=str(model.rating_avg) if model.rating_avg else "Mới",
-            reason="Phù hợp với tìm kiếm của bạn",
+            reason=SearchService._generate_dynamic_reason(model, dist_km, request_tags),
             img=model.image_url or "/images/default_food.jpg",
             google_maps_url=getattr(model, "google_maps_url", None),
         )
+
+    @staticmethod
+    def _generate_dynamic_reason(model, dist_km: float, request_tags: str = None) -> str:
+        reasons = []
+        
+        # 1. Yếu tố món ăn (nếu có match tag)
+        if request_tags and hasattr(model, 'tags') and model.tags:
+            tag_names = [t.name.lower() for t in model.tags if hasattr(t, 'name') and t.name]
+            req_tag_lower = request_tags.lower()
+            # Ưu tiên lấy tag ngắn gọn hiển thị thay vì hiện cả chuỗi query dài
+            matched_tags = []
+            for tn in tag_names:
+                if req_tag_lower in tn or tn in req_tag_lower:
+                    matched_tags.append(tn.title())
+            if matched_tags:
+                reasons.append(f"Có món {matched_tags[0]}")
+
+        # 2. Yếu tố khoảng cách
+        if dist_km < 1.5:
+            reasons.append("Rất gần bạn")
+            
+        # 3. Yếu tố đánh giá
+        if hasattr(model, 'rating_avg') and model.rating_avg and model.rating_avg >= 4.5:
+            reasons.append("Đánh giá cao")
+            
+        if reasons:
+            return " · ".join(reasons)
+        return "Phù hợp với tìm kiếm của bạn"
