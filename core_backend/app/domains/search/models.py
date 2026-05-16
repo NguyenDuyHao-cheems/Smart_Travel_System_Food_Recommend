@@ -1,10 +1,12 @@
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import Column, String, Float, Integer, DateTime
+from sqlalchemy import Column, String, Float, Integer, DateTime, JSON
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID, JSONB
 
 from app.core.database import Base
+
+JSONVariant = JSON().with_variant(JSONB(), "postgresql")
 
 class SearchSession(Base):
     __tablename__ = "search_sessions"
@@ -19,7 +21,7 @@ class SearchSession(Base):
     lat = Column(Float, nullable=True)
     lng = Column(Float, nullable=True)
     budget = Column(Integer, nullable=True)
-    results_json = Column(JSONB, nullable=True)
+    results_json = Column(JSONVariant, nullable=True)
     created_at = Column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),

@@ -104,6 +104,7 @@ with patch("sqlalchemy.create_engine", side_effect=mocked_create_engine):
     from app.main import app
     from app.core.database import SessionLocal, engine as engine_test
     from app.domains.users.models import Base as UserBase, UserAccount, UserOnboarding
+    from app.domains.search.models import Base as SearchBase
 
 
 from fastapi.testclient import TestClient
@@ -119,7 +120,9 @@ TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engin
 def create_test_tables():
     """Create all tables once for the entire test session."""
     UserBase.metadata.create_all(bind=engine_test)
+    SearchBase.metadata.create_all(bind=engine_test)
     yield
+    SearchBase.metadata.drop_all(bind=engine_test)
     UserBase.metadata.drop_all(bind=engine_test)
 
 
@@ -148,6 +151,16 @@ def client(db_session):
     with TestClient(app) as c:
         yield c
     app.dependency_overrides.clear()
+
+
+@pytest.fixture()
+def auth_headers(client):
+    """Register a user and return headers with the access token."""
+    import uuid
+    username = f"testuser_{uuid.uuid4().hex[:8]}"
+    resp = client.post("/api/v1/users/sign_up", json={"username": username, "password": "testpassword123"})
+    token = resp.json()["access_token"]
+    return {"Authorization": f"Bearer {token}"}
 
 
 @pytest.fixture(autouse=True)
