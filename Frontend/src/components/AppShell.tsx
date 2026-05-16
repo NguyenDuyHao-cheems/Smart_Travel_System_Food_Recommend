@@ -78,7 +78,7 @@ export function AppShell({ children, healthStatus = "loading" }: AppShellProps) 
           {/* Center: Logo */}
           <Link href="/" className="absolute left-1/2 -translate-x-1/2">
             <span
-              className="text-3xl md:text-4xl font-black text-brand dark:text-[#E8735A] tracking-tight select-none"
+              className="text-4xl md:text-5xl font-black text-brand dark:text-[#E8735A] tracking-wide select-none"
               style={{ fontFamily: '"DFVN Paper Kuto", "Segoe UI", Roboto, sans-serif' }}
             >
               Wanderbite
@@ -141,16 +141,16 @@ export function AppShell({ children, healthStatus = "loading" }: AppShellProps) 
               />
 
               {/* Drawer header */}
-              <div className="relative z-10 flex items-center justify-between px-6 py-5 border-b-2 border-[#3D312A]/20 dark:border-[#E6DFD5]/10">
+              <div className="relative z-10 flex flex-col items-center justify-center px-6 py-6 border-b-2 border-[#3D312A]/20 dark:border-[#E6DFD5]/10">
                 <span
-                  className="text-2xl font-black text-brand dark:text-[#E8735A]"
+                  className="text-4xl font-black text-brand dark:text-[#E8735A] tracking-wide"
                   style={{ fontFamily: '"DFVN Paper Kuto", "Segoe UI", Roboto, sans-serif' }}
                 >
                   Wanderbite
                 </span>
                 <button
                   onClick={() => setDrawerOpen(false)}
-                  className="p-2 rounded hover:bg-[#3D312A]/10 dark:hover:bg-[#E6DFD5]/10 cursor-pointer transition-colors"
+                  className="absolute top-4 right-4 p-2 rounded hover:bg-[#3D312A]/10 dark:hover:bg-[#E6DFD5]/10 cursor-pointer transition-colors"
                 >
                   <X className="w-5 h-5 text-[#3D312A] dark:text-[#E6DFD5]" />
                 </button>
