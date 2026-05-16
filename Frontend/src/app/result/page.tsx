@@ -47,6 +47,7 @@ export interface RecommendResult {
   rating: string;
   reason: string;
   img: string;
+  total_reviews?: number;
   tags?: string[];
   restaurantName?: string;
   google_maps_url?: string;
@@ -192,10 +193,15 @@ function HeroResultCard({ item, sessionId, searchMode, onAddCollection, isModalO
           )}
 
           {item.dist && (
-            <div className="mb-5">
+            <div className="mb-5 flex items-center gap-2">
               <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-teal-50 dark:bg-teal-500/15 text-teal-600 dark:text-teal-400 border border-teal-200 dark:border-teal-500/30">
                 <MapPin className="w-3.5 h-3.5" /> {item.dist}
               </span>
+              {item.total_reviews !== undefined && item.total_reviews > 0 && (
+                <span className="text-xs text-gray-400 dark:text-gray-500 font-medium">
+                  ({item.total_reviews} đánh giá)
+                </span>
+              )}
             </div>
           )}
 
@@ -371,7 +377,7 @@ function SmallResultCard({ item, index, sessionId, searchMode, onAddCollection, 
           </span>
           {item.dist && (
             <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-semibold bg-white/90 dark:bg-gray-900/80 text-teal-600 dark:text-teal-400 backdrop-blur-sm">
-              📍 {item.dist}
+              📍 {item.dist} {item.total_reviews !== undefined && item.total_reviews > 0 && `(${item.total_reviews})`}
             </span>
           )}
         </div>
