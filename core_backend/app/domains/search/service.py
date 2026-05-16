@@ -215,8 +215,9 @@ class SearchService:
             rating_display = "Chưa có đánh giá"
 
         return RecommendResult(
-            id=str(model.id),
+            id=shortuuid.encode(model.id),
             name=model.name or "Không rõ tên",
+
             match=match_str,
             dist=f"{dist_km:.1f} km",
             distance_km=round(dist_km, 2),

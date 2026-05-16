@@ -1,22 +1,39 @@
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
+import uuid as _uuid
+import shortuuid
+
 from .repository import RestaurantRepository
 from .schema import RestaurantDetailResponse, DishResponse
 
 class RestaurantService:
     @staticmethod
     async def get_restaurant_detail(db: Session, restaurant_id: str) -> RestaurantDetailResponse:
-        restaurant = RestaurantRepository.get_by_id(db, restaurant_id)
+        uid = None
+        try:
+            if len(restaurant_id) < 36:
+                uid = shortuuid.decode(restaurant_id)
+            else:
+                uid = _uuid.UUID(restaurant_id)
+        except Exception:
+            try:
+                uid = _uuid.UUID(restaurant_id)
+            except ValueError:
+                raise HTTPException(status_code=422, detail="ID nhà hàng không hợp lệ.")
+
+        restaurant = RestaurantRepository.get_by_id(db, uid)
         if not restaurant:
             raise HTTPException(status_code=404, detail="Không tìm thấy nhà hàng này.")
         
-        dishes = RestaurantRepository.get_dishes_by_restaurant_id(db, restaurant_id)
+        dishes = RestaurantRepository.get_dishes_by_restaurant_id(db, uid)
+
         tags = [tag.name for tag in (restaurant.tags or [])]
-        reviews = RestaurantRepository.get_reviews_by_restaurant_id(db, restaurant_id, limit=10)
+        reviews = RestaurantRepository.get_reviews_by_restaurant_id(db, uid, limit=10)
         
         return RestaurantDetailResponse(
-            id=restaurant.id,
+            id=shortuuid.encode(restaurant.id),
             name=restaurant.name,
+
             address=restaurant.address,
             google_maps_url=restaurant.google_maps_url,
             image_url=restaurant.image_url,

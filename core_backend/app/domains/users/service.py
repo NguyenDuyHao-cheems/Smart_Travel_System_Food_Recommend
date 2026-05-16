@@ -295,15 +295,24 @@ class UserInteractionService:
             except Exception:
                 pass
 
+        # Decode res_id if it's a short ID
+        decoded_res_id = payload.res_id
+        if decoded_res_id and len(decoded_res_id) < 36:
+            try:
+                decoded_res_id = str(shortuuid.decode(decoded_res_id))
+            except Exception:
+                pass
+
         interaction = self._repo.create_interaction(
             action_type=payload.action_type,
             anonymous_id=payload.anonymous_id,
             user_id=user_id,
-            res_id=payload.res_id,
+            res_id=decoded_res_id,
             duration_sec=payload.duration_sec,
             metadata=payload.metadata,
             search_session_id=decoded_session_id,
         )
+
 
         return UserInteractionResponse(
             interaction_id=str(interaction.id)
