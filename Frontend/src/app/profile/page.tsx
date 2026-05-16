@@ -50,7 +50,7 @@ export default function ProfilePage() {
                     {avatar ? (
                       <img src={avatar} alt="Profile" className="w-full h-full object-cover" />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-brand-muted text-brand dark:text-brand-on-dark">
+                      <div className="w-full h-full flex items-center justify-center bg-brand-muted text-brand dark:text-[#E8735A]">
                         <span className="text-4xl font-bold">{username?.[0]}</span>
                       </div>
                     )}
@@ -87,7 +87,7 @@ export default function ProfilePage() {
                 { label: "Khám phá", value: "24", icon: MapPin, color: "text-blue-500", bg: "bg-blue-50 dark:bg-blue-500/10" },
                 { label: "Yêu thích", value: "128", icon: Heart, color: "text-red-500", bg: "bg-red-50 dark:bg-red-500/10" },
                 { label: "Đánh giá", value: "12", icon: MessageSquare, color: "text-emerald-500", bg: "bg-emerald-50 dark:bg-emerald-500/10" },
-                { label: "Streak", value: "5", icon: Flame, color: "text-brand dark:text-brand-on-dark", bg: "bg-brand-muted dark:bg-brand/10" },
+                { label: "Streak", value: "5", icon: Flame, color: "text-brand dark:text-[#E8735A]", bg: "bg-brand-muted dark:bg-brand/10" },
               ].map((stat, idx) => (
                 <div key={idx} className="bg-white dark:bg-[#3D312A] p-6 rounded-[32px] border border-gray-100 dark:border-[#3D312A] shadow-sm flex flex-col items-center text-center">
                   <div className={`w-12 h-12 ${stat.bg} rounded-2xl flex items-center justify-center ${stat.color} mb-3`}>
@@ -104,7 +104,7 @@ export default function ProfilePage() {
               <div className="lg:col-span-1 space-y-8">
                 <div className="bg-white dark:bg-[#3D312A] rounded-[32px] p-8 shadow-sm border border-gray-100 dark:border-[#3D312A]">
                   <h3 className="text-lg font-bold text-gray-900 dark:text-[#E6DFD5] mb-6 flex items-center gap-2">
-                    <Trophy className="w-5 h-5 text-brand dark:text-brand-on-dark" />
+                    <Trophy className="w-5 h-5 text-brand dark:text-[#E8735A]" />
                     Huy hiệu của bạn
                   </h3>
                   <div className="grid grid-cols-3 gap-4 text-center">
@@ -128,7 +128,7 @@ export default function ProfilePage() {
 
                 <div className="bg-white dark:bg-[#3D312A] rounded-[32px] p-8 shadow-sm border border-gray-100 dark:border-[#3D312A]">
                   <h3 className="text-lg font-bold text-gray-900 dark:text-[#E6DFD5] mb-6 flex items-center gap-2">
-                    <TrendingUp className="w-5 h-5 text-brand dark:text-brand-on-dark" />
+                    <TrendingUp className="w-5 h-5 text-brand dark:text-[#E8735A]" />
                     Gu ẩm thực
                   </h3>
                   <div className="space-y-4">
@@ -159,7 +159,7 @@ export default function ProfilePage() {
               <div className="lg:col-span-2 space-y-8">
                 <div className="bg-white dark:bg-[#3D312A] rounded-[32px] p-8 shadow-sm border border-gray-100 dark:border-[#3D312A]">
                   <h3 className="text-lg font-bold text-gray-900 dark:text-[#E6DFD5] mb-6 flex items-center gap-2">
-                    <Clock className="w-5 h-5 text-brand dark:text-brand-on-dark" />
+                    <Clock className="w-5 h-5 text-brand dark:text-[#E8735A]" />
                     Hoạt động gần đây
                   </h3>
                   <div className="space-y-6">
@@ -167,7 +167,7 @@ export default function ProfilePage() {
                       { title: "Đã thích nhà hàng 'Phở Thìn Lò Đúc'", time: "2 giờ trước", icon: Heart, color: "text-red-500", bg: "bg-red-50 dark:bg-red-500/10" },
                       { title: "Ghé thăm 'Bún chả Hương Liên'", time: "Hôm qua", icon: MapPin, color: "text-blue-500", bg: "bg-blue-50 dark:bg-blue-500/10" },
                       { title: "Đánh giá 5 sao cho 'Cà phê Giảng'", time: "2 ngày trước", icon: Star, color: "text-yellow-500", bg: "bg-yellow-50 dark:bg-yellow-500/10" },
-                      { title: "Lưu món 'Bánh mì dân tổ' vào bộ sưu tập", time: "3 ngày trước", icon: UtensilsCrossed, color: "text-brand dark:text-brand-on-dark", bg: "bg-brand-muted dark:bg-brand/10" },
+                      { title: "Lưu món 'Bánh mì dân tổ' vào bộ sưu tập", time: "3 ngày trước", icon: UtensilsCrossed, color: "text-brand dark:text-[#E8735A]", bg: "bg-brand-muted dark:bg-brand/10" },
                     ].map((activity, idx) => (
                       <div key={idx} className="flex gap-4 group cursor-pointer">
                         <div className={`w-10 h-10 ${activity.bg} ${activity.color} rounded-xl flex-shrink-0 flex items-center justify-center transition-transform group-hover:scale-110`}>

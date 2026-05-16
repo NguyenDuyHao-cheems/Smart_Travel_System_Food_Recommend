@@ -30,7 +30,7 @@ export default function RecommendationsPage() {
     <PageLayout>
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-[#E6DFD5] flex items-center gap-3">
-          <Sparkles className="w-8 h-8 text-brand dark:text-brand-on-dark fill-brand/20" />
+          <Sparkles className="w-8 h-8 text-brand dark:text-[#E8735A] fill-brand/20" />
           Gợi ý dành riêng cho bạn
         </h1>
         <p className="text-gray-500 dark:text-[#9A8A7A] mt-2">

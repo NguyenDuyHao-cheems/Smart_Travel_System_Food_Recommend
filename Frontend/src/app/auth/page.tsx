@@ -196,12 +196,12 @@ function AuthPageContent() {
           </div>
 
           <div className="relative z-10 max-w-md">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-brand/30 bg-brand/10 text-brand dark:text-brand-on-dark text-sm font-medium mb-6 backdrop-blur-md">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-brand/30 bg-brand/10 text-brand dark:text-[#E8735A] text-sm font-medium mb-6 backdrop-blur-md">
               <Sparkles className="w-4 h-4" />
               AI-Powered Food Discovery
             </div>
             <h1 className="text-5xl font-bold leading-[1.15] mb-6">
-              Discover your perfect culinary vibe <span className="text-brand dark:text-brand-on-dark">powered by AI.</span>
+              Discover your perfect culinary vibe <span className="text-brand dark:text-[#E8735A]">powered by AI.</span>
             </h1>
             <p className="text-gray-300 text-lg leading-relaxed">
               Smart recommendations, real-time locations, and flavors that match your mood.
@@ -211,21 +211,21 @@ function AuthPageContent() {
           <div className="relative z-10 flex gap-8">
             <div>
               <div className="w-10 h-10 rounded-full border border-brand/30 flex items-center justify-center mb-3 bg-black/40 backdrop-blur-md">
-                <Sparkles className="w-5 h-5 text-brand dark:text-brand-on-dark" />
+                <Sparkles className="w-5 h-5 text-brand dark:text-[#E8735A]" />
               </div>
               <h3 className="font-semibold text-sm mb-1">AI Recommendations</h3>
               <p className="text-xs text-gray-400">Personalized just for you</p>
             </div>
             <div>
               <div className="w-10 h-10 rounded-full border border-brand/30 flex items-center justify-center mb-3 bg-black/40 backdrop-blur-md">
-                <MapPin className="w-5 h-5 text-brand dark:text-brand-on-dark" />
+                <MapPin className="w-5 h-5 text-brand dark:text-[#E8735A]" />
               </div>
               <h3 className="font-semibold text-sm mb-1">Nearby & Live</h3>
               <p className="text-xs text-gray-400">Real-time GPS results</p>
             </div>
             <div>
               <div className="w-10 h-10 rounded-full border border-brand/30 flex items-center justify-center mb-3 bg-black/40 backdrop-blur-md">
-                <Heart className="w-5 h-5 text-brand dark:text-brand-on-dark" />
+                <Heart className="w-5 h-5 text-brand dark:text-[#E8735A]" />
               </div>
               <h3 className="font-semibold text-sm mb-1">Vibes & Moods</h3>
               <p className="text-xs text-gray-400">Match your every mood</p>
@@ -327,7 +327,7 @@ function AuthPageContent() {
               {mode === "signin" && (
                 <div className="flex items-center justify-between mt-1">
                   <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" className="w-4 h-4 rounded text-brand dark:text-brand-on-dark border-gray-300 focus:ring-brand" />
+                    <input type="checkbox" className="w-4 h-4 rounded text-brand dark:text-[#E8735A] border-gray-300 focus:ring-brand" />
                     <span className="text-[13px] font-medium text-gray-600 dark:text-[#9A8A7A]">Remember me</span>
                   </label>
                   <a href="#" className="text-[13px] font-semibold text-brand-hover dark:text-[#E6DFD5] hover:underline">

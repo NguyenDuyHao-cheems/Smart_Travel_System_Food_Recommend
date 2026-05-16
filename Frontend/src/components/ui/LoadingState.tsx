@@ -92,7 +92,7 @@ function StatusText() {
     <motion.p
       animate={{ opacity: visible ? 1 : 0 }}
       transition={{ duration: 0.25 }}
-      className="text-sm font-medium text-brand dark:text-brand-on-dark dark:text-[#E6DFD5]"
+      className="text-sm font-medium text-brand dark:text-[#E8735A] dark:text-[#E6DFD5]"
     >
       {AI_STATUS_MESSAGES[msgIdx]}
     </motion.p>
@@ -125,7 +125,7 @@ export function LoadingState({ searchQuery, locError, getLocation }: LoadingStat
             className="absolute inset-0 rounded-full border-2 border-brand/50 dark:border-brand/40 -m-3"
           />
           <div className="w-14 h-14 rounded-full bg-brand-muted dark:bg-brand/20 flex items-center justify-center">
-            <Sparkles className="w-7 h-7 text-brand dark:text-brand-on-dark" />
+            <Sparkles className="w-7 h-7 text-brand dark:text-[#E8735A]" />
           </div>
         </div>
 

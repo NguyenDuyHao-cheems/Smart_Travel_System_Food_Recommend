@@ -65,7 +65,7 @@ const VIBE_TAGS: VibeTag[] = [
   { label: 'Cheap', emoji: '💰', bgLight: 'bg-green-50', bgDark: 'dark:bg-green-500/10', text: 'text-green-600 dark:text-green-400', border: 'border-green-100 dark:border-green-500/20' },
   { label: 'Classic', emoji: '🏛️', bgLight: 'bg-brand-muted', bgDark: 'dark:bg-brand/10', text: 'text-brand-hover dark:text-[#E6DFD5]', border: 'border-teal-100 dark:border-brand/20' },
   { label: 'Trendy', emoji: '🔥', bgLight: 'bg-violet-50', bgDark: 'dark:bg-violet-500/10', text: 'text-violet-500 dark:text-violet-400', border: 'border-violet-100 dark:border-violet-500/20' },
-  { label: 'Local', emoji: '📍', bgLight: 'bg-brand-muted', bgDark: 'dark:bg-brand/10', text: 'text-brand dark:text-brand-on-dark', border: 'border-brand-muted dark:border-brand/20' },
+  { label: 'Local', emoji: '📍', bgLight: 'bg-brand-muted', bgDark: 'dark:bg-brand/10', text: 'text-brand dark:text-[#E8735A]', border: 'border-brand-muted dark:border-brand/20' },
 ];
 
 const DEFAULT_TAG_STYLES = [
@@ -180,7 +180,7 @@ function HeroResultCard({ item, sessionId, searchMode, onAddCollection, isModalO
           </h2>
 
           {item.restaurantName && (
-            <p className="text-base font-semibold text-brand dark:text-brand-on-dark mb-4 cursor-pointer hover:text-brand-hover transition-colors" onClick={handleNavigate}>
+            <p className="text-base font-semibold text-brand dark:text-[#E8735A] mb-4 cursor-pointer hover:text-brand-hover transition-colors" onClick={handleNavigate}>
               {item.restaurantName}
             </p>
           )}
@@ -241,7 +241,7 @@ function HeroResultCard({ item, sessionId, searchMode, onAddCollection, isModalO
               className={`w-10 h-10 rounded-full bg-white/90 dark:bg-[#2A2420]/80 border border-gray-200 dark:border-[#4D3D32] flex items-center justify-center hover:scale-110 transition-all cursor-pointer shadow-sm ${isInColl ? 'hover:bg-yellow-50' : 'hover:bg-brand-muted'}`}
               title={isInColl ? "Đã có trong bộ sưu tập" : "Thêm vào bộ sưu tập"}
             >
-              <Bookmark className={`w-5 h-5 ${isInColl ? 'text-yellow-500 fill-current' : 'text-brand dark:text-brand-on-dark'}`} />
+              <Bookmark className={`w-5 h-5 ${isInColl ? 'text-yellow-500 fill-current' : 'text-brand dark:text-[#E8735A]'}`} />
             </button>
             <button
               onClick={toggleFav}
@@ -360,7 +360,7 @@ function SmallResultCard({ item, index, sessionId, searchMode, onAddCollection, 
             className={`w-8 h-8 rounded-full bg-white/90 dark:bg-[#2A2420]/80 flex items-center justify-center hover:scale-110 transition-all cursor-pointer shadow-sm ${isInColl ? 'hover:bg-yellow-50' : 'hover:bg-brand-muted'}`}
             title={isInColl ? "Đã có trong bộ sưu tập" : "Thêm vào bộ sưu tập"}
           >
-            <Bookmark className={`w-4 h-4 ${isInColl ? 'text-yellow-500 fill-current' : 'text-brand dark:text-brand-on-dark'}`} />
+            <Bookmark className={`w-4 h-4 ${isInColl ? 'text-yellow-500 fill-current' : 'text-brand dark:text-[#E8735A]'}`} />
           </button>
         </div>
 
@@ -381,7 +381,7 @@ function SmallResultCard({ item, index, sessionId, searchMode, onAddCollection, 
           {item.name}
         </h3>
         {item.restaurantName && (
-          <p className="text-xs font-semibold text-brand dark:text-brand-on-dark mb-2">
+          <p className="text-xs font-semibold text-brand dark:text-[#E8735A] mb-2">
             {item.restaurantName}
           </p>
         )}
@@ -405,7 +405,7 @@ function SmallResultCard({ item, index, sessionId, searchMode, onAddCollection, 
 
 function FeatureBar() {
   const features = [
-    { icon: Sparkles, bg: 'bg-brand-muted dark:bg-brand/20', color: 'text-brand dark:text-brand-on-dark', title: 'AI-Powered Recommendations', desc: 'Personalized just for you' },
+    { icon: Sparkles, bg: 'bg-brand-muted dark:bg-brand/20', color: 'text-brand dark:text-[#E8735A]', title: 'AI-Powered Recommendations', desc: 'Personalized just for you' },
     { icon: MapPin, bg: 'bg-red-100 dark:bg-red-500/20', color: 'text-red-500', title: 'Near Your Location', desc: 'Real-time GPS results' },
     { icon: Heart, bg: 'bg-pink-100 dark:bg-pink-500/20', color: 'text-pink-500', title: 'Based on Your Vibes', desc: 'Mood, weather & preferences' },
     { icon: ShieldCheck, bg: 'bg-green-100 dark:bg-green-500/20', color: 'text-green-500', title: 'Safe & Trusted', desc: 'Quality restaurants only' },

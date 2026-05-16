@@ -16,14 +16,14 @@ const OPTIONS = [
     id: 'basic' as SearchMode,
     label: 'Tìm kiếm cơ bản',
     icon: Search,
-    color: 'text-brand dark:text-brand-on-dark',
+    color: 'text-brand dark:text-[#E8735A]',
     bgHover: 'hover:bg-brand-muted dark:hover:bg-brand/10',
   },
   {
     id: 'emotion' as SearchMode,
     label: 'Tìm kiếm cảm xúc',
     icon: Sparkles,
-    color: 'text-brand dark:text-brand-on-dark',
+    color: 'text-brand dark:text-[#E8735A]',
     bgHover: 'hover:bg-brand-muted dark:hover:bg-brand/10',
   },
 ];
@@ -60,7 +60,7 @@ export function SearchTypeMenu({ mode, onChange, compact = false }: SearchTypeMe
         title={`Chế độ: ${activeOption.label}`}
       >
         <ActiveIcon
-          className={`text-brand dark:text-brand-on-dark ${compact ? 'w-4 h-4' : 'w-5 h-5'}`}
+          className={`text-brand dark:text-[#E8735A] ${compact ? 'w-4 h-4' : 'w-5 h-5'}`}
         />
       </button>
 
@@ -98,7 +98,7 @@ export function SearchTypeMenu({ mode, onChange, compact = false }: SearchTypeMe
                       {opt.label}
                     </span>
                     {isSelected && (
-                      <Check className="w-4 h-4 text-brand dark:text-brand-on-dark" />
+                      <Check className="w-4 h-4 text-brand dark:text-[#E8735A]" />
                     )}
                   </button>
                 );

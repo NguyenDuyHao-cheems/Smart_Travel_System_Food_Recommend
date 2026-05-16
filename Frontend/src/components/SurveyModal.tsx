@@ -53,7 +53,7 @@ export function SurveyModal() {
         {/* Icon */}
         <div className="flex justify-center mb-5">
           <div className="w-16 h-16 rounded-2xl bg-brand-muted dark:bg-brand/20 flex items-center justify-center">
-            <Sparkles className="w-8 h-8 text-brand dark:text-brand-on-dark" />
+            <Sparkles className="w-8 h-8 text-brand dark:text-[#E8735A]" />
           </div>
         </div>
 
@@ -71,7 +71,7 @@ export function SurveyModal() {
           <p className="text-sm text-brand-hover dark:text-[#E6DFD5] font-medium">
             🚧 Khảo sát đang được xây dựng
           </p>
-          <p className="text-xs text-brand dark:text-brand-on-dark dark:text-[#E6DFD5] mt-1">
+          <p className="text-xs text-brand dark:text-[#E8735A] dark:text-[#E6DFD5] mt-1">
             Tính năng đầy đủ sẽ sớm ra mắt!
           </p>
         </div>

@@ -86,7 +86,7 @@ export default function CollectionsPage() {
               <ChevronLeft className="w-4 h-4" /> Quay lại
             </button>
             <h1 className="text-3xl font-bold text-gray-900 dark:text-[#E6DFD5] flex items-center gap-3">
-              <FolderOpen className="w-8 h-8 text-brand dark:text-brand-on-dark fill-brand/20" />
+              <FolderOpen className="w-8 h-8 text-brand dark:text-[#E8735A] fill-brand/20" />
               {selectedCollection.name}
             </h1>
             <p className="text-gray-500 dark:text-[#9A8A7A] mt-2">
@@ -129,7 +129,7 @@ export default function CollectionsPage() {
       <div className="mb-8 flex justify-between items-end">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-[#E6DFD5] flex items-center gap-3">
-            <FolderOpen className="w-8 h-8 text-brand dark:text-brand-on-dark fill-brand/20" />
+            <FolderOpen className="w-8 h-8 text-brand dark:text-[#E8735A] fill-brand/20" />
             Bộ sưu tập của bạn
           </h1>
           <p className="text-gray-500 dark:text-[#9A8A7A] mt-2">
@@ -166,7 +166,7 @@ export default function CollectionsPage() {
               className="bg-white dark:bg-[#3D312A] p-6 rounded-2xl border border-gray-100 dark:border-[#4D3D32] shadow-sm hover:shadow-lg transition-all cursor-pointer group"
             >
               <div className="flex justify-between items-start mb-4">
-                <div className="w-12 h-12 rounded-xl bg-brand-muted dark:bg-brand/10 flex items-center justify-center text-brand dark:text-brand-on-dark">
+                <div className="w-12 h-12 rounded-xl bg-brand-muted dark:bg-brand/10 flex items-center justify-center text-brand dark:text-[#E8735A]">
                   <FolderOpen className="w-6 h-6" />
                 </div>
                 <button 
