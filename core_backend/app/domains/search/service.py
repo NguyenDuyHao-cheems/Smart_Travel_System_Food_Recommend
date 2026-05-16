@@ -196,6 +196,10 @@ class SearchService:
         else:
             price_display = "Liên hệ"
 
+        rating_display = str(model.rating_avg) if model.rating_avg else "Mới"
+        if getattr(model, 'total_reviews', 0) in (0, None):
+            rating_display = "Chưa có đánh giá"
+
         return RecommendResult(
             id=str(model.id),
             name=model.name or "Không rõ tên",
@@ -203,9 +207,10 @@ class SearchService:
             dist=f"{dist_km:.1f} km",
             distance_km=round(dist_km, 2),
             price=price_display,
-            rating=str(model.rating_avg) if model.rating_avg else "Mới",
+            rating=rating_display,
             reason=SearchService._generate_dynamic_reason(model, dist_km, request_tags),
             img=model.image_url or "/images/default_food.jpg",
+            total_reviews=getattr(model, "total_reviews", 0) or 0,
             google_maps_url=getattr(model, "google_maps_url", None),
         )
 
@@ -231,7 +236,9 @@ class SearchService:
             
         # 3. Yếu tố đánh giá
         if hasattr(model, 'rating_avg') and model.rating_avg and model.rating_avg >= 4.5:
-            reasons.append("Đánh giá cao")
+            # Chỉ coi là "Đánh giá cao" nếu thực sự có review, tránh case default 5.0
+            if getattr(model, 'total_reviews', 0) > 0:
+                reasons.append("Đánh giá cao")
             
         if reasons:
             return " · ".join(reasons)

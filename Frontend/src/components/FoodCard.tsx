@@ -137,7 +137,7 @@ export function FoodCard({ item, userId, onRemove, showRemove, showAddCollection
           )}
           {item.dist && (
             <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-semibold bg-white/90 dark:bg-gray-900/80 text-teal-600 dark:text-teal-400 backdrop-blur-sm">
-              <MapPin className="w-3 h-3" /> {item.dist}
+              <MapPin className="w-3 h-3" /> {item.dist} {item.total_reviews !== undefined && item.total_reviews > 0 && `(${item.total_reviews})`}
             </span>
           )}
         </div>

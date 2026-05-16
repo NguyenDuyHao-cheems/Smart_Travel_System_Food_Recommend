@@ -153,8 +153,14 @@ export default function RestaurantDetailPage() {
               <div className="flex items-center gap-1">
                 <Star className="w-5 h-5 text-yellow-400 fill-yellow-400" />
                 <span className="font-semibold">
-                  {restaurant.rating_avg.toFixed(1)} 
-                  {restaurant.total_reviews > 0 && <span className="font-normal text-gray-200 ml-1">({restaurant.total_reviews} đánh giá)</span>}
+                  {restaurant.total_reviews > 0 
+                    ? restaurant.rating_avg.toFixed(1) 
+                    : "Chưa có đánh giá"}
+                  {restaurant.total_reviews > 0 && (
+                    <span className="font-normal text-gray-200 ml-1">
+                      ({restaurant.total_reviews} đánh giá)
+                    </span>
+                  )}
                 </span>
               </div>
               <div className="flex items-center gap-1">
@@ -278,7 +284,9 @@ export default function RestaurantDetailPage() {
                         </div>
                         <div className="flex items-center gap-1 px-2 py-1 bg-yellow-50 dark:bg-yellow-500/10 rounded-lg">
                           <Star className="w-3.5 h-3.5 text-yellow-500 fill-yellow-500" />
-                          <span className="text-sm font-bold text-yellow-700 dark:text-yellow-500">{review.rating?.toFixed(1) || "5.0"}</span>
+                          <span className="text-sm font-bold text-yellow-700 dark:text-yellow-500">
+                            {review.rating ? review.rating.toFixed(1) : "N/A"}
+                          </span>
                         </div>
                       </div>
                       <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed">
