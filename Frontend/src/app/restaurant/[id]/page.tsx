@@ -208,7 +208,7 @@ export default function RestaurantDetailPage() {
             <section>
               <div className="flex items-center gap-3 mb-6">
                 <div className="p-2 bg-brand-muted dark:bg-brand/20 rounded-lg">
-                  <UtensilsCrossed className="w-6 h-6 text-brand" />
+                  <UtensilsCrossed className="w-6 h-6 text-brand dark:text-brand-on-dark" />
                 </div>
                 <h2 className="text-2xl font-bold text-gray-900 dark:text-[#E6DFD5]">Thực đơn nổi bật</h2>
               </div>
@@ -240,7 +240,7 @@ export default function RestaurantDetailPage() {
                             </h3>
                             <p className="text-xs text-gray-400 mt-1 line-clamp-1">Hương vị đậm đà, tươi ngon</p>
                           </div>
-                          <p className="text-brand font-bold">
+                          <p className="text-brand dark:text-brand-on-dark font-bold">
                             {dish.price.toLocaleString('vi-VN')} ₫
                           </p>
                         </div>
@@ -311,7 +311,7 @@ export default function RestaurantDetailPage() {
           <div className="space-y-6">
             <div className="bg-white dark:bg-[#3D312A] p-6 rounded-3xl shadow-sm border border-gray-100 dark:border-[#4D3D32]">
               <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-gray-900 dark:text-[#E6DFD5]">
-                <Info className="w-5 h-5 text-brand" />
+                <Info className="w-5 h-5 text-brand dark:text-brand-on-dark" />
                 Thông tin chung
               </h3>
               <div className="space-y-5">
@@ -369,7 +369,7 @@ export default function RestaurantDetailPage() {
                 {/* Transparent overlay to capture clicks */}
                 <div className="absolute inset-0 z-10 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
                   <div className="opacity-0 group-hover:opacity-100 bg-white dark:bg-[#3D312A] px-4 py-2 rounded-full font-bold text-sm shadow-lg transition-opacity flex items-center gap-2 text-gray-800 dark:text-[#E6DFD5]">
-                    <MapPin className="w-4 h-4 text-brand" />
+                    <MapPin className="w-4 h-4 text-brand dark:text-brand-on-dark" />
                     Phóng to bản đồ
                   </div>
                 </div>
@@ -420,7 +420,7 @@ export default function RestaurantDetailPage() {
             >
               <div className="p-4 border-b border-gray-100 dark:border-[#3D312A] flex justify-between items-center bg-gray-50 dark:bg-[#2A2420]">
                 <h3 className="text-lg md:text-xl font-bold flex items-center gap-2 text-gray-900 dark:text-[#E6DFD5]">
-                  <MapPin className="w-6 h-6 text-brand" />
+                  <MapPin className="w-6 h-6 text-brand dark:text-brand-on-dark" />
                   Bản đồ: {restaurant.name}
                 </h3>
                 <button 

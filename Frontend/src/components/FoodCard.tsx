@@ -122,7 +122,7 @@ export function FoodCard({ item, userId, onRemove, showRemove, showAddCollection
               {isInColl ? (
                 <Check className="w-4 h-4 text-yellow-500" />
               ) : (
-                <Plus className="w-4 h-4 text-brand" />
+                <Plus className="w-4 h-4 text-brand dark:text-brand-on-dark" />
               )}
             </button>
           )}
@@ -148,7 +148,7 @@ export function FoodCard({ item, userId, onRemove, showRemove, showAddCollection
           {item.name}
         </h3>
         {item.restaurantName && (
-          <p className="text-xs font-semibold text-brand dark:text-[#C8BFB0] mb-2 line-clamp-1">
+          <p className="text-xs font-semibold text-brand dark:text-brand-on-dark mb-2 line-clamp-1">
             {item.restaurantName}
           </p>
         )}

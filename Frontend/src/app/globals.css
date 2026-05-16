@@ -20,6 +20,7 @@
   --brand-foreground: #ffffff;
   --brand-muted: #F4EAD5;
   --brand-hover: #8A150A;
+  --brand-on-dark: #E8735A;   /* Terracotta — readable red on dark brown bg */
 
   /* ── Base ── */
   --background: #ffffff;
@@ -108,6 +109,7 @@
   --color-brand-foreground: var(--brand-foreground);
   --color-brand-muted: var(--brand-muted);
   --color-brand-hover: var(--brand-hover);
+  --color-brand-on-dark: var(--brand-on-dark);
 
   /* ── Base tokens ── */
   --color-background: var(--background);

@@ -78,7 +78,7 @@ export function AppShell({ children, healthStatus = "loading" }: AppShellProps) 
           {/* Center: Logo */}
           <Link href="/" className="absolute left-1/2 -translate-x-1/2">
             <span
-              className="text-3xl md:text-4xl font-black text-brand tracking-tight select-none"
+              className="text-3xl md:text-4xl font-black text-brand dark:text-brand-on-dark tracking-tight select-none"
               style={{ fontFamily: '"DFVN Paper Kuto", "Segoe UI", Roboto, sans-serif' }}
             >
               Wanderbite
@@ -143,7 +143,7 @@ export function AppShell({ children, healthStatus = "loading" }: AppShellProps) 
               {/* Drawer header */}
               <div className="relative z-10 flex items-center justify-between px-6 py-5 border-b-2 border-[#3D312A]/20 dark:border-[#E6DFD5]/10">
                 <span
-                  className="text-2xl font-black text-brand"
+                  className="text-2xl font-black text-brand dark:text-brand-on-dark"
                   style={{ fontFamily: '"DFVN Paper Kuto", "Segoe UI", Roboto, sans-serif' }}
                 >
                   Wanderbite
@@ -170,7 +170,7 @@ export function AppShell({ children, healthStatus = "loading" }: AppShellProps) 
                       onClick={() => setDrawerOpen(false)}
                       className={`flex items-center gap-4 px-8 py-4 text-[14px] font-semibold border-b border-[#3D312A]/10 dark:border-[#E6DFD5]/10 transition-all uppercase tracking-[2px] ${
                         isActive
-                          ? 'text-brand'
+                          ? 'text-brand dark:text-brand-on-dark'
                           : 'text-[#3D312A] dark:text-[#E6DFD5]'
                       }`}
                       style={{ backgroundColor: isActive ? '#F4EAD5' : 'transparent' }}
@@ -182,7 +182,7 @@ export function AppShell({ children, healthStatus = "loading" }: AppShellProps) 
                         if (!isActive) e.currentTarget.style.backgroundColor = 'transparent';
                       }}
                     >
-                      <item.icon className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-brand' : ''}`} />
+                      <item.icon className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-brand dark:text-brand-on-dark' : ''}`} />
                       {item.label}
                     </Link>
                   );

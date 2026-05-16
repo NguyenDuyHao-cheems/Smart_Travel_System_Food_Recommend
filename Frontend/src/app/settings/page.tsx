@@ -155,7 +155,7 @@ export default function SettingsPage() {
                       : "text-[#7A6A5A] dark:text-[#9A8A7A] hover:bg-[#F4EAD5] dark:hover:bg-brand/5 hover:text-[#3D312A] dark:hover:text-[#E6DFD5]"
                   }`}
                 >
-                  <tab.icon className={`w-[18px] h-[18px] ${activeTab === tab.id ? "text-brand" : "text-[#9A8A7A]"}`} />
+                  <tab.icon className={`w-[18px] h-[18px] ${activeTab === tab.id ? "text-brand dark:text-brand-on-dark" : "text-[#9A8A7A]"}`} />
                   {tab.label}
                 </button>
               ))}
@@ -185,7 +185,7 @@ export default function SettingsPage() {
                 {activeTab === "appearance" && <AppearanceSettings />}
                 {!["account", "appearance"].includes(activeTab) && (
                   <div className="bg-[#FDFBF7] dark:bg-[#2A2420]/80 rounded-[32px] p-12 text-center shadow-sm border border-[#E6DFD5] dark:border-[#3D312A]">
-                    <div className="w-16 h-16 bg-brand-muted dark:bg-brand/10 rounded-full flex items-center justify-center mx-auto mb-4 text-brand">
+                    <div className="w-16 h-16 bg-brand-muted dark:bg-brand/10 rounded-full flex items-center justify-center mx-auto mb-4 text-brand dark:text-brand-on-dark">
                       <Settings className="w-8 h-8" />
                     </div>
                     <h3 className="text-lg font-bold text-[#3D312A] dark:text-[#E6DFD5] mb-2">Tính năng đang phát triển</h3>
@@ -427,7 +427,7 @@ function AccountSettings({
                 {avatar ? (
                   <img src={avatar} alt="Profile" className="w-full h-full object-cover" />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-brand-muted text-brand">
+                  <div className="w-full h-full flex items-center justify-center bg-brand-muted text-brand dark:text-brand-on-dark">
                     <User className="w-12 h-12" />
                   </div>
                 )}
@@ -507,7 +507,7 @@ function AccountSettings({
               className="p-5 rounded-[32px] bg-brand-muted/50 dark:bg-brand/5 border border-brand-muted/50 dark:border-brand/10 flex items-center justify-between group cursor-pointer hover:bg-brand-muted transition-colors"
             >
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-white dark:bg-[#3D312A] flex items-center justify-center text-brand shadow-sm border border-brand-muted dark:border-brand/20">
+                <div className="w-12 h-12 rounded-2xl bg-white dark:bg-[#3D312A] flex items-center justify-center text-brand dark:text-brand-on-dark shadow-sm border border-brand-muted dark:border-brand/20">
                   <Lock className="w-5 h-5" />
                 </div>
                 <div>
@@ -584,7 +584,7 @@ function AppearanceSettings() {
                   : "border-gray-50 dark:border-[#3D312A] hover:border-gray-200 dark:hover:border-gray-700"
               }`}
             >
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${theme === t.id ? "text-brand bg-white shadow-sm" : "text-gray-400 bg-gray-50 dark:bg-[#3D312A]"}`}>
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${theme === t.id ? "text-brand dark:text-brand-on-dark bg-white shadow-sm" : "text-gray-400 bg-gray-50 dark:bg-[#3D312A]"}`}>
                 <t.icon className="w-5 h-5" />
               </div>
               <div className="text-center">
@@ -625,7 +625,7 @@ function PrivacySettings() {
         ].map((item, idx) => (
           <div key={idx} className="flex items-center justify-between p-5 rounded-3xl bg-gray-50/50 dark:bg-[#3D312A]/30 border border-gray-50 dark:border-[#3D312A]">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-white dark:bg-[#3D312A] flex items-center justify-center text-brand shadow-sm border border-gray-100 dark:border-[#3D312A]">
+              <div className="w-12 h-12 rounded-2xl bg-white dark:bg-[#3D312A] flex items-center justify-center text-brand dark:text-brand-on-dark shadow-sm border border-gray-100 dark:border-[#3D312A]">
                 <item.icon className="w-5 h-5" />
               </div>
               <div>

@@ -264,7 +264,7 @@ export default function Home() {
               <div>
                 <h1 className="text-[26px] sm:text-[38px] md:text-[54px] lg:text-[62px] font-black leading-none tracking-tight text-[#3D312A] dark:text-[#E6DFD5] drop-shadow-sm sm:whitespace-nowrap">
                   HÔM NAY BẠN MUỐN{" "}
-                  <span className="text-brand">ĂN GÌ ?</span>
+                  <span className="text-brand dark:text-brand-on-dark">ĂN GÌ ?</span>
                 </h1>
                 <p className="text-[#3D312A]/60 dark:text-[#E6DFD5]/60 text-sm mt-3 font-semibold uppercase tracking-wider">
                   Mô tả cảm giác bạn muốn · AI sẽ gợi ý ngay
@@ -307,11 +307,11 @@ export default function Home() {
             <div className="w-full mt-4 relative z-20 border-t border-[#3D312A]/10 pt-10">
               <div className="flex items-center justify-between mb-8 px-2">
                 <h2 className="text-2xl font-black text-[#3D312A] dark:text-[#E6DFD5] tracking-tight flex items-center gap-2">
-                  <Sparkles className="w-6 h-6 text-brand" /> GỢI Ý CHO BẠN
+                  <Sparkles className="w-6 h-6 text-brand dark:text-brand-on-dark" /> GỢI Ý CHO BẠN
                 </h2>
                 <Link
                   href="/recommendations"
-                  className="text-xs font-black text-brand hover:opacity-80 tracking-widest uppercase border-b-2 border-brand pb-0.5 transition-all"
+                  className="text-xs font-black text-brand dark:text-brand-on-dark hover:opacity-80 tracking-widest uppercase border-b-2 border-brand pb-0.5 transition-all"
                 >
                   Xem thêm
                 </Link>

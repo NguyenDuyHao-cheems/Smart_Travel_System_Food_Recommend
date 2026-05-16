@@ -122,7 +122,7 @@ export default function HistoryPage() {
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
-                <div className="w-8 h-8 rounded-full flex items-center justify-center text-brand bg-brand-muted dark:bg-brand/10">
+                <div className="w-8 h-8 rounded-full flex items-center justify-center text-brand dark:text-brand-on-dark bg-brand-muted dark:bg-brand/10">
                   <ArrowRight className="w-4 h-4" />
                 </div>
               </div>

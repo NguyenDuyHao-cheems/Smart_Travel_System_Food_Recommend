@@ -15,7 +15,7 @@ export function SearchLoadingOverlay({ message }: SearchLoadingOverlayProps) {
           <div className="absolute inset-0 rounded-full border-4 border-brand-muted dark:border-brand/20" />
           <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-brand animate-spin" />
           <div className="absolute inset-0 flex items-center justify-center">
-            <Sparkles className="w-6 h-6 text-brand" />
+            <Sparkles className="w-6 h-6 text-brand dark:text-brand-on-dark" />
           </div>
         </div>
         <div className="text-center">

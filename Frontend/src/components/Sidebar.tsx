@@ -151,7 +151,7 @@ export function Sidebar({
               >
                 <item.icon
                   className={`w-[18px] h-[18px] flex-shrink-0 ${
-                    isActive ? "text-brand" : "text-gray-400 dark:text-[#7A6A5A]"
+                    isActive ? "text-brand dark:text-brand-on-dark" : "text-gray-400 dark:text-[#7A6A5A]"
                   }`}
                 />
                 {!isCollapsed && <span className="truncate">{item.label}</span>}
@@ -165,18 +165,18 @@ export function Sidebar({
           <div className="mt-6 mb-4 mx-2 p-4 rounded-2xl bg-brand-muted/50 dark:bg-brand/5 border border-brand-muted dark:border-brand/10 relative overflow-hidden group">
             <div className="relative z-10">
               <h4 className="text-[13px] font-bold text-[#3D312A] dark:text-[#E6DFD5] flex items-center gap-1.5 mb-1.5">
-                AI Wanderbite <Sparkles className="w-3 h-3 text-brand" />
+                AI Wanderbite <Sparkles className="w-3 h-3 text-brand dark:text-brand-on-dark" />
               </h4>
               <p className="text-[11px] text-[#7A6A5A] dark:text-[#9A8A7A] leading-relaxed mb-3">
                 Để AI hiểu bạn hơn, hãy cập nhật sở thích thường xuyên nhé!
               </p>
-              <button className="w-full py-2 bg-white dark:bg-[#3D312A] border border-brand-muted dark:border-brand/20 text-brand dark:text-[#E6DFD5] text-[11px] font-bold rounded-xl hover:bg-brand-muted/50 dark:hover:bg-brand/10 transition-colors shadow-sm cursor-pointer">
+              <button className="w-full py-2 bg-white dark:bg-[#3D312A] border border-brand-muted dark:border-brand/20 text-brand dark:text-brand-on-dark dark:text-[#E6DFD5] text-[11px] font-bold rounded-xl hover:bg-brand-muted/50 dark:hover:bg-brand/10 transition-colors shadow-sm cursor-pointer">
                 Cập nhật ngay
               </button>
             </div>
             {/* Sparkles watermark */}
             <div className="absolute bottom-[-10px] right-[-5px] opacity-10 group-hover:opacity-20 transition-opacity">
-              <Sparkles className="w-16 h-16 text-brand" />
+              <Sparkles className="w-16 h-16 text-brand dark:text-brand-on-dark" />
             </div>
           </div>
         )}
@@ -200,7 +200,7 @@ export function Sidebar({
               >
                 <item.icon
                   className={`w-[18px] h-[18px] flex-shrink-0 ${
-                    isActive ? "text-brand" : "text-gray-400 dark:text-[#7A6A5A]"
+                    isActive ? "text-brand dark:text-brand-on-dark" : "text-gray-400 dark:text-[#7A6A5A]"
                   }`}
                 />
                 {!isCollapsed && <span className="truncate">{item.label}</span>}
