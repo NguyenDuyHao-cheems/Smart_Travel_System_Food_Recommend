@@ -19,18 +19,18 @@ function SkeletonCard({ delay = 0 }: { delay?: number }) {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay }}
-      className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl overflow-hidden shadow-sm relative"
+      className="bg-white dark:bg-[#3D312A] border border-gray-100 dark:border-[#4D3D32] rounded-2xl overflow-hidden shadow-sm relative"
     >
       {/* Shimmer overlay */}
       <div className="absolute inset-0 -translate-x-full animate-[shimmer_2s_infinite] bg-gradient-to-r from-transparent via-gray-200/50 dark:via-gray-600/20 to-transparent z-10 pointer-events-none" />
-      <div className="h-[180px] bg-gray-200 dark:bg-gray-700" />
+      <div className="h-[180px] bg-gray-200 dark:bg-[#4D3D32]" />
       <div className="p-4 space-y-3">
-        <div className="h-5 w-3/4 rounded-full bg-gray-200 dark:bg-gray-700" />
-        <div className="h-3 w-1/2 rounded-full bg-gray-200 dark:bg-gray-700" />
-        <div className="h-3 w-full rounded-full bg-gray-200 dark:bg-gray-700" />
+        <div className="h-5 w-3/4 rounded-full bg-gray-200 dark:bg-[#4D3D32]" />
+        <div className="h-3 w-1/2 rounded-full bg-gray-200 dark:bg-[#4D3D32]" />
+        <div className="h-3 w-full rounded-full bg-gray-200 dark:bg-[#4D3D32]" />
         <div className="flex gap-2">
-          <div className="h-6 w-14 rounded-full bg-gray-200 dark:bg-gray-700" />
-          <div className="h-6 w-14 rounded-full bg-gray-200 dark:bg-gray-700" />
+          <div className="h-6 w-14 rounded-full bg-gray-200 dark:bg-[#4D3D32]" />
+          <div className="h-6 w-14 rounded-full bg-gray-200 dark:bg-[#4D3D32]" />
         </div>
       </div>
     </motion.div>
@@ -43,27 +43,27 @@ function HeroSkeleton() {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-3xl overflow-hidden shadow-sm relative mb-8"
+      className="bg-white dark:bg-[#3D312A] border border-gray-100 dark:border-[#4D3D32] rounded-3xl overflow-hidden shadow-sm relative mb-8"
     >
       <div className="absolute inset-0 -translate-x-full animate-[shimmer_2s_infinite] bg-gradient-to-r from-transparent via-gray-200/50 dark:via-gray-600/20 to-transparent z-10 pointer-events-none" />
       <div className="flex flex-col md:flex-row">
         <div className="flex-1 p-8 space-y-4">
-          <div className="h-8 w-48 rounded-full bg-gray-200 dark:bg-gray-700" />
-          <div className="h-6 w-1/3 rounded-full bg-gray-200 dark:bg-gray-700" />
-          <div className="h-8 w-2/3 rounded-full bg-gray-200 dark:bg-gray-700" />
-          <div className="h-4 w-1/4 rounded-full bg-gray-200 dark:bg-gray-700" />
+          <div className="h-8 w-48 rounded-full bg-gray-200 dark:bg-[#4D3D32]" />
+          <div className="h-6 w-1/3 rounded-full bg-gray-200 dark:bg-[#4D3D32]" />
+          <div className="h-8 w-2/3 rounded-full bg-gray-200 dark:bg-[#4D3D32]" />
+          <div className="h-4 w-1/4 rounded-full bg-gray-200 dark:bg-[#4D3D32]" />
           <div className="space-y-2">
-            <div className="h-4 w-full rounded-full bg-gray-200 dark:bg-gray-700" />
-            <div className="h-4 w-4/5 rounded-full bg-gray-200 dark:bg-gray-700" />
+            <div className="h-4 w-full rounded-full bg-gray-200 dark:bg-[#4D3D32]" />
+            <div className="h-4 w-4/5 rounded-full bg-gray-200 dark:bg-[#4D3D32]" />
           </div>
           <div className="flex gap-2">
-            <div className="h-7 w-16 rounded-full bg-gray-200 dark:bg-gray-700" />
-            <div className="h-7 w-16 rounded-full bg-gray-200 dark:bg-gray-700" />
-            <div className="h-7 w-24 rounded-full bg-gray-200 dark:bg-gray-700" />
+            <div className="h-7 w-16 rounded-full bg-gray-200 dark:bg-[#4D3D32]" />
+            <div className="h-7 w-16 rounded-full bg-gray-200 dark:bg-[#4D3D32]" />
+            <div className="h-7 w-24 rounded-full bg-gray-200 dark:bg-[#4D3D32]" />
           </div>
         </div>
         <div className="md:w-[380px] h-[280px] md:h-auto p-4">
-          <div className="w-full h-full rounded-2xl bg-gray-200 dark:bg-gray-700" />
+          <div className="w-full h-full rounded-2xl bg-gray-200 dark:bg-[#4D3D32]" />
         </div>
       </div>
     </motion.div>
@@ -129,11 +129,11 @@ export function LoadingState({ searchQuery, locError, getLocation }: LoadingStat
           </div>
         </div>
 
-        <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-2 tracking-tight">
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-[#E6DFD5] mb-2 tracking-tight">
           Đang tìm kiếm cho bạn...
         </h1>
 
-        <p className="text-sm text-gray-500 dark:text-gray-400 mb-4 max-w-md border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2 bg-gray-50 dark:bg-gray-800">
+        <p className="text-sm text-gray-500 dark:text-[#9A8A7A] mb-4 max-w-md border border-gray-200 dark:border-[#4D3D32] rounded-xl px-4 py-2 bg-gray-50 dark:bg-[#3D312A]">
           &ldquo;{searchQuery}&rdquo;
         </p>
 
@@ -149,7 +149,7 @@ export function LoadingState({ searchQuery, locError, getLocation }: LoadingStat
         )}
 
         {/* Progress bar */}
-        <div className="mt-6 w-64 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+        <div className="mt-6 w-64 h-1.5 bg-gray-200 dark:bg-[#4D3D32] rounded-full overflow-hidden">
           <motion.div
             animate={{ x: ['-100%', '200%'] }}
             transition={{ duration: 1, repeat: Infinity, ease: 'easeInOut' }}

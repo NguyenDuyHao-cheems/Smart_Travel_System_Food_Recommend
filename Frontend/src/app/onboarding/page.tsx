@@ -225,7 +225,7 @@ export default function OnboardingPage() {
       </div>
 
       <motion.div
-        className="w-full max-w-3xl bg-white/80 dark:bg-[#121A2A]/80 backdrop-blur-xl shadow-[0_8px_30px_rgba(0,0,0,0.06)] dark:shadow-2xl rounded-3xl overflow-hidden border border-[#4D3D32]/10 dark:border-white/10 p-5 sm:p-10 mb-8 relative z-10"      >
+        className="w-full max-w-3xl bg-white/80 dark:bg-[#2A2420]/80 backdrop-blur-xl shadow-[0_8px_30px_rgba(0,0,0,0.06)] dark:shadow-2xl rounded-3xl overflow-hidden border border-[#4D3D32]/10 dark:border-white/10 p-5 sm:p-10 mb-8 relative z-10"      >
         <Header />
 
         <motion.div
@@ -351,7 +351,7 @@ function BasicInfoSection({ formData, setSingleItem }: { formData: OnboardingDat
             placeholder="Ví dụ: 22..."
             value={formData.age}
             onChange={(e) => setSingleItem('age', e.target.value === '' ? '' : parseInt(e.target.value))}
-            className="w-full px-5 py-3.5 bg-[#3D312A] dark:bg-white/[0.03] border border-[#4D3D32]/10 dark:border-white/10 rounded-2xl outline-none text-[#9A8A7A] dark:text-[#E6DFD5] focus:border-cyan-500/50 focus:bg-white dark:focus:bg-[#080B13]/90 focus:ring-4 focus:ring-cyan-500/10 transition-all duration-300 font-medium placeholder-slate-400 dark:placeholder-white/20 shadow-inner dark:shadow-[inset_0_2px_10px_rgba(0,0,0,0.2)] hover:border-[#4D3D32]/20 dark:hover:border-white/20 focus:shadow-[0_0_15px_rgba(6,182,212,0.15)] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            className="w-full px-5 py-3.5 bg-[#3D312A] dark:bg-white/[0.03] border border-[#4D3D32]/10 dark:border-white/10 rounded-2xl outline-none text-[#9A8A7A] dark:text-[#E6DFD5] focus:border-cyan-500/50 focus:bg-white dark:focus:bg-[#2A2420]/90 focus:ring-4 focus:ring-cyan-500/10 transition-all duration-300 font-medium placeholder-slate-400 dark:placeholder-white/20 shadow-inner dark:shadow-[inset_0_2px_10px_rgba(0,0,0,0.2)] hover:border-[#4D3D32]/20 dark:hover:border-white/20 focus:shadow-[0_0_15px_rgba(6,182,212,0.15)] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
           />
         </div>
       </div>
@@ -364,7 +364,7 @@ function BasicInfoSection({ formData, setSingleItem }: { formData: OnboardingDat
               type="text"
               value={formData.location}
               onChange={(e) => setSingleItem('location', e.target.value)}
-              className="w-full px-5 py-3.5 bg-[#3D312A] dark:bg-white/[0.03] border border-[#4D3D32]/10 dark:border-white/10 rounded-2xl outline-none text-[#9A8A7A] dark:text-[#E6DFD5] focus:border-cyan-400 focus:bg-white dark:focus:bg-[#080B13]/90 focus:ring-4 focus:ring-cyan-500/10 transition-all duration-300 font-medium placeholder-slate-400 dark:placeholder-white/20 shadow-sm dark:shadow-[inset_0_2px_10px_rgba(0,0,0,0.2)] dark:focus:shadow-[0_0_15px_rgba(6,182,212,0.1)] focus:shadow-[0_4px_20px_rgba(6,182,212,0.1)]"
+              className="w-full px-5 py-3.5 bg-[#3D312A] dark:bg-white/[0.03] border border-[#4D3D32]/10 dark:border-white/10 rounded-2xl outline-none text-[#9A8A7A] dark:text-[#E6DFD5] focus:border-cyan-400 focus:bg-white dark:focus:bg-[#2A2420]/90 focus:ring-4 focus:ring-cyan-500/10 transition-all duration-300 font-medium placeholder-slate-400 dark:placeholder-white/20 shadow-sm dark:shadow-[inset_0_2px_10px_rgba(0,0,0,0.2)] dark:focus:shadow-[0_0_15px_rgba(6,182,212,0.1)] focus:shadow-[0_4px_20px_rgba(6,182,212,0.1)]"
               placeholder="Nhập địa chỉ của bạn"
             />
         </div>
@@ -577,7 +577,7 @@ const Badge = React.memo(({ label, isActive, onClick, theme = 'cyan', disabled =
   else activeStyle = 'border-amber-500 bg-amber-50 dark:bg-brand/10 text-amber-700 dark:border-brand/50 dark:text-amber-400 shadow-sm dark:shadow-[0_0_15px_rgba(245,158,11,0.2)] z-10';
 
   let inactiveStyle = 'border-[#4D3D32]/10 dark:border-white/10 bg-white dark:bg-white/[0.03] text-[#9A8A7A] dark:text-[#E6DFD5]/60 hover:bg-[#3D312A] dark:hover:bg-white/[0.06] hover:border-[#4D3D32]/20 dark:hover:border-white/20';
-  if (disabled && !isActive) inactiveStyle = 'bg-[#3D312A] dark:bg-[#080B13] border-[#4D3D32]/10 dark:border-white/5 text-[#9A8A7A] dark:text-[#E6DFD5]/20 cursor-not-allowed';
+  if (disabled && !isActive) inactiveStyle = 'bg-[#3D312A] dark:bg-[#2A2420] border-[#4D3D32]/10 dark:border-white/5 text-[#9A8A7A] dark:text-[#E6DFD5]/20 cursor-not-allowed';
 
   return (
     <motion.button

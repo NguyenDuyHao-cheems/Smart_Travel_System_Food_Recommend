@@ -136,7 +136,7 @@ export function FoodCard({ item, userId, onRemove, showRemove, showAddCollection
             </span>
           )}
           {item.dist && (
-            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-semibold bg-white/90 dark:bg-[#2A2420]/80 text-teal-600 dark:text-teal-400 backdrop-blur-sm">
+            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-semibold bg-white/90 dark:bg-[#2A2420]/80 text-gray-600 dark:text-[#C8BFB0] backdrop-blur-sm">
               <MapPin className="w-3 h-3" /> {item.dist} {item.total_reviews !== undefined && item.total_reviews > 0 && `(${item.total_reviews})`}
             </span>
           )}
@@ -148,7 +148,7 @@ export function FoodCard({ item, userId, onRemove, showRemove, showAddCollection
           {item.name}
         </h3>
         {item.restaurantName && (
-          <p className="text-xs font-semibold text-brand mb-2 line-clamp-1">
+          <p className="text-xs font-semibold text-brand dark:text-[#C8BFB0] mb-2 line-clamp-1">
             {item.restaurantName}
           </p>
         )}
@@ -160,7 +160,7 @@ export function FoodCard({ item, userId, onRemove, showRemove, showAddCollection
         {item.tags && item.tags.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mt-auto pt-2">
             {item.tags.map(tag => (
-              <span key={tag} className="px-2 py-1 rounded-full text-[10px] font-medium bg-gray-100 dark:bg-[#3D312A] text-gray-600 dark:text-[#C8BFB0]">
+              <span key={tag} className="px-2 py-1 rounded-full text-[10px] font-medium bg-gray-100 dark:bg-[#4D3D32] text-gray-600 dark:text-[#C8BFB0]">
                 {tag}
               </span>
             ))}
