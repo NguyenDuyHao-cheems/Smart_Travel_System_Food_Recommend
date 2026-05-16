@@ -61,7 +61,7 @@ export function SearchBar({
     return (
       <form
         onSubmit={(e) => { e.preventDefault(); onSearch(); }}
-        className="flex items-stretch bg-[#FFFDF9] dark:bg-[#DFD8C8] rounded-full border-2 border-[#3D312A] dark:border-[#C8A882] shadow-[4px_4px_0px_rgba(61,49,42,1)] dark:shadow-[4px_4px_0px_rgba(200,168,130,0.7)] transition-all duration-150 focus-within:translate-x-[2px] focus-within:translate-y-[2px] focus-within:shadow-[2px_2px_0px_rgba(61,49,42,1)] dark:focus-within:shadow-[2px_2px_0px_rgba(200,168,130,0.7)] relative z-10 w-full"
+        className="search-retro-pill flex items-stretch bg-[#FFFDF9] dark:bg-[#DFD8C8] rounded-full border-2 transition-all duration-150 relative z-10 w-full"
       >
         <div className="flex items-center pl-3 py-1.5 relative z-20">
           <SearchTypeMenu mode={searchMode} onChange={setSearchMode} compact={true} />
@@ -91,7 +91,7 @@ export function SearchBar({
     <div className="relative mb-6">
       <form
         onSubmit={(e) => { e.preventDefault(); onSearch(); }}
-        className="flex items-stretch bg-[#FFFDF9] dark:bg-[#DFD8C8] rounded-full border-2 border-[#3D312A] dark:border-[#C8A882] shadow-[4px_4px_0px_rgba(61,49,42,1)] dark:shadow-[4px_4px_0px_rgba(200,168,130,0.7)] transition-all duration-150 focus-within:translate-x-[2px] focus-within:translate-y-[2px] focus-within:shadow-[2px_2px_0px_rgba(61,49,42,1)] dark:focus-within:shadow-[2px_2px_0px_rgba(200,168,130,0.7)] relative z-10"
+        className="search-retro-pill flex items-stretch bg-[#FFFDF9] dark:bg-[#DFD8C8] rounded-full border-2 transition-all duration-150 relative z-10"
       >
         {/* Search type + sparkles */}
         <div className="flex items-center pl-3 py-2 relative z-20">

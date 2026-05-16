@@ -260,3 +260,24 @@
 .dark .drawer-nav-item:hover {
   background-color: rgba(169, 27, 13, 0.10);
 }
+
+/* ── Search Bar Retro Hard Shadow ── */
+.search-retro-pill {
+  box-shadow: 4px 4px 0px rgba(61, 49, 42, 1);
+  border-color: #3D312A;
+}
+
+.search-retro-pill:focus-within {
+  box-shadow: 2px 2px 0px rgba(61, 49, 42, 1);
+  transform: translate(2px, 2px);
+}
+
+.dark .search-retro-pill {
+  box-shadow: 4px 4px 0px rgba(244, 234, 213, 0.55);
+  border-color: #C8A882;
+}
+
+.dark .search-retro-pill:focus-within {
+  box-shadow: 2px 2px 0px rgba(244, 234, 213, 0.55);
+  transform: translate(2px, 2px);
+}
