@@ -67,6 +67,9 @@ class OnboardingResponse(BaseModel):
 
     status: str = "success"
     message: str = "Onboarding completed"
+    user_id: Optional[str] = None
+    allergies: Optional[List[str]] = None
+    is_vegetarian: Optional[bool] = None
 
     preferences_vector: Optional[List[float]] = Field(
         None,

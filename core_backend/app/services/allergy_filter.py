@@ -4,11 +4,26 @@ from app.domains.ranking.models import DishModel
 
 ALLERGY_MAP = {
     "peanut": ["peanut", "groundnut", "satay", "lạc", "đậu phộng", "sa tế"],
+    "lạc": ["peanut", "groundnut", "satay", "lạc", "đậu phộng", "sa tế"],
+    "đậu phộng": ["peanut", "groundnut", "satay", "lạc", "đậu phộng", "sa tế"],
+    
     "milk": ["milk", "dairy", "cheese", "butter", "sữa", "phô mai", "bơ"],
+    "sữa": ["milk", "dairy", "cheese", "butter", "sữa", "phô mai", "bơ"],
+    "phô mai": ["milk", "dairy", "cheese", "butter", "sữa", "phô mai", "bơ"],
+    
     "shrimp": ["shrimp", "prawn", "tôm", "ruốc"],
+    "tôm": ["shrimp", "prawn", "tôm", "ruốc"],
+    "ruốc": ["shrimp", "prawn", "tôm", "ruốc"],
+    
     "seafood": ["seafood", "fish", "crab", "squid", "hải sản", "cá", "cua", "mực"],
+    "hải sản": ["seafood", "fish", "crab", "squid", "hải sản", "cá", "cua", "mực"],
+    
     "egg": ["egg", "trứng", "hột"],
-    "soy": ["soy", "đậu nành", "tương", "tofu", "đậu hũ"]
+    "trứng": ["egg", "trứng", "hột"],
+    
+    "soy": ["soy", "đậu nành", "tương", "tofu", "đậu hũ"],
+    "đậu nành": ["soy", "đậu nành", "tương", "tofu", "đậu hũ"],
+    "đậu hũ": ["soy", "đậu nành", "tương", "tofu", "đậu hũ"]
 }
 
 def normalize(text: Optional[str]) -> str:
@@ -93,6 +108,80 @@ def filter_allergy(
             safe.append(item)
 
     return safe, removed
+
+def fetch_dish_detail_map(db: Session, restaurant_ids: List[str]) -> Dict[str, List[Dict]]:
+    """
+    Returns: { res_id: [{"name": "Gỏi Cuốn Tôm", "allergens": ["tôm", "thịt"]}, ...] }
+    """
+    if not restaurant_ids:
+        return {}
+
+    dishes = db.query(DishModel.res_id, DishModel.name, DishModel.allergens).filter(
+        DishModel.res_id.in_(restaurant_ids)
+    ).all()
+
+    detail_map: Dict[str, List[Dict]] = {}
+    for res_id, name, allergens in dishes:
+        if res_id not in detail_map:
+            detail_map[res_id] = []
+        
+        detail_map[res_id].append({
+            "name": name,
+            "allergens": allergens if isinstance(allergens, list) else ([a.strip() for a in allergens.split(',')] if allergens else [])
+        })
+
+    return detail_map
+
+def annotate_allergy(
+    candidates: List[Any], 
+    user_allergies: List[str],
+    allergen_map: Dict[str, List[str]],
+    dish_detail_map: Dict[str, List[Dict]]
+) -> Tuple[List[Any], int]:
+    """
+    Gắn allergen_warning vào mỗi candidate thay vì loại bỏ.
+    Returns: (annotated_candidates, flagged_count)
+    """
+    if not user_allergies:
+        for item in candidates:
+            setattr(item, "allergen_warning", None)
+        return candidates, 0
+
+    flagged_count = 0
+    for item in candidates:
+        item_id = item.id if hasattr(item, "id") else item.get("id")
+        dishes = dish_detail_map.get(item_id, [])
+        
+        warnings = []
+        for dish in dishes:
+            dish_name = dish["name"]
+            dish_allergens = dish["allergens"]
+            
+            matched = []
+            for allergen in dish_allergens:
+                if contains_allergen(allergen, user_allergies):
+                    # Tìm xem keyword nào match (để hiển thị cho thân thiện)
+                    allergy_norm = normalize(allergen)
+                    # Thực tế ta chỉ cần biết nó bị dính allergen nào của user
+                    for user_allergy in user_allergies:
+                        user_allergy_norm = normalize(user_allergy)
+                        keywords = ALLERGY_MAP.get(user_allergy_norm, [user_allergy_norm])
+                        if any(kw in allergy_norm for kw in keywords):
+                            matched.append(user_allergy)
+            
+            if matched:
+                warnings.append({
+                    "dish_name": dish_name,
+                    "matched_allergens": list(set(matched))
+                })
+        
+        if warnings:
+            setattr(item, "allergen_warning", warnings)
+            flagged_count += 1
+        else:
+            setattr(item, "allergen_warning", None)
+
+    return candidates, flagged_count
 
 def handle_fallback(candidates: List[Any]) -> Dict[str, Any]:
     """Fallback strategy when all items are removed."""
