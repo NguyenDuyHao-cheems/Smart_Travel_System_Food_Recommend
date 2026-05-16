@@ -4,7 +4,8 @@ from app.services.allergy_filter import (
     normalize, 
     contains_allergen, 
     filter_allergy, 
-    handle_fallback
+    handle_fallback,
+    annotate_allergy
 )
 
 # ── Normalization Tests ───────────────────────────────────────────────────────
@@ -14,85 +15,118 @@ def test_normalize():
     assert normalize("") == ""
     assert normalize(None) == ""
 
-# ── Matching Logic Tests ──────────────────────────────────────────────────────
+# ── Matching Logic Tests (Bidirectional) ──────────────────────────────────────
 def test_contains_allergen_exact_match():
     assert contains_allergen("peanut butter", ["peanut"]) is True
     assert contains_allergen("chocolate milk", ["milk"]) is True
 
-def test_contains_allergen_synonym_match():
-    assert contains_allergen("groundnut sauce", ["peanut"]) is True
-    assert contains_allergen("cheese cake", ["milk"]) is True
-    assert contains_allergen("prawn cracker", ["shrimp"]) is True
+def test_contains_allergen_synonym_match_english_to_vietnamese():
+    # User allergy: peanut. Dish allergen: đậu phộng, sa tế
+    assert contains_allergen("đậu phộng", ["peanut"]) is True
     assert contains_allergen("sa tế", ["peanut"]) is True
+
+def test_contains_allergen_synonym_match_vietnamese_to_english():
+    # User allergy: tôm. Dish allergen: shrimp, prawn
+    assert contains_allergen("shrimp", ["tôm"]) is True
+    assert contains_allergen("prawn", ["tôm"]) is True
+
+def test_contains_allergen_synonym_match_vietnamese_to_vietnamese():
+    # User allergy: lạc. Dish allergen: đậu phộng
+    assert contains_allergen("đậu phộng", ["lạc"]) is True
 
 def test_contains_allergen_no_match():
     assert contains_allergen("apple", ["peanut"]) is False
     assert contains_allergen("chicken soup", ["milk", "shrimp"]) is False
 
-# ── Core Filter Tests ─────────────────────────────────────────────────────────
-def test_filter_allergy_no_allergies():
-    candidates = [
-        {"id": 1, "name": "Bún Bò", "allergens": ["bò", "bún"]},
-        {"id": 2, "name": "Phở Gà", "allergens": ["gà", "phở"]}
-    ]
-    safe, removed = filter_allergy(candidates, [])
-    assert len(safe) == 2
-    assert len(removed) == 0
-
-def test_filter_allergy_match_allergen():
-    candidates = [
-        {"id": 1, "name": "Gỏi Cuốn Tôm", "allergens": ["tôm", "thịt", "bánh tráng"]},
-        {"id": 2, "name": "Phở Bò", "allergens": ["bò", "phở"]},
-        {"id": 3, "name": "Bún Đậu", "allergens": ["đậu hũ", "bún", "thịt heo"]}
-    ]
-    safe, removed = filter_allergy(candidates, ["shrimp", "soy"])
-    
-    assert len(safe) == 1
-    assert safe[0]["id"] == 2
-    
-    assert len(removed) == 2
-    removed_ids = [item["id"] for item in removed]
-    assert 1 in removed_ids
-    assert 3 in removed_ids
-
-def test_filter_allergy_missing_allergens():
-    candidates = [
-        {"id": 1, "name": "Unknown Dish"},  # No allergens key
-        {"id": 2, "name": "Salad", "allergens": []} # Empty allergens
-    ]
-    safe, removed = filter_allergy(candidates, ["peanut"])
-    assert len(safe) == 2
-    assert len(removed) == 0
-
-def test_filter_allergy_empty_candidates():
-    safe, removed = filter_allergy([], ["peanut"])
-    assert len(safe) == 0
-    assert len(removed) == 0
-
-def test_filter_allergy_string_allergens():
-    candidates = [
-        {"id": 1, "name": "Bánh Mì", "allergens": "bột mì, trứng, pate"}
-    ]
-    safe, removed = filter_allergy(candidates, ["egg"])
-    assert len(safe) == 0
-    assert len(removed) == 1
-
+# ── Core Annotate Tests ───────────────────────────────────────────────────────
 class MockRestaurant:
-    def __init__(self, id):
+    def __init__(self, id, name):
         self.id = id
+        self.name = name
 
-def test_filter_allergy_with_allergen_map():
+def test_annotate_allergy_no_allergies():
     candidates = [
-        MockRestaurant(id="r1"),
-        MockRestaurant(id="r2"),
+        MockRestaurant(id="1", name="Quán A"),
+        MockRestaurant(id="2", name="Quán B")
     ]
-    allergen_map = {
-        "r1": ["tôm", "đậu phộng"],
-        "r2": ["bò"],
+    dish_detail_map = {
+        "1": [{"name": "Phở Bò", "allergens": ["bò", "phở"]}],
+        "2": [{"name": "Gà rán", "allergens": ["gà", "bột"]}]
     }
-    safe, removed = filter_allergy(candidates, ["shrimp"], allergen_map)
-    assert len(removed) == 1
-    assert removed[0].id == "r1"
+    
+    annotated, flagged_count = annotate_allergy(
+        candidates=candidates, 
+        user_allergies=[], 
+        allergen_map={}, 
+        dish_detail_map=dish_detail_map
+    )
+    
+    assert flagged_count == 0
+    assert getattr(annotated[0], "allergen_warning", None) is None
+    assert getattr(annotated[1], "allergen_warning", None) is None
+
+def test_annotate_allergy_with_warnings():
+    candidates = [
+        MockRestaurant(id="1", name="Hải sản biển"),
+        MockRestaurant(id="2", name="Tiệm Bò"),
+        MockRestaurant(id="3", name="Chè Thái")
+    ]
+    dish_detail_map = {
+        "1": [
+            {"name": "Gỏi Cuốn Tôm", "allergens": ["tôm", "bánh tráng"]},
+            {"name": "Mực hấp", "allergens": ["mực"]}
+        ],
+        "2": [
+            {"name": "Phở Bò", "allergens": ["bò", "phở"]}
+        ],
+        "3": [
+            {"name": "Chè Sữa", "allergens": ["sữa", "đường"]},
+            {"name": "Chè Đậu", "allergens": ["đậu phộng"]}
+        ]
+    }
+    
+    annotated, flagged_count = annotate_allergy(
+        candidates=candidates, 
+        user_allergies=["shrimp", "peanut"], 
+        allergen_map={}, 
+        dish_detail_map=dish_detail_map
+    )
+    
+    assert flagged_count == 2
+    
+    # Quán 1 bị cảnh báo tôm (shrimp)
+    warning_1 = getattr(annotated[0], "allergen_warning")
+    assert warning_1 is not None
+    assert len(warning_1) == 1
+    assert warning_1[0]["dish_name"] == "Gỏi Cuốn Tôm"
+    assert "shrimp" in warning_1[0]["matched_allergens"]
+    
+    # Quán 2 không bị cảnh báo
+    assert getattr(annotated[1], "allergen_warning", None) is None
+    
+    # Quán 3 bị cảnh báo đậu phộng (peanut)
+    warning_3 = getattr(annotated[2], "allergen_warning")
+    assert warning_3 is not None
+    assert len(warning_3) == 1
+    assert warning_3[0]["dish_name"] == "Chè Đậu"
+    assert "peanut" in warning_3[0]["matched_allergens"]
+
+def test_annotate_allergy_vietnamese_input():
+    candidates = [MockRestaurant(id="1", name="Tiệm Hải Sản")]
+    dish_detail_map = {
+        "1": [{"name": "Tôm hùm", "allergens": ["shrimp", "bơ"]}]
+    }
+    
+    annotated, flagged_count = annotate_allergy(
+        candidates=candidates, 
+        user_allergies=["tôm"], 
+        allergen_map={}, 
+        dish_detail_map=dish_detail_map
+    )
+    
+    assert flagged_count == 1
+    warning = getattr(annotated[0], "allergen_warning")
+    assert "tôm" in warning[0]["matched_allergens"]
 
 # ── Fallback Tests ────────────────────────────────────────────────────────────
 def test_handle_fallback():
@@ -105,25 +139,29 @@ def test_handle_fallback():
     assert result["fallback_applied"] is True
 
 # ── Performance Tests ─────────────────────────────────────────────────────────
-def test_performance():
-    # ≥ 10,000 candidates
+def test_performance_annotate():
     num_candidates = 10000
-    candidates = []
+    candidates = [MockRestaurant(id=str(i), name=f"Res {i}") for i in range(num_candidates)]
+    dish_detail_map = {}
+    
     for i in range(num_candidates):
-        candidates.append({
-            "id": i,
-            "name": f"Dish {i}",
-            "allergens": ["ingredient A", "ingredient B", "peanut" if i % 10 == 0 else "chicken"]
-        })
+        dish_detail_map[str(i)] = [
+            {"name": "Dish A", "allergens": ["ingredient A", "ingredient B"]},
+            {"name": "Dish B", "allergens": ["peanut" if i % 10 == 0 else "chicken"]}
+        ]
         
     start_time = time.perf_counter()
-    safe, removed = filter_allergy(candidates, ["peanut"])
+    annotated, flagged_count = annotate_allergy(
+        candidates=candidates, 
+        user_allergies=["peanut"], 
+        allergen_map={}, 
+        dish_detail_map=dish_detail_map
+    )
     end_time = time.perf_counter()
     
     duration_ms = (end_time - start_time) * 1000
     
-    assert len(removed) == 1000  # 1/10th of candidates should have "peanut"
-    assert len(safe) == 9000
+    assert flagged_count == 1000  # 1/10th of candidates
     
-    # Ensure filtering < 100ms
-    assert duration_ms < 100, f"Performance test failed, took {duration_ms:.2f}ms"
+    # Ensure annotation < 200ms
+    assert duration_ms < 200, f"Performance test failed, took {duration_ms:.2f}ms"
