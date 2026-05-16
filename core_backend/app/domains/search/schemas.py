@@ -35,6 +35,7 @@ class RecommendResult(BaseModel):
     rating: str
     reason: str
     img: str
+    total_reviews: Optional[int] = 0
     google_maps_url: Optional[str] = None
 
 class SearchRecommendResponse(BaseModel):
