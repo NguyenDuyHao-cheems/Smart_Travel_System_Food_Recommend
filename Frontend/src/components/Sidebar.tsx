@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Compass, Heart, Clock, Sparkles, FolderOpen, ChevronLeft, Settings, MoreVertical } from "lucide-react";
+import { Compass, Heart, Clock, Sparkles, FolderOpen, ChevronLeft, Settings } from "lucide-react";
 
 const navItems = [
   { icon: Compass, label: "Khám phá", href: "/" },
@@ -131,6 +131,31 @@ export function Sidebar({ isCollapsed, onToggle, username: propUsername, avatar:
           </div>
         )}
       </nav>
+
+      <div className="px-3 pb-4 pt-3 border-t border-gray-50 dark:border-gray-800">
+        <div className="flex flex-col gap-1">
+          {bottomNavItems.map((item) => {
+            const isActive = item.active !== undefined ? item.active : pathname === item.href;
+            return (
+              <Link
+                key={item.label}
+                href={item.href}
+                className={`flex items-center ${isCollapsed ? 'justify-center px-0' : 'gap-3 px-4'} py-3 rounded-xl text-[14px] font-medium transition-all cursor-pointer w-full ${isActive
+                    ? "bg-orange-50 dark:bg-orange-500/10 text-orange-600 dark:text-orange-500 shadow-sm shadow-orange-100 dark:shadow-none"
+                    : "text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-200"
+                  }`}
+                title={isCollapsed ? item.label : undefined}
+              >
+                <item.icon
+                  className={`w-[18px] h-[18px] flex-shrink-0 ${isActive ? "text-orange-500" : "text-gray-400"
+                    }`}
+                />
+                {!isCollapsed && <span className="truncate">{item.label}</span>}
+              </Link>
+            );
+          })}
+        </div>
+      </div>
     </aside>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { User, LogOut, Settings, ChevronDown, UserCircle } from "lucide-react";
@@ -92,6 +93,15 @@ export function UserDropdown({ username: propUsername, avatar: propAvatar }: { u
               <UserCircle className="w-4 h-4" />
               Hồ sơ cá nhân
             </button>
+
+            <Link
+              href="/settings"
+              onClick={() => setIsOpen(false)}
+              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors text-left cursor-pointer"
+            >
+              <Settings className="w-4 h-4" />
+              Cài đặt
+            </Link>
 
             <div className="h-px bg-gray-100 dark:border-gray-800 my-1 mx-2" />
 
