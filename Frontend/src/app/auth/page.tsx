@@ -171,7 +171,7 @@ function AuthPageContent() {
   };
 
   return (
-    <div className={`min-h-screen flex items-center justify-center bg-[#F7F8FA] dark:bg-[#0A0D14] p-4 sm:p-8 ${roboto.className}`}>
+    <div className={`min-h-screen flex items-center justify-center bg-[#F7F8FA] dark:bg-[#2A2420] p-4 sm:p-8 ${roboto.className}`}>
       {/* Outer wrapper: flex to separate the two cards with a gap */}
       <div className="w-full max-w-[1200px] flex items-center gap-6 lg:gap-8">
 
@@ -189,19 +189,19 @@ function AuthPageContent() {
           <div className="absolute inset-0 bg-gradient-to-r from-black/80 to-transparent" />
 
           <div className="relative z-10 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-400 to-orange-500 flex items-center justify-center shadow-lg shadow-orange-500/30">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand to-brand flex items-center justify-center shadow-lg shadow-brand/30">
               <span className="text-white text-xl">🍜</span>
             </div>
             <span className="text-2xl font-bold tracking-tight">Wanderbite</span>
           </div>
 
           <div className="relative z-10 max-w-md">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-orange-500/30 bg-orange-500/10 text-orange-400 text-sm font-medium mb-6 backdrop-blur-md">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-brand/30 bg-brand/10 text-brand dark:text-[#E8735A] text-sm font-medium mb-6 backdrop-blur-md">
               <Sparkles className="w-4 h-4" />
               AI-Powered Food Discovery
             </div>
             <h1 className="text-5xl font-bold leading-[1.15] mb-6">
-              Discover your perfect culinary vibe <span className="text-orange-500">powered by AI.</span>
+              Discover your perfect culinary vibe <span className="text-brand dark:text-[#E8735A]">powered by AI.</span>
             </h1>
             <p className="text-gray-300 text-lg leading-relaxed">
               Smart recommendations, real-time locations, and flavors that match your mood.
@@ -210,22 +210,22 @@ function AuthPageContent() {
 
           <div className="relative z-10 flex gap-8">
             <div>
-              <div className="w-10 h-10 rounded-full border border-orange-500/30 flex items-center justify-center mb-3 bg-black/40 backdrop-blur-md">
-                <Sparkles className="w-5 h-5 text-orange-500" />
+              <div className="w-10 h-10 rounded-full border border-brand/30 flex items-center justify-center mb-3 bg-black/40 backdrop-blur-md">
+                <Sparkles className="w-5 h-5 text-brand dark:text-[#E8735A]" />
               </div>
               <h3 className="font-semibold text-sm mb-1">AI Recommendations</h3>
               <p className="text-xs text-gray-400">Personalized just for you</p>
             </div>
             <div>
-              <div className="w-10 h-10 rounded-full border border-orange-500/30 flex items-center justify-center mb-3 bg-black/40 backdrop-blur-md">
-                <MapPin className="w-5 h-5 text-orange-500" />
+              <div className="w-10 h-10 rounded-full border border-brand/30 flex items-center justify-center mb-3 bg-black/40 backdrop-blur-md">
+                <MapPin className="w-5 h-5 text-brand dark:text-[#E8735A]" />
               </div>
               <h3 className="font-semibold text-sm mb-1">Nearby & Live</h3>
               <p className="text-xs text-gray-400">Real-time GPS results</p>
             </div>
             <div>
-              <div className="w-10 h-10 rounded-full border border-orange-500/30 flex items-center justify-center mb-3 bg-black/40 backdrop-blur-md">
-                <Heart className="w-5 h-5 text-orange-500" />
+              <div className="w-10 h-10 rounded-full border border-brand/30 flex items-center justify-center mb-3 bg-black/40 backdrop-blur-md">
+                <Heart className="w-5 h-5 text-brand dark:text-[#E8735A]" />
               </div>
               <h3 className="font-semibold text-sm mb-1">Vibes & Moods</h3>
               <p className="text-xs text-gray-400">Match your every mood</p>
@@ -234,7 +234,7 @@ function AuthPageContent() {
         </div>
 
         {/* RIGHT SIDE (Thẻ form: bỏ fix height để tự động co giãn theo nội dung) */}
-        <div className="w-full lg:flex-1 p-8 sm:p-12 flex flex-col relative bg-white dark:bg-[#121622] rounded-[2rem] shadow-xl border border-gray-100 dark:border-gray-800">
+        <div className="w-full lg:flex-1 p-8 sm:p-12 flex flex-col relative bg-white dark:bg-[#2A2420] rounded-[2rem] shadow-xl border border-gray-100 dark:border-[#3D312A]">
 
           <div className="absolute top-6 right-8 flex items-center gap-4 z-20">
             <ThemeToggle />
@@ -242,22 +242,22 @@ function AuthPageContent() {
 
           <div className="flex-1 flex flex-col justify-center max-w-[360px] mx-auto w-full mt-8">
             <div className="text-center mb-8">
-              <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+              <h2 className="text-3xl font-bold text-gray-900 dark:text-[#E6DFD5] mb-2">
                 {mode === "signin" ? "Welcome back !" : "Join Wanderbite"}
               </h2>
-              <p className="text-gray-500 dark:text-gray-400 text-[15px]">
+              <p className="text-gray-500 dark:text-[#9A8A7A] text-[15px]">
                 {mode === "signin"
                   ? "Sign in to continue your culinary journey."
                   : "Create an account to start exploring."}
               </p>
             </div>
 
-            <div className="flex p-1.5 bg-gray-100 dark:bg-gray-800/50 rounded-xl mb-8">
+            <div className="flex p-1.5 bg-gray-100 dark:bg-[#3D312A] rounded-xl mb-8">
               <button
                 type="button"
                 onClick={() => { setMode("signin"); setErrorMsg(""); }}
                 className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition-all ${mode === "signin"
-                  ? "bg-white dark:bg-[#1F2433] text-orange-600 shadow-sm"
+                  ? "bg-white dark:bg-[#3D312A] text-brand-hover shadow-sm"
                   : "text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
                   }`}
               >
@@ -268,7 +268,7 @@ function AuthPageContent() {
                 type="button"
                 onClick={() => { setMode("signup"); setErrorMsg(""); }}
                 className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition-all ${mode === "signup"
-                  ? "bg-white dark:bg-[#1F2433] text-orange-600 shadow-sm"
+                  ? "bg-white dark:bg-[#3D312A] text-brand-hover shadow-sm"
                   : "text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
                   }`}
               >
@@ -286,7 +286,7 @@ function AuthPageContent() {
               )}
 
               <div className="flex flex-col gap-2">
-                <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                <label className="text-sm font-semibold text-gray-700 dark:text-[#C8BFB0]">
                   Username
                 </label>
                 <div className="relative">
@@ -296,13 +296,13 @@ function AuthPageContent() {
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     placeholder="Enter your username"
-                    className="w-full bg-white dark:bg-[#1A1F2B] border border-gray-200 dark:border-gray-700 rounded-xl py-3 pl-11 pr-4 text-[15px] text-gray-900 dark:text-white placeholder:text-gray-400 outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all"
+                    className="w-full bg-white dark:bg-[#3D312A] border border-gray-200 dark:border-[#4D3D32] rounded-xl py-3 pl-11 pr-4 text-[15px] text-gray-900 dark:text-[#E6DFD5] placeholder:text-gray-400 outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition-all"
                   />
                 </div>
               </div>
 
               <div className="flex flex-col gap-2">
-                <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                <label className="text-sm font-semibold text-gray-700 dark:text-[#C8BFB0]">
                   Password
                 </label>
                 <div className="relative">
@@ -312,7 +312,7 @@ function AuthPageContent() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Enter your password"
-                    className="w-full bg-white dark:bg-[#1A1F2B] border border-gray-200 dark:border-gray-700 rounded-xl py-3 pl-11 pr-11 text-[15px] text-gray-900 dark:text-white placeholder:text-gray-400 outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all"
+                    className="w-full bg-white dark:bg-[#3D312A] border border-gray-200 dark:border-[#4D3D32] rounded-xl py-3 pl-11 pr-11 text-[15px] text-gray-900 dark:text-[#E6DFD5] placeholder:text-gray-400 outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition-all"
                   />
                   <button
                     type="button"
@@ -327,10 +327,10 @@ function AuthPageContent() {
               {mode === "signin" && (
                 <div className="flex items-center justify-between mt-1">
                   <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" className="w-4 h-4 rounded text-orange-500 border-gray-300 focus:ring-orange-500" />
-                    <span className="text-[13px] font-medium text-gray-600 dark:text-gray-400">Remember me</span>
+                    <input type="checkbox" className="w-4 h-4 rounded text-brand dark:text-[#E8735A] border-gray-300 focus:ring-brand" />
+                    <span className="text-[13px] font-medium text-gray-600 dark:text-[#9A8A7A]">Remember me</span>
                   </label>
-                  <a href="#" className="text-[13px] font-semibold text-cyan-600 dark:text-cyan-400 hover:underline">
+                  <a href="#" className="text-[13px] font-semibold text-brand-hover dark:text-[#E6DFD5] hover:underline">
                     Forgot password?
                   </a>
                 </div>
@@ -339,7 +339,7 @@ function AuthPageContent() {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-xl py-3.5 mt-2 font-semibold shadow-md shadow-orange-500/20 transition-all active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer"
+                className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-brand to-brand-hover hover:from-brand-hover hover:to-brand-hover text-white rounded-xl py-3.5 mt-2 font-semibold shadow-md shadow-brand/20 transition-all active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer"
               >
                 {isLoading ? (
                   <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -353,8 +353,8 @@ function AuthPageContent() {
             </form>
 
             <div className="mt-8 relative flex items-center justify-center">
-              <div className="absolute inset-x-0 h-px bg-gray-200 dark:bg-gray-800" />
-              <span className="relative bg-white dark:bg-[#121622] px-4 text-[11px] font-bold text-gray-400 uppercase tracking-widest">
+              <div className="absolute inset-x-0 h-px bg-gray-200 dark:bg-[#3D312A]" />
+              <span className="relative bg-white dark:bg-[#2A2420] px-4 text-[11px] font-bold text-gray-400 uppercase tracking-widest">
                 OR
               </span>
             </div>
@@ -364,10 +364,10 @@ function AuthPageContent() {
                 type="button"
                 onClick={() => handleGoogleLogin()}
                 disabled={isLoading}
-                className="flex items-center justify-center gap-3 w-full py-3 bg-white dark:bg-[#1A1F2B] border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-[#1F2433] active:scale-[0.98] rounded-xl text-[14px] font-semibold text-gray-700 dark:text-gray-300 transition-all cursor-pointer disabled:opacity-70"
+                className="flex items-center justify-center gap-3 w-full py-3 bg-white dark:bg-[#3D312A] border border-gray-200 dark:border-[#4D3D32] hover:bg-gray-50 dark:hover:bg-[#3D312A] active:scale-[0.98] rounded-xl text-[14px] font-semibold text-gray-700 dark:text-[#C8BFB0] transition-all cursor-pointer disabled:opacity-70"
               >
                 {isLoading ? (
-                   <div className="w-5 h-5 border-2 border-orange-500/30 border-t-orange-500 rounded-full animate-spin" />
+                   <div className="w-5 h-5 border-2 border-brand/30 border-t-brand rounded-full animate-spin" />
                 ) : (
                   <>
                     <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -382,11 +382,11 @@ function AuthPageContent() {
               </button>
             </div>
 
-            <p className="mt-8 text-center text-[14px] text-gray-500 dark:text-gray-400">
+            <p className="mt-8 text-center text-[14px] text-gray-500 dark:text-[#9A8A7A]">
               {mode === "signin" ? "Don't have an account?" : "Already have an account?"}{" "}
               <button
                 onClick={() => { setMode(mode === "signin" ? "signup" : "signin"); setErrorMsg(""); }}
-                className="font-bold text-cyan-600 dark:text-cyan-400 hover:underline cursor-pointer"
+                className="font-bold text-brand-hover dark:text-[#E6DFD5] hover:underline cursor-pointer"
               >
                 {mode === "signin" ? "Sign up" : "Sign in"}
               </button>
@@ -403,7 +403,7 @@ export default function AuthPage() {
   const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "dummy-id";
 
   return (
-    <Suspense fallback={<div className="min-h-screen bg-[#F7F8FA] dark:bg-[#0A0D14]" />}>
+    <Suspense fallback={<div className="min-h-screen bg-[#F7F8FA] dark:bg-[#2A2420]" />}>
       <GoogleOAuthProvider clientId={clientId}>
         <AuthPageContent />
       </GoogleOAuthProvider>

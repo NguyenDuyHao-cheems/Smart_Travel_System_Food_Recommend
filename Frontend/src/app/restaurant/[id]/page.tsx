@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import Image from 'next/image';
 import { interactionService } from '../../../services/interactionService';
+import { AppShell } from '../../../components/AppShell';
 
 interface Dish {
   id: string;
@@ -138,8 +139,8 @@ export default function RestaurantDetailPage() {
     }
   };
 
-  if (isLoading) return <LoadingSkeleton />;
-  if (error || !restaurant) return <ErrorState message={error || 'Không tìm thấy dữ liệu.'} onBack={handleBack} />;
+  if (isLoading) return <AppShell><LoadingSkeleton /></AppShell>;
+  if (error || !restaurant) return <AppShell><ErrorState message={error || 'Không tìm thấy dữ liệu.'} onBack={handleBack} /></AppShell>;
 
   // Allergen detection logic
   const ALLERGY_MAP: Record<string, string[]> = {
@@ -189,15 +190,16 @@ export default function RestaurantDetailPage() {
 
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 pb-20">
+    <AppShell>
+      <div className="pb-20 relative">
       {/* ── Header / Hero Section ── */}
       <div className="relative h-[40vh] md:h-[50vh] w-full">
         {/* Back Button */}
         <button
           onClick={handleBack}
-          className="absolute top-6 left-6 z-20 p-3 bg-white/90 dark:bg-gray-800/90 backdrop-blur-md rounded-full shadow-lg hover:scale-110 transition-transform"
+          className="absolute top-6 left-6 z-20 p-3 bg-white/90 dark:bg-[#3D312A]/90 backdrop-blur-md rounded-full shadow-lg hover:scale-110 transition-transform"
         >
-          <ArrowLeft className="w-6 h-6 text-gray-900 dark:text-white" />
+          <ArrowLeft className="w-6 h-6 text-gray-900 dark:text-[#E6DFD5]" />
         </button>
 
         {/* Hero Image */}
@@ -267,7 +269,7 @@ export default function RestaurantDetailPage() {
                     window.open(`https://maps.google.com/?q=${encodeURIComponent(restaurant.address)}`, '_blank');
                   }
                 }}
-                className="flex-1 md:flex-none flex items-center justify-center gap-2 px-8 py-4 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-2xl shadow-xl shadow-orange-500/20 transition-all transform hover:-translate-y-1"
+                className="flex-1 md:flex-none flex items-center justify-center gap-2 px-8 py-4 bg-brand hover:bg-brand-hover text-white font-bold rounded-2xl shadow-xl shadow-brand/20 transition-all transform hover:-translate-y-1"
               >
                 <Navigation className="w-5 h-5" />
                 Chỉ đường ngay
@@ -330,10 +332,10 @@ export default function RestaurantDetailPage() {
             {/* Menu Section */}
             <section>
               <div className="flex items-center gap-3 mb-6">
-                <div className="p-2 bg-orange-100 dark:bg-orange-500/20 rounded-lg">
-                  <UtensilsCrossed className="w-6 h-6 text-orange-500" />
+                <div className="p-2 bg-brand-muted dark:bg-brand/20 rounded-lg">
+                  <UtensilsCrossed className="w-6 h-6 text-brand dark:text-[#E8735A]" />
                 </div>
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Thực đơn nổi bật</h2>
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-[#E6DFD5]">Thực đơn nổi bật</h2>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -344,7 +346,7 @@ export default function RestaurantDetailPage() {
                       initial={{ opacity: 0, scale: 0.95 }}
                       animate={{ opacity: 1, scale: 1 }}
                       transition={{ delay: idx * 0.1 }}
-                      className="group bg-white dark:bg-gray-800 rounded-3xl overflow-hidden shadow-sm border border-gray-100 dark:border-gray-700 hover:shadow-xl transition-all"
+                      className="group bg-white dark:bg-[#3D312A] rounded-3xl overflow-hidden shadow-sm border border-gray-100 dark:border-[#4D3D32] hover:shadow-xl transition-all"
                     >
                       <div className="flex p-4 gap-4">
                         <div className="relative w-24 h-24 flex-shrink-0">
@@ -358,7 +360,7 @@ export default function RestaurantDetailPage() {
                         </div>
                         <div className="flex flex-col justify-between py-1">
                           <div>
-                            <h3 className="font-bold text-gray-900 dark:text-white group-hover:text-orange-500 transition-colors">
+                            <h3 className="font-bold text-gray-900 dark:text-[#E6DFD5] group-hover:text-brand transition-colors">
                               {dish.name}
                             </h3>
                             <div className="flex items-center gap-2 mt-1">
@@ -374,7 +376,7 @@ export default function RestaurantDetailPage() {
                               )}
                             </div>
                           </div>
-                          <p className="text-orange-500 font-bold">
+                          <p className="text-brand dark:text-[#E8735A] font-bold">
                             {dish.price.toLocaleString('vi-VN')} ₫
                           </p>
                         </div>
@@ -382,7 +384,7 @@ export default function RestaurantDetailPage() {
                     </motion.div>
                   ))
                 ) : (
-                  <div className="col-span-full py-10 text-center bg-gray-100 dark:bg-gray-800/50 rounded-3xl">
+                  <div className="col-span-full py-10 text-center bg-gray-100 dark:bg-[#3D312A]/50 rounded-3xl">
                     <p className="text-gray-500">Đang cập nhật thực đơn...</p>
                   </div>
                 )}
@@ -390,12 +392,12 @@ export default function RestaurantDetailPage() {
             </section>
 
             {/* Reviews Section */}
-            <section className="pt-6 border-t border-gray-100 dark:border-gray-800">
+            <section className="pt-6 border-t border-gray-100 dark:border-[#3D312A]">
               <div className="flex items-center gap-3 mb-6">
                 <div className="p-2 bg-yellow-100 dark:bg-yellow-500/20 rounded-lg">
                   <Star className="w-6 h-6 text-yellow-500 fill-yellow-500" />
                 </div>
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Bình luận từ thực khách</h2>
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-[#E6DFD5]">Bình luận từ thực khách</h2>
               </div>
 
               <div className="space-y-4">
@@ -406,15 +408,15 @@ export default function RestaurantDetailPage() {
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: idx * 0.1 }}
-                      className="bg-white dark:bg-gray-800 p-5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700"
+                      className="bg-white dark:bg-[#3D312A] p-5 rounded-2xl shadow-sm border border-gray-100 dark:border-[#4D3D32]"
                     >
                       <div className="flex justify-between items-start mb-3">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-gradient-to-br from-orange-400 to-pink-500 rounded-full flex items-center justify-center text-white font-bold">
+                          <div className="w-10 h-10 bg-gradient-to-br from-brand to-pink-500 rounded-full flex items-center justify-center text-white font-bold">
                             {(review.reviewer_name || "Ẩn danh").charAt(0).toUpperCase()}
                           </div>
                           <div>
-                            <p className="font-bold text-gray-900 dark:text-white text-sm">{review.reviewer_name || "Thực khách ẩn danh"}</p>
+                            <p className="font-bold text-gray-900 dark:text-[#E6DFD5] text-sm">{review.reviewer_name || "Thực khách ẩn danh"}</p>
                             <p className="text-xs text-gray-400">{review.date || "Gần đây"}</p>
                           </div>
                         </div>
@@ -425,13 +427,13 @@ export default function RestaurantDetailPage() {
                           </span>
                         </div>
                       </div>
-                      <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed">
+                      <p className="text-gray-600 dark:text-[#C8BFB0] text-sm leading-relaxed">
                         {review.text || "Người dùng không để lại lời bình luận nào."}
                       </p>
                     </motion.div>
                   ))
                 ) : (
-                  <div className="py-8 text-center bg-gray-50 dark:bg-gray-800/30 rounded-2xl border border-dashed border-gray-200 dark:border-gray-700">
+                  <div className="py-8 text-center bg-gray-50 dark:bg-[#3D312A]/30 rounded-2xl border border-dashed border-gray-200 dark:border-[#4D3D32]">
                     <p className="text-gray-500">Chưa có bình luận nào cho nhà hàng này.</p>
                   </div>
                 )}
@@ -443,16 +445,16 @@ export default function RestaurantDetailPage() {
 
           {/* Right Column: Sidebar Info */}
           <div className="space-y-6">
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700">
-              <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-gray-900 dark:text-white">
-                <Info className="w-5 h-5 text-orange-500" />
+            <div className="bg-white dark:bg-[#3D312A] p-6 rounded-3xl shadow-sm border border-gray-100 dark:border-[#4D3D32]">
+              <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-gray-900 dark:text-[#E6DFD5]">
+                <Info className="w-5 h-5 text-brand dark:text-[#E8735A]" />
                 Thông tin chung
               </h3>
               <div className="space-y-5">
                 <div className="flex items-start gap-3">
                   <Clock className="w-5 h-5 text-gray-400 mt-0.5 flex-shrink-0" />
                   <div className="flex-1">
-                    <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">Giờ mở cửa</p>
+                    <p className="text-sm font-semibold text-gray-700 dark:text-[#C8BFB0]">Giờ mở cửa</p>
                     <div className="flex items-center gap-2 mt-1">
                       <p className="text-xs text-gray-500">
                         {restaurant.open_time && restaurant.close_time 
@@ -473,13 +475,13 @@ export default function RestaurantDetailPage() {
                 </div>
                 
                 {restaurant.tags && restaurant.tags.length > 0 && (
-                  <div className="flex items-start gap-3 pt-4 border-t border-gray-100 dark:border-gray-700">
+                  <div className="flex items-start gap-3 pt-4 border-t border-gray-100 dark:border-[#4D3D32]">
                     <UtensilsCrossed className="w-5 h-5 text-gray-400 mt-0.5 flex-shrink-0" />
                     <div>
-                      <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Phân loại</p>
+                      <p className="text-sm font-semibold text-gray-700 dark:text-[#C8BFB0] mb-2">Phân loại</p>
                       <div className="flex flex-wrap gap-2">
                         {restaurant.tags.map((tag, i) => (
-                          <span key={i} className="px-3 py-1 text-[11px] font-bold uppercase tracking-wider bg-orange-50 dark:bg-orange-500/10 text-orange-600 dark:text-orange-400 rounded-full border border-orange-100 dark:border-orange-500/20">
+                          <span key={i} className="px-3 py-1 text-[11px] font-bold uppercase tracking-wider bg-brand-muted dark:bg-brand/10 text-brand-hover dark:text-[#E6DFD5] rounded-full border border-brand-muted dark:border-brand/20">
                             {tag}
                           </span>
                         ))}
@@ -491,19 +493,19 @@ export default function RestaurantDetailPage() {
             </div>
 
             {/* Map Section */}
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700">
-              <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-gray-900 dark:text-white">
+            <div className="bg-white dark:bg-[#3D312A] p-6 rounded-3xl shadow-sm border border-gray-100 dark:border-[#4D3D32]">
+              <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-gray-900 dark:text-[#E6DFD5]">
                 <MapPin className="w-5 h-5 text-blue-500" />
                 Vị trí nhà hàng
               </h3>
               <div 
-                className="w-full h-[300px] rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-700 shadow-inner bg-gray-200 dark:bg-gray-800 relative group cursor-pointer"
+                className="w-full h-[300px] rounded-2xl overflow-hidden border border-gray-200 dark:border-[#4D3D32] shadow-inner bg-gray-200 dark:bg-[#3D312A] relative group cursor-pointer"
                 onClick={() => setIsMapModalOpen(true)}
               >
                 {/* Transparent overlay to capture clicks */}
                 <div className="absolute inset-0 z-10 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
-                  <div className="opacity-0 group-hover:opacity-100 bg-white dark:bg-gray-800 px-4 py-2 rounded-full font-bold text-sm shadow-lg transition-opacity flex items-center gap-2 text-gray-800 dark:text-gray-200">
-                    <MapPin className="w-4 h-4 text-orange-500" />
+                  <div className="opacity-0 group-hover:opacity-100 bg-white dark:bg-[#3D312A] px-4 py-2 rounded-full font-bold text-sm shadow-lg transition-opacity flex items-center gap-2 text-gray-800 dark:text-[#E6DFD5]">
+                    <MapPin className="w-4 h-4 text-brand dark:text-[#E8735A]" />
                     Phóng to bản đồ
                   </div>
                 </div>
@@ -524,7 +526,7 @@ export default function RestaurantDetailPage() {
 
                 {/* Nhãn thông tin nhỏ gọn ở góc, không che khuất vị trí trung tâm */}
                 <div className="absolute bottom-3 left-3 z-10 pointer-events-none">
-                  <p className="text-[9px] uppercase tracking-wider font-bold bg-white/90 dark:bg-gray-800/90 text-gray-500 px-2 py-1 rounded-md shadow-sm border border-gray-100 dark:border-gray-700">
+                  <p className="text-[9px] uppercase tracking-wider font-bold bg-white/90 dark:bg-[#3D312A]/90 text-gray-500 px-2 py-1 rounded-md shadow-sm border border-gray-100 dark:border-[#4D3D32]">
                     Interactive
                   </p>
                 </div>
@@ -550,21 +552,21 @@ export default function RestaurantDetailPage() {
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.95, opacity: 0, y: 20 }}
               onClick={(e) => e.stopPropagation()}
-              className="relative w-full max-w-5xl h-[80vh] bg-white dark:bg-gray-900 rounded-3xl overflow-hidden shadow-2xl flex flex-col"
+              className="relative w-full max-w-5xl h-[80vh] bg-white dark:bg-[#2A2420] rounded-3xl overflow-hidden shadow-2xl flex flex-col"
             >
-              <div className="p-4 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center bg-gray-50 dark:bg-gray-950">
-                <h3 className="text-lg md:text-xl font-bold flex items-center gap-2 text-gray-900 dark:text-white">
-                  <MapPin className="w-6 h-6 text-orange-500" />
+              <div className="p-4 border-b border-gray-100 dark:border-[#3D312A] flex justify-between items-center bg-gray-50 dark:bg-[#2A2420]">
+                <h3 className="text-lg md:text-xl font-bold flex items-center gap-2 text-gray-900 dark:text-[#E6DFD5]">
+                  <MapPin className="w-6 h-6 text-brand dark:text-[#E8735A]" />
                   Bản đồ: {restaurant.name}
                 </h3>
                 <button 
                   onClick={() => setIsMapModalOpen(false)}
-                  className="p-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-800 dark:hover:bg-gray-700 rounded-full transition-colors text-gray-700 dark:text-gray-300"
+                  className="p-2 bg-gray-200 hover:bg-gray-300 dark:bg-[#3D312A] dark:hover:bg-gray-700 rounded-full transition-colors text-gray-700 dark:text-[#C8BFB0]"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
-              <div className="flex-1 w-full bg-gray-200 dark:bg-gray-800 relative">
+              <div className="flex-1 w-full bg-gray-200 dark:bg-[#3D312A] relative">
                 <iframe
                   width="100%"
                   height="100%"
@@ -585,6 +587,7 @@ export default function RestaurantDetailPage() {
       </AnimatePresence>
 
     </div>
+    </AppShell>
   );
 }
 
@@ -592,16 +595,16 @@ export default function RestaurantDetailPage() {
 
 function LoadingSkeleton() {
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 animate-pulse">
-      <div className="h-[40vh] bg-gray-200 dark:bg-gray-800" />
+    <div className="min-h-screen bg-[#FAF7F2] dark:bg-[#2A2420] animate-pulse">
+      <div className="h-[40vh] bg-gray-200 dark:bg-[#3D312A]" />
       <div className="max-w-7xl mx-auto px-6 -mt-8 flex flex-col gap-8">
-        <div className="h-14 w-48 bg-gray-200 dark:bg-gray-800 rounded-2xl" />
+        <div className="h-14 w-48 bg-gray-200 dark:bg-[#3D312A] rounded-2xl" />
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-6">
-            <div className="h-40 bg-gray-200 dark:bg-gray-800 rounded-3xl" />
-            <div className="h-80 bg-gray-200 dark:bg-gray-800 rounded-3xl" />
+            <div className="h-40 bg-gray-200 dark:bg-[#3D312A] rounded-3xl" />
+            <div className="h-80 bg-gray-200 dark:bg-[#3D312A] rounded-3xl" />
           </div>
-          <div className="h-60 bg-gray-200 dark:bg-gray-800 rounded-3xl" />
+          <div className="h-60 bg-gray-200 dark:bg-[#3D312A] rounded-3xl" />
         </div>
       </div>
     </div>
@@ -610,12 +613,12 @@ function LoadingSkeleton() {
 
 function ErrorState({ message, onBack }: { message: string; onBack: () => void }) {
   return (
-    <div className="min-h-screen flex items-center justify-center p-6 bg-gray-50 dark:bg-gray-950">
+    <div className="min-h-screen flex items-center justify-center p-6 bg-[#FAF7F2] dark:bg-[#2A2420]">
       <div className="text-center max-w-sm">
         <div className="w-20 h-20 bg-red-100 dark:bg-red-950 rounded-full flex items-center justify-center mx-auto mb-6">
           <Info className="w-10 h-10 text-red-500" />
         </div>
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Oops! Có lỗi xảy ra</h2>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-[#E6DFD5] mb-2">Oops! Có lỗi xảy ra</h2>
         <p className="text-gray-500 mb-8">{message}</p>
         <button
           onClick={onBack}

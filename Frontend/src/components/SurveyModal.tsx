@@ -39,39 +39,39 @@ export function SurveyModal() {
     >
       {/* Modal Panel */}
       <div
-        className="relative bg-white dark:bg-gray-900 rounded-3xl shadow-2xl border border-gray-100 dark:border-gray-700 w-full max-w-md mx-4 p-8 animate-in fade-in zoom-in-95 duration-300"
+        className="relative bg-white dark:bg-[#2A2420] rounded-3xl shadow-2xl border border-gray-100 dark:border-[#4D3D32] w-full max-w-md mx-4 p-8 animate-in fade-in zoom-in-95 duration-300"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Close button */}
         <button
           onClick={handleClose}
-          className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all cursor-pointer"
+          className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-[#3D312A] transition-all cursor-pointer"
         >
           <X className="w-4 h-4" />
         </button>
 
         {/* Icon */}
         <div className="flex justify-center mb-5">
-          <div className="w-16 h-16 rounded-2xl bg-orange-50 dark:bg-orange-500/20 flex items-center justify-center">
-            <Sparkles className="w-8 h-8 text-orange-500" />
+          <div className="w-16 h-16 rounded-2xl bg-brand-muted dark:bg-brand/20 flex items-center justify-center">
+            <Sparkles className="w-8 h-8 text-brand dark:text-[#E8735A]" />
           </div>
         </div>
 
         {/* Title */}
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white text-center mb-2">
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-[#E6DFD5] text-center mb-2">
           Chào mừng đến Wanderbite! 🍜
         </h2>
-        <p className="text-sm text-gray-500 dark:text-gray-400 text-center mb-6">
+        <p className="text-sm text-gray-500 dark:text-[#9A8A7A] text-center mb-6">
           Cho chúng tôi biết thêm về bạn để AI gợi ý chính xác hơn nhé!
         </p>
 
         {/* TODO: Thêm form câu hỏi khảo sát thật vào đây */}
         {/* TODO: Ví dụ: Bạn thường ăn gì? Bạn thích vị gì? Dị ứng thực phẩm? */}
-        <div className="bg-orange-50 dark:bg-orange-500/10 border border-orange-100 dark:border-orange-500/20 rounded-2xl p-4 mb-6 text-center">
-          <p className="text-sm text-orange-600 dark:text-orange-400 font-medium">
+        <div className="bg-brand-muted dark:bg-brand/10 border border-brand-muted dark:border-brand/20 rounded-2xl p-4 mb-6 text-center">
+          <p className="text-sm text-brand-hover dark:text-[#E6DFD5] font-medium">
             🚧 Khảo sát đang được xây dựng
           </p>
-          <p className="text-xs text-orange-400 dark:text-orange-500 mt-1">
+          <p className="text-xs text-brand dark:text-[#E8735A] dark:text-[#E6DFD5] mt-1">
             Tính năng đầy đủ sẽ sớm ra mắt!
           </p>
         </div>
@@ -80,13 +80,13 @@ export function SurveyModal() {
         <div className="flex gap-3">
           <button
             onClick={handleClose}
-            className="flex-1 py-3 rounded-full border border-gray-200 dark:border-gray-700 text-sm font-semibold text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all cursor-pointer"
+            className="flex-1 py-3 rounded-full border border-gray-200 dark:border-[#4D3D32] text-sm font-semibold text-gray-500 dark:text-[#9A8A7A] hover:bg-gray-50 dark:hover:bg-[#3D312A] transition-all cursor-pointer"
           >
             Bỏ qua
           </button>
           <button
             onClick={handleClose}
-            className="flex-1 py-3 rounded-full bg-orange-500 hover:bg-orange-600 text-white text-sm font-bold shadow-md shadow-orange-200 dark:shadow-orange-500/30 transition-all cursor-pointer"
+            className="flex-1 py-3 rounded-full bg-brand hover:bg-brand-hover text-white text-sm font-bold shadow-md shadow-brand/20 dark:shadow-brand/30 transition-all cursor-pointer"
           >
             Bắt đầu khám phá! ✨
           </button>

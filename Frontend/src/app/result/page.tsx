@@ -16,12 +16,10 @@ import {
   Home,
   X,
 } from 'lucide-react';
-import { Roboto } from 'next/font/google';
-import { Header } from '../../components/ui/Header';
+import { AppShell } from '../../components/AppShell';
 import { LoadingState } from '../../components/ui/LoadingState';
 import { BudgetSelector, type BudgetOption } from '../../components/BudgetSelector';
 import { DistanceFilter } from '../../components/DistanceFilter';
-import { Sidebar } from '../../components/Sidebar';
 import { SearchLoadingOverlay } from '../../components/ui/SearchLoadingOverlay';
 import { SearchBar } from '../../components/SearchBar';
 import { useSearchState, SearchMode } from '../../hooks/useSearchState';
@@ -32,16 +30,10 @@ import { AddToCollectionModal } from '../../components/AddToCollectionModal';
 import { toast } from 'sonner';
 import { interactionService } from '../../services/interactionService';
 
-const roboto = Roboto({
-  subsets: ['latin', 'vietnamese'],
-  weight: ['300', '400', '500', '700', '900'],
-});
-
 export interface AllergenDishWarning {
   dish_name: string;
   matched_allergens: string[];
 }
-
 export interface RecommendResult {
   id: string;
   name: string;
@@ -74,16 +66,16 @@ const VIBE_TAGS: VibeTag[] = [
   { label: 'Comfort Food', emoji: '💕', bgLight: 'bg-pink-50', bgDark: 'dark:bg-pink-500/10', text: 'text-pink-500', border: 'border-pink-100 dark:border-pink-500/20' },
   { label: 'Seafood', emoji: '🧀', bgLight: 'bg-yellow-50', bgDark: 'dark:bg-yellow-500/10', text: 'text-yellow-600 dark:text-yellow-400', border: 'border-yellow-100 dark:border-yellow-500/20' },
   { label: 'Sweet', emoji: '💕', bgLight: 'bg-pink-50', bgDark: 'dark:bg-pink-500/10', text: 'text-pink-500', border: 'border-pink-100 dark:border-pink-500/20' },
-  { label: 'Popular', emoji: '⭐', bgLight: 'bg-amber-50', bgDark: 'dark:bg-amber-500/10', text: 'text-amber-600 dark:text-amber-400', border: 'border-amber-100 dark:border-amber-500/20' },
+  { label: 'Popular', emoji: '⭐', bgLight: 'bg-amber-50', bgDark: 'dark:bg-brand/10', text: 'text-amber-600 dark:text-amber-400', border: 'border-amber-100 dark:border-amber-500/20' },
   { label: 'Cheap', emoji: '💰', bgLight: 'bg-green-50', bgDark: 'dark:bg-green-500/10', text: 'text-green-600 dark:text-green-400', border: 'border-green-100 dark:border-green-500/20' },
-  { label: 'Classic', emoji: '🏛️', bgLight: 'bg-teal-50', bgDark: 'dark:bg-teal-500/10', text: 'text-teal-600 dark:text-teal-400', border: 'border-teal-100 dark:border-teal-500/20' },
+  { label: 'Classic', emoji: '🏛️', bgLight: 'bg-brand-muted', bgDark: 'dark:bg-brand/10', text: 'text-brand-hover dark:text-[#E6DFD5]', border: 'border-teal-100 dark:border-brand/20' },
   { label: 'Trendy', emoji: '🔥', bgLight: 'bg-violet-50', bgDark: 'dark:bg-violet-500/10', text: 'text-violet-500 dark:text-violet-400', border: 'border-violet-100 dark:border-violet-500/20' },
-  { label: 'Local', emoji: '📍', bgLight: 'bg-orange-50', bgDark: 'dark:bg-orange-500/10', text: 'text-orange-500', border: 'border-orange-100 dark:border-orange-500/20' },
+  { label: 'Local', emoji: '📍', bgLight: 'bg-brand-muted', bgDark: 'dark:bg-brand/10', text: 'text-brand dark:text-[#E8735A]', border: 'border-brand-muted dark:border-brand/20' },
 ];
 
 const DEFAULT_TAG_STYLES = [
-  { emoji: '🏷️', bgLight: 'bg-gray-50', bgDark: 'dark:bg-gray-500/10', text: 'text-gray-600 dark:text-gray-400', border: 'border-gray-200 dark:border-gray-500/20' },
-  { emoji: '✨', bgLight: 'bg-indigo-50', bgDark: 'dark:bg-indigo-500/10', text: 'text-indigo-600 dark:text-indigo-400', border: 'border-indigo-100 dark:border-indigo-500/20' },
+  { emoji: '🏷️', bgLight: 'bg-gray-50', bgDark: 'dark:bg-gray-500/10', text: 'text-gray-600 dark:text-[#9A8A7A]', border: 'border-gray-200 dark:border-gray-500/20' },
+  { emoji: '✨', bgLight: 'bg-brand-muted', bgDark: 'dark:bg-brand/10', text: 'text-brand-hover dark:text-[#E6DFD5]', border: 'border-indigo-100 dark:border-indigo-500/20' },
   { emoji: '🌿', bgLight: 'bg-emerald-50', bgDark: 'dark:bg-emerald-500/10', text: 'text-emerald-600 dark:text-emerald-400', border: 'border-emerald-100 dark:border-emerald-500/20' }
 ];
 
@@ -107,7 +99,7 @@ function getMatchColor(match: string): string {
   if (num >= 95) return 'bg-green-500';
   if (num >= 90) return 'bg-green-500/90';
   if (num >= 85) return 'bg-yellow-500';
-  return 'bg-orange-500';
+  return 'bg-brand';
 }
 
 /* ─────────────────────────────────────────────────────────────
@@ -120,7 +112,7 @@ function HeroResultCard({ item, sessionId, searchMode, onAddCollection, isModalO
     if (sessionId) params.set('session_id', sessionId);
     if (searchMode) params.set('mode', searchMode);
     const qs = params.toString();
-    
+
     // Log interaction before navigating
     interactionService.logInteraction({
       res_id: item.id,
@@ -128,7 +120,7 @@ function HeroResultCard({ item, sessionId, searchMode, onAddCollection, isModalO
       search_session_id: sessionId || undefined,
       metadata: { source: "hero_card" }
     });
-    
+
     router.push(`/restaurant/${item.id}${qs ? `?${qs}` : ''}`);
   };
 
@@ -171,16 +163,16 @@ function HeroResultCard({ item, sessionId, searchMode, onAddCollection, isModalO
       initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700 shadow-sm dark:shadow-none overflow-hidden hover:shadow-lg dark:hover:border-gray-600 transition-all duration-300 mb-8"
+      className="bg-white dark:bg-[#3D312A] rounded-3xl border border-gray-100 dark:border-[#4D3D32] shadow-sm dark:shadow-none overflow-hidden hover:shadow-lg dark:hover:border-gray-600 transition-all duration-300 mb-8"
     >
       <div className="flex flex-col md:flex-row min-h-[340px]">
         {/* Left: Info */}
         <div className="flex-1 p-8 md:p-10 flex flex-col justify-center">
           <div className="flex items-center gap-2 mb-4">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-orange-100 dark:bg-orange-500/20 text-orange-600 dark:text-orange-400">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-brand-muted dark:bg-brand/20 text-brand-hover dark:text-[#E6DFD5]">
               <Sparkles className="w-3.5 h-3.5" /> AI TOP PICK
             </span>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-teal-50 dark:bg-teal-500/15 text-teal-600 dark:text-teal-400">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-brand-muted dark:bg-brand/15 text-brand-hover dark:text-[#E6DFD5]">
               🤖 {item.match} Match
             </span>
             {item.allergen_warning && item.allergen_warning.length > 0 && (
@@ -192,24 +184,24 @@ function HeroResultCard({ item, sessionId, searchMode, onAddCollection, isModalO
 
           <h2
             onClick={handleNavigate}
-            className="text-2xl md:text-4xl font-bold text-gray-900 dark:text-white mb-2 leading-tight cursor-pointer hover:text-orange-500 transition-colors"
+            className="text-2xl md:text-4xl font-bold text-gray-900 dark:text-[#E6DFD5] mb-2 leading-tight cursor-pointer hover:text-brand transition-colors"
           >
             {item.name}
           </h2>
 
           {item.restaurantName && (
-            <p className="text-base font-semibold text-orange-500 mb-4 cursor-pointer hover:text-orange-600 transition-colors" onClick={handleNavigate}>
+            <p className="text-base font-semibold text-brand dark:text-[#E8735A] mb-4 cursor-pointer hover:text-brand-hover transition-colors" onClick={handleNavigate}>
               {item.restaurantName}
             </p>
           )}
 
           {item.dist && (
             <div className="mb-5 flex items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-teal-50 dark:bg-teal-500/15 text-teal-600 dark:text-teal-400 border border-teal-200 dark:border-teal-500/30">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-brand-muted dark:bg-brand/15 text-brand-hover dark:text-[#E6DFD5] border border-brand/30 dark:border-brand/30">
                 <MapPin className="w-3.5 h-3.5" /> {item.dist}
               </span>
               {item.total_reviews !== undefined && item.total_reviews > 0 && (
-                <span className="text-xs text-gray-400 dark:text-gray-500 font-medium">
+                <span className="text-xs text-gray-400 dark:text-[#7A6A5A] font-medium">
                   ({item.total_reviews} đánh giá)
                 </span>
               )}
@@ -217,7 +209,7 @@ function HeroResultCard({ item, sessionId, searchMode, onAddCollection, isModalO
           )}
 
           {item.reason && (
-            <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed mb-6 max-w-md">
+            <p className="text-sm text-gray-500 dark:text-[#9A8A7A] leading-relaxed mb-6 max-w-md">
               {item.reason}
             </p>
           )}
@@ -245,8 +237,8 @@ function HeroResultCard({ item, sessionId, searchMode, onAddCollection, isModalO
           </div>
           <div className="absolute top-6 right-6 flex gap-2">
             <button
-              onClick={(e) => { 
-                e.stopPropagation(); 
+              onClick={(e) => {
+                e.stopPropagation();
                 // [FIX-CONFLICT]: Ngăn không cho mở Modal nếu món ăn đã có trong bộ sưu tập (tránh thêm trùng lặp), hiển thị toast với icon Bookmark
                 if (isInColl) {
                   toast.info("Món ăn này đã có trong bộ sưu tập của bạn.", {
@@ -254,16 +246,16 @@ function HeroResultCard({ item, sessionId, searchMode, onAddCollection, isModalO
                   });
                   return;
                 }
-                onAddCollection(item); 
+                onAddCollection(item);
               }}
-              className={`w-10 h-10 rounded-full bg-white/90 dark:bg-gray-900/80 border border-gray-200 dark:border-gray-700 flex items-center justify-center hover:scale-110 transition-all cursor-pointer shadow-sm ${isInColl ? 'hover:bg-yellow-50' : 'hover:bg-indigo-50'}`}
+              className={`w-10 h-10 rounded-full bg-white/90 dark:bg-[#2A2420]/80 border border-gray-200 dark:border-[#4D3D32] flex items-center justify-center hover:scale-110 transition-all cursor-pointer shadow-sm ${isInColl ? 'hover:bg-yellow-50' : 'hover:bg-brand-muted'}`}
               title={isInColl ? "Đã có trong bộ sưu tập" : "Thêm vào bộ sưu tập"}
             >
-              <Bookmark className={`w-5 h-5 ${isInColl ? 'text-yellow-500 fill-current' : 'text-indigo-500'}`} />
+              <Bookmark className={`w-5 h-5 ${isInColl ? 'text-yellow-500 fill-current' : 'text-brand dark:text-[#E8735A]'}`} />
             </button>
             <button
               onClick={toggleFav}
-              className="w-10 h-10 rounded-full bg-white/90 dark:bg-gray-900/80 border border-gray-200 dark:border-gray-700 flex items-center justify-center hover:scale-110 transition-all cursor-pointer shadow-sm"
+              className="w-10 h-10 rounded-full bg-white/90 dark:bg-[#2A2420]/80 border border-gray-200 dark:border-[#4D3D32] flex items-center justify-center hover:scale-110 transition-all cursor-pointer shadow-sm"
             >
               <Heart className={`w-5 h-5 ${isFav ? 'text-red-500 fill-current' : 'text-gray-400'}`} />
             </button>
@@ -339,7 +331,7 @@ function SmallResultCard({ item, index, sessionId, searchMode, onAddCollection, 
       initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.05 }}
-      className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm dark:shadow-none overflow-hidden hover:shadow-lg dark:hover:border-gray-600 transition-all duration-300 cursor-pointer group"
+      className="bg-white dark:bg-[#3D312A] rounded-2xl border border-gray-100 dark:border-[#4D3D32] shadow-sm dark:shadow-none overflow-hidden hover:shadow-lg dark:hover:border-gray-600 transition-all duration-300 cursor-pointer group"
       onClick={handleNavigate}
     >
       <div className="relative h-[180px] overflow-hidden">
@@ -358,14 +350,14 @@ function SmallResultCard({ item, index, sessionId, searchMode, onAddCollection, 
         <div className="absolute top-3 right-3 flex flex-col gap-2">
           <button
             onClick={toggleFav}
-            className="w-8 h-8 rounded-full bg-white/90 dark:bg-gray-900/80 flex items-center justify-center hover:scale-110 transition-all cursor-pointer shadow-sm"
+            className="w-8 h-8 rounded-full bg-white/90 dark:bg-[#2A2420]/80 flex items-center justify-center hover:scale-110 transition-all cursor-pointer shadow-sm"
             title="Lưu yêu thích"
           >
             <Heart className={`w-4 h-4 ${isFav ? 'text-red-500 fill-current' : 'text-gray-400'}`} />
           </button>
           <button
-            onClick={(e) => { 
-              e.stopPropagation(); 
+            onClick={(e) => {
+              e.stopPropagation();
               // [FIX-CONFLICT]: Ngăn không cho mở Modal nếu món ăn đã có trong bộ sưu tập (tránh thêm trùng lặp), hiển thị toast với icon Bookmark
               if (isInColl) {
                 toast.info("Món ăn này đã có trong bộ sưu tập của bạn.", {
@@ -373,12 +365,12 @@ function SmallResultCard({ item, index, sessionId, searchMode, onAddCollection, 
                 });
                 return;
               }
-              onAddCollection(item); 
+              onAddCollection(item);
             }}
-            className={`w-8 h-8 rounded-full bg-white/90 dark:bg-gray-900/80 flex items-center justify-center hover:scale-110 transition-all cursor-pointer shadow-sm ${isInColl ? 'hover:bg-yellow-50' : 'hover:bg-indigo-50'}`}
+            className={`w-8 h-8 rounded-full bg-white/90 dark:bg-[#2A2420]/80 flex items-center justify-center hover:scale-110 transition-all cursor-pointer shadow-sm ${isInColl ? 'hover:bg-yellow-50' : 'hover:bg-brand-muted'}`}
             title={isInColl ? "Đã có trong bộ sưu tập" : "Thêm vào bộ sưu tập"}
           >
-            <Bookmark className={`w-4 h-4 ${isInColl ? 'text-yellow-500 fill-current' : 'text-indigo-500'}`} />
+            <Bookmark className={`w-4 h-4 ${isInColl ? 'text-yellow-500 fill-current' : 'text-brand dark:text-[#E8735A]'}`} />
           </button>
         </div>
 
@@ -392,7 +384,7 @@ function SmallResultCard({ item, index, sessionId, searchMode, onAddCollection, 
             </span>
           )}
           {item.dist && (
-            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-semibold bg-white/90 dark:bg-gray-900/80 text-teal-600 dark:text-teal-400 backdrop-blur-sm">
+            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-semibold bg-white/90 dark:bg-[#2A2420]/80 text-brand-hover dark:text-[#E6DFD5] backdrop-blur-sm">
               📍 {item.dist} {item.total_reviews !== undefined && item.total_reviews > 0 && `(${item.total_reviews})`}
             </span>
           )}
@@ -400,16 +392,16 @@ function SmallResultCard({ item, index, sessionId, searchMode, onAddCollection, 
       </div>
 
       <div className="p-4">
-        <h3 className="text-base font-bold text-gray-800 dark:text-white mb-0.5 transition-colors cursor-pointer group-hover:text-orange-500">
+        <h3 className="text-base font-bold text-gray-800 dark:text-[#E6DFD5] mb-0.5 transition-colors cursor-pointer group-hover:text-brand">
           {item.name}
         </h3>
         {item.restaurantName && (
-          <p className="text-xs font-semibold text-orange-500 mb-2">
+          <p className="text-xs font-semibold text-brand dark:text-[#E8735A] mb-2">
             {item.restaurantName}
           </p>
         )}
         {item.reason && (
-          <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed mb-3 line-clamp-2">
+          <p className="text-xs text-gray-500 dark:text-[#9A8A7A] leading-relaxed mb-3 line-clamp-2">
             {item.reason}
           </p>
         )}
@@ -428,7 +420,7 @@ function SmallResultCard({ item, index, sessionId, searchMode, onAddCollection, 
 
 function FeatureBar() {
   const features = [
-    { icon: Sparkles, bg: 'bg-orange-100 dark:bg-orange-500/20', color: 'text-orange-500', title: 'AI-Powered Recommendations', desc: 'Personalized just for you' },
+    { icon: Sparkles, bg: 'bg-brand-muted dark:bg-brand/20', color: 'text-brand dark:text-[#E8735A]', title: 'AI-Powered Recommendations', desc: 'Personalized just for you' },
     { icon: MapPin, bg: 'bg-red-100 dark:bg-red-500/20', color: 'text-red-500', title: 'Near Your Location', desc: 'Real-time GPS results' },
     { icon: Heart, bg: 'bg-pink-100 dark:bg-pink-500/20', color: 'text-pink-500', title: 'Based on Your Vibes', desc: 'Mood, weather & preferences' },
     { icon: ShieldCheck, bg: 'bg-green-100 dark:bg-green-500/20', color: 'text-green-500', title: 'Safe & Trusted', desc: 'Quality restaurants only' },
@@ -439,7 +431,7 @@ function FeatureBar() {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.6 }}
-      className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm dark:shadow-none border border-gray-100 dark:border-gray-700 px-6 py-5 mt-10"
+      className="bg-white dark:bg-[#3D312A] rounded-2xl shadow-sm dark:shadow-none border border-gray-100 dark:border-[#4D3D32] px-6 py-5 mt-10"
     >
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {features.map(feat => (
@@ -448,7 +440,7 @@ function FeatureBar() {
               <feat.icon className={`w-5 h-5 ${feat.color}`} />
             </div>
             <div>
-              <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">{feat.title}</p>
+              <p className="text-sm font-semibold text-gray-700 dark:text-[#C8BFB0]">{feat.title}</p>
               <p className="text-xs text-gray-400">{feat.desc}</p>
             </div>
           </div>
@@ -509,7 +501,7 @@ function ResultPageContent() {
       localStorage.setItem('last_search_url', window.location.pathname + window.location.search);
     }
   }, [searchParams]);
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+
   const [showGuestNotice, setShowGuestNotice] = useState(true);
 
   const [distanceFilterEnabled, setDistanceFilterEnabled] = useState(false);
@@ -602,12 +594,13 @@ function ResultPageContent() {
 
     try {
       setSearchLoadingMsg("Đang xác định vị trí của bạn...");
-      const gps: { lat: number, lng: number } = await new Promise((resolve, reject) => {
-        if (!navigator.geolocation) return reject(new Error("Trình duyệt không hỗ trợ GPS."));
+      // ✅ FIX: fallback to HCM coords instead of rejecting on GPS error
+      const gps = await new Promise<{ lat: number; lng: number }>((resolve) => {
+        if (!navigator.geolocation) return resolve({ lat: 10.762622, lng: 106.660172 });
         navigator.geolocation.getCurrentPosition(
           (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-          (err) => reject(err),
-          { timeout: 10000 }
+          () => resolve({ lat: 10.762622, lng: 106.660172 }),
+          { timeout: 5000 }
         );
       });
 
@@ -629,6 +622,7 @@ function ResultPageContent() {
           user_id: userId || undefined,
           budget: finalBudget === 'auto' ? undefined : parseInt(finalBudget, 10),
           search_mode: searchMode,
+          top_k: 16,
         }),
       });
 
@@ -650,7 +644,7 @@ function ResultPageContent() {
         throw new Error("Không thể kết nối với hệ thống AI.");
       }
     } catch (err: any) {
-      const msg = err.code === 1 ? "Vui lòng cho phép GPS để tìm nhà hàng." : "Lỗi kết nối AI. Vui lòng thử lại.";
+      const msg = err?.message || "Lỗi kết nối AI. Vui lòng thử lại.";
       setApiError(msg);
     } finally {
       setIsSearching(false);
@@ -662,7 +656,7 @@ function ResultPageContent() {
     if (distanceFilterEnabled) {
       filtered = filtered.filter((r) => (r.distance_km ?? 0) <= distanceRadius);
     }
-    
+
     // [FIX-CONFLICT]: Thêm logic lọc bỏ các kết quả bị trùng lặp tên (remove duplicates by name) để hiển thị danh sách sạch hơn
     const seen = new Set();
     return filtered.filter(item => {
@@ -677,199 +671,193 @@ function ResultPageContent() {
   const gridItems = displayResults.slice(1);
 
   return (
-    <div className={`flex min-h-screen bg-[#F7F8FA] dark:bg-gray-900 transition-colors duration-300 ${roboto.className}`}>
+    <AppShell>
       {isSearching && <SearchLoadingOverlay message={searchLoadingMsg} />}
-      <Sidebar isCollapsed={isSidebarCollapsed} onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)} />
 
-      <div className={`flex-1 flex flex-col transition-all duration-300 ${isSidebarCollapsed ? 'ml-[80px]' : 'ml-[260px]'}`}>
-        <Header showBack={false} />
-
-        <div className="px-6 md:px-10 py-5 border-b border-gray-100 dark:border-gray-800 bg-[#F7F8FA] dark:bg-gray-900 flex flex-wrap items-center gap-x-4 gap-y-4">
-          <BudgetSelector
-            value={budget}
-            onChange={(newBudget) => {
-              setBudget(newBudget);
-              handleSearch(inputValue, newBudget);
-            }}
-          />
-          <DistanceFilter
-            enabled={distanceFilterEnabled}
-            onToggle={setDistanceFilterEnabled}
-            radius={distanceRadius}
-            onRadiusChange={setDistanceRadius}
-            totalCount={results.length}
-            filteredCount={displayResults.length}
-          />
-        </div>
-
-        <AnimatePresence mode="wait">
-          {(!mounted || isLoading) ? (
-            <LoadingState
-              searchQuery={searchQuery}
-              locError={null}
-              getLocation={() => { }}
-            />
-          ) : (
-            <motion.div
-              key="results"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.3 }}
-            >
-              <motion.div
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="mb-10 max-w-4xl mx-auto"
-              >
-                {fallbackApplied && (
-                  <div className="mb-6 flex items-start gap-3 p-4 rounded-xl bg-yellow-50 dark:bg-yellow-500/10 border border-yellow-200 dark:border-yellow-500/20">
-                    <Info className="w-5 h-5 text-yellow-600 dark:text-yellow-500 flex-shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-sm text-yellow-800 dark:text-yellow-200 leading-relaxed mb-2">
-                        <strong>AI đã mở rộng phạm vi tìm kiếm:</strong> {fallbackReason || 'Không tìm thấy kết quả chính xác theo yêu cầu khắt khe, chúng tôi đã mở rộng phạm vi và ngân sách để gợi ý cho bạn!'}
-                      </p>
-                      <div className="flex flex-wrap gap-2">
-                        {appliedBudget != null && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-yellow-100 dark:bg-yellow-500/20 text-yellow-700 dark:text-yellow-300">
-                            💰 Ngân sách: {appliedBudget.toLocaleString('vi-VN')}đ
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                )}
-                {allergenFlaggedCount > 0 && (
-                  <div className="mb-6 flex items-start gap-3 p-4 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 shadow-sm">
-                    <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-500 flex-shrink-0 mt-0.5" />
-                    <p className="text-sm text-amber-900 dark:text-amber-200 leading-relaxed">
-                      <strong>Lưu ý Dị ứng:</strong> Có {allergenFlaggedCount} quán ăn có chứa thành phần gây dị ứng cho bạn. AI đã đánh dấu rõ <strong>"⚠️ Cảnh báo"</strong> trên từng quán để bạn dễ dàng nhận biết.
-                    </p>
-                  </div>
-                )}
-
-                {!isLoggedIn && showGuestNotice && (
-                  <div className="mb-6 px-5 py-3 rounded-full bg-[#F0F7FF] dark:bg-blue-500/5 border border-[#E1EFFE] dark:border-blue-500/20 flex items-center gap-3 relative shadow-sm">
-                    <Sparkles className="w-5 h-5 text-blue-500 flex-shrink-0" />
-                    <p className="text-[13px] md:text-sm text-gray-600 dark:text-blue-200 pr-10 whitespace-nowrap">
-                      Bạn đang tìm kiếm với tư cách khách.{" "}
-                      <button
-                        onClick={() => router.push('/auth')}
-                        className="font-bold text-blue-600 dark:text-blue-400 underline hover:text-blue-700 transition-colors"
-                      >
-                        Đăng nhập ngay
-                      </button>
-                      {" "}để AI đề xuất món ăn chính xác theo khẩu vị và chế độ ăn của riêng bạn!
-                    </p>
-                    <button
-                      onClick={() => setShowGuestNotice(false)}
-                      className="absolute right-5 p-1 text-gray-400 hover:text-gray-600 dark:hover:text-blue-300 transition-colors"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                )}
-
-                <div className="flex flex-col gap-3 mb-5">
-                  <div className="flex justify-between items-center px-1">
-                    <button onClick={() => router.push('/')} className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-orange-500 transition-colors">
-                      <Home className="w-4 h-4" /> Quay lại trang chủ
-                    </button>
-                  </div>
-                  <div className="relative group flex">
-                    <SearchBar
-                      query={inputValue}
-                      setQuery={setInputValue}
-                      searchMode={searchMode}
-                      setSearchMode={setSearchMode}
-                      onSearch={() => handleSearch()}
-                      compact={true}
-                    />
-                  </div>
-                </div>
-              </motion.div>
-
-              {apiError ? (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="p-10 border border-red-200 dark:border-red-500/20 bg-red-50 dark:bg-red-950/10 rounded-3xl text-center"
-                >
-                  <div className="w-16 h-16 bg-red-100 dark:bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <Brain className="w-8 h-8 text-red-500" />
-                  </div>
-                  <h2 className="text-xl font-bold text-red-600 dark:text-red-400 mb-2">
-                    Lỗi kết nối
-                  </h2>
-                  <p className="text-red-500 dark:text-red-300/60 max-w-sm mx-auto mb-6">{apiError}</p>
-                  <button
-                    onClick={() => window.location.reload()}
-                    className="px-6 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-full transition-all font-medium shadow-md"
-                  >
-                    Thử kết nối lại
-                  </button>
-                </motion.div>
-              ) : results.length === 0 ? (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="py-20 text-center bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700 shadow-sm"
-                >
-                  <div className="w-20 h-20 bg-gray-50 dark:bg-gray-900 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <Search className="w-10 h-10 text-gray-400 dark:text-gray-500" />
-                  </div>
-                  <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-3">
-                    Không tìm thấy món nào!
-                  </h2>
-                  <p className="text-gray-500 dark:text-gray-400 max-w-md mx-auto mb-8 leading-relaxed">
-                    Rất tiếc, AI không tìm thấy kết quả nào phù hợp với yêu cầu hiện tại. Thử thay đổi từ khóa hoặc mở rộng ngân sách xem sao nhé?
-                  </p>
-                  <button
-                    onClick={() => {
-                      setInputValue('');
-                      setSearchQuery('');
-                      document.querySelector('input')?.focus();
-                    }}
-                    className="px-6 py-2.5 bg-orange-50 dark:bg-orange-500/10 hover:bg-orange-100 dark:hover:bg-orange-500/20 text-orange-600 dark:text-orange-400 rounded-full transition-all font-semibold"
-                  >
-                    Thử tìm từ khóa khác
-                  </button>
-                </motion.div>
-              ) : (
-                <>
-                  {/* Hero Card #1 */}
-                  {heroItem && <HeroResultCard item={heroItem} sessionId={sessionIdFromUrl} searchMode={searchMode} onAddCollection={setCollectionModalItem} isModalOpen={!!collectionModalItem} />}
-
-                  {/* Small Cards Grid #2+ */}
-                  {gridItems.length > 0 && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                      {gridItems.map((item, idx) => (
-                        <SmallResultCard key={item.id || idx} item={item} index={idx} sessionId={sessionIdFromUrl} searchMode={searchMode} onAddCollection={setCollectionModalItem} isModalOpen={!!collectionModalItem} />
-                      ))}
-                    </div>
-                  )}
-
-                  <FeatureBar />
-                </>
-              )}
-            </motion.div>
-          )}
-        </AnimatePresence>
+      <div className="px-4 md:px-8 py-4 border-b border-[#E6DFD5]/60 dark:border-[#3D312A]/60 bg-[#FDFBF7]/80 dark:bg-[#2A2420]/80 backdrop-blur-sm flex flex-wrap items-center gap-x-4 gap-y-3">
+        <BudgetSelector
+          value={budget}
+          onChange={(newBudget) => {
+            setBudget(newBudget);
+            handleSearch(inputValue, newBudget);
+          }}
+        />
+        <DistanceFilter
+          enabled={distanceFilterEnabled}
+          onToggle={setDistanceFilterEnabled}
+          radius={distanceRadius}
+          onRadiusChange={setDistanceRadius}
+          totalCount={results.length}
+          filteredCount={displayResults.length}
+        />
       </div>
 
+      <AnimatePresence mode="wait">
+        {(!mounted || isLoading) ? (
+          <LoadingState
+            searchQuery={searchQuery}
+            locError={null}
+            getLocation={() => { }}
+          />
+        ) : (
+          <motion.div
+            key="results"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.3 }}
+          >
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-10 max-w-4xl mx-auto"
+            >
+              {fallbackApplied && (
+                <div className="mb-6 flex items-start gap-3 p-4 rounded-xl bg-yellow-50 dark:bg-yellow-500/10 border border-yellow-200 dark:border-yellow-500/20">
+                  <Info className="w-5 h-5 text-yellow-600 dark:text-yellow-500 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm text-yellow-800 dark:text-yellow-200 leading-relaxed mb-2">
+                      <strong>AI đã mở rộng phạm vi tìm kiếm:</strong> {fallbackReason || 'Không tìm thấy kết quả chính xác theo yêu cầu khắt khe, chúng tôi đã mở rộng phạm vi và ngân sách để gợi ý cho bạn!'}
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {appliedBudget != null && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-yellow-100 dark:bg-yellow-500/20 text-yellow-700 dark:text-yellow-300">
+                          💰 Ngân sách: {appliedBudget.toLocaleString('vi-VN')}đ
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+              {allergenFlaggedCount > 0 && (
+                <div className="mb-6 flex items-start gap-3 p-4 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 shadow-sm">
+                  <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-500 flex-shrink-0 mt-0.5" />
+                  <p className="text-sm text-amber-900 dark:text-amber-200 leading-relaxed">
+                    <strong>Lưu ý Dị ứng:</strong> Có {allergenFlaggedCount} quán ăn có chứa thành phần gây dị ứng cho bạn. AI đã đánh dấu rõ <strong>"⚠️ Cảnh báo"</strong> trên từng quán để bạn dễ dàng nhận biết.
+                  </p>
+                </div>
+              )}
+
+              {!isLoggedIn && showGuestNotice && (
+                <div className="mb-6 px-5 py-3 rounded-full bg-[#F0F7FF] dark:bg-blue-500/5 border border-[#E1EFFE] dark:border-blue-500/20 flex items-center gap-3 relative shadow-sm">
+                  <Sparkles className="w-5 h-5 text-blue-500 flex-shrink-0" />
+                  <p className="text-[13px] md:text-sm text-gray-600 dark:text-blue-200 pr-10 whitespace-nowrap">
+                    Bạn đang tìm kiếm với tư cách khách.{" "}
+                    <button
+                      onClick={() => router.push('/auth')}
+                      className="font-bold text-blue-600 dark:text-blue-400 underline hover:text-blue-700 transition-colors"
+                    >
+                      Đăng nhập ngay
+                    </button>
+                    {" "}để AI đề xuất món ăn chính xác theo khẩu vị và chế độ ăn của riêng bạn!
+                  </p>
+                  <button
+                    onClick={() => setShowGuestNotice(false)}
+                    className="absolute right-5 p-1 text-gray-400 hover:text-gray-600 dark:hover:text-blue-300 transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+
+              <div className="flex flex-col gap-3 mb-5">
+                <div className="flex justify-between items-center px-1">
+                  <button onClick={() => router.push('/')} className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-brand transition-colors">
+                    <Home className="w-4 h-4" /> Quay lại trang chủ
+                  </button>
+                </div>
+                <div className="relative group flex">
+                  <SearchBar
+                    query={inputValue}
+                    setQuery={setInputValue}
+                    searchMode={searchMode}
+                    setSearchMode={setSearchMode}
+                    onSearch={() => handleSearch()}
+                    compact={true}
+                  />
+                </div>
+              </div>
+            </motion.div>
+
+            {apiError ? (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="p-10 border border-red-200 dark:border-red-500/20 bg-red-50 dark:bg-red-950/10 rounded-3xl text-center"
+              >
+                <div className="w-16 h-16 bg-red-100 dark:bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <Brain className="w-8 h-8 text-red-500" />
+                </div>
+                <h2 className="text-xl font-bold text-red-600 dark:text-red-400 mb-2">
+                  Lỗi kết nối
+                </h2>
+                <p className="text-red-500 dark:text-red-300/60 max-w-sm mx-auto mb-6">{apiError}</p>
+                <button
+                  onClick={() => window.location.reload()}
+                  className="px-6 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-full transition-all font-medium shadow-md"
+                >
+                  Thử kết nối lại
+                </button>
+              </motion.div>
+            ) : results.length === 0 ? (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="py-20 text-center bg-white dark:bg-[#3D312A] rounded-3xl border border-gray-100 dark:border-[#4D3D32] shadow-sm"
+              >
+                <div className="w-20 h-20 bg-gray-50 dark:bg-[#2A2420] rounded-full flex items-center justify-center mx-auto mb-6">
+                  <Search className="w-10 h-10 text-gray-400 dark:text-[#7A6A5A]" />
+                </div>
+                <h2 className="text-2xl font-bold text-gray-800 dark:text-[#E6DFD5] mb-3">
+                  Không tìm thấy món nào!
+                </h2>
+                <p className="text-gray-500 dark:text-[#9A8A7A] max-w-md mx-auto mb-8 leading-relaxed">
+                  Rất tiếc, AI không tìm thấy kết quả nào phù hợp với yêu cầu hiện tại. Thử thay đổi từ khóa hoặc mở rộng ngân sách xem sao nhé?
+                </p>
+                <button
+                  onClick={() => {
+                    setInputValue('');
+                    setSearchQuery('');
+                    document.querySelector('input')?.focus();
+                  }}
+                  className="px-6 py-2.5 bg-brand-muted dark:bg-brand/10 hover:bg-brand-muted dark:hover:bg-brand/20 text-brand-hover dark:text-[#E6DFD5] rounded-full transition-all font-semibold"
+                >
+                  Thử tìm từ khóa khác
+                </button>
+              </motion.div>
+            ) : (
+              <>
+                {/* Hero Card #1 */}
+                {heroItem && <HeroResultCard item={heroItem} sessionId={sessionIdFromUrl} searchMode={searchMode} onAddCollection={setCollectionModalItem} isModalOpen={!!collectionModalItem} />}
+
+                {/* Small Cards Grid #2+ */}
+                {gridItems.length > 0 && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                    {gridItems.map((item, idx) => (
+                      <SmallResultCard key={item.id || idx} item={item} index={idx} sessionId={sessionIdFromUrl} searchMode={searchMode} onAddCollection={setCollectionModalItem} isModalOpen={!!collectionModalItem} />
+                    ))}
+                  </div>
+                )}
+
+                <FeatureBar />
+              </>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
       <AddToCollectionModal
         isOpen={!!collectionModalItem}
         onClose={() => setCollectionModalItem(null)}
         item={collectionModalItem}
       />
-    </div>
+    </AppShell>
   );
 }
 
 export default function ResultPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-[#F7F8FA] dark:bg-gray-900 flex items-center justify-center">
-        <div className="text-gray-500 dark:text-gray-400 animate-pulse font-medium">Đang tải dữ liệu...</div>
+      <div className="min-h-screen bg-white dark:bg-[#2A2420] flex items-center justify-center">
+        <div className="text-[#9A8A7A] dark:text-[#7A6A5A] animate-pulse font-medium">Đang tải dữ liệu...</div>
       </div>
     }>
       <ResultPageContent />

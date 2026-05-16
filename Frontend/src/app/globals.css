@@ -1,3 +1,12 @@
+/* ── Local Fonts ── */
+@font-face {
+  font-family: 'DFVN Paper Kuto';
+  src: url('/fonts/DFVN-PaperKuto.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
 @import "tailwindcss";
 @source "../";
 
@@ -5,6 +14,15 @@
 
 :root {
   --font-size: 16px;
+
+  /* ── Brand — Vintage Stamp Red ── */
+  --brand: #A91B0D;
+  --brand-foreground: #ffffff;
+  --brand-muted: #F4EAD5;
+  --brand-hover: #8A150A;
+  --brand-on-dark: #E8735A;   /* Terracotta — readable red on dark brown bg */
+
+  /* ── Base ── */
   --background: #ffffff;
   --foreground: oklch(0.145 0 0);
   --card: #ffffff;
@@ -45,8 +63,12 @@
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
+  /* ── Brand dark override ── */
+  --brand-muted: rgba(169, 27, 13, 0.1);
+
+  /* ── Base dark ── */
+  --background: #2A2420;
+  --foreground: #E6DFD5;
   --card: oklch(0.145 0 0);
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.145 0 0);
@@ -82,6 +104,14 @@
 }
 
 @theme inline {
+  /* ── Brand tokens ── */
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
+  --color-brand-muted: var(--brand-muted);
+  --color-brand-hover: var(--brand-hover);
+  --color-brand-on-dark: var(--brand-on-dark);
+
+  /* ── Base tokens ── */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -121,6 +151,7 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
 
+  /* ── Animations ── */
   --animate-float: float 4s ease-in-out infinite;
   --animate-float-delayed: float 5s ease-in-out 2s infinite reverse;
   @keyframes float {
@@ -137,11 +168,6 @@
   body {
     @apply bg-background text-foreground;
   }
-
-  /**
-  * Default typography styles for HTML elements (h1-h4, p, label, button, input).
-  * These are in @layer base, so Tailwind utility classes (like text-sm, text-lg) automatically override them.
-  */
 
   html {
     font-size: var(--font-size);
@@ -190,7 +216,33 @@
   }
 }
 
-/* for loading skeleton */
+/* ── Polaroid Card — Thẻ phong cách Polaroid ── */
+.polaroid-card {
+  background-color: #FFFDF9;
+  border: 8px solid #FFFDF9;
+  border-bottom-width: 24px;
+  box-shadow: 2px 4px 12px rgba(0, 0, 0, 0.15);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.polaroid-card:hover {
+  transform: rotate(-2deg) scale(1.02);
+  box-shadow: 4px 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+/* ── Torn Paper Top Effect ── */
+.torn-paper-top::before {
+  content: "";
+  display: block;
+  height: 20px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 20'%3E%3Cpath d='M0,0 C150,20 350,0 500,15 C650,30 800,5 950,18 C1050,28 1150,8 1200,0 L1200,20 L0,20 Z' fill='%23FFFDF9'/%3E%3C/svg%3E");
+  background-size: cover;
+  background-repeat: no-repeat;
+  position: relative;
+  z-index: 1;
+}
+
+/* ── Loading Skeleton Shimmer ── */
 @keyframes shimmer {
   0% {
     transform: translateX(-100%);
@@ -198,4 +250,13 @@
   100% {
     transform: translateX(200%);
   }
+}
+
+/* ── Drawer Nav Item ── */
+.drawer-nav-item:hover {
+  background-color: #F4EAD5;
+}
+
+.dark .drawer-nav-item:hover {
+  background-color: rgba(169, 27, 13, 0.10);
 }
