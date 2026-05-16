@@ -111,3 +111,19 @@ class UserUpdateRequest(BaseModel):
     full_name: Optional[str] = None
     avatar_url: Optional[str] = None
     password: Optional[str] = None
+
+
+class UserInteractionRequest(BaseModel):
+    anonymous_id: Optional[str] = None
+    res_id: Optional[str] = None
+    action_type: str = Field(..., description="Type of interaction (e.g., VIEW_RESTAURANT, CLICK_MENU)")
+    duration_sec: Optional[int] = None
+    metadata: Optional[dict] = Field(None, description="Additional context as JSON/dict")
+    search_session_id: Optional[str] = None
+
+
+class UserInteractionResponse(BaseModel):
+    status: str = "success"
+    message: str = "Interaction logged successfully"
+    interaction_id: str
+

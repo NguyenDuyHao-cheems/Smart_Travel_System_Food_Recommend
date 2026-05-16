@@ -17,9 +17,11 @@ from .schemas import (
     SignUpRequest,
     GoogleAuthRequest,
     AuthResponse,
-    UserUpdateRequest
+    UserUpdateRequest,
+    UserInteractionRequest,
+    UserInteractionResponse
 )
-from .repository import UserOnboardingRepository, UserAccountRepository
+from .repository import UserOnboardingRepository, UserAccountRepository, UserInteractionRepository
 
 logger = logging.getLogger(__name__)
 # TODO: mock code 
@@ -274,3 +276,25 @@ class AuthService:
 
     def delete_account(self, user_id: str) -> bool:
         return self._repo.delete_user(user_id)
+
+
+class UserInteractionService:
+    def __init__(self, repository: UserInteractionRepository) -> None:
+        self._repo = repository
+
+    def log_interaction(
+        self, payload: UserInteractionRequest, user_id: Optional[str] = None
+    ) -> UserInteractionResponse:
+        interaction = self._repo.create_interaction(
+            action_type=payload.action_type,
+            anonymous_id=payload.anonymous_id,
+            user_id=user_id,
+            res_id=payload.res_id,
+            duration_sec=payload.duration_sec,
+            metadata=payload.metadata,
+            search_session_id=payload.search_session_id,
+        )
+        return UserInteractionResponse(
+            interaction_id=str(interaction.id)
+        )
+

@@ -11,3 +11,4 @@ cachetools
 numpy
 python-jose[cryptography]
 bcrypt
+requests

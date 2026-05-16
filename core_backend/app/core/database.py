@@ -8,7 +8,9 @@ load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 
-engine = create_engine(DATABASE_URL) # type: ignore
+from sqlalchemy.pool import NullPool
+
+engine = create_engine(DATABASE_URL, poolclass=NullPool) # type: ignore
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 class Base(DeclarativeBase):
     pass
