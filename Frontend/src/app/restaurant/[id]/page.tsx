@@ -15,6 +15,7 @@ import {
   X
 } from 'lucide-react';
 import Image from 'next/image';
+import { interactionService } from '../../../services/interactionService';
 
 interface Dish {
   id: string;
@@ -80,6 +81,27 @@ export default function RestaurantDetailPage() {
 
     fetchDetail();
   }, [restaurantId]);
+
+  // Track viewing duration
+  useEffect(() => {
+    if (!restaurant) return;
+    
+    const startTime = Date.now();
+    
+    return () => {
+      // Calculate duration when component unmounts (user leaves page)
+      const durationSec = Math.floor((Date.now() - startTime) / 1000);
+      if (durationSec > 0) {
+        interactionService.logInteraction({
+          res_id: restaurant.id,
+          action_type: "VIEW_RESTAURANT_DURATION",
+          duration_sec: durationSec,
+          search_session_id: sessionId || undefined,
+          metadata: { source: "restaurant_detail_page_exit" }
+        });
+      }
+    };
+  }, [restaurant, sessionId]);
 
   const handleBack = () => {
     const mode = searchParams.get('mode');

@@ -30,6 +30,7 @@ import { collectionService } from '../../services/collectionService';
 import { historyService } from '../../services/historyService';
 import { AddToCollectionModal } from '../../components/AddToCollectionModal';
 import { toast } from 'sonner';
+import { interactionService } from '../../services/interactionService';
 
 const roboto = Roboto({
   subsets: ['latin', 'vietnamese'],
@@ -105,6 +106,15 @@ function HeroResultCard({ item, sessionId, searchMode, onAddCollection, isModalO
     if (sessionId) params.set('session_id', sessionId);
     if (searchMode) params.set('mode', searchMode);
     const qs = params.toString();
+    
+    // Log interaction before navigating
+    interactionService.logInteraction({
+      res_id: item.id,
+      action_type: "CLICK_SEARCH_RESULT",
+      search_session_id: sessionId || undefined,
+      metadata: { source: "hero_card" }
+    });
+    
     router.push(`/restaurant/${item.id}${qs ? `?${qs}` : ''}`);
   };
 
@@ -254,6 +264,15 @@ function SmallResultCard({ item, index, sessionId, searchMode, onAddCollection, 
     if (sessionId) params.set('session_id', sessionId);
     if (searchMode) params.set('mode', searchMode);
     const qs = params.toString();
+
+    // Log interaction before navigating
+    interactionService.logInteraction({
+      res_id: item.id,
+      action_type: "CLICK_SEARCH_RESULT",
+      search_session_id: sessionId || undefined,
+      metadata: { source: "small_card", rank: index + 2 }
+    });
+
     router.push(`/restaurant/${item.id}${qs ? `?${qs}` : ''}`);
   };
 

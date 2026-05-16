@@ -1,11 +1,15 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from .models import UserAccount
-from .schemas import OnboardingRequest, OnboardingResponse, SignUpRequest, SignInRequest, GoogleAuthRequest, AuthResponse, UserUpdateRequest
-from .service import OnboardingService, AuthService
-from .repository import UserOnboardingRepository, UserAccountRepository
-from app.core.dependencies import get_db, get_current_user
+from .schemas import (
+    OnboardingRequest, OnboardingResponse, SignUpRequest, SignInRequest, 
+    GoogleAuthRequest, AuthResponse, UserUpdateRequest,
+    UserInteractionRequest, UserInteractionResponse
+)
+from .service import OnboardingService, AuthService, UserInteractionService
+from .repository import UserOnboardingRepository, UserAccountRepository, UserInteractionRepository
+from app.core.dependencies import get_db, get_current_user, get_optional_current_user
 
 router = APIRouter()
 
@@ -23,6 +27,10 @@ def get_auth_service(db: Session = Depends(get_db)) -> AuthService:
     repository = UserAccountRepository(db=db)
     return AuthService(repository=repository)
 
+
+def get_interaction_service(db: Session = Depends(get_db)) -> UserInteractionService:
+    repository = UserInteractionRepository(db=db)
+    return UserInteractionService(repository=repository)
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
@@ -105,3 +113,17 @@ async def user_onboarding(
         raise HTTPException(status_code=422, detail=str(exc))
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Onboarding failed: {exc}")
+
+
+@router.post("/interaction", response_model=UserInteractionResponse)
+def log_user_interaction(
+    request: Request,
+    payload: UserInteractionRequest,
+    service: UserInteractionService = Depends(get_interaction_service),
+    current_user: UserAccount | None = Depends(get_optional_current_user),
+):
+    try:
+        user_id = str(current_user.id) if current_user else None
+        return service.log_interaction(payload=payload, user_id=user_id)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to log interaction: {exc}")

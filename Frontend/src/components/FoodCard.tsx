@@ -7,6 +7,7 @@ import { favoriteService } from "../services/favoriteService";
 import { collectionService } from "../services/collectionService";
 import { toast } from "sonner";
 import { AddToCollectionModal } from "./AddToCollectionModal";
+import { interactionService } from "../services/interactionService";
 
 interface FoodCardProps {
   item: RecommendResult;
@@ -53,11 +54,23 @@ export function FoodCard({ item, userId, onRemove, showRemove, showAddCollection
     }
   };
 
+  const handleCardClick = () => {
+    interactionService.logInteraction({
+      res_id: item.id,
+      action_type: "VIEW_RESTAURANT",
+      metadata: { source: "food_card_click" }
+    });
+    
+    if (item.google_maps_url) {
+      window.open(item.google_maps_url, '_blank');
+    }
+  };
+
   return (
     <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden group relative flex flex-col">
       <div 
         className="relative h-[180px] overflow-hidden cursor-pointer"
-        onClick={() => item.google_maps_url && window.open(item.google_maps_url, '_blank')}
+        onClick={handleCardClick}
       >
         <img
           src={item.img || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=600&auto=format&fit=crop"}

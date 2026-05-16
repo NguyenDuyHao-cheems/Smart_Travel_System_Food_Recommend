@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
-from .models import UserOnboarding, UserAccount
+from .models import UserOnboarding, UserAccount, UserInteraction
 from typing import Optional, List
 
 
@@ -164,5 +164,33 @@ class UserAccountRepository:
         self._db.delete(user)
         self._db.commit()
         return True
+
+class UserInteractionRepository:
+    def __init__(self, db: Session) -> None:
+        self._db = db
+
+    def create_interaction(
+        self,
+        action_type: str,
+        anonymous_id: Optional[str] = None,
+        user_id: Optional[str] = None,
+        res_id: Optional[str] = None,
+        duration_sec: Optional[int] = None,
+        metadata: Optional[dict] = None,
+        search_session_id: Optional[str] = None,
+    ) -> UserInteraction:
+        interaction = UserInteraction(
+            anonymous_id=anonymous_id,
+            user_id=user_id,
+            res_id=res_id,
+            action_type=action_type,
+            duration_sec=duration_sec,
+            metadata_=metadata,
+            search_session_id=search_session_id,
+        )
+        self._db.add(interaction)
+        self._db.commit()
+        self._db.refresh(interaction)
+        return interaction
 
 
