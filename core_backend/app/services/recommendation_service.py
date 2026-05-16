@@ -5,7 +5,10 @@ from typing import Optional, List
 from sqlalchemy.orm import Session
 
 from app.services.user_services import get_user_allergies, get_user_preferences_vector
-from app.services.allergy_filter import filter_allergy, handle_fallback, fetch_allergen_map
+from app.services.allergy_filter import (
+    filter_allergy, handle_fallback, 
+    fetch_allergen_map, fetch_dish_detail_map, annotate_allergy
+)
 from app.domains.ranking.retrieval_service import RetrievalService
 from app.domains.ranking.feature_service import FeatureService
 from app.core.config import settings
@@ -53,22 +56,22 @@ async def recommend(
         return {
             "results": [],
             "filtered_out_count": 0,
+            "allergen_flagged_count": 0,
             "fallback_applied": False,
         }
 
     # Pre-fetch allergens từ dishes cho tất cả restaurant candidates
     restaurant_ids = [c.id for c in raw_candidates]
     allergen_map = fetch_allergen_map(db, restaurant_ids) if user_allergies else {}
-    safe_candidates, removed = filter_allergy(raw_candidates, user_allergies, allergen_map)
+    dish_detail_map = fetch_dish_detail_map(db, restaurant_ids) if user_allergies else {}
+    
+    # Thay vì filter (loại bỏ), ta annotate (gắn nhãn)
+    safe_candidates, flagged_count = annotate_allergy(
+        raw_candidates, user_allergies, allergen_map, dish_detail_map
+    )
+    removed = [] # Legacy compatibility
 
-    if not safe_candidates:
-        fallback = handle_fallback(raw_candidates)
-        return {
-            "results": fallback["results"][:5],
-            "filtered_out_count": len(removed),
-            "fallback_applied": True,
-            "warning": fallback.get("warning"),
-        }
+    # Không còn block 'if not safe_candidates' vì ta không còn loại bỏ quán nào
 
     # --- BƯỚC MỚI: Gọi AI Engine để rerank ---
     COSINE_THRESHOLD = 0.80  # distance <= 0.80 tương đương sim >= 20%
@@ -80,6 +83,7 @@ async def recommend(
             return {
                 "results": safe_candidates,
                 "filtered_out_count": len(removed),
+                "allergen_flagged_count": flagged_count,
                 "fallback_applied": False,
             }
         top_candidates = qualified_candidates[:50]
@@ -145,5 +149,6 @@ async def recommend(
     return {
         "results": safe_candidates,
         "filtered_out_count": len(removed),
+        "allergen_flagged_count": flagged_count,
         "fallback_applied": False,
     }

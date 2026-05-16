@@ -12,7 +12,9 @@ import {
   UtensilsCrossed,
   Info,
   ChevronRight,
-  X
+  X,
+  AlertTriangle,
+  ShieldCheck
 } from 'lucide-react';
 import Image from 'next/image';
 import { interactionService } from '../../../services/interactionService';
@@ -22,6 +24,7 @@ interface Dish {
   name: string;
   price: number;
   image_url: string;
+  allergens?: string[];
 }
 
 interface Review {
@@ -63,6 +66,8 @@ export default function RestaurantDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isMapModalOpen, setIsMapModalOpen] = useState(false);
+  const [userAllergies, setUserAllergies] = useState<string[]>([]);
+  const [isAllergenSectionOpen, setIsAllergenSectionOpen] = useState(true);
 
   useEffect(() => {
     const fetchDetail = async () => {
@@ -80,6 +85,27 @@ export default function RestaurantDetailPage() {
     };
 
     fetchDetail();
+
+    // Fetch user allergies if logged in
+    const userId = localStorage.getItem('user_id');
+    if (userId) {
+      const fetchAllergies = async () => {
+        try {
+          const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+          const res = await fetch(`${apiUrl}/api/v1/users/${userId}/allergies`);
+          if (res.ok) {
+            const data = await res.json();
+            console.log("Fetched user allergies for detail page:", data.allergies);
+            setUserAllergies(data.allergies || []);
+          } else {
+            console.warn("Allergy fetch returned:", res.status);
+          }
+        } catch (err) {
+          console.error("Failed to fetch user allergies:", err);
+        }
+      };
+      fetchAllergies();
+    }
   }, [restaurantId]);
 
   // Track viewing duration
@@ -114,6 +140,52 @@ export default function RestaurantDetailPage() {
 
   if (isLoading) return <LoadingSkeleton />;
   if (error || !restaurant) return <ErrorState message={error || 'Không tìm thấy dữ liệu.'} onBack={handleBack} />;
+
+  // Allergen detection logic
+  const ALLERGY_MAP: Record<string, string[]> = {
+    "peanut": ["peanut", "groundnut", "satay", "lạc", "đậu phộng", "sa tế"],
+    "lạc": ["peanut", "groundnut", "satay", "lạc", "đậu phộng", "sa tế"],
+    "đậu phộng": ["peanut", "groundnut", "satay", "lạc", "đậu phộng", "sa tế"],
+    "milk": ["milk", "dairy", "cheese", "butter", "sữa", "phô mai", "bơ"],
+    "sữa": ["milk", "dairy", "cheese", "butter", "sữa", "phô mai", "bơ"],
+    "phô mai": ["milk", "dairy", "cheese", "butter", "sữa", "phô mai", "bơ"],
+    "shrimp": ["shrimp", "prawn", "tôm", "ruốc"],
+    "tôm": ["shrimp", "prawn", "tôm", "ruốc"],
+    "ruốc": ["shrimp", "prawn", "tôm", "ruốc"],
+    "seafood": ["seafood", "fish", "crab", "squid", "hải sản", "cá", "cua", "mực"],
+    "hải sản": ["seafood", "fish", "crab", "squid", "hải sản", "cá", "cua", "mực"],
+    "egg": ["egg", "trứng", "hột"],
+    "trứng": ["egg", "trứng", "hột"],
+    "soy": ["soy", "đậu nành", "tương", "tofu", "đậu hũ"],
+    "đậu nành": ["soy", "đậu nành", "tương", "tofu", "đậu hũ"],
+    "đậu hũ": ["soy", "đậu nành", "tương", "tofu", "đậu hũ"]
+  };
+
+  const getMatchedAllergies = (dishAllergens: string[] | undefined) => {
+    if (!dishAllergens || !userAllergies.length) return [];
+    const matched: string[] = [];
+    
+    dishAllergens.forEach(da => {
+      const daNorm = da.toLowerCase().trim();
+      userAllergies.forEach(ua => {
+        const uaNorm = ua.toLowerCase().trim();
+        const keywords = ALLERGY_MAP[uaNorm] || [uaNorm];
+        if (keywords.some(kw => daNorm.includes(kw))) {
+          matched.push(ua);
+        }
+      });
+    });
+    
+    if (matched.length > 0) {
+      console.log(`Matched allergy for dish:`, { dishAllergens, userAllergies, matched });
+    }
+    return Array.from(new Set(matched));
+  };
+
+  const dishesWithAllergens = restaurant.dishes.map(dish => ({
+    ...dish,
+    matchedAllergies: getMatchedAllergies(dish.allergens)
+  })).filter(d => d.matchedAllergies.length > 0);
 
 
   return (
@@ -202,6 +274,59 @@ export default function RestaurantDetailPage() {
               </button>
             </div>
 
+            {/* Allergen Warning Section */}
+            {dishesWithAllergens.length > 0 && (
+              <section className="bg-amber-50 dark:bg-amber-500/5 border border-amber-200 dark:border-amber-500/20 rounded-3xl overflow-hidden shadow-sm">
+                <button 
+                  onClick={() => setIsAllergenSectionOpen(!isAllergenSectionOpen)}
+                  className="w-full flex items-center justify-between p-5 hover:bg-amber-100/50 dark:hover:bg-amber-500/10 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-amber-100 dark:bg-amber-500/20 rounded-xl">
+                      <AlertTriangle className="w-6 h-6 text-amber-600 dark:text-amber-500" />
+                    </div>
+                    <div className="text-left">
+                      <h2 className="text-lg font-bold text-amber-900 dark:text-amber-200">Lưu ý dị ứng của bạn</h2>
+                      <p className="text-sm text-amber-700 dark:text-amber-400">Nhà hàng này có {dishesWithAllergens.length} món chứa thành phần bạn bị dị ứng</p>
+                    </div>
+                  </div>
+                  <ChevronRight className={`w-5 h-5 text-amber-500 transition-transform ${isAllergenSectionOpen ? 'rotate-90' : ''}`} />
+                </button>
+                
+                <AnimatePresence>
+                  {isAllergenSectionOpen && (
+                    <motion.div 
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="px-5 pb-5 pt-2 space-y-3 border-t border-amber-100 dark:border-amber-500/10">
+                        {dishesWithAllergens.map((d, i) => (
+                          <div key={i} className="flex items-start gap-2 text-sm">
+                            <span className="text-amber-500 mt-1">•</span>
+                            <p className="text-gray-700 dark:text-gray-300">
+                              <span className="font-bold">{d.name}</span>
+                              <span className="text-gray-400 mx-2">→</span>
+                              <span className="text-amber-600 dark:text-amber-400 font-medium">
+                                Chứa: {d.matchedAllergies.join(", ")}
+                              </span>
+                            </p>
+                          </div>
+                        ))}
+                        <div className="mt-4 p-3 bg-green-50 dark:bg-green-500/10 rounded-xl flex items-center gap-2">
+                          <ShieldCheck className="w-4 h-4 text-green-600 dark:text-green-500" />
+                          <p className="text-xs text-green-700 dark:text-green-400 font-medium">
+                            Các món còn lại trong thực đơn an toàn để bạn thưởng thức.
+                          </p>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </section>
+            )}
+
             {/* Menu Section */}
             <section>
               <div className="flex items-center gap-3 mb-6">
@@ -236,7 +361,18 @@ export default function RestaurantDetailPage() {
                             <h3 className="font-bold text-gray-900 dark:text-white group-hover:text-orange-500 transition-colors">
                               {dish.name}
                             </h3>
-                            <p className="text-xs text-gray-400 mt-1 line-clamp-1">Hương vị đậm đà, tươi ngon</p>
+                            <div className="flex items-center gap-2 mt-1">
+                              <p className="text-xs text-gray-400 line-clamp-1">Hương vị đậm đà, tươi ngon</p>
+                              {getMatchedAllergies(dish.allergens).length > 0 ? (
+                                <span className="flex-shrink-0 px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400 text-[10px] font-bold border border-red-200 dark:border-red-500/30">
+                                  ⚠️ Dị ứng
+                                </span>
+                              ) : (
+                                <span className="flex-shrink-0 px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-500/10 text-green-600 dark:text-green-400 text-[10px] font-bold border border-green-200 dark:border-green-500/20">
+                                  ✅ An toàn
+                                </span>
+                              )}
+                            </div>
                           </div>
                           <p className="text-orange-500 font-bold">
                             {dish.price.toLocaleString('vi-VN')} ₫

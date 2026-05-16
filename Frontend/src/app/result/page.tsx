@@ -37,6 +37,11 @@ const roboto = Roboto({
   weight: ['300', '400', '500', '700', '900'],
 });
 
+export interface AllergenDishWarning {
+  dish_name: string;
+  matched_allergens: string[];
+}
+
 export interface RecommendResult {
   id: string;
   name: string;
@@ -51,6 +56,7 @@ export interface RecommendResult {
   tags?: string[];
   restaurantName?: string;
   google_maps_url?: string;
+  allergen_warning?: AllergenDishWarning[];
 }
 
 interface VibeTag {
@@ -177,6 +183,11 @@ function HeroResultCard({ item, sessionId, searchMode, onAddCollection, isModalO
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-teal-50 dark:bg-teal-500/15 text-teal-600 dark:text-teal-400">
               🤖 {item.match} Match
             </span>
+            {item.allergen_warning && item.allergen_warning.length > 0 && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-500/30">
+                <AlertTriangle className="w-3.5 h-3.5" /> {item.allergen_warning.length} món cần lưu ý
+              </span>
+            )}
           </div>
 
           <h2
@@ -375,6 +386,11 @@ function SmallResultCard({ item, index, sessionId, searchMode, onAddCollection, 
           <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold ${matchColor} text-white`}>
             🤖 {item.match} Match
           </span>
+          {item.allergen_warning && item.allergen_warning.length > 0 && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-500 text-white shadow-sm border border-amber-600">
+              ⚠️ {item.allergen_warning.length} lưu ý
+            </span>
+          )}
           {item.dist && (
             <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-semibold bg-white/90 dark:bg-gray-900/80 text-teal-600 dark:text-teal-400 backdrop-blur-sm">
               📍 {item.dist} {item.total_reviews !== undefined && item.total_reviews > 0 && `(${item.total_reviews})`}
@@ -478,6 +494,7 @@ function ResultPageContent() {
   const [appliedBudget, setAppliedBudget] = useState<number | null>(null);
 
   const [filteredCount, setFilteredCount] = useState(0);
+  const [allergenFlaggedCount, setAllergyFlaggedCount] = useState(0);
   const [allergyWarning, setAllergyWarning] = useState<string>('');
 
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -533,6 +550,7 @@ function ResultPageContent() {
         setFallbackReason(data.fallback_reason || '');
         setAppliedBudget(data.applied_budget ?? null);
         setFilteredCount(data.filtered_out_count || 0);
+        setAllergyFlaggedCount(data.allergen_flagged_count || 0);
         setAllergyWarning(data.warning || '');
         setIsLoading(false);
         return;
@@ -555,6 +573,7 @@ function ResultPageContent() {
           setFallbackReason(data.fallback_reason || '');
           setAppliedBudget(data.applied_budget ?? null);
           setFilteredCount(data.filtered_out_count || 0);
+          setAllergyFlaggedCount(data.allergen_flagged_count || 0);
           setAllergyWarning(data.warning || '');
         } else if (res.status === 404) {
           setApiError('Không tìm thấy phiên tìm kiếm. Link có thể đã hết hạn hoặc không tồn tại.');
@@ -719,11 +738,11 @@ function ResultPageContent() {
                     </div>
                   </div>
                 )}
-                {filteredCount > 0 && (
-                  <div className="mb-6 flex items-start gap-3 p-4 rounded-xl bg-orange-50 dark:bg-orange-500/10 border border-orange-200 dark:border-orange-500/20">
-                    <AlertTriangle className="w-5 h-5 text-orange-600 dark:text-orange-500 flex-shrink-0 mt-0.5" />
-                    <p className="text-sm text-orange-800 dark:text-orange-200 leading-relaxed">
-                      <strong>Cảnh báo Dị ứng:</strong> {allergyWarning || `Đã loại ${filteredCount} quán có thành phần gây dị ứng để đảm bảo an toàn.`}
+                {allergenFlaggedCount > 0 && (
+                  <div className="mb-6 flex items-start gap-3 p-4 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 shadow-sm">
+                    <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-500 flex-shrink-0 mt-0.5" />
+                    <p className="text-sm text-amber-900 dark:text-amber-200 leading-relaxed">
+                      <strong>Lưu ý Dị ứng:</strong> Có {allergenFlaggedCount} quán ăn có chứa thành phần gây dị ứng cho bạn. AI đã đánh dấu rõ <strong>"⚠️ Cảnh báo"</strong> trên từng quán để bạn dễ dàng nhận biết.
                     </p>
                   </div>
                 )}
