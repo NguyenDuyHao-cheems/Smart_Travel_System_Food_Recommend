@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Compass, Heart, Clock, Sparkles, FolderOpen, ChevronLeft, Settings } from "lucide-react";
+import { Compass, Heart, Clock, Sparkles, FolderOpen, ChevronLeft, Settings, MoreVertical } from "lucide-react";
 
 const navItems = [
   { icon: Compass, label: "Khám phá", href: "/" },
@@ -108,9 +108,31 @@ export function Sidebar({ isCollapsed, onToggle, username: propUsername, avatar:
               </Link>
             );
           })}
+          {/* [FIX-CONFLICT]: Đưa nút Cài đặt (bottomNavItems) lên phía trên thẻ AI Card để bố cục hợp lý hơn */}
+          {bottomNavItems.map((item) => {
+            const isActive = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href));
+            return (
+              <Link
+                key={item.label}
+                href={item.href}
+                className={`flex items-center ${isCollapsed ? 'justify-center px-0' : 'gap-3 px-4'} py-3 rounded-xl text-[14px] font-medium transition-all cursor-pointer w-full ${isActive
+                    ? "bg-orange-50 dark:bg-orange-500/10 text-orange-600 dark:text-orange-500 shadow-sm shadow-orange-100 dark:shadow-none"
+                    : "text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-200"
+                  }`}
+                title={isCollapsed ? item.label : undefined}
+              >
+                <item.icon
+                  className={`w-[18px] h-[18px] flex-shrink-0 ${isActive ? "text-orange-500" : "text-gray-400"
+                    }`}
+                />
+                {!isCollapsed && <span className="truncate">{item.label}</span>}
+              </Link>
+            );
+          })}
         </div>
         {/* AI Card */}
         {/* [FIX-CONFLICT]: Thêm mt-6 mb-6 để tạo khoảng cách, tránh thẻ AI đè lên menu phía trên */}
+        {/* [FIX-CONFLICT]: Bổ sung mt-6 mb-6 để tạo khoảng hở giữa nút Cài đặt, thẻ AI Card và Footer */}
         {!isCollapsed && (
           <div className="mt-6 mb-6 mx-2 p-4 rounded-2xl bg-orange-50/50 dark:bg-orange-500/5 border border-orange-100/50 dark:border-orange-500/10 relative overflow-hidden group">
             <div className="relative z-10">
@@ -132,28 +154,27 @@ export function Sidebar({ isCollapsed, onToggle, username: propUsername, avatar:
         )}
       </nav>
 
-      <div className="px-3 pb-4 pt-3 border-t border-gray-50 dark:border-gray-800">
-        <div className="flex flex-col gap-1">
-          {bottomNavItems.map((item) => {
-            const isActive = item.active !== undefined ? item.active : pathname === item.href;
-            return (
-              <Link
-                key={item.label}
-                href={item.href}
-                className={`flex items-center ${isCollapsed ? 'justify-center px-0' : 'gap-3 px-4'} py-3 rounded-xl text-[14px] font-medium transition-all cursor-pointer w-full ${isActive
-                    ? "bg-orange-50 dark:bg-orange-500/10 text-orange-600 dark:text-orange-500 shadow-sm shadow-orange-100 dark:shadow-none"
-                    : "text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-200"
-                  }`}
-                title={isCollapsed ? item.label : undefined}
-              >
-                <item.icon
-                  className={`w-[18px] h-[18px] flex-shrink-0 ${isActive ? "text-orange-500" : "text-gray-400"
-                    }`}
-                />
-                {!isCollapsed && <span className="truncate">{item.label}</span>}
-              </Link>
-            );
-          })}
+      {/* User Profile Footer */}
+      <div className={`p-4 border-t border-gray-50 dark:border-gray-800 ${isCollapsed ? 'flex justify-center' : ''}`}>
+        <div className={`flex items-center ${isCollapsed ? '' : 'gap-3'} w-full`}>
+          <div className="w-9 h-9 rounded-full bg-orange-100 dark:bg-orange-500/20 overflow-hidden flex-shrink-0">
+            {avatar ? (
+              <img src={avatar} alt={username || "User"} className="w-full h-full object-cover" />
+            ) : (
+              <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${username || 'User'}`} alt="User" className="w-full h-full object-cover" />
+            )}
+          </div>
+          {!isCollapsed && (
+            <div className="flex-1 min-w-0">
+              <h5 className="text-sm font-bold text-gray-800 dark:text-white truncate">{username || "Guest"}</h5>
+              <span className="text-[11px] text-gray-500 dark:text-gray-400">{username ? "Thành viên" : "Khách"}</span>
+            </div>
+          )}
+          {!isCollapsed && (
+            <button className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors text-gray-400">
+              <MoreVertical className="w-4 h-4" />
+            </button>
+          )}
         </div>
       </div>
     </aside>
