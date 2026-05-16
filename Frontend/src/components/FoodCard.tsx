@@ -67,7 +67,7 @@ export function FoodCard({ item, userId, onRemove, showRemove, showAddCollection
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden group relative flex flex-col">
+    <div className="bg-white dark:bg-[#3D312A] rounded-2xl border border-gray-100 dark:border-[#4D3D32] shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden group relative flex flex-col">
       <div 
         className="relative h-[180px] overflow-hidden cursor-pointer"
         onClick={handleCardClick}
@@ -84,7 +84,7 @@ export function FoodCard({ item, userId, onRemove, showRemove, showAddCollection
           {!showRemove && (
             <button 
               onClick={toggleFavorite}
-              className="w-8 h-8 rounded-full bg-white/90 dark:bg-gray-900/80 flex items-center justify-center hover:scale-110 transition-all shadow-sm"
+              className="w-8 h-8 rounded-full bg-white/90 dark:bg-[#2A2420]/80 flex items-center justify-center hover:scale-110 transition-all shadow-sm"
             >
               <Heart className={`w-4 h-4 ${isFav ? 'text-red-500 fill-current' : 'text-gray-400'}`} />
             </button>
@@ -92,7 +92,7 @@ export function FoodCard({ item, userId, onRemove, showRemove, showAddCollection
           {showRemove && onRemove && (
             <button 
               onClick={(e) => { e.stopPropagation(); onRemove(item); }}
-              className="w-8 h-8 rounded-full bg-white/90 dark:bg-gray-900/80 flex items-center justify-center hover:scale-110 hover:bg-red-50 transition-all shadow-sm"
+              className="w-8 h-8 rounded-full bg-white/90 dark:bg-[#2A2420]/80 flex items-center justify-center hover:scale-110 hover:bg-red-50 transition-all shadow-sm"
               title="Xóa"
             >
               <Trash2 className="w-4 h-4 text-red-500" />
@@ -116,13 +116,13 @@ export function FoodCard({ item, userId, onRemove, showRemove, showAddCollection
                 setIsCollectionModalOpen(true);
                 if (onAddCollection) onAddCollection(item);
               }}
-              className={`w-8 h-8 rounded-full bg-white/90 dark:bg-gray-900/80 flex items-center justify-center hover:scale-110 transition-all shadow-sm ${isInColl ? 'hover:bg-yellow-50' : 'hover:bg-orange-50'}`}
+              className={`w-8 h-8 rounded-full bg-white/90 dark:bg-[#2A2420]/80 flex items-center justify-center hover:scale-110 transition-all shadow-sm ${isInColl ? 'hover:bg-yellow-50' : 'hover:bg-brand-muted'}`}
               title={isInColl ? "Đã có trong bộ sưu tập" : "Thêm vào bộ sưu tập"}
             >
               {isInColl ? (
                 <Check className="w-4 h-4 text-yellow-500" />
               ) : (
-                <Plus className="w-4 h-4 text-orange-500" />
+                <Plus className="w-4 h-4 text-brand" />
               )}
             </button>
           )}
@@ -131,12 +131,12 @@ export function FoodCard({ item, userId, onRemove, showRemove, showAddCollection
         {/* Badges bottom */}
         <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between pointer-events-none">
           {item.match && (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-orange-500 text-white">
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-brand text-white">
               ⭐ {item.match} Match
             </span>
           )}
           {item.dist && (
-            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-semibold bg-white/90 dark:bg-gray-900/80 text-teal-600 dark:text-teal-400 backdrop-blur-sm">
+            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-semibold bg-white/90 dark:bg-[#2A2420]/80 text-teal-600 dark:text-teal-400 backdrop-blur-sm">
               <MapPin className="w-3 h-3" /> {item.dist} {item.total_reviews !== undefined && item.total_reviews > 0 && `(${item.total_reviews})`}
             </span>
           )}
@@ -144,23 +144,23 @@ export function FoodCard({ item, userId, onRemove, showRemove, showAddCollection
       </div>
 
       <div className="p-4 flex-1 flex flex-col">
-        <h3 className="text-base font-bold text-gray-800 dark:text-white mb-1 line-clamp-1">
+        <h3 className="text-base font-bold text-gray-800 dark:text-[#E6DFD5] mb-1 line-clamp-1">
           {item.name}
         </h3>
         {item.restaurantName && (
-          <p className="text-xs font-semibold text-orange-500 mb-2 line-clamp-1">
+          <p className="text-xs font-semibold text-brand mb-2 line-clamp-1">
             {item.restaurantName}
           </p>
         )}
         {item.reason && (
-          <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed mb-3 line-clamp-2 flex-1">
+          <p className="text-xs text-gray-500 dark:text-[#9A8A7A] leading-relaxed mb-3 line-clamp-2 flex-1">
             {item.reason}
           </p>
         )}
         {item.tags && item.tags.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mt-auto pt-2">
             {item.tags.map(tag => (
-              <span key={tag} className="px-2 py-1 rounded-full text-[10px] font-medium bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300">
+              <span key={tag} className="px-2 py-1 rounded-full text-[10px] font-medium bg-gray-100 dark:bg-[#3D312A] text-gray-600 dark:text-[#C8BFB0]">
                 {tag}
               </span>
             ))}

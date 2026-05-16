@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useEffect, useState } from "react";
 import { PageLayout } from "../../components/PageLayout";
@@ -30,7 +30,7 @@ export default function RecommendationsPage() {
     <PageLayout>
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
-          <Sparkles className="w-8 h-8 text-orange-500 fill-orange-500/20" />
+          <Sparkles className="w-8 h-8 text-brand fill-brand/20" />
           Gợi ý dành riêng cho bạn
         </h1>
         <p className="text-gray-500 dark:text-gray-400 mt-2">
@@ -45,7 +45,7 @@ export default function RecommendationsPage() {
           <p className="text-gray-500 dark:text-gray-400 mb-6">Hãy tìm kiếm và yêu thích thêm các món ăn để AI hiểu bạn hơn nhé!</p>
           <button 
             onClick={() => router.push('/')}
-            className="px-6 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-full font-semibold transition-colors"
+            className="px-6 py-2.5 bg-brand hover:bg-brand-hover text-white rounded-full font-semibold transition-colors"
           >
             Khám phá ngay
           </button>

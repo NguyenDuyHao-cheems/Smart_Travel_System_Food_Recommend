@@ -1,30 +1,23 @@
 "use client";
 
 import React, { useState } from "react";
-import { Roboto } from "next/font/google";
-import { Sidebar } from "./Sidebar";
-import { Header } from "./ui/Header";
+import Link from "next/link";
+import { AppShell } from "./AppShell";
 
-// [FIX-CONFLICT]: Import và sử dụng font Roboto để đồng bộ với trang Khám phá, sửa lỗi lệch font
-const roboto = Roboto({
-  subsets: ["latin", "vietnamese"],
-  weight: ["300", "400", "500", "700", "900"],
-});
-
-export function PageLayout({ children }: { children: React.ReactNode }) {
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-
+/** Shared layout wrapper for secondary pages (favorites, history, collections, etc.)
+ *  Uses the new AppShell with hamburger drawer.
+ */
+export function PageLayout({ children, title }: { children: React.ReactNode; title?: string }) {
   return (
-    <div className={`flex min-h-screen bg-[#F7F8FA] dark:bg-gray-900 transition-colors duration-300 ${roboto.className}`}>
-      <Sidebar isCollapsed={isSidebarCollapsed} onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)} />
-      <div className={`flex-1 flex flex-col transition-all duration-300 ${isSidebarCollapsed ? 'ml-[80px]' : 'ml-[260px]'}`}>
-        <Header showBack={true} />
-        <main className="flex-1 px-6 md:px-10 py-8 overflow-y-auto">
-          <div className="max-w-5xl mx-auto">
-            {children}
-          </div>
-        </main>
+    <AppShell>
+      <div className="max-w-5xl mx-auto px-4 md:px-8 py-8">
+        {title && (
+          <h1 className="text-2xl md:text-3xl font-black text-[#3D312A] dark:text-[#E6DFD5] mb-6 tracking-tight uppercase">
+            {title}
+          </h1>
+        )}
+        {children}
       </div>
-    </div>
+    </AppShell>
   );
 }

@@ -66,7 +66,7 @@ export function AddToCollectionModal({ isOpen, onClose, item, onSuccess }: AddTo
 
         <div className="py-2 max-h-[300px] overflow-y-auto space-y-2">
           {collections.length === 0 && !isCreating ? (
-            <div className="text-center py-6 text-gray-500 dark:text-gray-400 text-sm">
+            <div className="text-center py-6 text-gray-500 dark:text-[#9A8A7A] text-sm">
               Bạn chưa có bộ sưu tập nào.
             </div>
           ) : (
@@ -79,13 +79,13 @@ export function AddToCollectionModal({ isOpen, onClose, item, onSuccess }: AddTo
                   disabled={isAdded}
                   className={`w-full flex items-center justify-between p-3 rounded-xl border text-left transition-colors ${
                     isAdded 
-                      ? 'bg-gray-50 dark:bg-gray-800/50 border-gray-100 dark:border-gray-800 opacity-70 cursor-not-allowed' 
-                      : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:border-indigo-500 dark:hover:border-indigo-500 cursor-pointer'
+                      ? 'bg-gray-50 dark:bg-[#3D312A]/50 border-gray-100 dark:border-[#3D312A] opacity-70 cursor-not-allowed' 
+                      : 'bg-white dark:bg-[#3D312A] border-gray-200 dark:border-[#4D3D32] hover:border-indigo-500 dark:hover:border-indigo-500 cursor-pointer'
                   }`}
                 >
                   <div className="flex items-center gap-3">
                     <FolderPlus className={`w-5 h-5 ${isAdded ? 'text-gray-400' : 'text-indigo-500'}`} />
-                    <span className={`font-medium ${isAdded ? 'text-gray-500 dark:text-gray-400' : 'text-gray-900 dark:text-white'}`}>
+                    <span className={`font-medium ${isAdded ? 'text-gray-500 dark:text-[#9A8A7A]' : 'text-gray-900 dark:text-[#E6DFD5]'}`}>
                       {coll.name}
                     </span>
                   </div>
@@ -96,7 +96,7 @@ export function AddToCollectionModal({ isOpen, onClose, item, onSuccess }: AddTo
           )}
         </div>
 
-        <div className="pt-2 border-t border-gray-100 dark:border-gray-800">
+        <div className="pt-2 border-t border-gray-100 dark:border-[#3D312A]">
           {!isCreating ? (
             <button
               onClick={() => setIsCreating(true)}
@@ -112,7 +112,7 @@ export function AddToCollectionModal({ isOpen, onClose, item, onSuccess }: AddTo
                 value={newCollectionName}
                 onChange={(e) => setNewCollectionName(e.target.value)}
                 placeholder="Tên bộ sưu tập..."
-                className="flex-1 px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none"
+                className="flex-1 px-3 py-2 text-sm rounded-lg border border-gray-200 dark:border-[#4D3D32] bg-gray-50 dark:bg-[#2A2420] text-gray-900 dark:text-[#E6DFD5] focus:ring-2 focus:ring-indigo-500 outline-none"
                 autoFocus
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') handleCreateAndAdd();

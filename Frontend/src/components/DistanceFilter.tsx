@@ -59,14 +59,14 @@ export function DistanceFilter({
           onClick={handleToggle}
           className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-all duration-200 ${
             enabled
-              ? 'bg-teal-50 dark:bg-teal-500/10 border-teal-200 dark:border-teal-500/30 text-teal-600 dark:text-teal-400 shadow-sm shadow-teal-100 dark:shadow-none'
-              : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-teal-400 hover:text-teal-600'
+              ? 'bg-brand-muted dark:bg-brand/10 border-brand/30 dark:border-brand/30 text-brand-hover dark:text-brand shadow-sm shadow-brand/10 dark:shadow-none'
+              : 'bg-white dark:bg-[#3D312A] border-gray-200 dark:border-[#4D3D32] text-gray-600 dark:text-[#9A8A7A] hover:border-brand/70 hover:text-brand-hover'
           }`}
         >
           <MapPin className="w-4 h-4" />
           Lọc quán ở gần tôi
           {enabled && (
-            <span className="bg-teal-500/10 dark:bg-teal-500/20 rounded-full px-2 py-0.5 text-[10px] font-bold text-teal-600 dark:text-teal-400 ml-1">
+            <span className="bg-brand/10 dark:bg-brand/20 rounded-full px-2 py-0.5 text-[10px] font-bold text-brand-hover dark:text-brand ml-1">
               {radius} km
             </span>
           )}
@@ -75,7 +75,7 @@ export function DistanceFilter({
         {enabled && (
           <button
             onClick={() => setShowPanel((p) => !p)}
-            className="inline-flex items-center gap-1 text-xs font-bold text-teal-600 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-500/10 px-2 py-1 rounded-lg transition-colors"
+            className="inline-flex items-center gap-1 text-xs font-bold text-brand-hover dark:text-brand hover:bg-brand-muted dark:hover:bg-brand/10 px-2 py-1 rounded-lg transition-colors"
           >
             <SlidersHorizontal className="w-3.5 h-3.5" />
             Tuỳ chỉnh
@@ -86,9 +86,9 @@ export function DistanceFilter({
         )}
 
         {enabled && (
-          <span className="text-[11px] text-gray-500 dark:text-gray-400 whitespace-nowrap ml-auto">
+          <span className="text-[11px] text-gray-500 dark:text-[#9A8A7A] whitespace-nowrap ml-auto">
             Hiển thị{' '}
-            <span className="font-bold text-teal-600 dark:text-teal-400">
+            <span className="font-bold text-brand-hover dark:text-brand">
               {filteredCount}
             </span>
             /{totalCount} quán
@@ -107,7 +107,7 @@ export function DistanceFilter({
             transition={{ duration: 0.2 }}
             className="overflow-hidden"
           >
-            <div className="flex flex-wrap items-center gap-2 p-3 rounded-xl bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 shadow-sm mt-1">
+            <div className="flex flex-wrap items-center gap-2 p-3 rounded-xl bg-white dark:bg-[#3D312A] border border-gray-100 dark:border-[#4D3D32] shadow-sm mt-1">
               {/* Preset buttons */}
               {PRESET_RADII.map((preset) => (
                 <button
@@ -115,15 +115,15 @@ export function DistanceFilter({
                   onClick={() => handlePreset(preset.value)}
                   className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-all ${
                     radius === preset.value && !isCustom
-                      ? 'bg-teal-500 border-teal-500 text-white shadow-sm'
-                      : 'bg-gray-50 dark:bg-gray-700 border-gray-100 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:border-teal-400'
+                      ? 'bg-brand border-brand text-white shadow-sm'
+                      : 'bg-gray-50 dark:bg-[#4D3D32] border-gray-100 dark:border-[#5A4A3A] text-gray-600 dark:text-[#9A8A7A] hover:border-brand/70'
                   }`}
                 >
                   {preset.label}
                 </button>
               ))}
 
-              <div className="flex items-center gap-1.5 ml-2 border-l border-gray-100 dark:border-gray-700 pl-3">
+              <div className="flex items-center gap-1.5 ml-2 border-l border-gray-100 dark:border-[#4D3D32] pl-3">
                 <div className="relative">
                   <input
                     id="distance-custom-input"
@@ -134,14 +134,14 @@ export function DistanceFilter({
                     onChange={(e) => setCustomInput(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleCustomCommit()}
                     placeholder="Tự nhập"
-                    className={`w-24 px-2 py-1.5 text-xs rounded-lg border transition-all focus:outline-none focus:ring-1 focus:ring-teal-400 dark:bg-gray-700 dark:text-white
-                      ${isCustom ? 'border-teal-400 bg-teal-50 dark:bg-teal-900/20' : 'border-gray-200 dark:border-gray-600 bg-gray-50'}`}
+                    className={`w-24 px-2 py-1.5 text-xs rounded-lg border transition-all focus:outline-none focus:ring-1 focus:ring-brand/50 dark:bg-[#4D3D32] dark:text-[#E6DFD5]
+                      ${isCustom ? 'border-brand/70 bg-brand-muted dark:bg-brand/10' : 'border-gray-200 dark:border-[#5A4A3A] bg-gray-50'}`}
                   />
                   <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-bold text-gray-400">km</span>
                 </div>
                 <button
                   onClick={handleCustomCommit}
-                  className="px-3 py-1.5 text-xs font-bold rounded-lg bg-teal-500 text-white hover:bg-teal-600 transition-colors shadow-sm"
+                  className="px-3 py-1.5 text-xs font-bold rounded-lg bg-brand text-white hover:bg-brand-hover transition-colors shadow-sm"
                 >
                   Áp dụng
                 </button>

@@ -215,7 +215,7 @@ export default function OnboardingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-[#0B0F19] text-slate-900 dark:text-white flex flex-col items-center py-6 sm:py-12 px-4 sm:px-6 relative overflow-x-hidden">
+    <div className="min-h-screen bg-[#3D312A] dark:bg-[#2A2420] text-[#9A8A7A] dark:text-[#E6DFD5] flex flex-col items-center py-6 sm:py-12 px-4 sm:px-6 relative overflow-x-hidden">
 
       {/* Background Glows */}
       <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
@@ -225,7 +225,7 @@ export default function OnboardingPage() {
       </div>
 
       <motion.div
-        className="w-full max-w-3xl bg-white/80 dark:bg-[#121A2A]/80 backdrop-blur-xl shadow-[0_8px_30px_rgba(0,0,0,0.06)] dark:shadow-2xl rounded-3xl overflow-hidden border border-slate-900/10 dark:border-white/10 p-5 sm:p-10 mb-8 relative z-10"      >
+        className="w-full max-w-3xl bg-white/80 dark:bg-[#121A2A]/80 backdrop-blur-xl shadow-[0_8px_30px_rgba(0,0,0,0.06)] dark:shadow-2xl rounded-3xl overflow-hidden border border-[#4D3D32]/10 dark:border-white/10 p-5 sm:p-10 mb-8 relative z-10"      >
         <Header />
 
         <motion.div
@@ -270,7 +270,7 @@ export default function OnboardingPage() {
         </motion.div>
 
         {/* Nút Submit & Vùng Cảnh báo */}
-        <div className="mt-14 pt-8 border-t border-slate-900/10 dark:border-white/10 flex flex-col sm:flex-row justify-end items-stretch sm:items-center gap-5 bg-transparent -mx-6 sm:-mx-12 px-6 sm:px-12 -mb-6 sm:-mb-12 pb-6 sm:pb-12">
+        <div className="mt-14 pt-8 border-t border-[#4D3D32]/10 dark:border-white/10 flex flex-col sm:flex-row justify-end items-stretch sm:items-center gap-5 bg-transparent -mx-6 sm:-mx-12 px-6 sm:px-12 -mb-6 sm:-mb-12 pb-6 sm:pb-12">
 
           <AnimatePresence>
             {errorMsg && (
@@ -292,7 +292,7 @@ export default function OnboardingPage() {
             whileTap={{ scale: 0.98 }}
             onClick={handleSubmit}
             disabled={isSubmitting}
-            className="group w-full sm:w-auto shrink-0 relative inline-flex items-center justify-center gap-3 rounded-full bg-gradient-to-r from-amber-500 via-amber-400 to-orange-500 dark:from-amber-500 dark:via-orange-500 dark:to-red-600 px-8 py-4 text-[14px] sm:text-[15px] font-semibold text-white shadow-sm hover:shadow-md dark:shadow-[0_0_20px_rgba(245,158,11,0.35)] dark:hover:shadow-[0_0_30px_rgba(245,158,11,0.55)] focus:outline-none disabled:select-none disabled:opacity-50 transition-all duration-300"
+            className="group w-full sm:w-auto shrink-0 relative inline-flex items-center justify-center gap-3 rounded-full bg-gradient-to-r from-brand via-amber-400 to-brand dark:from-brand dark:via-brand dark:to-red-600 px-8 py-4 text-[14px] sm:text-[15px] font-semibold text-white shadow-sm hover:shadow-md dark:shadow-[0_0_20px_rgba(245,158,11,0.35)] dark:hover:shadow-[0_0_30px_rgba(245,158,11,0.55)] focus:outline-none disabled:select-none disabled:opacity-50 transition-all duration-300"
           >
             <IconBrain size={20} className={isSubmitting ? "animate-pulse" : ""} />
             {isSubmitting ? 'Đang đồng bộ Neural Data...' : 'Khởi tạo Hồ sơ AI'}
@@ -311,25 +311,25 @@ export default function OnboardingPage() {
 
 function Header() {
   return (
-    <div className="text-center space-y-4 pb-10 border-b border-slate-900/10 dark:border-white/5 relative" style={{ fontFamily: "'Times New Roman', Times, serif" }}>
+    <div className="text-center space-y-4 pb-10 border-b border-[#4D3D32]/10 dark:border-white/5 relative" style={{ fontFamily: "'Times New Roman', Times, serif" }}>
       <div className="absolute top-0 right-0 p-2 sm:p-0">
         <ThemeToggle />
       </div>
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[250px] h-[1px] bg-gradient-to-r from-transparent via-amber-500/50 to-transparent"></div>
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[250px] h-[1px] bg-gradient-to-r from-transparent via-brand/50 to-transparent"></div>
 
       <div className="inline-flex items-center gap-2 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-500/30 text-amber-600 dark:text-amber-400 text-[11px] uppercase tracking-[0.2em] font-bold px-4 py-1.5 rounded-full shadow-sm dark:shadow-[0_0_20px_rgba(245,158,11,0.15)] mb-3">
         <IconBrain size={14} className="animate-pulse" />
         AI Food Recommendation Engine
       </div>
 
-      <h1 className="text-[32px] sm:text-[42px] lg:text-[48px] font-bold text-slate-900 dark:text-white tracking-tight leading-tight">
+      <h1 className="text-[32px] sm:text-[42px] lg:text-[48px] font-bold text-[#9A8A7A] dark:text-[#E6DFD5] tracking-tight leading-tight">
         Khám Phá Bản Đồ Ẩm Thực <br />
-        <span className="italic text-transparent bg-clip-text bg-gradient-to-r from-amber-600 via-orange-500 to-red-600 dark:from-amber-400 dark:via-orange-400 dark:to-red-500 font-bold">
+        <span className="italic text-transparent bg-clip-text bg-gradient-to-r from-brand via-brand to-red-600 dark:from-brand dark:via-brand dark:to-red-500 font-bold">
           Dành Riêng Cho Bạn
         </span>
       </h1>
 
-      <p className="text-slate-600 dark:text-white/60 text-[16px] sm:text-[18px] max-w-xl mx-auto leading-relaxed mt-4">
+      <p className="text-[#9A8A7A] dark:text-[#E6DFD5]/60 text-[16px] sm:text-[18px] max-w-xl mx-auto leading-relaxed mt-4">
         Hãy cho chúng tôi biết sơ lược về sở thích của bạn. Trí tuệ nhân tạo sẽ tự động phân tích và chọn lọc ra những địa điểm thưởng thức tuyệt vời nhất, phù hợp chính xác với gu của riêng bạn.
       </p>
     </div>
@@ -340,8 +340,8 @@ function BasicInfoSection({ formData, setSingleItem }: { formData: OnboardingDat
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 p-1">
       <div className="space-y-3 group">
-        <label className="flex items-center gap-2 font-medium text-slate-700 dark:text-white/80 transition-colors group-focus-within:text-cyan-600 dark:group-focus-within:text-cyan-400">
-          <IconUser className="text-cyan-500 dark:text-cyan-400/80 group-focus-within:text-cyan-600 dark:group-focus-within:text-cyan-300 transition-colors" size={18} /> Độ tuổi của bạn (*)
+        <label className="flex items-center gap-2 font-medium text-[#9A8A7A] dark:text-[#E6DFD5]/80 transition-colors group-focus-within:text-brand-hover dark:group-focus-within:text-brand">
+          <IconUser className="text-cyan-500 dark:text-brand/80 group-focus-within:text-brand-hover dark:group-focus-within:text-cyan-300 transition-colors" size={18} /> Độ tuổi của bạn (*)
         </label>
         <div className="relative">
           <input
@@ -351,20 +351,20 @@ function BasicInfoSection({ formData, setSingleItem }: { formData: OnboardingDat
             placeholder="Ví dụ: 22..."
             value={formData.age}
             onChange={(e) => setSingleItem('age', e.target.value === '' ? '' : parseInt(e.target.value))}
-            className="w-full px-5 py-3.5 bg-slate-100 dark:bg-white/[0.03] border border-slate-900/10 dark:border-white/10 rounded-2xl outline-none text-slate-900 dark:text-white focus:border-cyan-500/50 focus:bg-white dark:focus:bg-[#080B13]/90 focus:ring-4 focus:ring-cyan-500/10 transition-all duration-300 font-medium placeholder-slate-400 dark:placeholder-white/20 shadow-inner dark:shadow-[inset_0_2px_10px_rgba(0,0,0,0.2)] hover:border-slate-900/20 dark:hover:border-white/20 focus:shadow-[0_0_15px_rgba(6,182,212,0.15)] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            className="w-full px-5 py-3.5 bg-[#3D312A] dark:bg-white/[0.03] border border-[#4D3D32]/10 dark:border-white/10 rounded-2xl outline-none text-[#9A8A7A] dark:text-[#E6DFD5] focus:border-cyan-500/50 focus:bg-white dark:focus:bg-[#080B13]/90 focus:ring-4 focus:ring-cyan-500/10 transition-all duration-300 font-medium placeholder-slate-400 dark:placeholder-white/20 shadow-inner dark:shadow-[inset_0_2px_10px_rgba(0,0,0,0.2)] hover:border-[#4D3D32]/20 dark:hover:border-white/20 focus:shadow-[0_0_15px_rgba(6,182,212,0.15)] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
           />
         </div>
       </div>
       <div className="space-y-3 group">
-        <label className="flex items-center gap-2 font-medium text-slate-700 dark:text-white/80 transition-colors group-focus-within:text-cyan-600 dark:group-focus-within:text-cyan-400">
-          <IconMapPin className="text-cyan-500 dark:text-cyan-400/80 group-focus-within:text-cyan-600 dark:group-focus-within:text-cyan-300 transition-colors" size={18} /> Khu vực hiện tại (*)
+        <label className="flex items-center gap-2 font-medium text-[#9A8A7A] dark:text-[#E6DFD5]/80 transition-colors group-focus-within:text-brand-hover dark:group-focus-within:text-brand">
+          <IconMapPin className="text-cyan-500 dark:text-brand/80 group-focus-within:text-brand-hover dark:group-focus-within:text-cyan-300 transition-colors" size={18} /> Khu vực hiện tại (*)
         </label>
         <div className="relative">
             <input
               type="text"
               value={formData.location}
               onChange={(e) => setSingleItem('location', e.target.value)}
-              className="w-full px-5 py-3.5 bg-slate-50 dark:bg-white/[0.03] border border-slate-900/10 dark:border-white/10 rounded-2xl outline-none text-slate-800 dark:text-white focus:border-cyan-400 focus:bg-white dark:focus:bg-[#080B13]/90 focus:ring-4 focus:ring-cyan-500/10 transition-all duration-300 font-medium placeholder-slate-400 dark:placeholder-white/20 shadow-sm dark:shadow-[inset_0_2px_10px_rgba(0,0,0,0.2)] dark:focus:shadow-[0_0_15px_rgba(6,182,212,0.1)] focus:shadow-[0_4px_20px_rgba(6,182,212,0.1)]"
+              className="w-full px-5 py-3.5 bg-[#3D312A] dark:bg-white/[0.03] border border-[#4D3D32]/10 dark:border-white/10 rounded-2xl outline-none text-[#9A8A7A] dark:text-[#E6DFD5] focus:border-cyan-400 focus:bg-white dark:focus:bg-[#080B13]/90 focus:ring-4 focus:ring-cyan-500/10 transition-all duration-300 font-medium placeholder-slate-400 dark:placeholder-white/20 shadow-sm dark:shadow-[inset_0_2px_10px_rgba(0,0,0,0.2)] dark:focus:shadow-[0_0_15px_rgba(6,182,212,0.1)] focus:shadow-[0_4px_20px_rgba(6,182,212,0.1)]"
               placeholder="Nhập địa chỉ của bạn"
             />
         </div>
@@ -376,14 +376,14 @@ function BasicInfoSection({ formData, setSingleItem }: { formData: OnboardingDat
 function FavoriteDishes({ selected, onChange }: { selected: string[], onChange: (val: string) => void }) {
   return (
     <Section title="Món ăn yêu thích (*)" icon={<IconMeat size={20} />} subtitle={`Đã chọn ${selected.length}/5 (Yêu cầu 3-5 món)`}>
-      <div className="text-[14px] text-slate-500 dark:text-zinc-400 mb-6 mt-1 font-light">Chọn ngẫu nhiên 3 đến 5 đồ ăn khoái khẩu nhất của bạn:</div>
+      <div className="text-[14px] text-[#9A8A7A] dark:text-zinc-400 mb-6 mt-1 font-light">Chọn ngẫu nhiên 3 đến 5 đồ ăn khoái khẩu nhất của bạn:</div>
 
       <div className="space-y-4">
         {FAV_DISH_CATEGORIES.map((cat, idx) => {
           let themeClasses = "";
           let DotColor = "";
-          if (idx === 0) { themeClasses = "from-orange-50 dark:from-orange-900/10 border-orange-900/10 dark:border-orange-500/20 hover:border-orange-900/20 dark:hover:border-orange-500/40 text-orange-600 dark:text-orange-400/80 dark:shadow-[inset_0_0_20px_rgba(249,115,22,0.02)]"; DotColor = "bg-orange-500 shadow-sm dark:bg-orange-500/80 dark:shadow-[0_0_8px_rgba(249,115,22,0.8)]"; } // Đặc sản VN
-          else if (idx === 1) { themeClasses = "from-indigo-50 dark:from-indigo-900/10 border-indigo-900/10 dark:border-indigo-500/20 hover:border-indigo-900/20 dark:hover:border-indigo-500/40 text-indigo-600 dark:text-indigo-400/80 dark:shadow-[inset_0_0_20px_rgba(99,102,241,0.02)]"; DotColor = "bg-indigo-500 shadow-sm dark:bg-indigo-500/80 dark:shadow-[0_0_8px_rgba(99,102,241,0.8)]"; } // Á Âu
+          if (idx === 0) { themeClasses = "from-brand-muted dark:from-brand/5 border-brand/10 dark:border-brand/20 hover:border-brand/20 dark:hover:border-brand/40 text-brand-hover dark:text-brand/80 dark:shadow-[inset_0_0_20px_rgba(249,115,22,0.02)]"; DotColor = "bg-brand shadow-sm dark:bg-brand/80 dark:shadow-[0_0_8px_rgba(249,115,22,0.8)]"; } // Đặc sản VN
+          else if (idx === 1) { themeClasses = "from-indigo-50 dark:from-indigo-900/10 border-indigo-900/10 dark:border-indigo-500/20 hover:border-indigo-900/20 dark:hover:border-indigo-500/40 text-brand-hover dark:text-brand/80 dark:shadow-[inset_0_0_20px_rgba(99,102,241,0.02)]"; DotColor = "bg-brand shadow-sm dark:bg-brand/80 dark:shadow-[0_0_8px_rgba(99,102,241,0.8)]"; } // Á Âu
           else if (idx === 2) { themeClasses = "from-pink-50 dark:from-pink-900/10 border-pink-900/10 dark:border-pink-500/20 hover:border-pink-900/20 dark:hover:border-pink-500/40 text-pink-600 dark:text-pink-400/80 dark:shadow-[inset_0_0_20px_rgba(236,72,153,0.02)]"; DotColor = "bg-pink-500 shadow-sm dark:bg-pink-500/80 dark:shadow-[0_0_8px_rgba(236,72,153,0.8)]"; } // Ăn Vặt
           else { themeClasses = "from-sky-50 dark:from-sky-900/10 border-sky-900/10 dark:border-sky-500/20 hover:border-sky-900/20 dark:hover:border-sky-500/40 text-sky-600 dark:text-sky-400/80 dark:shadow-[inset_0_0_20px_rgba(14,165,233,0.02)]"; DotColor = "bg-sky-500 shadow-sm dark:bg-sky-500/80 dark:shadow-[0_0_8px_rgba(14,165,233,0.8)]"; } // Tráng miệng
 
@@ -424,12 +424,12 @@ function FavoriteDishes({ selected, onChange }: { selected: string[], onChange: 
 function SpicyLevelPicker({ selected, onChange }: { selected: SpicyLevel, onChange: (val: SpicyLevel) => void }) {
   return (
     <Section title="Mức độ ăn cay (*)" icon={<IconFlame size={20} />}>
-      <div className="bg-gradient-to-br from-orange-50 dark:from-orange-900/10 to-transparent p-5 sm:p-6 rounded-3xl border border-orange-900/10 dark:border-orange-500/20 dark:shadow-[inset_0_0_20px_rgba(249,115,22,0.02)] relative overflow-hidden group hover:border-orange-900/20 dark:hover:border-orange-500/40 transition-colors mt-2">
+      <div className="bg-gradient-to-br from-brand-muted dark:from-brand/5 to-transparent p-5 sm:p-6 rounded-3xl border border-brand/10 dark:border-brand/20 dark:shadow-[inset_0_0_20px_rgba(249,115,22,0.02)] relative overflow-hidden group hover:border-brand/20 dark:hover:border-brand/40 transition-colors mt-2">
         <div className="absolute -top-4 -right-4 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
           <IconFlame size={120} />
         </div>
-        <div className="text-[12px] font-bold text-orange-600 dark:text-orange-400/80 mb-5 tracking-widest uppercase flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-orange-500 shadow-sm dark:bg-orange-500/80 dark:shadow-[0_0_8px_rgba(249,115,22,0.8)] animate-pulse"></div>
+        <div className="text-[12px] font-bold text-brand-hover dark:text-brand/80 mb-5 tracking-widest uppercase flex items-center gap-2">
+          <div className="w-2 h-2 rounded-full bg-brand shadow-sm dark:bg-brand/80 dark:shadow-[0_0_8px_rgba(249,115,22,0.8)] animate-pulse"></div>
           Kháng Hỏa Tùy Chỉnh
         </div>
         <div className="flex flex-wrap gap-3 relative z-10 transition-all">
@@ -440,8 +440,8 @@ function SpicyLevelPicker({ selected, onChange }: { selected: SpicyLevel, onChan
                 key={opt.id}
                 onClick={() => onChange(opt.id)}
                 className={`px-5 py-3 rounded-full font-semibold transition-all duration-300 border ${isActive
-                  ? 'border-orange-500 bg-orange-100 text-orange-600 shadow-sm dark:border-orange-500/50 dark:bg-orange-500/20 dark:text-orange-400 dark:shadow-[0_0_15px_rgba(249,115,22,0.2)] scale-[1.02]'
-                  : 'border-slate-900/10 bg-white text-slate-500 hover:border-orange-900/20 hover:bg-orange-50 hover:text-orange-600 dark:border-white/10 dark:bg-white/5 dark:text-white/50 dark:hover:border-orange-500/30 dark:hover:bg-white/10 dark:hover:text-white/80'
+                  ? 'border-brand bg-brand-muted text-brand-hover shadow-sm dark:border-brand/50 dark:bg-brand/20 dark:text-brand dark:shadow-[0_0_15px_rgba(249,115,22,0.2)] scale-[1.02]'
+                  : 'border-[#4D3D32]/10 bg-white text-[#9A8A7A] hover:border-brand/20 hover:bg-brand-muted hover:text-brand-hover dark:border-white/10 dark:bg-white/5 dark:text-[#E6DFD5]/50 dark:hover:border-brand/30 dark:hover:bg-white/10 dark:hover:text-white/80'
                   }`}
               >
                 {opt.label}
@@ -513,21 +513,21 @@ function BudgetPicker({ selected, onChange }: { selected: BudgetLevel, onChange:
               key={opt.id}
               onClick={() => onChange(opt.id)}
               className={`relative cursor-pointer rounded-3xl p-5 sm:p-6 transition-all duration-300 overflow-hidden group border ${isActive
-                ? 'border-amber-900/20 bg-gradient-to-br from-amber-50 to-white shadow-lg shadow-amber-500/10 dark:border-amber-500/50 dark:from-amber-500/20 dark:to-transparent dark:shadow-[0_0_20px_rgba(245,158,11,0.2)]'
-                : 'border-slate-900/10 bg-slate-50/50 hover:border-amber-900/20 hover:shadow-md hover:shadow-amber-500/5 hover:bg-amber-50/30 dark:border-white/10 dark:hover:border-amber-500/30 dark:bg-gradient-to-br dark:from-white/[0.02] dark:to-transparent dark:hover:from-amber-900/10'
+                ? 'border-amber-900/20 bg-gradient-to-br from-amber-50 to-white shadow-lg shadow-amber-500/10 dark:border-brand/50 dark:from-brand/20 dark:to-transparent dark:shadow-[0_0_20px_rgba(245,158,11,0.2)]'
+                : 'border-[#4D3D32]/10 bg-[#3D312A]/50 hover:border-amber-900/20 hover:shadow-md hover:shadow-brand/5 hover:bg-amber-50/30 dark:border-white/10 dark:hover:border-amber-500/30 dark:bg-gradient-to-br dark:from-white/[0.02] dark:to-transparent dark:hover:from-amber-900/10'
                 }`}
             >
               {/* Background Watermark */}
-              <div className={`absolute -bottom-6 -right-6 p-4 transition-opacity duration-300 ${isActive ? 'opacity-10 text-amber-500' : 'opacity-5 text-slate-300 group-hover:text-amber-400 dark:text-white dark:group-hover:opacity-10 dark:group-hover:text-amber-500'}`}>
+              <div className={`absolute -bottom-6 -right-6 p-4 transition-opacity duration-300 ${isActive ? 'opacity-10 text-amber-500' : 'opacity-5 text-[#9A8A7A] group-hover:text-amber-400 dark:text-[#E6DFD5] dark:group-hover:opacity-10 dark:group-hover:text-amber-500'}`}>
                 <IconCoin size={100} />
               </div>
 
               <div className="relative z-10">
-                <div className={`font-semibold text-lg flex items-center gap-2 ${isActive ? 'text-amber-600 dark:text-amber-400' : 'text-slate-700 dark:text-white/80'}`}>
-                  {isActive && <div className="w-1.5 h-1.5 rounded-full bg-amber-500 dark:bg-amber-400 dark:shadow-[0_0_8px_rgba(245,158,11,0.8)] animate-pulse"></div>}
+                <div className={`font-semibold text-lg flex items-center gap-2 ${isActive ? 'text-amber-600 dark:text-amber-400' : 'text-[#9A8A7A] dark:text-[#E6DFD5]/80'}`}>
+                  {isActive && <div className="w-1.5 h-1.5 rounded-full bg-brand dark:bg-amber-400 dark:shadow-[0_0_8px_rgba(245,158,11,0.8)] animate-pulse"></div>}
                   {opt.label}
                 </div>
-                <div className={`text-[13px] mt-2 font-light leading-relaxed ${isActive ? 'text-amber-600/80 dark:text-amber-400/80' : 'text-slate-500 dark:text-white/40'}`}>{opt.desc}</div>
+                <div className={`text-[13px] mt-2 font-light leading-relaxed ${isActive ? 'text-amber-600/80 dark:text-amber-400/80' : 'text-[#9A8A7A] dark:text-[#E6DFD5]/40'}`}>{opt.desc}</div>
               </div>
 
               {isActive && (
@@ -551,7 +551,7 @@ function Section({ title, icon, subtitle, children }: { title: string, icon: Rea
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-        <div className="flex items-center gap-3 text-slate-800 dark:text-white font-medium text-[16px]">
+        <div className="flex items-center gap-3 text-[#9A8A7A] dark:text-[#E6DFD5] font-medium text-[16px]">
           <div className="text-amber-500 dark:text-amber-400 bg-amber-50 dark:bg-amber-400/10 p-2 rounded-xl border border-amber-900/10 dark:border-amber-400/20 shadow-sm dark:shadow-[0_0_10px_rgba(245,158,11,0.1)]">
             {icon}
           </div>
@@ -574,10 +574,10 @@ const Badge = React.memo(({ label, isActive, onClick, theme = 'cyan', disabled =
   let activeStyle = '';
   if (theme === 'red') activeStyle = 'bg-red-50 dark:bg-red-500/20 border-red-500 text-red-700 dark:border-red-500/50 dark:text-red-400 shadow-sm dark:shadow-[0_0_15px_rgba(239,68,68,0.2)]';
   else if (theme === 'emerald') activeStyle = 'bg-emerald-50 dark:bg-emerald-500/20 border-emerald-500 text-emerald-700 dark:border-emerald-500/50 dark:text-emerald-400 shadow-sm dark:shadow-[0_0_15px_rgba(16,185,129,0.2)]';
-  else activeStyle = 'border-amber-500 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:border-amber-500/50 dark:text-amber-400 shadow-sm dark:shadow-[0_0_15px_rgba(245,158,11,0.2)] z-10';
+  else activeStyle = 'border-amber-500 bg-amber-50 dark:bg-brand/10 text-amber-700 dark:border-brand/50 dark:text-amber-400 shadow-sm dark:shadow-[0_0_15px_rgba(245,158,11,0.2)] z-10';
 
-  let inactiveStyle = 'border-slate-900/10 dark:border-white/10 bg-white dark:bg-white/[0.03] text-slate-600 dark:text-white/60 hover:bg-slate-50 dark:hover:bg-white/[0.06] hover:border-slate-900/20 dark:hover:border-white/20';
-  if (disabled && !isActive) inactiveStyle = 'bg-slate-100 dark:bg-[#080B13] border-slate-900/10 dark:border-white/5 text-slate-400 dark:text-white/20 cursor-not-allowed';
+  let inactiveStyle = 'border-[#4D3D32]/10 dark:border-white/10 bg-white dark:bg-white/[0.03] text-[#9A8A7A] dark:text-[#E6DFD5]/60 hover:bg-[#3D312A] dark:hover:bg-white/[0.06] hover:border-[#4D3D32]/20 dark:hover:border-white/20';
+  if (disabled && !isActive) inactiveStyle = 'bg-[#3D312A] dark:bg-[#080B13] border-[#4D3D32]/10 dark:border-white/5 text-[#9A8A7A] dark:text-[#E6DFD5]/20 cursor-not-allowed';
 
   return (
     <motion.button

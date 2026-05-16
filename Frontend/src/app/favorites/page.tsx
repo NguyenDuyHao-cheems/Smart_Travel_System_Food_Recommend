@@ -35,23 +35,23 @@ export default function FavoritesPage() {
   return (
     <PageLayout>
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-[#E6DFD5] flex items-center gap-3">
           <Heart className="w-8 h-8 text-red-500 fill-red-500/20" />
           Món ăn yêu thích
         </h1>
-        <p className="text-gray-500 dark:text-gray-400 mt-2">
+        <p className="text-gray-500 dark:text-[#9A8A7A] mt-2">
           Danh sách các món ăn và địa điểm bạn đã lưu lại
         </p>
       </div>
 
       {favorites.length === 0 ? (
-        <div className="text-center py-20 bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700">
-          <Heart className="w-16 h-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-gray-700 dark:text-gray-200 mb-2">Bạn chưa có món nào trong yêu thích</h2>
-          <p className="text-gray-500 dark:text-gray-400 mb-6">Hãy khám phá và lưu lại những món ăn ngon nhé!</p>
+        <div className="text-center py-20 bg-white dark:bg-[#3D312A] rounded-3xl border border-gray-100 dark:border-[#4D3D32]">
+          <Heart className="w-16 h-16 text-gray-300 dark:text-[#6A5A4A] mx-auto mb-4" />
+          <h2 className="text-xl font-bold text-gray-700 dark:text-[#E6DFD5] mb-2">Bạn chưa có món nào trong yêu thích</h2>
+          <p className="text-gray-500 dark:text-[#9A8A7A] mb-6">Hãy khám phá và lưu lại những món ăn ngon nhé!</p>
           <button 
             onClick={() => router.push('/')}
-            className="px-6 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-full font-semibold transition-colors"
+            className="px-6 py-2.5 bg-brand hover:bg-brand-hover text-white rounded-full font-semibold transition-colors"
           >
             Khám phá ngay
           </button>

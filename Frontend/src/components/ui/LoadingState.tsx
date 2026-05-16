@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
@@ -92,7 +92,7 @@ function StatusText() {
     <motion.p
       animate={{ opacity: visible ? 1 : 0 }}
       transition={{ duration: 0.25 }}
-      className="text-sm font-medium text-orange-500 dark:text-orange-400"
+      className="text-sm font-medium text-brand dark:text-brand"
     >
       {AI_STATUS_MESSAGES[msgIdx]}
     </motion.p>
@@ -122,10 +122,10 @@ export function LoadingState({ searchQuery, locError, getLocation }: LoadingStat
           <motion.div
             animate={{ scale: [1, 1.3, 1], opacity: [0.5, 0, 0.5] }}
             transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-            className="absolute inset-0 rounded-full border-2 border-orange-300 dark:border-orange-500/40 -m-3"
+            className="absolute inset-0 rounded-full border-2 border-brand/50 dark:border-brand/40 -m-3"
           />
-          <div className="w-14 h-14 rounded-full bg-orange-50 dark:bg-orange-500/20 flex items-center justify-center">
-            <Sparkles className="w-7 h-7 text-orange-500" />
+          <div className="w-14 h-14 rounded-full bg-brand-muted dark:bg-brand/20 flex items-center justify-center">
+            <Sparkles className="w-7 h-7 text-brand" />
           </div>
         </div>
 
@@ -153,7 +153,7 @@ export function LoadingState({ searchQuery, locError, getLocation }: LoadingStat
           <motion.div
             animate={{ x: ['-100%', '200%'] }}
             transition={{ duration: 1, repeat: Infinity, ease: 'easeInOut' }}
-            className="h-full w-1/2 rounded-full bg-gradient-to-r from-transparent via-orange-400 to-transparent"
+            className="h-full w-1/2 rounded-full bg-gradient-to-r from-transparent via-brand to-transparent"
           />
         </div>
       </div>
