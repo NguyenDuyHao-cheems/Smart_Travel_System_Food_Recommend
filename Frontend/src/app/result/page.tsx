@@ -74,18 +74,25 @@ const VIBE_TAGS: VibeTag[] = [
   { label: 'Local', emoji: '📍', bgLight: 'bg-orange-50', bgDark: 'dark:bg-orange-500/10', text: 'text-orange-500', border: 'border-orange-100 dark:border-orange-500/20' },
 ];
 
+const DEFAULT_TAG_STYLES = [
+  { emoji: '🏷️', bgLight: 'bg-gray-50', bgDark: 'dark:bg-gray-500/10', text: 'text-gray-600 dark:text-gray-400', border: 'border-gray-200 dark:border-gray-500/20' },
+  { emoji: '✨', bgLight: 'bg-indigo-50', bgDark: 'dark:bg-indigo-500/10', text: 'text-indigo-600 dark:text-indigo-400', border: 'border-indigo-100 dark:border-indigo-500/20' },
+  { emoji: '🌿', bgLight: 'bg-emerald-50', bgDark: 'dark:bg-emerald-500/10', text: 'text-emerald-600 dark:text-emerald-400', border: 'border-emerald-100 dark:border-emerald-500/20' }
+];
+
 function getTagsForItem(item: RecommendResult, index: number): VibeTag[] {
-  if (item.tags && Array.isArray(item.tags)) {
-    return item.tags.map((t: string) => VIBE_TAGS.find(v => v.label.toLowerCase() === t.toLowerCase()) || VIBE_TAGS[0]);
+  if (item.tags && Array.isArray(item.tags) && item.tags.length > 0) {
+    return item.tags.map((t: string, i: number) => {
+      const found = VIBE_TAGS.find(v => v.label.toLowerCase() === t.toLowerCase());
+      if (found) return found;
+      const defaultStyle = DEFAULT_TAG_STYLES[i % DEFAULT_TAG_STYLES.length];
+      return {
+        label: t,
+        ...defaultStyle
+      };
+    });
   }
-  const sets = [
-    [VIBE_TAGS[0], VIBE_TAGS[1], VIBE_TAGS[2]],
-    [VIBE_TAGS[1], VIBE_TAGS[3], VIBE_TAGS[5]],
-    [VIBE_TAGS[1], VIBE_TAGS[4], VIBE_TAGS[7]],
-    [VIBE_TAGS[6], VIBE_TAGS[9], VIBE_TAGS[7]],
-    [VIBE_TAGS[0], VIBE_TAGS[1], VIBE_TAGS[8]],
-  ];
-  return sets[index % sets.length];
+  return [];
 }
 
 function getMatchColor(match: string): string {
