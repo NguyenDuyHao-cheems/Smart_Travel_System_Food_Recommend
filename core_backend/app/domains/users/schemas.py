@@ -144,7 +144,6 @@ class CulinaryVibe(BaseModel):
     percent: int
     count: int
 
-
 class UserProfileResponse(BaseModel):
     id: str
     username: str
