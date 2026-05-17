@@ -203,42 +203,33 @@ export default function ProfilePage() {
                         return "bg-brand";
                       };
 
-                      const hasVibes = culinaryVibes.some(v => v.count > 0);
+                      const defaultVibes = [
+                        { label: "Món Nước (Ninh / Hầm) 🍜", percent: 0, count: 0 },
+                        { label: "Món Nướng (BBQ) 🥩", percent: 0, count: 0 },
+                        { label: "Món Lẩu 🍲", percent: 0, count: 0 },
+                        { label: "Món Chiên / Xào 🍤", percent: 0, count: 0 },
+                        { label: "Món Hấp / Trộn (Thanh đạm) 🥗", percent: 0, count: 0 },
+                        { label: "Món Ngọt / Tráng miệng 🍰", percent: 0, count: 0 }
+                      ];
 
-                      if (!hasVibes) {
-                        return (
-                          <div className="flex flex-col items-center justify-center py-6 text-center">
-                            <div className="w-16 h-16 bg-brand/5 dark:bg-brand/10 rounded-full flex items-center justify-center text-3xl mb-4 animate-bounce">
-                              🔍
-                            </div>
-                            <h4 className="text-sm font-bold text-gray-800 dark:text-[#E6DFD5] mb-2">
-                              Chưa có dữ liệu gu ẩm thực
-                            </h4>
-                            <p className="text-[11px] text-gray-500 dark:text-[#9A8A7A] max-w-[240px] leading-relaxed mx-auto">
-                              Hãy thực hiện tìm kiếm món ăn yêu thích để kích hoạt bản đồ ẩm thực của riêng bạn! 🌟
-                            </p>
-                          </div>
-                        );
-                      }
+                      const displayVibes = culinaryVibes.length > 0 ? culinaryVibes : defaultVibes;
 
-                      return culinaryVibes
-                        .filter(item => item.count > 0)
-                        .map((item, idx) => (
-                          <div key={idx}>
-                            <div className="flex justify-between text-xs font-bold mb-1.5 text-gray-600 dark:text-[#9A8A7A]">
-                              <span>{item.label}</span>
-                              <span className="text-brand dark:text-[#E8735A]">{item.percent}%</span>
-                            </div>
-                            <div className="h-2.5 bg-gray-100 dark:bg-gray-800/40 rounded-full overflow-hidden">
-                              <motion.div 
-                                initial={{ width: 0 }}
-                                animate={{ width: `${item.percent}%` }}
-                                transition={{ duration: 0.8, ease: "easeOut" }}
-                                className={`h-full rounded-full ${getVibeColor(item.label)}`}
-                              />
-                            </div>
+                      return displayVibes.map((item, idx) => (
+                        <div key={idx}>
+                          <div className="flex justify-between text-xs font-bold mb-1.5 text-gray-600 dark:text-[#9A8A7A]">
+                            <span>{item.label}</span>
+                            <span className="text-brand dark:text-[#E8735A]">{item.percent}%</span>
                           </div>
-                        ));
+                          <div className="h-2.5 bg-gray-100 dark:bg-gray-800/40 rounded-full overflow-hidden">
+                            <motion.div 
+                              initial={{ width: 0 }}
+                              animate={{ width: `${item.percent}%` }}
+                              transition={{ duration: 0.8, ease: "easeOut" }}
+                              className={`h-full rounded-full ${getVibeColor(item.label)}`}
+                            />
+                          </div>
+                        </div>
+                      ));
                     })()}
                   </div>
                 </div>
