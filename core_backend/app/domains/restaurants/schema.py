@@ -1,4 +1,4 @@
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 from typing import List, Optional, Union, Any
 from uuid import UUID
 
@@ -20,20 +20,27 @@ class DishResponse(BaseModel):
         if isinstance(v, list):
             return [str(item) for item in v if item]
         if isinstance(v, str):
-            # Handle comma-separated string
             return [a.strip() for a in v.split(',') if a.strip()]
         return None
 
     class Config:
         from_attributes = True
 
+class ReviewCreate(BaseModel):
+    rating: float = Field(..., ge=2.0, le=10.0)
+    text: Optional[str] = Field(None, max_length=2000)
+    is_anonymous: bool = False
+
 class ReviewResponse(BaseModel):
     id: str
+    user_id: Optional[str] = None       # returned so frontend can check ownership
     reviewer_name: Optional[str] = None
     rating: Optional[float] = None
     text: Optional[str] = None
     date: Optional[str] = None
-    
+    is_anonymous: bool = False
+    anonymous_number: Optional[int] = None
+
     class Config:
         from_attributes = True
 

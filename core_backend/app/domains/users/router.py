@@ -229,13 +229,14 @@ def get_current_user_profile(
         if "LIKE" in action:
             title = f'Đã yêu thích nhà hàng: "{res_name}"'
             icon_type = "heart"
-        elif ("VIEW" in action or "VISIT" in action) and "_DURATION" not in action:
-            title = f'Ghé thăm nhà hàng "{res_name}"'
-            icon_type = "visit"
+
         elif "REVIEW" in action:
             rating = metadata.get("rating") or "5 sao"
             title = f'Đánh giá "{rating}" cho nhà hàng "{res_name}"'
             icon_type = "star"
+        elif ("VIEW" in action or "VISIT" in action) and "_DURATION" not in action:
+            title = f'Ghé thăm nhà hàng "{res_name}"'
+            icon_type = "visit"
         elif "SAVE" in action or "COLLECT" in action or "BOOKMARK" in action:
             coll_name = metadata.get("collection_name") or "Bộ sưu tập của tôi"
             title = f'Lưu nhà hàng "{res_name}" vào bộ sưu tập "{coll_name}"'
@@ -263,13 +264,21 @@ def get_current_user_profile(
             )
         )
 
-    # 6. Fetch distinct active dates (YYYY-MM-DD)
-    from sqlalchemy import func
-    active_dates_query = db.query(
-        func.distinct(func.date(UserInteraction.created_at))
-    ).filter(UserInteraction.user_id == str(current_user.id)).all()
-    active_dates = [str(d[0]) for d in active_dates_query if d[0]]
-
+    # 6. Fetch active dates and convert from UTC to local Vietnam timezone (+07:00)
+    from datetime import timezone as _timezone, timedelta as _timedelta
+    vn_tz = _timezone(_timedelta(hours=7))
+    active_dates_query = db.query(UserInteraction.created_at).filter(
+        UserInteraction.user_id == str(current_user.id)
+    ).all()
+    active_dates_set = set()
+    for row in active_dates_query:
+        if row[0]:
+            dt = row[0]
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=_timezone.utc)
+            local_dt = dt.astimezone(vn_tz)
+            active_dates_set.add(local_dt.strftime("%Y-%m-%d"))
+    active_dates = sorted(list(active_dates_set))
 
     return UserProfileResponse(
         id=str(current_user.id),

@@ -3,6 +3,7 @@ from sqlalchemy.orm import relationship
 from app.core.database import Base
 from pgvector.sqlalchemy import Vector
 from app.core.config import settings
+from app.domains.users.models import UserAccount
 
 
 class RestaurantModel(Base):
@@ -75,25 +76,12 @@ class RestaurantTagModel(Base):
     tag_id = Column(Integer, ForeignKey("tags.id"), primary_key=True)
 
 
-class InteractionModel(Base):
-    __tablename__ = "user_interactions"
-
-    id = Column(String, primary_key=True, index=True)
-    anonymous_id = Column(String, nullable=True)
-    user_id = Column(String, nullable=True)
-    res_id = Column(String, ForeignKey("restaurants.id"), index=True)
-    dish_id = Column(String, ForeignKey("dishes.id"), nullable=True)
-    action_type = Column(String, nullable=False)
-    duration_sec = Column(Integer, nullable=True)
-    created_at = Column(String, nullable=True)
-    interaction_metadata = Column("metadata", JSON, default={})
-
-
 class ReviewModel(Base):
     __tablename__ = "reviews"
 
     id = Column(String, primary_key=True, index=True)
     res_id = Column(String, ForeignKey("restaurants.id"), index=True)
+    user_id = Column(String, ForeignKey("users.id"), nullable=True, index=True)
     reviewer_name = Column(String, nullable=True)
     rating = Column(Float, nullable=True)
     text = Column(String, nullable=True)
@@ -103,3 +91,7 @@ class ReviewModel(Base):
     sentiment_confidence = Column(Float, nullable=True)
     sentiment_model = Column(String, nullable=True)
     sentiment_analyzed_at = Column(DateTime(timezone=True), nullable=True)
+    is_anonymous = Column(Boolean, default=False)
+    anonymous_number = Column(Integer, nullable=True)
+
+    user = relationship("UserAccount")

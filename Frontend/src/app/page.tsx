@@ -80,7 +80,7 @@ function HomeContent() {
   useEffect(() => {
     async function fetchRecommendations() {
       if (!coords) return;
-      
+
       // Check cache first
       try {
         const cachedRecs = sessionStorage.getItem("home_recommendations");
@@ -123,7 +123,7 @@ function HomeContent() {
             });
             const finalRecs = uniqueResults.slice(0, 6);
             setRecommendations(finalRecs);
-            
+
             // Save to cache
             try {
               sessionStorage.setItem("home_recommendations", JSON.stringify(finalRecs));
@@ -253,8 +253,8 @@ function HomeContent() {
           <div
             role="alert"
             className={`relative z-20 flex items-center gap-3 px-5 py-3 text-sm font-medium border-b-2 ${healthStatus === "degraded"
-                ? "bg-amber-50 dark:bg-amber-900/20 border-amber-300 text-amber-900 dark:text-amber-300"
-                : "bg-red-50 dark:bg-red-900/20 border-red-300 text-red-900 dark:text-red-300"
+              ? "bg-amber-50 dark:bg-amber-900/20 border-amber-300 text-amber-900 dark:text-amber-300"
+              : "bg-red-50 dark:bg-red-900/20 border-red-300 text-red-900 dark:text-red-300"
               }`}
           >
             <AlertTriangle className="w-4 h-4 flex-shrink-0" />
