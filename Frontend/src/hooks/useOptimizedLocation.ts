@@ -12,7 +12,6 @@ export function useOptimizedLocation() {
     if (reduxCoords) {
       return reduxCoords;
     }
-
     try {
       // Create a promise that rejects after 5000ms
       const timeoutPromise = new Promise<{ lat: number; lng: number }>((_, reject) => {
