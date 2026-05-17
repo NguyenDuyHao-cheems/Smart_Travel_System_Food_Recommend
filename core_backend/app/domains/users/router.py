@@ -229,7 +229,7 @@ def get_current_user_profile(
         if "LIKE" in action:
             title = f'Đã yêu thích nhà hàng: "{res_name}"'
             icon_type = "heart"
-        elif "VIEW" in action or "VISIT" in action:
+        elif ("VIEW" in action or "VISIT" in action) and "_DURATION" not in action:
             title = f'Ghé thăm nhà hàng "{res_name}"'
             icon_type = "visit"
         elif "REVIEW" in action:
