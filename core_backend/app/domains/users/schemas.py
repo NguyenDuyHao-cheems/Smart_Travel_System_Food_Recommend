@@ -167,4 +167,3 @@ class UserProfileResponse(BaseModel):
     active_dates: List[str] = []
 
 
-
