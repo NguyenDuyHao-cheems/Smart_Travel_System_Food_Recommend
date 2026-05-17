@@ -76,20 +76,6 @@ class RestaurantTagModel(Base):
     tag_id = Column(Integer, ForeignKey("tags.id"), primary_key=True)
 
 
-class InteractionModel(Base):
-    __tablename__ = "user_interactions"
-
-    id = Column(String, primary_key=True, index=True)
-    anonymous_id = Column(String, nullable=True)
-    user_id = Column(String, nullable=True)
-    res_id = Column(String, ForeignKey("restaurants.id"), index=True)
-    dish_id = Column(String, ForeignKey("dishes.id"), nullable=True)
-    action_type = Column(String, nullable=False)
-    duration_sec = Column(Integer, nullable=True)
-    created_at = Column(String, nullable=True)
-    interaction_metadata = Column("metadata", JSON, default={})
-
-
 class ReviewModel(Base):
     __tablename__ = "reviews"
 
