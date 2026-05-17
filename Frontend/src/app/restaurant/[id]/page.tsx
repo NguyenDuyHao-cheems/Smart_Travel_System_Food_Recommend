@@ -141,7 +141,6 @@ export default function RestaurantDetailPage() {
 
   if (isLoading) return <AppShell><LoadingSkeleton /></AppShell>;
   if (error || !restaurant) return <AppShell><ErrorState message={error || 'Không tìm thấy dữ liệu.'} onBack={handleBack} /></AppShell>;
-
   // Allergen detection logic
   const ALLERGY_MAP: Record<string, string[]> = {
     "peanut": ["peanut", "groundnut", "satay", "lạc", "đậu phộng", "sa tế"],
