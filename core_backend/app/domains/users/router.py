@@ -254,7 +254,6 @@ def get_current_user_profile(
                 collection_name=metadata.get("collection_name") or (coll_name if "SAVE" in action or "COLLECT" in action or "BOOKMARK" in action else None)
             )
         )
-
     return UserProfileResponse(
         id=str(current_user.id),
         username=current_user.username,

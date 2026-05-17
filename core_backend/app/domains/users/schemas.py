@@ -144,7 +144,6 @@ class CulinaryVibe(BaseModel):
     percent: int
     count: int
 
-
 class RecentActivityResponse(BaseModel):
     title: str
     time_ago: str
