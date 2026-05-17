@@ -95,11 +95,11 @@ export default function RestaurantDetailPage() {
   }, [restaurant]);
 
   const handleDeleteReview = async (reviewId: string) => {
-    if (!authToken) return;
+    if (!authToken || !activeRestaurantId) return;
     setIsDeleting(true);
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
     try {
-      const res = await fetch(`${apiUrl}/api/v1/restaurants/${restaurantId}/reviews/${reviewId}`, {
+      const res = await fetch(`${apiUrl}/api/v1/restaurants/${activeRestaurantId}/reviews/${reviewId}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${authToken}` },
       });
@@ -667,9 +667,9 @@ export default function RestaurantDetailPage() {
       </AnimatePresence>
       {/* ── All Reviews Modal ── */}
       <AnimatePresence>
-        {isAllReviewsOpen && (
+        {isAllReviewsOpen && restaurant && (
           <AllReviewsModal
-            restaurantId={restaurantId}
+            restaurantId={activeRestaurantId || ''}
             restaurantName={restaurant.name}
             reviews={reviews}
             currentUserId={currentUserId}
@@ -683,9 +683,9 @@ export default function RestaurantDetailPage() {
 
       {/* ── Write Review Modal ── */}
       <AnimatePresence>
-        {isWriteReviewOpen && (
+        {isWriteReviewOpen && restaurant && (
           <WriteReviewModal
-            restaurantId={restaurantId}
+            restaurantId={activeRestaurantId || ''}
             restaurantName={restaurant.name}
             authToken={authToken}
             onClose={() => setIsWriteReviewOpen(false)}
