@@ -75,7 +75,7 @@ def get_current_user_profile(
 ) -> UserProfileResponse:
     """Trả về thông tin hồ sơ của tài khoản đang đăng nhập kèm trạng thái huy hiệu và gu ẩm thực động."""
     import uuid
-    from app.domains.users.models import UserOnboarding
+    from app.domains.users.models import UserOnboarding, UserInteraction
     from app.domains.search.models import SearchSession
     
     # 1. Truy vấn thông tin Onboarding để check Ăn chay
@@ -263,6 +263,13 @@ def get_current_user_profile(
             )
         )
 
+    # 6. Fetch distinct active dates (YYYY-MM-DD)
+    from sqlalchemy import func
+    active_dates_query = db.query(
+        func.distinct(func.date(UserInteraction.created_at))
+    ).filter(UserInteraction.user_id == str(current_user.id)).all()
+    active_dates = [str(d[0]) for d in active_dates_query if d[0]]
+
     return UserProfileResponse(
         id=str(current_user.id),
         username=current_user.username,
@@ -272,6 +279,7 @@ def get_current_user_profile(
         badges=badges_data,
         culinary_vibes=vibes_list,
         recent_activities=recent_activities,
+        active_dates=active_dates,
     )
 
 

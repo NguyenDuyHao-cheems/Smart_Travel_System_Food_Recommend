@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { AppShell } from "../../components/AppShell";
 import { useRouter } from "next/navigation";
+import { AttendanceCalendarModal } from "../../components/AttendanceCalendarModal";
 
 interface RecentActivity {
   title: string;
@@ -40,6 +41,8 @@ export default function ProfilePage() {
   const [culinaryVibes, setCulinaryVibes] = useState<{ label: string; percent: number; count: number }[]>([]);
   const [recentActivities, setRecentActivities] = useState<RecentActivity[]>([]);
   const [visibleActivitiesCount, setVisibleActivitiesCount] = useState<number>(5);
+  const [activeDates, setActiveDates] = useState<string[]>([]);
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
 
   const handleActivityClick = (activity: RecentActivity) => {
     if (activity.icon_type === "heart" && activity.res_name) {
@@ -95,6 +98,9 @@ export default function ProfilePage() {
           if (data.recent_activities) {
             setRecentActivities(data.recent_activities);
           }
+          if (data.active_dates) {
+            setActiveDates(data.active_dates);
+          }
         }
       } catch (err) {
         console.error("Failed to fetch profile:", err);
@@ -147,7 +153,10 @@ export default function ProfilePage() {
                     <button className="px-6 py-2.5 bg-brand text-white text-sm font-bold rounded-2xl hover:bg-brand-hover transition-all shadow-md shadow-brand/20 dark:shadow-none active:scale-95 cursor-pointer">
                       Chỉnh sửa hồ sơ
                     </button>
-                    <button className="p-2.5 bg-gray-50 dark:bg-[#3D312A] text-gray-500 rounded-2xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-all cursor-pointer border border-gray-100 dark:border-[#3D312A]">
+                    <button 
+                      onClick={() => setIsCalendarOpen(true)}
+                      className="p-2.5 bg-gray-50 dark:bg-[#3D312A] text-gray-500 rounded-2xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-all cursor-pointer border border-gray-100 dark:border-[#3D312A]"
+                    >
                       <Calendar className="w-5 h-5" />
                     </button>
                   </div>
@@ -346,6 +355,11 @@ export default function ProfilePage() {
               </div>
             </div>
           </div>
+      <AttendanceCalendarModal
+        isOpen={isCalendarOpen}
+        onClose={() => setIsCalendarOpen(false)}
+        activeDates={activeDates}
+      />
     </AppShell>
   );
 }
