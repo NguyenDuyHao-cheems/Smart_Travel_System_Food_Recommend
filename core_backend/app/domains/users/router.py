@@ -229,6 +229,7 @@ def get_current_user_profile(
         if "LIKE" in action:
             title = f'Đã yêu thích nhà hàng: "{res_name}"'
             icon_type = "heart"
+
         elif "REVIEW" in action:
             rating = metadata.get("rating") or "5 sao"
             title = f'Đánh giá "{rating}" cho nhà hàng "{res_name}"'
