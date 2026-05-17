@@ -249,7 +249,7 @@ def get_current_user_profile(
                 time_ago=time_ago,
                 icon_type=icon_type,
                 created_at=inter.created_at,
-                res_id=inter.res_id,
+                res_id=str(inter.res_id) if inter.res_id else None,
                 res_name=res_name,
                 collection_name=metadata.get("collection_name") or (coll_name if "SAVE" in action or "COLLECT" in action or "BOOKMARK" in action else None)
             )
