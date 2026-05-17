@@ -12,6 +12,7 @@ import { collectionService, Collection } from "../services/collectionService";
 import { RecommendResult } from "../app/result/page";
 import { FolderPlus, Plus, Check } from "lucide-react";
 import { toast } from "sonner";
+import { interactionService } from "../services/interactionService";
 
 interface AddToCollectionModalProps {
   isOpen: boolean;
@@ -38,15 +39,33 @@ export function AddToCollectionModal({ isOpen, onClose, item, onSuccess }: AddTo
   const handleAddToCollection = (collectionId: string) => {
     collectionService.addItemToCollection(userId, collectionId, item);
     toast.success("Đã thêm vào bộ sưu tập");
+    
+    const coll = collections.find(c => c.id === collectionId);
+    const collName = coll ? coll.name : "Bộ sưu tập";
+    
+    interactionService.logInteraction({
+      res_id: item.id,
+      action_type: "SAVE_RESTAURANT",
+      metadata: { restaurant_name: item.name, collection_name: collName }
+    });
+
     if (onSuccess) onSuccess();
     onClose();
   };
 
   const handleCreateAndAdd = () => {
-    const newColl = collectionService.createCollection(userId, newCollectionName.trim());
+    const collName = newCollectionName.trim();
+    const newColl = collectionService.createCollection(userId, collName);
     if (newColl) {
       collectionService.addItemToCollection(userId, newColl.id, item);
       toast.success("Đã tạo và thêm vào bộ sưu tập");
+      
+      interactionService.logInteraction({
+        res_id: item.id,
+        action_type: "SAVE_RESTAURANT",
+        metadata: { restaurant_name: item.name, collection_name: collName }
+      });
+
       setNewCollectionName("");
       setIsCreating(false);
       if (onSuccess) onSuccess();

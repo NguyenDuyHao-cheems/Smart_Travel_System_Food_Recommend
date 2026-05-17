@@ -103,6 +103,13 @@ export default function RestaurantDetailPage() {
         if (!res.ok) throw new Error('Không thể lấy thông tin nhà hàng.');
         const data = await res.json();
         setRestaurant(data);
+
+        // Log view interaction
+        interactionService.logInteraction({
+          res_id: data.id,
+          action_type: "VIEW_RESTAURANT",
+          metadata: { restaurant_name: data.name }
+        });
       } catch (err: any) {
         setError(err.message);
       } finally {

@@ -145,6 +145,16 @@ class CulinaryVibe(BaseModel):
     count: int
 
 
+class RecentActivityResponse(BaseModel):
+    title: str
+    time_ago: str
+    icon_type: str
+    created_at: datetime
+    res_id: Optional[str] = None
+    res_name: Optional[str] = None
+    collection_name: Optional[str] = None
+
+
 class UserProfileResponse(BaseModel):
     id: str
     username: str
@@ -153,5 +163,7 @@ class UserProfileResponse(BaseModel):
     created_at: datetime
     badges: Dict[str, BadgeProgress]
     culinary_vibes: List[CulinaryVibe]
+    recent_activities: List[RecentActivityResponse]
+
 
 

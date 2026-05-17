@@ -53,6 +53,12 @@ export function FoodCard({ item, userId, onRemove, showRemove, showAddCollection
       favoriteService.addFavorite(userId, item);
       setIsFav(true);
       toast.success("Đã thêm vào yêu thích");
+
+      interactionService.logInteraction({
+        res_id: item.id,
+        action_type: "LIKE_RESTAURANT",
+        metadata: { restaurant_name: item.name }
+      });
     }
   };
 
