@@ -30,8 +30,23 @@ export function UserDropdown({
         setIsOpen(false);
       }
     };
+
+    const handleStorageChange = () => {
+      if (propUsername === undefined || propUsername === null) {
+        setUsername(localStorage.getItem("username"));
+      }
+      if (propAvatar === undefined || propAvatar === null) {
+        setAvatar(localStorage.getItem("user_avatar"));
+      }
+    };
+
+    window.addEventListener("storage", handleStorageChange);
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
   }, [propUsername, propAvatar]);
 
   const handleLogout = () => {

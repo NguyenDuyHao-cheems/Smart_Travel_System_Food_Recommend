@@ -8,6 +8,11 @@ export function useOptimizedLocation() {
   const reduxCoords = useSelector((state: RootState) => state.location.coords);
 
   const getOptimizedLocation = useCallback(async (): Promise<{ lat: number; lng: number } | null> => {
+    // Nếu đã có vị trí trong Redux, trả về ngay lập tức để không phải chờ đợi và hiện thông báo lặp lại
+    if (reduxCoords) {
+      return reduxCoords;
+    }
+
     try {
       // Create a promise that rejects after 5000ms
       const timeoutPromise = new Promise<{ lat: number; lng: number }>((_, reject) => {

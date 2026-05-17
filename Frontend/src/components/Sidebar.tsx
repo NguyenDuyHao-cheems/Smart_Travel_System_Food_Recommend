@@ -170,7 +170,10 @@ export function Sidebar({
               <p className="text-[11px] text-[#7A6A5A] dark:text-[#9A8A7A] leading-relaxed mb-3">
                 Để AI hiểu bạn hơn, hãy cập nhật sở thích thường xuyên nhé!
               </p>
-              <button className="w-full py-2 bg-white dark:bg-[#3D312A] border border-brand-muted dark:border-brand/20 text-brand dark:text-[#E8735A] dark:text-[#E6DFD5] text-[11px] font-bold rounded-xl hover:bg-brand-muted/50 dark:hover:bg-brand/10 transition-colors shadow-sm cursor-pointer">
+              <button 
+                onClick={() => window.dispatchEvent(new Event('open-survey'))}
+                className="w-full py-2 bg-white dark:bg-[#3D312A] border border-brand-muted dark:border-brand/20 text-brand dark:text-[#E8735A] dark:text-[#E6DFD5] text-[11px] font-bold rounded-xl hover:bg-brand-muted/50 dark:hover:bg-brand/10 transition-colors shadow-sm cursor-pointer"
+              >
                 Cập nhật ngay
               </button>
             </div>

@@ -24,6 +24,12 @@ export function SurveyModal() {
     }
   }, []);
 
+  useEffect(() => {
+    const handleOpenSurvey = () => setIsOpen(true);
+    window.addEventListener('open-survey', handleOpenSurvey);
+    return () => window.removeEventListener('open-survey', handleOpenSurvey);
+  }, []);
+
   const handleClose = () => {
     localStorage.setItem(SURVEY_SEEN_KEY, 'true');
     setIsOpen(false);
