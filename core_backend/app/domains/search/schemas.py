@@ -20,6 +20,7 @@ class SearchRecommendRequest(BaseModel):
     budget: Optional[int] = Field(None, ge=0, description="Optional explicit budget in VND from user. Takes priority over AI-extracted budget.")
     tag_name: Optional[str] = Field(None, description="Optional tag name for explicit filtering (e.g., 'gà', 'phở')")
     search_mode: Optional[str] = Field("basic", description="Loại tìm kiếm (basic hoặc emotion)")
+    top_k: Optional[int] = Field(24, description="Số lượng kết quả tối đa cần trả về")
 
 class AllergenDishWarning(BaseModel):
     """Thông tin chi tiết món ăn gây dị ứng trong 1 quán."""

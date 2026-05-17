@@ -65,7 +65,8 @@ class SearchService:
             cleaned_query=ai_response.cleaned_query,
         )
 
-        raw_candidates = recommend_results["results"][:15]
+        top_k = getattr(request, "top_k", 24) or 24
+        raw_candidates = recommend_results["results"][:top_k]
         filtered_out_count = recommend_results.get("filtered_out_count", 0)
         allergen_flagged_count = recommend_results.get("allergen_flagged_count", 0)
         warning = recommend_results.get("warning")
