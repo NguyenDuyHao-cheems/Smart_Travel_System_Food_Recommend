@@ -24,6 +24,7 @@ export default function ProfilePage() {
   const [joinDate, setJoinDate] = useState<string>("");
   const [mounted, setMounted] = useState(false);
   const [badges, setBadges] = useState<Record<string, { unlocked: boolean; progress: number; target: number }>>({});
+  const [culinaryVibes, setCulinaryVibes] = useState<{ label: string; percent: number; count: number }[]>([]);
 
   useEffect(() => {
     setMounted(true);
@@ -52,6 +53,9 @@ export default function ProfilePage() {
           }
           if (data.badges) {
             setBadges(data.badges);
+          }
+          if (data.culinary_vibes) {
+            setCulinaryVibes(data.culinary_vibes);
           }
         }
       } catch (err) {
@@ -188,25 +192,54 @@ export default function ProfilePage() {
                     Gu ẩm thực
                   </h3>
                   <div className="space-y-4">
-                    {[
-                      { label: "Món Việt", percent: 85, color: "bg-brand" },
-                      { label: "Món Cay", percent: 60, color: "bg-red-500" },
-                      { label: "Ăn vặt", percent: 45, color: "bg-yellow-500" },
-                    ].map((item, idx) => (
-                      <div key={idx}>
-                        <div className="flex justify-between text-xs font-bold mb-1.5 text-gray-600 dark:text-[#9A8A7A]">
-                          <span>{item.label}</span>
-                          <span>{item.percent}%</span>
-                        </div>
-                        <div className="h-2 bg-gray-50 dark:bg-[#3D312A] rounded-full overflow-hidden">
-                          <motion.div 
-                            initial={{ width: 0 }}
-                            animate={{ width: `${item.percent}%` }}
-                            className={`h-full ${item.color}`}
-                          />
-                        </div>
-                      </div>
-                    ))}
+                    {(() => {
+                      const getVibeColor = (label: string) => {
+                        if (label.includes("🍜")) return "bg-amber-600 dark:bg-amber-500";
+                        if (label.includes("🥩")) return "bg-rose-600 dark:bg-rose-500";
+                        if (label.includes("🍲")) return "bg-orange-500 dark:bg-orange-400";
+                        if (label.includes("🍤")) return "bg-yellow-500 dark:bg-yellow-400";
+                        if (label.includes("🥗")) return "bg-emerald-500 dark:bg-emerald-400";
+                        if (label.includes("🍰")) return "bg-pink-500 dark:bg-pink-400";
+                        return "bg-brand";
+                      };
+
+                      const hasVibes = culinaryVibes.some(v => v.count > 0);
+
+                      if (!hasVibes) {
+                        return (
+                          <div className="flex flex-col items-center justify-center py-6 text-center">
+                            <div className="w-16 h-16 bg-brand/5 dark:bg-brand/10 rounded-full flex items-center justify-center text-3xl mb-4 animate-bounce">
+                              🔍
+                            </div>
+                            <h4 className="text-sm font-bold text-gray-800 dark:text-[#E6DFD5] mb-2">
+                              Chưa có dữ liệu gu ẩm thực
+                            </h4>
+                            <p className="text-[11px] text-gray-500 dark:text-[#9A8A7A] max-w-[240px] leading-relaxed mx-auto">
+                              Hãy thực hiện tìm kiếm món ăn yêu thích để kích hoạt bản đồ ẩm thực của riêng bạn! 🌟
+                            </p>
+                          </div>
+                        );
+                      }
+
+                      return culinaryVibes
+                        .filter(item => item.count > 0)
+                        .map((item, idx) => (
+                          <div key={idx}>
+                            <div className="flex justify-between text-xs font-bold mb-1.5 text-gray-600 dark:text-[#9A8A7A]">
+                              <span>{item.label}</span>
+                              <span className="text-brand dark:text-[#E8735A]">{item.percent}%</span>
+                            </div>
+                            <div className="h-2.5 bg-gray-100 dark:bg-gray-800/40 rounded-full overflow-hidden">
+                              <motion.div 
+                                initial={{ width: 0 }}
+                                animate={{ width: `${item.percent}%` }}
+                                transition={{ duration: 0.8, ease: "easeOut" }}
+                                className={`h-full rounded-full ${getVibeColor(item.label)}`}
+                              />
+                            </div>
+                          </div>
+                        ));
+                    })()}
                   </div>
                 </div>
               </div>

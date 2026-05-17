@@ -139,6 +139,12 @@ class BadgeProgress(BaseModel):
     target: int
 
 
+class CulinaryVibe(BaseModel):
+    label: str
+    percent: int
+    count: int
+
+
 class UserProfileResponse(BaseModel):
     id: str
     username: str
@@ -146,5 +152,6 @@ class UserProfileResponse(BaseModel):
     avatar_url: Optional[str] = None
     created_at: datetime
     badges: Dict[str, BadgeProgress]
+    culinary_vibes: List[CulinaryVibe]
 
 
