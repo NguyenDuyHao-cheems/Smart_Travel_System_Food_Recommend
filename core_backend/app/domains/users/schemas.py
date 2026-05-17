@@ -144,7 +144,6 @@ class CulinaryVibe(BaseModel):
     percent: int
     count: int
 
-
 class RecentActivityResponse(BaseModel):
     title: str
     time_ago: str
@@ -153,8 +152,6 @@ class RecentActivityResponse(BaseModel):
     res_id: Optional[str] = None
     res_name: Optional[str] = None
     collection_name: Optional[str] = None
-
-
 class UserProfileResponse(BaseModel):
     id: str
     username: str
@@ -165,6 +162,5 @@ class UserProfileResponse(BaseModel):
     culinary_vibes: List[CulinaryVibe]
     recent_activities: List[RecentActivityResponse]
     active_dates: List[str] = []
-
 
 
