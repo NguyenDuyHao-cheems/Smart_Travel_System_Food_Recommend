@@ -165,6 +165,12 @@ function HeroResultCard({ item, sessionId, searchMode, onAddCollection, isModalO
       favoriteService.addFavorite(userId, item);
       setIsFav(true);
       toast.success('Đã thêm vào yêu thích');
+
+      interactionService.logInteraction({
+        res_id: item.id,
+        action_type: "LIKE_RESTAURANT",
+        metadata: { restaurant_name: item.name }
+      });
     }
   };
 
@@ -342,6 +348,12 @@ function SmallResultCard({ item, index, sessionId, searchMode, onAddCollection, 
       favoriteService.addFavorite(userId, item);
       setIsFav(true);
       toast.success('Đã thêm vào yêu thích');
+
+      interactionService.logInteraction({
+        res_id: item.id,
+        action_type: "LIKE_RESTAURANT",
+        metadata: { restaurant_name: item.name }
+      });
     }
   };
 
