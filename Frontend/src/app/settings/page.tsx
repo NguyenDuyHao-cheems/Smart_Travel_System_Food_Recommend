@@ -61,8 +61,8 @@ export default function SettingsPage() {
   const handleUpdateProfile = async (updates: { full_name?: string, avatar_url?: string, password?: string }) => {
     try {
       const token = localStorage.getItem("access_token");
-      if (!token) {
-        alert("Vui lòng đăng nhập để thực hiện thay đổi!");
+      if (!token || token === "undefined" || token === "null") {
+        alert("Vui lòng đăng nhập lại để thực hiện thay đổi!");
         return false;
       }
 
@@ -77,6 +77,16 @@ export default function SettingsPage() {
       });
 
       if (!res.ok) {
+        if (res.status === 401) {
+          localStorage.removeItem("access_token");
+          localStorage.removeItem("username");
+          localStorage.removeItem("user_avatar");
+          localStorage.removeItem("user_id");
+          localStorage.removeItem("login_method");
+          alert("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại!");
+          window.location.href = "/auth";
+          return false;
+        }
         const errorData = await res.json();
         throw new Error(errorData.detail || "Cập nhật thất bại!");
       }
@@ -211,8 +221,8 @@ function AccountSettings({
 }: { 
   username: string | null, 
   avatar: string | null,
-  onAvatarChange: (newAvatar: string) => void,
-  onNameChange: (newName: string) => void,
+  onAvatarChange: (newAvatar: string) => Promise<boolean> | any,
+  onNameChange: (newName: string) => Promise<boolean> | any,
   onPasswordChange: (newPass: string) => Promise<boolean>,
   onDeleteAccount: () => Promise<boolean>
 }) {
@@ -259,20 +269,25 @@ function AccountSettings({
       }
 
       const reader = new FileReader();
-      reader.onloadend = () => {
+      reader.onloadend = async () => {
         const base64String = reader.result as string;
-        onAvatarChange(base64String);
-        localStorage.setItem("user_avatar", base64String);
+        const success = await onAvatarChange(base64String);
+        if (success !== false) {
+          // localStorage is updated inside handleUpdateProfile, but we can keep it here for safety or just rely on it.
+          // Since handleUpdateProfile handles it, we don't strictly need it, but we can do it to be safe.
+          // We won't do it blindly before success.
+        }
       };
       reader.readAsDataURL(file);
     }
   };
 
-  const handleSaveName = () => {
+  const handleSaveName = async () => {
     if (tempName.trim()) {
-      onNameChange(tempName);
-      localStorage.setItem("username", tempName);
-      toast.success("Đã cập nhật tên thành công!");
+      const success = await onNameChange(tempName);
+      if (success !== false) {
+        toast.success("Đã cập nhật tên thành công!");
+      }
     }
   };
 
