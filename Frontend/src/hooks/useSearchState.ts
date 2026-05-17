@@ -8,7 +8,12 @@ export function useSearchState(initialQuery: string = '') {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  const modeFromUrl = searchParams.get('mode') as SearchMode;
+  let modeFromUrl = searchParams.get('mode') as SearchMode;
+  // [FIX-CONFLICT]: Đọc mode từ sessionStorage thay vì URL để giữ link sạch
+  if (typeof window !== 'undefined' && !modeFromUrl) {
+    const sessionMode = sessionStorage.getItem('current_search_mode') as SearchMode;
+    if (sessionMode === 'basic' || sessionMode === 'emotion') modeFromUrl = sessionMode;
+  }
   
   const [query, setQuery] = useState(initialQuery);
   const [searchMode, setSearchMode] = useState<SearchMode>(
@@ -25,9 +30,13 @@ export function useSearchState(initialQuery: string = '') {
   const updateModeInUrl = useCallback((newMode: SearchMode) => {
     setSearchMode(newMode);
     if (pathname.includes('/result')) {
-      const params = new URLSearchParams(searchParams.toString());
-      params.set('mode', newMode);
-      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('current_search_mode', newMode);
+      }
+      // Khong day mode len URL nua de link sach
+      // const params = new URLSearchParams(searchParams.toString());
+      // params.set('mode', newMode);
+      // router.replace(`${pathname}?${params.toString()}`, { scroll: false });
     }
   }, [pathname, searchParams, router]);
 

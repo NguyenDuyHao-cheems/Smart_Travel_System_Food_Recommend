@@ -59,8 +59,7 @@ export default function RestaurantDetailPage() {
   const params = useParams();
   const searchParams = useSearchParams();
   const router = useRouter();
-
-  const restaurantId = params.id as string;
+  const [activeRestaurantId, setActiveRestaurantId] = useState<string | null>(null);
   const sessionId = searchParams.get('session_id');
 
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
@@ -71,10 +70,36 @@ export default function RestaurantDetailPage() {
   const [isAllergenSectionOpen, setIsAllergenSectionOpen] = useState(true);
 
   useEffect(() => {
+    let idToUse: string | null = null;
+    
+    // [FIX-CONFLICT]: Đọc ID nhà hàng từ sessionStorage thay vì URL để giữ link (slug) sạch
+    // Ưu tiên 1: Lấy từ sessionStorage (nếu đi từ trang kết quả)
+    if (typeof window !== 'undefined') {
+      idToUse = sessionStorage.getItem('current_res_id');
+    }
+
+    // Ưu tiên 2: Fallback lấy từ URL nếu không có (VD: F5 hoặc share link cũ)
+    if (!idToUse) {
+      let idFromUrl = params.id as string;
+      try {
+        idFromUrl = decodeURIComponent(idFromUrl);
+        idFromUrl = atob(idFromUrl);
+      } catch (e) {
+        // Fallback for raw ID
+      }
+      idToUse = idFromUrl;
+    }
+
+    setActiveRestaurantId(idToUse);
+  }, [params.id]);
+
+  useEffect(() => {
+    if (!activeRestaurantId) return;
+
     const fetchDetail = async () => {
       try {
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-        const res = await fetch(`${apiUrl}/api/v1/restaurants/${restaurantId}`);
+        const res = await fetch(`${apiUrl}/api/v1/restaurants/${activeRestaurantId}`);
         if (!res.ok) throw new Error('Không thể lấy thông tin nhà hàng.');
         const data = await res.json();
         setRestaurant(data);
@@ -107,7 +132,7 @@ export default function RestaurantDetailPage() {
       };
       fetchAllergies();
     }
-  }, [restaurantId]);
+  }, [activeRestaurantId]);
 
   // Track viewing duration
   useEffect(() => {
@@ -131,9 +156,16 @@ export default function RestaurantDetailPage() {
   }, [restaurant, sessionId]);
 
   const handleBack = () => {
-    const mode = searchParams.get('mode');
-    if (sessionId) {
-      router.push(`/result?session_id=${sessionId}${mode ? `&mode=${mode}` : ''}`);
+    let mode = searchParams.get('mode');
+    let sId = sessionId;
+    // [FIX-CONFLICT]: Lấy lại session_id và mode từ bộ nhớ ngầm để quay về trang kết quả mượt mà
+    if (typeof window !== 'undefined') {
+      if (!mode) mode = sessionStorage.getItem('current_search_mode');
+      if (!sId) sId = sessionStorage.getItem('current_search_session_id');
+    }
+    
+    if (sId) {
+      router.push(`/result`);
     } else {
       router.push('/');
     }

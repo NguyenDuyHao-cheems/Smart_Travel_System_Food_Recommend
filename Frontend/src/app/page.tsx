@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { X, AlertTriangle, RefreshCw, Sparkles } from "lucide-react";
@@ -84,7 +84,7 @@ const MOCK_RECOMMENDATIONS: RecommendResult[] = [
 
 /* ─────────────────────────────────────────────── */
 
-export default function Home() {
+function HomeContent() {
   const { query, setQuery, searchMode, setSearchMode } = useSearchState("");
   const [budget, setBudget] = useState<BudgetOption>("auto");
   const router = useRouter();
@@ -162,7 +162,7 @@ export default function Home() {
           user_id: userId || undefined,
           budget: budget === "auto" ? undefined : parseInt(budget, 10),
           search_mode: searchMode,
-          top_k: 16,
+          top_k: 24, // Xin dư ra 24 món để sau khi frontend lọc trùng tên (deduplicate) vẫn đảm bảo đủ 16 món hiển thị
         }),
       });
 
@@ -179,7 +179,12 @@ export default function Home() {
           );
         }
         setSearchLoadingMsg("Đã có kết quả! Đang chuyển hướng...");
-        router.push(`/result?session_id=${data.session_id}&mode=${searchMode}`);
+        // [FIX-CONFLICT]: Ẩn session_id và mode vào sessionStorage, đẩy query q lên URL
+        if (typeof window !== 'undefined') {
+          sessionStorage.setItem('current_search_session_id', data.session_id);
+          sessionStorage.setItem('current_search_mode', searchMode);
+        }
+        router.push(`/result?q=${encodeURIComponent(finalQuery)}`);
       } else {
         const errData = await res.json().catch(() => ({}));
         throw new Error(errData.detail || "Không thể kết nối với hệ thống AI.");
@@ -333,5 +338,13 @@ export default function Home() {
 
       <SurveyModal />
     </>
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense fallback={null}>
+      <HomeContent />
+    </Suspense>
   );
 }
