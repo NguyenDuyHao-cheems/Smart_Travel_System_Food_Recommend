@@ -331,6 +331,43 @@ async def user_onboarding(
         raise HTTPException(status_code=500, detail=f"Onboarding failed: {exc}")
 
 
+@router.get(
+    "/{user_id}/onboarding",
+    response_model=OnboardingRequest,
+    summary="Get user onboarding preferences",
+    description="Retrieves the current onboarding preferences for the specified user.",
+)
+def get_user_onboarding(
+    user_id: str,
+    db: Session = Depends(get_db),
+    current_user: UserAccount = Depends(get_current_user),
+) -> OnboardingRequest:
+    try:
+        if user_id != str(current_user.id):
+            raise HTTPException(status_code=403, detail="Not authorized to access this data")
+
+        onboarding_repo = UserOnboardingRepository(db=db)
+        record = onboarding_repo.get_by_user_id(user_id)
+        if not record:
+            raise HTTPException(status_code=404, detail="Onboarding data not found")
+
+        return OnboardingRequest(
+            favorite_dishes=record.favorite_dishes,
+            spicy_level=record.spicy_level,
+            dietary_restrictions=record.dietary_restrictions or [],
+            allergies=record.allergies or [],
+            budget=record.budget,
+            location=record.location,
+            age=record.age,
+            is_vegetarian=record.is_vegetarian,
+        )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve onboarding: {exc}")
+
+
+
 @router.get("/{user_id}/allergies")
 def get_user_allergies(
     user_id: str,

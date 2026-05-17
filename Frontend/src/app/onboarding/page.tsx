@@ -99,6 +99,16 @@ export default function OnboardingPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [userId, setUserId] = useState('');
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [isLoadingOldData, setIsLoadingOldData] = useState(false);
+
+  // Phát hiện chế độ chỉnh sửa từ URL query parameter
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      setIsEditMode(params.get('edit') === 'true');
+    }
+  }, []);
 
   // Yêu cầu đăng nhập — redirect về /auth nếu chưa có token
   useEffect(() => {
@@ -113,6 +123,66 @@ export default function OnboardingPage() {
 
     setUserId(storedUserId);
   }, [router]);
+
+  // Tải dữ liệu cũ nếu đang ở chế độ chỉnh sửa
+  useEffect(() => {
+    if (!userId || !isEditMode) return;
+
+    const fetchOldPreferences = async () => {
+      setIsLoadingOldData(true);
+      try {
+        const token = localStorage.getItem('access_token');
+        const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://127.0.0.1:8000';
+        
+        const response = await fetch(`${API_BASE}/api/v1/users/${userId}/onboarding`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          console.log("🚀 [Frontend] Dữ liệu khảo sát cũ nhận từ Backend:", data);
+
+          // Ánh xạ ngược nhãn Tiếng Việt của dị ứng và chế độ ăn về ID gốc tương ứng
+          const mappedDietary = (data.dietary_restrictions || []).map(
+            (label: string) => DIETARY_OPTS.find(o => o.label === label)?.id
+          ).filter(Boolean) as string[];
+
+          const mappedAllergies = (data.allergies || []).map(
+            (label: string) => ALLERGY_OPTS.find(o => o.label === label)?.id
+          ).filter(Boolean) as string[];
+
+          // Đảm bảo favorite_dishes là chữ hoa đầu từ như trong FAV_DISH_CATEGORIES
+          // (Backend normalize_list chuyển thành lowercase)
+          const rawFavs = data.favorite_dishes || [];
+          const normalizedFavs = rawFavs.map((dish: string) => {
+            for (const cat of FAV_DISH_CATEGORIES) {
+              const matched = cat.items.find(item => item.toLowerCase() === dish.toLowerCase());
+              if (matched) return matched;
+            }
+            return dish;
+          });
+
+          setFormData({
+            favorite_dishes: normalizedFavs,
+            spicy_level: data.spicy_level || '',
+            dietary_restrictions: mappedDietary,
+            allergies: mappedAllergies,
+            budget: data.budget || '',
+            location: data.location || '',
+            age: data.age || '',
+          });
+        }
+      } catch (error) {
+        console.error("Failed to load old onboarding preferences:", error);
+      } finally {
+        setIsLoadingOldData(false);
+      }
+    };
+
+    fetchOldPreferences();
+  }, [userId, isEditMode]);
 
   // Helpers
   const toggleArrayItem = React.useCallback((field: keyof OnboardingData, value: string) => {
@@ -187,7 +257,11 @@ export default function OnboardingPage() {
       if (response.ok) {
         // Trì hoãn một chút để User thấy hiệu ứng đang xử lý
         setTimeout(() => {
-          router.push('/'); // <-- Nhảy về localhost:3000 (Trang gốc)
+          if (isEditMode) {
+            router.push('/profile');
+          } else {
+            router.push('/');
+          }
         }, 1500);
       } else {
         const errData = await response.json();
@@ -226,79 +300,91 @@ export default function OnboardingPage() {
 
       <motion.div
         className="w-full max-w-3xl bg-white/80 dark:bg-[#2A2420]/80 backdrop-blur-xl shadow-[0_8px_30px_rgba(0,0,0,0.06)] dark:shadow-2xl rounded-3xl overflow-hidden border border-[#4D3D32]/10 dark:border-white/10 p-5 sm:p-10 mb-8 relative z-10"      >
-        <Header />
+        <Header isEditMode={isEditMode} />
 
-        <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          animate="show"
-          className="space-y-10 sm:space-y-12 mt-8"
-        >
-          <motion.div variants={sectionVariants}>
-            <BasicInfoSection formData={formData} setSingleItem={setSingleItem} />
-          </motion.div>
-
-          <motion.div variants={sectionVariants}>
-            <FavoriteDishes
-              selected={formData.favorite_dishes}
-              onChange={(val) => toggleArrayItem('favorite_dishes', val)}
-            />
-          </motion.div>
-
-          <motion.div variants={sectionVariants}>
-            <SpicyLevelPicker
-              selected={formData.spicy_level}
-              onChange={(val) => setSingleItem('spicy_level', val)}
-            />
-          </motion.div>
-
-          <motion.div variants={sectionVariants}>
-            <DietaryAndAllergies
-              dietary={formData.dietary_restrictions}
-              allergies={formData.allergies}
-              toggleDietary={(val) => toggleArrayItem('dietary_restrictions', val)}
-              toggleAllergy={(val) => toggleArrayItem('allergies', val)}
-            />
-          </motion.div>
-
-          <motion.div variants={sectionVariants}>
-            <BudgetPicker
-              selected={formData.budget}
-              onChange={(val) => setSingleItem('budget', val)}
-            />
-          </motion.div>
-        </motion.div>
-
-        {/* Nút Submit & Vùng Cảnh báo */}
-        <div className="mt-14 pt-8 border-t border-[#4D3D32]/10 dark:border-white/10 flex flex-col sm:flex-row justify-end items-stretch sm:items-center gap-5 bg-transparent -mx-6 sm:-mx-12 px-6 sm:px-12 -mb-6 sm:-mb-12 pb-6 sm:pb-12">
-
-          <AnimatePresence>
-            {errorMsg && (
-              <motion.div
-                key="error-box"
-                initial={{ opacity: 0, scale: 0.95, x: 20 }}
-                animate={{ opacity: 1, scale: 1, x: 0 }}
-                exit={{ opacity: 0, scale: 0.95, x: 20 }}
-                className="p-3 px-5 sm:mr-auto bg-red-950/80 backdrop-blur-md text-red-400 rounded-2xl flex items-center justify-start gap-3 border border-red-500/50 shadow-[0_0_20px_rgba(239,68,68,0.25)] flex-1 w-full sm:w-auto"
-              >
-                <IconAlertCircle size={20} className="shrink-0" />
-                <span className="font-medium text-[13px] sm:text-[14px] leading-snug">{errorMsg}</span>
+        {isLoadingOldData ? (
+          <div className="flex flex-col items-center justify-center py-20 space-y-4">
+            <IconBrain className="w-12 h-12 text-brand animate-pulse" />
+            <p className="text-[14px] font-medium text-[#9A8A7A] dark:text-[#E6DFD5]/60 animate-pulse">Đang tải cấu hình sở thích của bạn...</p>
+          </div>
+        ) : (
+          <>
+            <motion.div
+              variants={containerVariants}
+              initial="hidden"
+              animate="show"
+              className="space-y-10 sm:space-y-12 mt-8"
+            >
+              <motion.div variants={sectionVariants}>
+                <BasicInfoSection formData={formData} setSingleItem={setSingleItem} />
               </motion.div>
-            )}
-          </AnimatePresence>
 
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={handleSubmit}
-            disabled={isSubmitting}
-            className="group w-full sm:w-auto shrink-0 relative inline-flex items-center justify-center gap-3 rounded-full bg-gradient-to-r from-brand via-amber-400 to-brand dark:from-brand dark:via-brand dark:to-red-600 px-8 py-4 text-[14px] sm:text-[15px] font-semibold text-white shadow-sm hover:shadow-md dark:shadow-[0_0_20px_rgba(245,158,11,0.35)] dark:hover:shadow-[0_0_30px_rgba(245,158,11,0.55)] focus:outline-none disabled:select-none disabled:opacity-50 transition-all duration-300"
-          >
-            <IconBrain size={20} className={isSubmitting ? "animate-pulse" : ""} />
-            {isSubmitting ? 'Đang đồng bộ Neural Data...' : 'Khởi tạo Hồ sơ AI'}
-            <IconArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
-          </motion.button>
-        </div>
+              <motion.div variants={sectionVariants}>
+                <FavoriteDishes
+                  selected={formData.favorite_dishes}
+                  onChange={(val) => toggleArrayItem('favorite_dishes', val)}
+                />
+              </motion.div>
+
+              <motion.div variants={sectionVariants}>
+                <SpicyLevelPicker
+                  selected={formData.spicy_level}
+                  onChange={(val) => setSingleItem('spicy_level', val)}
+                />
+              </motion.div>
+
+              <motion.div variants={sectionVariants}>
+                <DietaryAndAllergies
+                  dietary={formData.dietary_restrictions}
+                  allergies={formData.allergies}
+                  toggleDietary={(val) => toggleArrayItem('dietary_restrictions', val)}
+                  toggleAllergy={(val) => toggleArrayItem('allergies', val)}
+                />
+              </motion.div>
+
+              <motion.div variants={sectionVariants}>
+                <BudgetPicker
+                  selected={formData.budget}
+                  onChange={(val) => setSingleItem('budget', val)}
+                />
+              </motion.div>
+            </motion.div>
+
+            {/* Nút Submit & Vùng Cảnh báo */}
+            <div className="mt-14 pt-8 border-t border-[#4D3D32]/10 dark:border-white/10 flex flex-col sm:flex-row justify-end items-stretch sm:items-center gap-5 bg-transparent -mx-6 sm:-mx-12 px-6 sm:px-12 -mb-6 sm:-mb-12 pb-6 sm:pb-12">
+
+              <AnimatePresence>
+                {errorMsg && (
+                  <motion.div
+                    key="error-box"
+                    initial={{ opacity: 0, scale: 0.95, x: 20 }}
+                    animate={{ opacity: 1, scale: 1, x: 0 }}
+                    exit={{ opacity: 0, scale: 0.95, x: 20 }}
+                    className="p-3 px-5 sm:mr-auto bg-red-950/80 backdrop-blur-md text-red-400 rounded-2xl flex items-center justify-start gap-3 border border-red-500/50 shadow-[0_0_20px_rgba(239,68,68,0.25)] flex-1 w-full sm:w-auto"
+                  >
+                    <IconAlertCircle size={20} className="shrink-0" />
+                    <span className="font-medium text-[13px] sm:text-[14px] leading-snug">{errorMsg}</span>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={handleSubmit}
+                disabled={isSubmitting}
+                className="group w-full sm:w-auto shrink-0 relative inline-flex items-center justify-center gap-3 rounded-full bg-gradient-to-r from-brand via-amber-400 to-brand dark:from-brand dark:via-brand dark:to-red-600 px-8 py-4 text-[14px] sm:text-[15px] font-semibold text-white shadow-sm hover:shadow-md dark:shadow-[0_0_20px_rgba(245,158,11,0.35)] dark:hover:shadow-[0_0_30px_rgba(245,158,11,0.55)] focus:outline-none disabled:select-none disabled:opacity-50 transition-all duration-300"
+              >
+                <IconBrain size={20} className={isSubmitting ? "animate-pulse" : ""} />
+                {isSubmitting 
+                  ? 'Đang đồng bộ Neural Data...' 
+                  : (isEditMode ? 'Cập nhật Hồ sơ AI' : 'Khởi tạo Hồ sơ AI')
+                }
+                <IconArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
+              </motion.button>
+            </div>
+          </>
+        )}
 
       </motion.div>
     </div>
@@ -309,7 +395,7 @@ export default function OnboardingPage() {
 // SUB-COMPONENTS
 // ==========================================
 
-function Header() {
+function Header({ isEditMode }: { isEditMode: boolean }) {
   return (
     <div className="text-center space-y-4 pb-10 border-b border-[#4D3D32]/10 dark:border-white/5 relative" style={{ fontFamily: "'Times New Roman', Times, serif" }}>
       <div className="absolute top-0 right-0 p-2 sm:p-0">
@@ -319,18 +405,21 @@ function Header() {
 
       <div className="inline-flex items-center gap-2 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-500/30 text-amber-600 dark:text-amber-400 text-[11px] uppercase tracking-[0.2em] font-bold px-4 py-1.5 rounded-full shadow-sm dark:shadow-[0_0_20px_rgba(245,158,11,0.15)] mb-3">
         <IconBrain size={14} className="animate-pulse" />
-        AI Food Recommendation Engine
+        {isEditMode ? 'AI Profile Modification Engine' : 'AI Food Recommendation Engine'}
       </div>
 
       <h1 className="text-[32px] sm:text-[42px] lg:text-[48px] font-bold text-[#9A8A7A] dark:text-[#E6DFD5] tracking-tight leading-tight">
-        Khám Phá Bản Đồ Ẩm Thực <br />
+        {isEditMode ? 'Chỉnh Sửa Hồ Sơ Cá Nhân' : 'Khám Phá Bản Đồ Ẩm Thực'} <br />
         <span className="italic text-transparent bg-clip-text bg-gradient-to-r from-brand via-brand to-red-600 dark:from-brand dark:via-brand dark:to-red-500 font-bold">
-          Dành Riêng Cho Bạn
+          {isEditMode ? 'Tối Ưu Hóa Trực Quan' : 'Dành Riêng Cho Bạn'}
         </span>
       </h1>
 
       <p className="text-[#9A8A7A] dark:text-[#E6DFD5]/60 text-[16px] sm:text-[18px] max-w-xl mx-auto leading-relaxed mt-4">
-        Hãy cho chúng tôi biết sơ lược về sở thích của bạn. Trí tuệ nhân tạo sẽ tự động phân tích và chọn lọc ra những địa điểm thưởng thức tuyệt vời nhất, phù hợp chính xác với gu của riêng bạn.
+        {isEditMode
+          ? 'Cập nhật lại sở thích ăn uống của bạn. Hệ thống trí tuệ nhân tạo sẽ tự động học hỏi, phân tích và tối ưu hóa lại các gợi ý ẩm thực phù hợp nhất với khẩu vị mới.'
+          : 'Hãy cho chúng tôi biết sơ lược về sở thích của bạn. Trí tuệ nhân tạo sẽ tự động phân tích và chọn lọc ra những địa điểm thưởng thức tuyệt vời nhất, phù hợp chính xác với gu của riêng bạn.'
+        }
       </p>
     </div>
   );
