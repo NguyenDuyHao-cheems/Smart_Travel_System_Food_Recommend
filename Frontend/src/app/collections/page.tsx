@@ -23,6 +23,7 @@ export default function CollectionsPage() {
   const [selectedCollection, setSelectedCollection] = useState<Collection | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [newCollectionName, setNewCollectionName] = useState("");
+  const [deleteCollectionId, setDeleteCollectionId] = useState<string | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -50,14 +51,18 @@ export default function CollectionsPage() {
   const handleDeleteCollection = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     if (!userId) return;
-    if (window.confirm("Bạn có chắc chắn muốn xóa bộ sưu tập này không?")) {
-      collectionService.deleteCollection(userId, id);
-      setCollections(collections.filter(c => c.id !== id));
-      if (selectedCollection?.id === id) {
-        setSelectedCollection(null);
-      }
-      toast.success("Đã xóa bộ sưu tập");
+    setDeleteCollectionId(id);
+  };
+
+  const confirmDeleteCollection = () => {
+    if (!userId || !deleteCollectionId) return;
+    collectionService.deleteCollection(userId, deleteCollectionId);
+    setCollections(collections.filter(c => c.id !== deleteCollectionId));
+    if (selectedCollection?.id === deleteCollectionId) {
+      setSelectedCollection(null);
     }
+    toast.success("Đã xóa bộ sưu tập");
+    setDeleteCollectionId(null);
   };
 
   const handleRemoveItem = (item: RecommendResult) => {
@@ -240,6 +245,32 @@ export default function CollectionsPage() {
               className="px-5 py-2 text-sm font-semibold bg-brand hover:bg-brand-hover disabled:bg-brand/50 disabled:cursor-not-allowed text-white rounded-xl transition-colors cursor-pointer"
             >
               Tạo mới
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Xóa Bộ Sưu Tập */}
+      <Dialog open={!!deleteCollectionId} onOpenChange={(open) => !open && setDeleteCollectionId(null)}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="text-xl text-red-600 dark:text-red-400">Xóa bộ sưu tập</DialogTitle>
+            <DialogDescription>
+              Bạn có chắc chắn muốn xóa bộ sưu tập này không? Hành động này không thể hoàn tác.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mt-4">
+            <button
+              onClick={() => setDeleteCollectionId(null)}
+              className="px-4 py-2 text-sm font-semibold text-gray-500 hover:text-gray-700 dark:text-[#9A8A7A] dark:hover:text-gray-200 transition-colors"
+            >
+              Hủy
+            </button>
+            <button
+              onClick={confirmDeleteCollection}
+              className="px-5 py-2 text-sm font-semibold bg-red-500 hover:bg-red-600 text-white rounded-xl transition-colors cursor-pointer"
+            >
+              Xóa bỏ
             </button>
           </DialogFooter>
         </DialogContent>
