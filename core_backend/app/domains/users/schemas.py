@@ -153,8 +153,6 @@ class RecentActivityResponse(BaseModel):
     res_id: Optional[str] = None
     res_name: Optional[str] = None
     collection_name: Optional[str] = None
-
-
 class UserProfileResponse(BaseModel):
     id: str
     username: str
@@ -164,6 +162,5 @@ class UserProfileResponse(BaseModel):
     badges: Dict[str, BadgeProgress]
     culinary_vibes: List[CulinaryVibe]
     recent_activities: List[RecentActivityResponse]
-
 
 
