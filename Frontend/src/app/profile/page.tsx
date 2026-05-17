@@ -150,7 +150,10 @@ export default function ProfilePage() {
                   </div>
                   
                   <div className="flex gap-3">
-                    <button className="px-6 py-2.5 bg-brand text-white text-sm font-bold rounded-2xl hover:bg-brand-hover transition-all shadow-md shadow-brand/20 dark:shadow-none active:scale-95 cursor-pointer">
+                    <button 
+                      onClick={() => router.push("/onboarding?edit=true")}
+                      className="px-6 py-2.5 bg-brand text-white text-sm font-bold rounded-2xl hover:bg-brand-hover transition-all shadow-md shadow-brand/20 dark:shadow-none active:scale-95 cursor-pointer"
+                    >
                       Chỉnh sửa hồ sơ
                     </button>
                     <button 
