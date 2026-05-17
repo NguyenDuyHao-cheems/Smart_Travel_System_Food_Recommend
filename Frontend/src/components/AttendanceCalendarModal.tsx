@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { ChevronLeft, ChevronRight, X, Calendar as CalendarIcon, Flame } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { createPortal } from "react-dom";
 
 interface AttendanceCalendarModalProps {
   isOpen: boolean;
@@ -12,8 +13,14 @@ interface AttendanceCalendarModalProps {
 
 export function AttendanceCalendarModal({ isOpen, onClose, activeDates }: AttendanceCalendarModalProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [mounted, setMounted] = useState(false);
 
-  if (!isOpen) return null;
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
+
+  if (!mounted || !isOpen) return null;
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -92,9 +99,9 @@ export function AttendanceCalendarModal({ isOpen, onClose, activeDates }: Attend
     return d.getFullYear() === year && d.getMonth() === month;
   }).length;
 
-  return (
+  return createPortal(
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
+      <div className="fixed inset-0 z-[9999] overflow-y-auto flex items-center justify-center p-4">
         {/* Backdrop blur overlay */}
         <motion.div
           initial={{ opacity: 0 }}
@@ -237,6 +244,7 @@ export function AttendanceCalendarModal({ isOpen, onClose, activeDates }: Attend
           </div>
         </motion.div>
       </div>
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }
