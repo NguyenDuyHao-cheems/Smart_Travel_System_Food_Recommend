@@ -289,6 +289,34 @@ def test_default_budget_when_both_user_and_ai_absent(client):
         assert data["applied_budget"] == SearchService.DEFAULT_BUDGET_VND
 
 
+def test_process_recommend_query_passes_emotion_search_mode(client):
+    with patch(
+        "app.services.ai_client.AIServiceClient.extract_intent_and_vectorize",
+        new_callable=AsyncMock,
+    ) as mock_ai, patch(
+        "app.domains.search.service.recommend",
+        new_callable=AsyncMock,
+    ) as mock_recommend:
+        mock_ai.return_value = AIResponseData(
+            vector=[1.0, 2.0, 3.0],
+            cleaned_query="mì cay",
+        )
+        mock_recommend.return_value = _mock_recommend_results(results=["1"])
+
+        response = client.post(
+            "/api/v1/search/recommend",
+            json={
+                "query": "Tôi muốn ăn mì cay",
+                "lat": 10.8700,
+                "lng": 106.8031,
+                "search_mode": "emotion",
+            },
+        )
+
+        assert response.status_code == 200
+        assert mock_recommend.call_args.kwargs.get("search_mode") == "emotion"
+
+
 def test_user_budget_zero_means_unlimited(client):
     """When user explicitly sends budget=0, it should be treated as unlimited (no price filtering)."""
     with patch(

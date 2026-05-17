@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, Boolean, ForeignKey, JSON
+from sqlalchemy import Column, Integer, String, Float, Boolean, ForeignKey, JSON, DateTime
 from sqlalchemy.orm import relationship
 from app.core.database import Base
 from pgvector.sqlalchemy import Vector
@@ -18,7 +18,11 @@ class RestaurantModel(Base):
     # Tên field khớp ERD bản NEW
     price_range = Column(String, nullable=True)     # giá dạng string, vd "50000-100000"
     rating_avg = Column(Float, nullable=True)        # rating trung bình (0–5)
-    sentiment_score = Column(Float, nullable=True)  # tổng hợp sentiment (−1 đến 1)
+    sentiment_score = Column(Float, nullable=True)  # normalized aggregate review sentiment (-1 to 1)
+    positive_review_count = Column(Integer, nullable=True, default=0)
+    neutral_review_count = Column(Integer, nullable=True, default=0)
+    negative_review_count = Column(Integer, nullable=True, default=0)
+    sentiment_updated_at = Column(DateTime(timezone=True), nullable=True)
     total_reviews = Column(Integer, nullable=True)  # tổng số lượt đánh giá
     is_active = Column(Boolean, default=True)       # nhà hàng còn hoạt động
     is_open_now = Column(Boolean, default=False)    # đang mở cửa tại thời điểm này
@@ -93,4 +97,9 @@ class ReviewModel(Base):
     reviewer_name = Column(String, nullable=True)
     rating = Column(Float, nullable=True)
     text = Column(String, nullable=True)
-    date = Column(String, nullable=True)
+    date = Column(String, nullable=True)
+    sentiment_label = Column(String, nullable=True)
+    sentiment_score = Column(Float, nullable=True)
+    sentiment_confidence = Column(Float, nullable=True)
+    sentiment_model = Column(String, nullable=True)
+    sentiment_analyzed_at = Column(DateTime(timezone=True), nullable=True)

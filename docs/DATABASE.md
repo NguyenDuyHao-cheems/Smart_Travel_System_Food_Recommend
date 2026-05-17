@@ -38,7 +38,11 @@
 | `opening_hours`    | `varchar` | Nullable    |
 | `image_url`        | `text`    | Nullable    |
 | `rating_avg`       | `float8`  | Nullable    |
-| `sentiment_score`  | `float8`  | Nullable    |
+| `sentiment_score`  | `float8`  | Nullable, normalized `-1..1` aggregate from reviews |
+| `positive_review_count` | `int4` | Nullable |
+| `neutral_review_count` | `int4` | Nullable |
+| `negative_review_count` | `int4` | Nullable |
+| `sentiment_updated_at` | `timestamptz` | Nullable |
 | `is_active`        | `bool`    | Nullable    |
 | `embedding_vector` | `vector`  | Nullable    |
 | `total_reviews`    | `int4`    | Nullable    |
@@ -62,6 +66,11 @@
 | `rating`        | `numeric`     | Nullable    |
 | `text`          | `text`        | Nullable    |
 | `date`          | `timestamptz` | Nullable    |
+| `sentiment_label` | `varchar` | Nullable (`positive` / `neutral` / `negative`) |
+| `sentiment_score` | `float8` | Nullable, normalized `-1..1` |
+| `sentiment_confidence` | `float8` | Nullable, normalized `0..1` |
+| `sentiment_model` | `varchar` | Nullable |
+| `sentiment_analyzed_at` | `timestamptz` | Nullable |
 
 ## Table `search_session_results`
 
