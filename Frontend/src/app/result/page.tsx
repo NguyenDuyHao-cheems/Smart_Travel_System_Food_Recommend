@@ -161,10 +161,22 @@ function HeroResultCard({ item, sessionId, searchMode, onAddCollection, isModalO
       favoriteService.removeFavorite(userId, item.name);
       setIsFav(false);
       toast.success('Đã xóa khỏi yêu thích');
+
+      interactionService.logInteraction({
+        res_id: item.id,
+        action_type: "REMOVE_RESTAURANT",
+        metadata: { restaurant_name: item.name, source_type: "favorite" }
+      });
     } else {
       favoriteService.addFavorite(userId, item);
       setIsFav(true);
       toast.success('Đã thêm vào yêu thích');
+
+      interactionService.logInteraction({
+        res_id: item.id,
+        action_type: "LIKE_RESTAURANT",
+        metadata: { restaurant_name: item.name }
+      });
     }
   };
 
@@ -338,10 +350,22 @@ function SmallResultCard({ item, index, sessionId, searchMode, onAddCollection, 
       favoriteService.removeFavorite(userId, item.name);
       setIsFav(false);
       toast.success('Đã xóa khỏi yêu thích');
+
+      interactionService.logInteraction({
+        res_id: item.id,
+        action_type: "REMOVE_RESTAURANT",
+        metadata: { restaurant_name: item.name, source_type: "favorite" }
+      });
     } else {
       favoriteService.addFavorite(userId, item);
       setIsFav(true);
       toast.success('Đã thêm vào yêu thích');
+
+      interactionService.logInteraction({
+        res_id: item.id,
+        action_type: "LIKE_RESTAURANT",
+        metadata: { restaurant_name: item.name }
+      });
     }
   };
 
