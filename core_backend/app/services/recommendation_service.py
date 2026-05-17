@@ -1,4 +1,5 @@
 import logging
+import math
 import httpx
 from typing import Optional, List
 
@@ -12,6 +13,10 @@ from app.services.allergy_filter import (
 from app.domains.ranking.retrieval_service import RetrievalService
 from app.domains.ranking.feature_service import FeatureService
 from app.core.config import settings
+from app.services.review_sentiment import (
+    normalize_restaurant_sentiment,
+    sentiment_confidence_from_review_count,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +30,7 @@ async def recommend(
     user_location: Optional[List[float]] = None,
     tag_name: Optional[str] = None,
     cleaned_query: str = "",
+    search_mode: str = "basic",
 ):
     """
     Recommendation pipeline:
@@ -146,9 +152,49 @@ async def recommend(
     except Exception as exc:
         logger.warning("Ranking rerank failed, keeping cosine order: %s", exc)
 
+    if (search_mode or "").lower() == "emotion":
+        safe_candidates = _apply_sentiment_search_boost(safe_candidates)
+
     return {
         "results": safe_candidates,
         "filtered_out_count": len(removed),
         "allergen_flagged_count": flagged_count,
         "fallback_applied": False,
     }
+
+
+def _apply_sentiment_search_boost(candidates):
+    """
+    Review-based sentiment mode.
+
+    Semantic relevance remains the largest signal, but candidates with strong
+    positive review sentiment and enough review volume move up.
+    """
+    for c in candidates:
+        if hasattr(c, "distance") and c.distance is not None:
+            semantic_score = max(0.0, min(1.0, 1.0 - float(c.distance)))
+        else:
+            semantic_score = 0.5
+
+        sentiment_unit = normalize_restaurant_sentiment(getattr(c, "sentiment_score", None))
+        sentiment_score = (sentiment_unit + 1.0) / 2.0
+        review_confidence = sentiment_confidence_from_review_count(
+            getattr(c, "total_reviews", 0)
+        )
+        rating_score = max(0.0, min(1.0, float(getattr(c, "rating_avg", 0.0) or 0.0) / 5.0))
+
+        c.sentiment_search_score = (
+            0.60 * semantic_score
+            + 0.25 * sentiment_score
+            + 0.10 * review_confidence
+            + 0.05 * rating_score
+        )
+
+    return sorted(
+        candidates,
+        key=lambda c: (
+            getattr(c, "sentiment_search_score", 0.0),
+            math.log1p(int(getattr(c, "total_reviews", 0) or 0)),
+        ),
+        reverse=True,
+    )

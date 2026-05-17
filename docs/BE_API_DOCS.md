@@ -233,6 +233,9 @@ Schema này định dạng đầu ra bắt buộc của 1 quán ăn để thẻ 
 | `rating` | `string`  | ✓        |             |
 | `reason` | `string`  | ✓        |             |
 | `img`    | `string`  | ✓        |             |
+| `sentiment_score` | `number` | | Review sentiment aggregate, normalized `-1..1`. |
+| `sentiment_label` | `string` | | `positive`, `neutral`, or `negative`. |
+| `sentiment_review_count` | `integer` | | Review count backing the sentiment signal. |
 
 ### SearchRecommendRequest
 
@@ -243,6 +246,7 @@ Schema này dùng để hứng kết quả từ việc bắt GPS bên Frontend �
 | `query` | `string` | ✓        | The user's required food and context |
 | `lat`   | `number` | ✓        | Current user latitude                |
 | `lng`   | `number` | ✓        | Current user longitude               |
+| `search_mode` | `string` | | `basic` or `emotion`. `emotion` combines emotion-aware query cleaning with review sentiment boost. |
 
 ### SearchRecommendResponse
 

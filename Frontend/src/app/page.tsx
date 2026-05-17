@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { X, AlertTriangle, RefreshCw, Sparkles } from "lucide-react";
@@ -43,7 +43,7 @@ const TRENDING = [
 
 /* ─────────────────────────────────────────────── */
 
-export default function Home() {
+function HomeContent() {
   const { query, setQuery, searchMode, setSearchMode } = useSearchState("");
   const [budget, setBudget] = useState<BudgetOption>("auto");
   const router = useRouter();
@@ -208,7 +208,7 @@ export default function Home() {
           user_id: userId || undefined,
           budget: budget === "auto" ? undefined : parseInt(budget, 10),
           search_mode: searchMode,
-          top_k: 16,
+          top_k: 24, // Xin dư ra 24 món để sau khi frontend lọc trùng tên (deduplicate) vẫn đảm bảo đủ 16 món hiển thị
         }),
       });
 
@@ -225,7 +225,12 @@ export default function Home() {
           );
         }
         setSearchLoadingMsg("Đã có kết quả! Đang chuyển hướng...");
-        router.push(`/result?session_id=${data.session_id}&mode=${searchMode}`);
+        // [FIX-CONFLICT]: Ẩn session_id và mode vào sessionStorage, đẩy query q lên URL
+        if (typeof window !== 'undefined') {
+          sessionStorage.setItem('current_search_session_id', data.session_id);
+          sessionStorage.setItem('current_search_mode', searchMode);
+        }
+        router.push(`/result?q=${encodeURIComponent(finalQuery)}`);
       } else {
         const errData = await res.json().catch(() => ({}));
         throw new Error(errData.detail || "Không thể kết nối với hệ thống AI.");
@@ -282,6 +287,88 @@ export default function Home() {
           className="relative w-full overflow-hidden"
           style={{ minHeight: "calc(100vh - 64px)" }}
         >
+          {/* ── Floating Food Decorations ── */}
+
+          {/* Bánh canh — top-left */}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute hidden md:block"
+            style={{
+              top: "8%",
+              left: "2%",
+              width: 160,
+              animation: "float-a 6s ease-in-out infinite",
+              zIndex: 1,
+            }}
+          >
+            <img
+              src="/images/banh-canh.png"
+              alt=""
+              className="w-full h-auto drop-shadow-xl"
+              style={{ filter: "drop-shadow(0 12px 20px rgba(0,0,0,0.22))" }}
+            />
+          </div>
+
+          {/* Bánh tráng nướng — top-right */}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute hidden md:block"
+            style={{
+              top: "6%",
+              right: "3%",
+              width: 145,
+              animation: "float-b 7s ease-in-out 1s infinite",
+              zIndex: 1,
+            }}
+          >
+            <img
+              src="/images/banh-trang-nuong.png"
+              alt=""
+              className="w-full h-auto"
+              style={{ filter: "drop-shadow(0 12px 20px rgba(0,0,0,0.20))" }}
+            />
+          </div>
+
+          {/* Cơm tấm — bottom-left */}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute hidden md:block"
+            style={{
+              bottom: "14%",
+              left: "1%",
+              width: 170,
+              animation: "float-c 8s ease-in-out 2s infinite",
+              zIndex: 1,
+            }}
+          >
+            <img
+              src="/images/com-tam.png"
+              alt=""
+              className="w-full h-auto"
+              style={{ filter: "drop-shadow(0 14px 24px rgba(0,0,0,0.22))" }}
+            />
+          </div>
+
+          {/* Hủ tiếu — bottom-right */}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute hidden md:block"
+            style={{
+              bottom: "12%",
+              right: "1%",
+              width: 155,
+              animation: "float-d 6.5s ease-in-out 0.5s infinite",
+              zIndex: 1,
+            }}
+          >
+            <img
+              src="/images/hu-tieu.png"
+              alt=""
+              className="w-full h-auto"
+              style={{ filter: "drop-shadow(0 12px 20px rgba(0,0,0,0.20))" }}
+            />
+          </div>
+
           {/* Bottom fade */}
           <div
             className="absolute bottom-0 left-0 right-0 h-16 z-10"
@@ -389,5 +476,13 @@ export default function Home() {
 
       <SurveyModal />
     </>
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense fallback={null}>
+      <HomeContent />
+    </Suspense>
   );
 }
