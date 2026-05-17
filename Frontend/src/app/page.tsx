@@ -98,20 +98,16 @@ export default function Home() {
         const token = localStorage.getItem("access_token");
         const userId = localStorage.getItem("user_id");
 
-        const res = await fetch(`${BACKEND_URL}/api/v1/search/recommend`, {
-          method: "POST",
+        const url = new URL(`${BACKEND_URL}/api/v1/recommendations/home`);
+        url.searchParams.append("lat", coords.lat.toString());
+        url.searchParams.append("lng", coords.lng.toString());
+        url.searchParams.append("limit", "6");
+
+        const res = await fetch(url.toString(), {
+          method: "GET",
           headers: {
-            "Content-Type": "application/json",
             Authorization: token ? `Bearer ${token}` : "",
           },
-          body: JSON.stringify({
-            query: "những món ăn ngon",
-            lat: coords.lat,
-            lng: coords.lng,
-            user_id: userId || undefined,
-            search_mode: "basic",
-            top_k: 6,
-          }),
         });
 
         if (res.ok) {

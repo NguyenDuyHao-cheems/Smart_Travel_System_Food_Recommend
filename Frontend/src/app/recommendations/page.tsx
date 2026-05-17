@@ -49,21 +49,17 @@ export default function RecommendationsPage() {
           return;
         }
 
+        const url = new URL(`${BACKEND_URL}/api/v1/recommendations/home`);
+        url.searchParams.append("lat", gps.lat.toString());
+        url.searchParams.append("lng", gps.lng.toString());
+        url.searchParams.append("limit", "16");
+
         const token = localStorage.getItem("access_token");
-        const res = await fetch(`${BACKEND_URL}/api/v1/search/recommend`, {
-          method: "POST",
+        const res = await fetch(url.toString(), {
+          method: "GET",
           headers: {
-            "Content-Type": "application/json",
             Authorization: token ? `Bearer ${token}` : "",
           },
-          body: JSON.stringify({
-            query: "gợi ý theo sở thích",
-            lat: gps.lat,
-            lng: gps.lng,
-            user_id: id,
-            search_mode: "basic",
-            top_k: 16,
-          }),
         });
 
         if (res.ok) {
@@ -105,7 +101,7 @@ export default function RecommendationsPage() {
           Gợi ý dành riêng cho bạn
         </h1>
         <p className="text-gray-500 dark:text-[#9A8A7A] mt-2">
-          Các địa điểm được AI tuyển chọn dựa trên sở thích và lịch sử tìm kiếm của bạn
+          Các địa điểm được tự động chọn lọc dựa trên khoảng cách và sở thích của bạn
         </p>
       </div>
 
