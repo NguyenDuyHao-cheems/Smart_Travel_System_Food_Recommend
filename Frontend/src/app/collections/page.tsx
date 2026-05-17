@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { useRouter, useSearchParams } from "next/navigation";
 import { RecommendResult } from "../result/page";
 import { FoodCard } from "../../components/FoodCard";
+import { interactionService } from "../../services/interactionService";
 import {
   Dialog,
   DialogContent,
@@ -99,6 +100,12 @@ export default function CollectionsPage() {
     setSelectedCollection(updatedCollection);
     setCollections(collections.map(c => c.id === updatedCollection.id ? updatedCollection : c));
     toast.success("Đã xóa khỏi bộ sưu tập");
+
+    interactionService.logInteraction({
+      res_id: item.id,
+      action_type: "REMOVE_RESTAURANT",
+      metadata: { restaurant_name: item.name, source_type: "collection", collection_name: selectedCollection.name }
+    });
   };
 
   if (selectedCollection) {

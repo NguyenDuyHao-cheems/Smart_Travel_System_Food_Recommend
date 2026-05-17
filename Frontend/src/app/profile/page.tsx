@@ -14,7 +14,8 @@ import {
   TrendingUp,
   UtensilsCrossed,
   Award,
-  Calendar
+  Calendar,
+  Trash2
 } from "lucide-react";
 import { AppShell } from "../../components/AppShell";
 import { useRouter } from "next/navigation";
@@ -50,6 +51,13 @@ export default function ProfilePage() {
       let idToUse = activity.res_id;
       // Mask session ID or expose normal restaurant ID
       router.push(`/restaurant/${idToUse}`);
+    } else if (activity.icon_type === "trash") {
+      if (activity.title.includes("Yêu thích")) {
+        router.push("/favorites");
+      } else {
+        const collName = activity.collection_name || "";
+        router.push(`/collections?collection=${encodeURIComponent(collName)}`);
+      }
     }
   };
 
@@ -295,6 +303,8 @@ export default function ProfilePage() {
                                 return { Icon: Star, color: "text-yellow-500", bg: "bg-yellow-50 dark:bg-yellow-500/10" };
                               case "bookmark":
                                 return { Icon: UtensilsCrossed, color: "text-brand dark:text-[#E8735A]", bg: "bg-brand-muted dark:bg-brand/10" };
+                              case "trash":
+                                return { Icon: Trash2, color: "text-red-500", bg: "bg-red-50 dark:bg-red-500/10" };
                               default:
                                 return { Icon: Clock, color: "text-gray-500", bg: "bg-gray-50 dark:bg-gray-500/10" };
                             }

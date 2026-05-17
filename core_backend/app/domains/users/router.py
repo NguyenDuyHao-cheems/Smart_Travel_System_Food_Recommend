@@ -240,6 +240,14 @@ def get_current_user_profile(
             coll_name = metadata.get("collection_name") or "Bộ sưu tập của tôi"
             title = f'Lưu nhà hàng "{res_name}" vào bộ sưu tập "{coll_name}"'
             icon_type = "bookmark"
+        elif "REMOVE" in action or "DELETE" in action:
+            source_type = metadata.get("source_type") or "yêu thích"
+            if source_type == "favorite" or source_type == "yêu thích":
+                title = f'Xóa nhà hàng "{res_name}" ra khỏi Yêu thích'
+            else:
+                coll_name = metadata.get("collection_name") or "Bộ sưu tập"
+                title = f'Xóa nhà hàng "{res_name}" ra khỏi bộ sưu tập "{coll_name}"'
+            icon_type = "trash"
         else:
             continue
             

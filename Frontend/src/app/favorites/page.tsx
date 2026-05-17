@@ -8,6 +8,7 @@ import { RecommendResult } from "../result/page";
 import { Heart } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter, useSearchParams } from "next/navigation";
+import { interactionService } from "../../services/interactionService";
 
 export default function FavoritesPage() {
   const [favorites, setFavorites] = useState<RecommendResult[]>([]);
@@ -43,6 +44,12 @@ export default function FavoritesPage() {
     favoriteService.removeFavorite(userId, item.name);
     setFavorites(prev => prev.filter(f => f.name !== item.name));
     toast.success("Đã xóa khỏi yêu thích");
+
+    interactionService.logInteraction({
+      res_id: item.id,
+      action_type: "REMOVE_RESTAURANT",
+      metadata: { restaurant_name: item.name, source_type: "favorite" }
+    });
   };
 
   return (
