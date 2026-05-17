@@ -7,12 +7,14 @@ import { favoriteService } from "../../services/favoriteService";
 import { RecommendResult } from "../result/page";
 import { Heart } from "lucide-react";
 import { toast } from "sonner";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 export default function FavoritesPage() {
   const [favorites, setFavorites] = useState<RecommendResult[]>([]);
   const [userId, setUserId] = useState<string | null>(null);
+  const [highlightedName, setHighlightedName] = useState<string | null>(null);
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   useEffect(() => {
     const id = localStorage.getItem("user_id");
@@ -24,6 +26,17 @@ export default function FavoritesPage() {
     setUserId(id);
     setFavorites(favoriteService.getFavorites(id));
   }, [router]);
+
+  useEffect(() => {
+    const highlight = searchParams.get("highlight");
+    if (highlight) {
+      setHighlightedName(highlight);
+      const timer = setTimeout(() => {
+        setHighlightedName(null);
+      }, 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [searchParams]);
 
   const handleRemove = (item: RecommendResult) => {
     if (!userId) return;
@@ -59,13 +72,21 @@ export default function FavoritesPage() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {favorites.map((item, idx) => (
-            <FoodCard 
+            <div 
               key={item.id || idx} 
-              item={item} 
-              userId={userId!} 
-              showRemove={true}
-              onRemove={handleRemove}
-            />
+              className={`transition-all duration-500 rounded-2xl ${
+                highlightedName === item.name 
+                  ? "ring-4 ring-yellow-400 dark:ring-orange-500 scale-[1.02] shadow-lg animate-pulse" 
+                  : ""
+              }`}
+            >
+              <FoodCard 
+                item={item} 
+                userId={userId!} 
+                showRemove={true}
+                onRemove={handleRemove}
+              />
+            </div>
           ))}
         </div>
       )}

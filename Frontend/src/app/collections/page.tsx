@@ -5,7 +5,7 @@ import { PageLayout } from "../../components/PageLayout";
 import { collectionService, Collection } from "../../services/collectionService";
 import { FolderOpen, Plus, Trash2, ChevronLeft, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { RecommendResult } from "../result/page";
 import { FoodCard } from "../../components/FoodCard";
 import {
@@ -24,7 +24,9 @@ export default function CollectionsPage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [newCollectionName, setNewCollectionName] = useState("");
   const [deleteCollectionId, setDeleteCollectionId] = useState<string | null>(null);
+  const [highlightedName, setHighlightedName] = useState<string | null>(null);
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   useEffect(() => {
     const id = localStorage.getItem("user_id");
@@ -36,6 +38,26 @@ export default function CollectionsPage() {
     setUserId(id);
     setCollections(collectionService.getCollections(id));
   }, [router]);
+
+  useEffect(() => {
+    const collectionParam = searchParams.get("collection");
+    const highlightParam = searchParams.get("highlight");
+    
+    if (collectionParam && collections.length > 0) {
+      const found = collections.find(c => c.name.toLowerCase() === collectionParam.toLowerCase());
+      if (found) {
+        setSelectedCollection(found);
+      }
+    }
+    
+    if (highlightParam) {
+      setHighlightedName(highlightParam);
+      const timer = setTimeout(() => {
+        setHighlightedName(null);
+      }, 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [searchParams, collections]);
 
   const handleCreateCollection = () => {
     if (!userId || !newCollectionName.trim()) return;
@@ -115,13 +137,21 @@ export default function CollectionsPage() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {selectedCollection.items.map((item, idx) => (
-              <FoodCard 
+              <div 
                 key={item.id || idx} 
-                item={item} 
-                userId={userId!} 
-                showRemove={true}
-                onRemove={handleRemoveItem}
-              />
+                className={`transition-all duration-500 rounded-2xl ${
+                  highlightedName === item.name 
+                    ? "ring-4 ring-yellow-400 dark:ring-orange-500 scale-[1.02] shadow-lg animate-pulse" 
+                    : ""
+                }`}
+              >
+                <FoodCard 
+                  item={item} 
+                  userId={userId!} 
+                  showRemove={true}
+                  onRemove={handleRemoveItem}
+                />
+              </div>
             ))}
           </div>
         )}

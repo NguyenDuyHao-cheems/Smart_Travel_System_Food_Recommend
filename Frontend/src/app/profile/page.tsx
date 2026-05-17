@@ -17,14 +17,41 @@ import {
   Calendar
 } from "lucide-react";
 import { AppShell } from "../../components/AppShell";
+import { useRouter } from "next/navigation";
+
+interface RecentActivity {
+  title: string;
+  time_ago: string;
+  icon_type: string;
+  created_at: string;
+  res_id?: string;
+  res_name?: string;
+  collection_name?: string;
+}
 
 export default function ProfilePage() {
+  const router = useRouter();
   const [username, setUsername] = useState<string | null>(null);
   const [avatar, setAvatar] = useState<string | null>(null);
   const [joinDate, setJoinDate] = useState<string>("");
   const [mounted, setMounted] = useState(false);
   const [badges, setBadges] = useState<Record<string, { unlocked: boolean; progress: number; target: number }>>({});
   const [culinaryVibes, setCulinaryVibes] = useState<{ label: string; percent: number; count: number }[]>([]);
+  const [recentActivities, setRecentActivities] = useState<RecentActivity[]>([]);
+  const [visibleActivitiesCount, setVisibleActivitiesCount] = useState<number>(5);
+
+  const handleActivityClick = (activity: RecentActivity) => {
+    if (activity.icon_type === "heart" && activity.res_name) {
+      router.push(`/favorites?highlight=${encodeURIComponent(activity.res_name)}`);
+    } else if (activity.icon_type === "bookmark" && activity.res_name && activity.collection_name) {
+      router.push(`/collections?highlight=${encodeURIComponent(activity.res_name)}&collection=${encodeURIComponent(activity.collection_name)}`);
+    } else if ((activity.icon_type === "visit" || activity.icon_type === "star") && activity.res_id) {
+      // Decode if base64 encoded, or pass directly
+      let idToUse = activity.res_id;
+      // Mask session ID or expose normal restaurant ID
+      router.push(`/restaurant/${idToUse}`);
+    }
+  };
 
   useEffect(() => {
     setMounted(true);
@@ -56,6 +83,9 @@ export default function ProfilePage() {
           }
           if (data.culinary_vibes) {
             setCulinaryVibes(data.culinary_vibes);
+          }
+          if (data.recent_activities) {
+            setRecentActivities(data.recent_activities);
           }
         }
       } catch (err) {
@@ -242,28 +272,66 @@ export default function ProfilePage() {
                     <Clock className="w-5 h-5 text-brand dark:text-[#E8735A]" />
                     Hoạt động gần đây
                   </h3>
-                  <div className="space-y-6">
-                    {[
-                      { title: "Đã thích nhà hàng 'Phở Thìn Lò Đúc'", time: "2 giờ trước", icon: Heart, color: "text-red-500", bg: "bg-red-50 dark:bg-red-500/10" },
-                      { title: "Ghé thăm 'Bún chả Hương Liên'", time: "Hôm qua", icon: MapPin, color: "text-blue-500", bg: "bg-blue-50 dark:bg-blue-500/10" },
-                      { title: "Đánh giá 5 sao cho 'Cà phê Giảng'", time: "2 ngày trước", icon: Star, color: "text-yellow-500", bg: "bg-yellow-50 dark:bg-yellow-500/10" },
-                      { title: "Lưu món 'Bánh mì dân tổ' vào bộ sưu tập", time: "3 ngày trước", icon: UtensilsCrossed, color: "text-brand dark:text-[#E8735A]", bg: "bg-brand-muted dark:bg-brand/10" },
-                    ].map((activity, idx) => (
-                      <div key={idx} className="flex gap-4 group cursor-pointer">
-                        <div className={`w-10 h-10 ${activity.bg} ${activity.color} rounded-xl flex-shrink-0 flex items-center justify-center transition-transform group-hover:scale-110`}>
-                          <activity.icon className="w-5 h-5" />
-                        </div>
-                        <div className="flex-1 border-b border-gray-50 dark:border-[#3D312A] pb-4 group-last:border-0">
-                          <h4 className="text-sm font-bold text-gray-800 dark:text-[#E6DFD5] mb-0.5">{activity.title}</h4>
-                          <span className="text-[11px] text-gray-400">{activity.time}</span>
-                        </div>
-                        <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-brand transition-colors self-center" />
+                  
+                  {recentActivities.length === 0 ? (
+                    <div className="text-center py-10 bg-gray-50 dark:bg-[#2A2420]/30 rounded-3xl border border-dashed border-gray-200 dark:border-[#4D3D32] px-6">
+                      <Clock className="w-10 h-10 text-gray-400 mx-auto mb-3 opacity-60" />
+                      <p className="text-sm font-semibold text-gray-700 dark:text-[#C8BFB0] mb-1">Không có hoạt động gần đây</p>
+                      <p className="text-xs text-gray-400 max-w-sm mx-auto leading-relaxed">
+                        Bạn chưa thực hiện hành động nào trong 3 ngày qua. Hãy bắt đầu trải nghiệm ứng dụng bằng cách xem thông tin, thích món ăn hay lưu trữ vào bộ sưu tập nhé!
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="space-y-6">
+                        {(() => {
+                          const getActivityIcon = (iconType: string) => {
+                            switch (iconType) {
+                              case "heart":
+                                return { Icon: Heart, color: "text-red-500", bg: "bg-red-50 dark:bg-red-500/10" };
+                              case "visit":
+                                return { Icon: MapPin, color: "text-blue-500", bg: "bg-blue-50 dark:bg-blue-500/10" };
+                              case "star":
+                                return { Icon: Star, color: "text-yellow-500", bg: "bg-yellow-50 dark:bg-yellow-500/10" };
+                              case "bookmark":
+                                return { Icon: UtensilsCrossed, color: "text-brand dark:text-[#E8735A]", bg: "bg-brand-muted dark:bg-brand/10" };
+                              default:
+                                return { Icon: Clock, color: "text-gray-500", bg: "bg-gray-50 dark:bg-gray-500/10" };
+                            }
+                          };
+
+                          return recentActivities.slice(0, visibleActivitiesCount).map((activity, idx) => {
+                            const { Icon, color, bg } = getActivityIcon(activity.icon_type);
+                            return (
+                              <div 
+                                key={idx} 
+                                onClick={() => handleActivityClick(activity)}
+                                className="flex gap-4 group cursor-pointer"
+                              >
+                                <div className={`w-10 h-10 ${bg} ${color} rounded-xl flex-shrink-0 flex items-center justify-center transition-transform group-hover:scale-110`}>
+                                  <Icon className="w-5 h-5" />
+                                </div>
+                                <div className="flex-1 border-b border-gray-50 dark:border-[#3D312A] pb-4 group-last:border-0">
+                                  <h4 className="text-sm font-bold text-gray-800 dark:text-[#E6DFD5] mb-0.5">{activity.title}</h4>
+                                  <span className="text-[11px] text-gray-400">{activity.time_ago}</span>
+                                </div>
+                                <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-brand transition-colors self-center" />
+                              </div>
+                            );
+                          });
+                        })()}
                       </div>
-                    ))}
-                  </div>
-                  <button className="w-full mt-6 py-3 text-xs font-bold text-gray-400 hover:text-brand transition-colors tracking-widest uppercase">
-                    Xem tất cả hoạt động
-                  </button>
+
+                      {recentActivities.length > visibleActivitiesCount && (
+                        <button 
+                          onClick={() => setVisibleActivitiesCount(prev => Math.min(prev + 5, 15))}
+                          className="w-full mt-6 py-3 text-xs font-bold text-gray-400 hover:text-brand hover:bg-gray-50 dark:hover:bg-[#2A2420]/30 rounded-2xl transition-all tracking-widest uppercase cursor-pointer text-center"
+                        >
+                          Xem thêm hoạt động
+                        </button>
+                      )}
+                    </>
+                  )}
                 </div>
               </div>
             </div>

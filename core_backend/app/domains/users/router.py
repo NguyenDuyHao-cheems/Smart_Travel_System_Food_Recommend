@@ -6,7 +6,7 @@ from .schemas import (
     OnboardingRequest, OnboardingResponse, SignUpRequest, SignInRequest, 
     GoogleAuthRequest, AuthResponse, UserUpdateRequest,
     UserInteractionRequest, UserInteractionResponse, UserProfileResponse,
-    BadgeProgress, CulinaryVibe
+    BadgeProgress, CulinaryVibe, RecentActivityResponse
 )
 from .service import OnboardingService, AuthService, UserInteractionService
 from .repository import UserOnboardingRepository, UserAccountRepository, UserInteractionRepository
@@ -173,6 +173,87 @@ def get_current_user_profile(
         "🧘": BadgeProgress(unlocked=is_vegetarian, progress=1 if is_vegetarian else 0, target=1)
     }
 
+    # 5. Truy vấn Hoạt động gần đây (trong vòng 3 ngày qua, tối đa 15 hoạt động)
+    from app.domains.users.models import UserInteraction
+    from app.domains.ranking.models import RestaurantModel
+    from datetime import datetime, timezone, timedelta
+    
+    cutoff = datetime.now(timezone.utc) - timedelta(days=3)
+    
+    interactions = (
+        db.query(UserInteraction)
+        .filter(UserInteraction.user_id == str(current_user.id))
+        .filter(UserInteraction.created_at >= cutoff)
+        .order_by(UserInteraction.created_at.desc())
+        .all()
+    )
+    
+    recent_activities = []
+    for inter in interactions:
+        if len(recent_activities) >= 15:
+            break
+            
+        action = inter.action_type.upper()
+        
+        # Bỏ qua hoạt động đo thời gian xem
+        if "DURATION" in action:
+            continue
+            
+        metadata = inter.metadata_ or {}
+        
+        # Tìm tên nhà hàng
+        res_name = metadata.get("restaurant_name") or metadata.get("res_name")
+        if not res_name and inter.res_id:
+            res_obj = db.query(RestaurantModel).filter(RestaurantModel.id == inter.res_id).first()
+            if res_obj:
+                res_name = res_obj.name
+        if not res_name:
+            res_name = "Nhà hàng"
+            
+        # Tính khoảng thời gian trôi qua bằng tiếng Việt
+        diff = datetime.now(timezone.utc) - inter.created_at.replace(tzinfo=timezone.utc)
+        diff_sec = diff.total_seconds()
+        
+        if diff_sec < 60:
+            time_ago = "Vài giây trước"
+        elif diff_sec < 3600:
+            time_ago = f"{int(diff_sec // 60)} phút trước"
+        elif diff_sec < 86400:
+            time_ago = f"{int(diff_sec // 3600)} giờ trước"
+        else:
+            time_ago = f"{int(diff_sec // 86400)} ngày trước"
+            
+        title = ""
+        icon_type = ""
+        
+        if "LIKE" in action:
+            title = f'Đã yêu thích nhà hàng: "{res_name}"'
+            icon_type = "heart"
+        elif "VIEW" in action or "VISIT" in action:
+            title = f'Ghé thăm nhà hàng "{res_name}"'
+            icon_type = "visit"
+        elif "REVIEW" in action:
+            rating = metadata.get("rating") or "5 sao"
+            title = f'Đánh giá "{rating}" cho nhà hàng "{res_name}"'
+            icon_type = "star"
+        elif "SAVE" in action or "COLLECT" in action or "BOOKMARK" in action:
+            coll_name = metadata.get("collection_name") or "Bộ sưu tập của tôi"
+            title = f'Lưu nhà hàng "{res_name}" vào bộ sưu tập "{coll_name}"'
+            icon_type = "bookmark"
+        else:
+            continue
+            
+        recent_activities.append(
+            RecentActivityResponse(
+                title=title,
+                time_ago=time_ago,
+                icon_type=icon_type,
+                created_at=inter.created_at,
+                res_id=str(inter.res_id) if inter.res_id else None,
+                res_name=res_name,
+                collection_name=metadata.get("collection_name") or (coll_name if "SAVE" in action or "COLLECT" in action or "BOOKMARK" in action else None)
+            )
+        )
     return UserProfileResponse(
         id=str(current_user.id),
         username=current_user.username,
@@ -181,6 +262,7 @@ def get_current_user_profile(
         created_at=current_user.created_at,
         badges=badges_data,
         culinary_vibes=vibes_list,
+        recent_activities=recent_activities,
     )
 
 
