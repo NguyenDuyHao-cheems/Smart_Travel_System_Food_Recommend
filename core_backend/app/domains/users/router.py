@@ -5,7 +5,7 @@ from .models import UserAccount
 from .schemas import (
     OnboardingRequest, OnboardingResponse, SignUpRequest, SignInRequest, 
     GoogleAuthRequest, AuthResponse, UserUpdateRequest,
-    UserInteractionRequest, UserInteractionResponse
+    UserInteractionRequest, UserInteractionResponse, UserProfileResponse
 )
 from .service import OnboardingService, AuthService, UserInteractionService
 from .repository import UserOnboardingRepository, UserAccountRepository, UserInteractionRepository
@@ -65,6 +65,20 @@ async def google_auth(
         return await service.google_auth(payload)
     except PermissionError as exc:
         raise HTTPException(status_code=401, detail=str(exc))
+
+
+@router.get("/me", response_model=UserProfileResponse)
+def get_current_user_profile(
+    current_user: UserAccount = Depends(get_current_user),
+) -> UserProfileResponse:
+    """Trả về thông tin hồ sơ của tài khoản đang đăng nhập."""
+    return UserProfileResponse(
+        id=str(current_user.id),
+        username=current_user.username,
+        full_name=current_user.full_name,
+        avatar_url=current_user.avatar_url,
+        created_at=current_user.created_at,
+    )
 
 
 @router.patch("/me", response_model=AuthResponse)
