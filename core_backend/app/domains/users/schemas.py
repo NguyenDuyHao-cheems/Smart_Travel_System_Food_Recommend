@@ -1,5 +1,7 @@
 from pydantic import BaseModel, Field, field_validator
 from typing import List, Optional, Literal
+from datetime import datetime
+
 
 
 # ── Request ──────────────────────────────────────────────────────────────────
@@ -129,4 +131,13 @@ class UserInteractionResponse(BaseModel):
     status: str = "success"
     message: str = "Interaction logged successfully"
     interaction_id: str
+
+
+class UserProfileResponse(BaseModel):
+    id: str
+    username: str
+    full_name: Optional[str] = None
+    avatar_url: Optional[str] = None
+    created_at: datetime
+
 

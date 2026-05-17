@@ -21,12 +21,40 @@ import { AppShell } from "../../components/AppShell";
 export default function ProfilePage() {
   const [username, setUsername] = useState<string | null>(null);
   const [avatar, setAvatar] = useState<string | null>(null);
+  const [joinDate, setJoinDate] = useState<string>("");
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
     setUsername(localStorage.getItem("username"));
     setAvatar(localStorage.getItem("user_avatar"));
+
+    const fetchProfile = async () => {
+      try {
+        const token = localStorage.getItem("access_token");
+        if (!token) return;
+
+        const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
+        const res = await fetch(`${API_BASE}/api/v1/users/me`, {
+          headers: {
+            "Authorization": `Bearer ${token}`
+          }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.created_at) {
+            const date = new Date(data.created_at);
+            const day = date.getDate();
+            const month = date.getMonth() + 1;
+            const year = date.getFullYear();
+            setJoinDate(`ngày ${day} tháng ${month}, ${year}`);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch profile:", err);
+      }
+    };
+    fetchProfile();
   }, []);
 
   if (!mounted) return null;
@@ -65,7 +93,7 @@ export default function ProfilePage() {
                     <h1 className="text-3xl font-black text-gray-900 dark:text-[#E6DFD5] tracking-tight mb-1">{username || "Linh Nguyen"}</h1>
                     <p className="text-gray-500 dark:text-[#9A8A7A] font-medium flex items-center gap-2 text-sm">
                       <span className="px-2.5 py-0.5 rounded-full bg-brand-muted dark:bg-brand/20 text-brand-hover dark:text-[#E6DFD5] font-bold text-[10px] uppercase tracking-wider">Bậc thầy Phở</span>
-                      • Tham gia từ tháng 5, 2024
+                      • Tham gia từ {joinDate || "tháng 5, 2024"}
                     </p>
                   </div>
                   
