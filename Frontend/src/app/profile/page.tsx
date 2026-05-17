@@ -23,6 +23,8 @@ export default function ProfilePage() {
   const [avatar, setAvatar] = useState<string | null>(null);
   const [joinDate, setJoinDate] = useState<string>("");
   const [mounted, setMounted] = useState(false);
+  const [badges, setBadges] = useState<Record<string, { unlocked: boolean; progress: number; target: number }>>({});
+  const [culinaryVibes, setCulinaryVibes] = useState<{ label: string; percent: number; count: number }[]>([]);
 
   useEffect(() => {
     setMounted(true);
@@ -48,6 +50,12 @@ export default function ProfilePage() {
             const month = date.getMonth() + 1;
             const year = date.getFullYear();
             setJoinDate(`ngày ${day} tháng ${month}, ${year}`);
+          }
+          if (data.badges) {
+            setBadges(data.badges);
+          }
+          if (data.culinary_vibes) {
+            setCulinaryVibes(data.culinary_vibes);
           }
         }
       } catch (err) {
@@ -137,20 +145,44 @@ export default function ProfilePage() {
                   </h3>
                   <div className="grid grid-cols-3 gap-4 text-center">
                     {[
-                      { icon: "🍜", label: "Phở Master" },
-                      { icon: "🌶️", label: "Cay Vô Đối" },
-                      { icon: "🥬", label: "Thánh Rau" },
-                      { icon: "🍦", label: "Kem Lạnh" },
-                      { icon: "🥓", label: "Team Thịt" },
-                      { icon: "☕", label: "Cú Đêm" },
-                    ].map((badge, idx) => (
-                      <div key={idx} className="group cursor-help">
-                        <div className="w-16 h-16 bg-gray-50 dark:bg-[#3D312A] rounded-2xl flex items-center justify-center text-2xl mb-1.5 transition-transform group-hover:scale-110 grayscale hover:grayscale-0">
-                          {badge.icon}
+                      { icon: "🍜", label: "Phở Master", colorClass: "bg-orange-50 dark:bg-orange-950/20 border-orange-200/50 dark:border-orange-900/30 text-orange-600" },
+                      { icon: "🌶️", label: "Cay Vô Đối", colorClass: "bg-red-50 dark:bg-red-950/20 border-red-200/50 dark:border-red-900/30 text-red-600" },
+                      { icon: "🥬", label: "Thánh Rau", colorClass: "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200/50 dark:border-emerald-900/30 text-emerald-600" },
+                      { icon: "🍦", label: "Kem Lạnh", colorClass: "bg-sky-50 dark:bg-sky-950/20 border-sky-200/50 dark:border-sky-900/30 text-sky-600" },
+                      { icon: "🥓", label: "Team Thịt", colorClass: "bg-amber-50 dark:bg-amber-950/20 border-amber-200/50 dark:border-amber-900/30 text-amber-600" },
+                      { icon: "☕", label: "Cú Đêm", colorClass: "bg-purple-50 dark:bg-purple-950/20 border-purple-200/50 dark:border-purple-900/30 text-purple-600" },
+                      { icon: "🧘", label: "Thiền Sư", isZen: true },
+                    ].map((badge, idx) => {
+                      const info = badges[badge.icon] || { unlocked: false, progress: 0, target: badge.isZen ? 1 : 20 };
+                      return (
+                        <div key={idx} className="group cursor-help relative flex flex-col items-center">
+                          <div className={`w-16 h-16 rounded-2xl flex items-center justify-center text-2xl mb-1.5 transition-all duration-300 relative overflow-hidden ${
+                            info.unlocked 
+                              ? (badge.isZen 
+                                  ? "bg-gradient-to-tr from-amber-50 to-yellow-100 dark:from-amber-950/20 dark:to-yellow-950/40 border border-yellow-300/30 shadow-[0_0_15px_rgba(251,191,36,0.25)] scale-100 group-hover:scale-110" 
+                                  : `${badge.colorClass} border scale-100 group-hover:scale-110`)
+                              : "bg-gray-100/70 dark:bg-[#2A2420]/50 border border-dashed border-gray-200 dark:border-gray-800 opacity-40 grayscale group-hover:opacity-60"
+                          }`}>
+                            {badge.isZen && info.unlocked && (
+                              <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(251,191,36,0.6)_0%,transparent_70%)] animate-pulse rounded-full w-12 h-12 m-auto" />
+                            )}
+                            <span className="relative z-10">{badge.icon}</span>
+                          </div>
+                          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{badge.label}</span>
+                          
+                          {/* Premium Tooltip */}
+                          <div className="absolute bottom-full mb-2 bg-black/85 dark:bg-[#3D312A]/95 text-white text-[11px] font-medium px-2.5 py-1.5 rounded-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 whitespace-nowrap shadow-xl border border-white/10 pointer-events-none">
+                            {info.unlocked ? (
+                              <span className="text-yellow-400 font-bold flex items-center gap-1">🌟 Đã mở khóa!</span>
+                            ) : (
+                              badge.isZen 
+                                ? <span className="text-gray-300 font-bold">🧘 Ăn chay để mở khóa</span>
+                                : <span className="text-gray-300">Tiến độ: <strong className="text-brand dark:text-[#E8735A] font-extrabold">{info.progress}</strong>/{info.target}</span>
+                            )}
+                          </div>
                         </div>
-                        <span className="text-[10px] font-bold text-gray-400 uppercase">{badge.label}</span>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -160,25 +192,45 @@ export default function ProfilePage() {
                     Gu ẩm thực
                   </h3>
                   <div className="space-y-4">
-                    {[
-                      { label: "Món Việt", percent: 85, color: "bg-brand" },
-                      { label: "Món Cay", percent: 60, color: "bg-red-500" },
-                      { label: "Ăn vặt", percent: 45, color: "bg-yellow-500" },
-                    ].map((item, idx) => (
-                      <div key={idx}>
-                        <div className="flex justify-between text-xs font-bold mb-1.5 text-gray-600 dark:text-[#9A8A7A]">
-                          <span>{item.label}</span>
-                          <span>{item.percent}%</span>
+                    {(() => {
+                      const getVibeColor = (label: string) => {
+                        if (label.includes("🍜")) return "bg-amber-600 dark:bg-amber-500";
+                        if (label.includes("🥩")) return "bg-rose-600 dark:bg-rose-500";
+                        if (label.includes("🍲")) return "bg-orange-500 dark:bg-orange-400";
+                        if (label.includes("🍤")) return "bg-yellow-500 dark:bg-yellow-400";
+                        if (label.includes("🥗")) return "bg-emerald-500 dark:bg-emerald-400";
+                        if (label.includes("🍰")) return "bg-pink-500 dark:bg-pink-400";
+                        return "bg-brand";
+                      };
+
+                      const defaultVibes = [
+                        { label: "Món Nước (Ninh / Hầm) 🍜", percent: 0, count: 0 },
+                        { label: "Món Nướng (BBQ) 🥩", percent: 0, count: 0 },
+                        { label: "Món Lẩu 🍲", percent: 0, count: 0 },
+                        { label: "Món Chiên / Xào 🍤", percent: 0, count: 0 },
+                        { label: "Món Hấp / Trộn (Thanh đạm) 🥗", percent: 0, count: 0 },
+                        { label: "Món Ngọt / Tráng miệng 🍰", percent: 0, count: 0 }
+                      ];
+
+                      const displayVibes = culinaryVibes.length > 0 ? culinaryVibes : defaultVibes;
+
+                      return displayVibes.map((item, idx) => (
+                        <div key={idx}>
+                          <div className="flex justify-between text-xs font-bold mb-1.5 text-gray-600 dark:text-[#9A8A7A]">
+                            <span>{item.label}</span>
+                            <span className="text-brand dark:text-[#E8735A]">{item.percent}%</span>
+                          </div>
+                          <div className="h-2.5 bg-gray-100 dark:bg-gray-800/40 rounded-full overflow-hidden">
+                            <motion.div 
+                              initial={{ width: 0 }}
+                              animate={{ width: `${item.percent}%` }}
+                              transition={{ duration: 0.8, ease: "easeOut" }}
+                              className={`h-full rounded-full ${getVibeColor(item.label)}`}
+                            />
+                          </div>
                         </div>
-                        <div className="h-2 bg-gray-50 dark:bg-[#3D312A] rounded-full overflow-hidden">
-                          <motion.div 
-                            initial={{ width: 0 }}
-                            animate={{ width: `${item.percent}%` }}
-                            className={`h-full ${item.color}`}
-                          />
-                        </div>
-                      </div>
-                    ))}
+                      ));
+                    })()}
                   </div>
                 </div>
               </div>
