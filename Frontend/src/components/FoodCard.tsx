@@ -8,6 +8,7 @@ import { collectionService } from "../services/collectionService";
 import { toast } from "sonner";
 import { AddToCollectionModal } from "./AddToCollectionModal";
 import { interactionService } from "../services/interactionService";
+import { useRouter } from "next/navigation";
 
 interface FoodCardProps {
   item: RecommendResult;
@@ -19,6 +20,7 @@ interface FoodCardProps {
 }
 
 export function FoodCard({ item, userId, onRemove, showRemove, showAddCollection = true, onAddCollection }: FoodCardProps) {
+  const router = useRouter();
   const [isFav, setIsFav] = React.useState(false);
   const [isInColl, setIsInColl] = React.useState(false);
   const [isCollectionModalOpen, setIsCollectionModalOpen] = React.useState(false);
@@ -61,16 +63,21 @@ export function FoodCard({ item, userId, onRemove, showRemove, showAddCollection
       metadata: { source: "food_card_click" }
     });
     
-    if (item.google_maps_url) {
-      window.open(item.google_maps_url, '_blank');
+    if (item.id.startsWith("mock-")) {
+      toast.info("Đây là kết quả mẫu. Hãy thử tìm kiếm để xem các nhà hàng thật nhé!");
+      return;
     }
+    
+    router.push(`/restaurant/${item.id}`);
   };
 
   return (
-    <div className="bg-white dark:bg-[#3D312A] rounded-2xl border border-gray-100 dark:border-[#4D3D32] shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden group relative flex flex-col">
+    <div 
+      className="bg-white dark:bg-[#3D312A] rounded-2xl border border-gray-100 dark:border-[#4D3D32] shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden group relative flex flex-col cursor-pointer"
+      onClick={handleCardClick}
+    >
       <div 
-        className="relative h-[180px] overflow-hidden cursor-pointer"
-        onClick={handleCardClick}
+        className="relative h-[180px] overflow-hidden"
       >
         <img
           src={item.img || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=600&auto=format&fit=crop"}

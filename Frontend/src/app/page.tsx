@@ -15,6 +15,8 @@ import { historyService } from "../services/historyService";
 import { FoodCard } from "../components/FoodCard";
 import { RecommendResult } from "./result/page";
 import { useOptimizedLocation } from "../hooks/useOptimizedLocation";
+import { useSelector } from "react-redux";
+import { RootState } from "../store";
 
 /* ── Types ── */
 type HealthStatus = "loading" | "ok" | "degraded" | "error";
@@ -39,49 +41,6 @@ const TRENDING = [
   { id: 6, title: "Dimsum & Lẩu", emoji: "🥢", query: "dimsum lẩu ngon" },
 ];
 
-/* ── Mock recommendations (shown before first real search) ── */
-const MOCK_RECOMMENDATIONS: RecommendResult[] = [
-  {
-    id: "mock-1",
-    name: "Bánh Mì Huỳnh Hoa",
-    restaurantName: "Huỳnh Hoa Bakery",
-    reason: "Bánh mì đệ nhất Sài Gòn với pate siêu béo ngậy và các loại thịt nguội hảo hạng.",
-    tags: ["Đặc sản", "Nổi tiếng", "Bánh mì"],
-    img: "/images/food1.jpg",
-    match: "98%",
-    dist: "1.2 km",
-    price: "30.000đ",
-    rating: "4.9",
-    google_maps_url: "https://maps.google.com",
-  },
-  {
-    id: "mock-2",
-    name: "Cơm Tấm Ba Ghiền",
-    restaurantName: "Cơm Tấm Ba Ghiền",
-    reason: "Sườn nướng khổng lồ thơm nức mũi chuẩn vị Sài Gòn truyền thống.",
-    tags: ["Cơm tấm", "Sườn nướng", "Ăn trưa"],
-    img: "/images/food2.jpg",
-    match: "95%",
-    dist: "3.4 km",
-    price: "55.000đ",
-    rating: "4.7",
-    google_maps_url: "https://maps.google.com",
-  },
-  {
-    id: "mock-3",
-    name: "Phở Hòa Pasteur",
-    restaurantName: "Phở Hòa",
-    reason: "Nước dùng ngọt thanh từ xương bò ninh kỹ, sợi phở mềm dẻo tuyệt hảo.",
-    tags: ["Ăn sáng", "Phở bò", "Gia truyền"],
-    img: "/images/food3.jpg",
-    match: "92%",
-    dist: "2.5 km",
-    price: "75.000đ",
-    rating: "4.8",
-    google_maps_url: "https://maps.google.com",
-  },
-];
-
 /* ─────────────────────────────────────────────── */
 
 export default function Home() {
@@ -97,6 +56,97 @@ export default function Home() {
   const [searchLoadingMsg, setSearchLoadingMsg] = useState("Đang phân tích sở thích của bạn...");
   const [apiError, setApiError] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
+
+  const coords = useSelector((state: RootState) => state.location.coords);
+  const [recommendations, setRecommendations] = useState<RecommendResult[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const cached = sessionStorage.getItem("home_recommendations");
+        if (cached) return JSON.parse(cached);
+      } catch (err) {}
+    }
+    return [];
+  });
+  const [isLoadingRecs, setIsLoadingRecs] = useState(() => {
+    if (typeof window !== "undefined") {
+      try {
+        if (sessionStorage.getItem("home_recommendations")) return false;
+      } catch (err) {}
+    }
+    return true;
+  });
+
+  /* ── Fetch Real Recommendations ── */
+  useEffect(() => {
+    async function fetchRecommendations() {
+      if (!coords) return;
+      
+      // Check cache first
+      try {
+        const cachedRecs = sessionStorage.getItem("home_recommendations");
+        if (cachedRecs) {
+          setRecommendations(JSON.parse(cachedRecs));
+          setIsLoadingRecs(false);
+          return;
+        }
+      } catch (err) {
+        console.error("Lỗi khi đọc cache:", err);
+      }
+
+      try {
+        setIsLoadingRecs(true);
+        const token = localStorage.getItem("access_token");
+        const userId = localStorage.getItem("user_id");
+
+        const res = await fetch(`${BACKEND_URL}/api/v1/search/recommend`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: token ? `Bearer ${token}` : "",
+          },
+          body: JSON.stringify({
+            query: "những món ăn ngon",
+            lat: coords.lat,
+            lng: coords.lng,
+            user_id: userId || undefined,
+            search_mode: "basic",
+            top_k: 6,
+          }),
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          if (data.results && Array.isArray(data.results)) {
+            // Filter out exact duplicates by name
+            const seen = new Set();
+            const uniqueResults = data.results.filter((item: RecommendResult) => {
+              if (!item.name) return true;
+              const duplicate = seen.has(item.name);
+              seen.add(item.name);
+              return !duplicate;
+            });
+            const finalRecs = uniqueResults.slice(0, 6);
+            setRecommendations(finalRecs);
+            
+            // Save to cache
+            try {
+              sessionStorage.setItem("home_recommendations", JSON.stringify(finalRecs));
+            } catch (err) {
+              console.error("Lỗi khi lưu cache:", err);
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch recommendations:", err);
+      } finally {
+        setIsLoadingRecs(false);
+      }
+    }
+
+    if (mounted) {
+      fetchRecommendations();
+    }
+  }, [coords, mounted]);
 
   /* ── Health check ── */
   const checkHealth = useCallback(async () => {
@@ -313,18 +363,28 @@ export default function Home() {
                   Xem thêm
                 </Link>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                {MOCK_RECOMMENDATIONS.map((item) => (
-                  <FoodCard
-                    key={item.id}
-                    item={item}
-                    userId={
-                      typeof window !== "undefined"
-                        ? localStorage.getItem("user_id") || "guest"
-                        : "guest"
-                    }
-                  />
-                ))}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {isLoadingRecs && recommendations.length === 0 ? (
+                  Array.from({ length: 6 }).map((_, i) => (
+                    <div key={i} className="animate-pulse bg-gray-200 dark:bg-[#4D3D32] h-[320px] rounded-2xl w-full"></div>
+                  ))
+                ) : recommendations.length > 0 ? (
+                  recommendations.map((item) => (
+                    <FoodCard
+                      key={item.id}
+                      item={item}
+                      userId={
+                        typeof window !== "undefined"
+                          ? localStorage.getItem("user_id") || "guest"
+                          : "guest"
+                      }
+                    />
+                  ))
+                ) : (
+                  <div className="col-span-full text-center text-gray-500 py-10">
+                    Chưa có gợi ý nào, hãy thử tìm kiếm!
+                  </div>
+                )}
               </div>
             </div>
           </div>
