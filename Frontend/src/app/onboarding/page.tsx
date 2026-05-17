@@ -144,13 +144,17 @@ export default function OnboardingPage() {
           const data = await response.json();
           console.log("🚀 [Frontend] Dữ liệu khảo sát cũ nhận từ Backend:", data);
 
-          // Ánh xạ ngược nhãn Tiếng Việt của dị ứng và chế độ ăn về ID gốc tương ứng
+          // Ánh xạ ngược nhãn Tiếng Việt của dị ứng và chế độ ăn về ID gốc tương ứng (không phân biệt hoa thường)
           const mappedDietary = (data.dietary_restrictions || []).map(
-            (label: string) => DIETARY_OPTS.find(o => o.label === label)?.id
+            (label: string) => DIETARY_OPTS.find(o => o.label.toLowerCase() === label.toLowerCase())?.id
           ).filter(Boolean) as string[];
 
+          if (data.is_vegetarian && !mappedDietary.includes('vegetarian') && !mappedDietary.includes('vegan')) {
+            mappedDietary.push('vegetarian');
+          }
+
           const mappedAllergies = (data.allergies || []).map(
-            (label: string) => ALLERGY_OPTS.find(o => o.label === label)?.id
+            (label: string) => ALLERGY_OPTS.find(o => o.label.toLowerCase() === label.toLowerCase())?.id
           ).filter(Boolean) as string[];
 
           // Đảm bảo favorite_dishes là chữ hoa đầu từ như trong FAV_DISH_CATEGORIES
@@ -242,6 +246,7 @@ export default function OnboardingPage() {
         allergies: formData.allergies.map(
           id => ALLERGY_OPTS.find(o => o.id === id)?.label
         ).filter(Boolean),
+        is_vegetarian: formData.dietary_restrictions.includes('vegan') || formData.dietary_restrictions.includes('vegetarian'),
       };
 
       console.log("🚀 [Frontend] Payload Tiếng Việt chuẩn bị gửi cho Backend:", payloadToSubmit);
