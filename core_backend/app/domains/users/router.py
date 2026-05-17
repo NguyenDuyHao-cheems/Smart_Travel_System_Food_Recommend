@@ -229,13 +229,13 @@ def get_current_user_profile(
         if "LIKE" in action:
             title = f'Đã yêu thích nhà hàng: "{res_name}"'
             icon_type = "heart"
-        elif ("VIEW" in action or "VISIT" in action) and "_DURATION" not in action:
-            title = f'Ghé thăm nhà hàng "{res_name}"'
-            icon_type = "visit"
         elif "REVIEW" in action:
             rating = metadata.get("rating") or "5 sao"
             title = f'Đánh giá "{rating}" cho nhà hàng "{res_name}"'
             icon_type = "star"
+        elif ("VIEW" in action or "VISIT" in action) and "_DURATION" not in action:
+            title = f'Ghé thăm nhà hàng "{res_name}"'
+            icon_type = "visit"
         elif "SAVE" in action or "COLLECT" in action or "BOOKMARK" in action:
             coll_name = metadata.get("collection_name") or "Bộ sưu tập của tôi"
             title = f'Lưu nhà hàng "{res_name}" vào bộ sưu tập "{coll_name}"'
