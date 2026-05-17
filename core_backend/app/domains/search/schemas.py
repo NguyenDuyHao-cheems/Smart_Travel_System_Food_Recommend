@@ -19,7 +19,10 @@ class SearchRecommendRequest(BaseModel):
     user_id: Optional[str] = Field(None, description="Optional user ID for personalized filtering")
     budget: Optional[int] = Field(None, ge=0, description="Optional explicit budget in VND from user. Takes priority over AI-extracted budget.")
     tag_name: Optional[str] = Field(None, description="Optional tag name for explicit filtering (e.g., 'gà', 'phở')")
-    search_mode: Optional[str] = Field("basic", description="Loại tìm kiếm (basic hoặc emotion)")
+    search_mode: Optional[str] = Field(
+        "basic",
+        description="Loại tìm kiếm (basic hoặc emotion). emotion kết hợp cảm xúc query và tín hiệu review sentiment.",
+    )
     top_k: Optional[int] = Field(24, description="Số lượng kết quả tối đa cần trả về")
 
 class AllergenDishWarning(BaseModel):
@@ -44,6 +47,21 @@ class RecommendResult(BaseModel):
     total_reviews: Optional[int] = 0
     google_maps_url: Optional[str] = None
     allergen_warning: Optional[List[AllergenDishWarning]] = None
+    sentiment_score: Optional[float] = Field(
+        None,
+        ge=-1.0,
+        le=1.0,
+        description="Điểm sentiment tổng hợp từ review, chuẩn hóa -1..1.",
+    )
+    sentiment_label: Optional[str] = Field(
+        None,
+        description="Nhãn sentiment tổng hợp: positive, neutral hoặc negative.",
+    )
+    sentiment_review_count: Optional[int] = Field(
+        0,
+        ge=0,
+        description="Số review đã được dùng/đại diện cho sentiment của nhà hàng.",
+    )
 
 class SearchRecommendResponse(BaseModel):
     """

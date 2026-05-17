@@ -8,6 +8,8 @@ và đảm bảo tính nhất quán với schema CandidateWithFeatures.
 import numpy as np
 from typing import List
 
+from app.services.review_sentiment import normalize_restaurant_sentiment
+
 
 class FeatureService:
     def build_integer_features(
@@ -41,10 +43,11 @@ class FeatureService:
             else:
                 price_norm = int((raw_price / budget) * 100)
 
-            # 3. Rating & Sentiment: scale về 0–100
-            # sentiment_score trong DB: thang 0–10 → nhân 10 → 0–100
+            # 3. Rating & Sentiment
             rating_int = int((getattr(r, "rating_avg", 0.0) or 0.0) * 100)
-            sentiment_int = int((getattr(r, "sentiment_score", 0.0) or 0.0) * 10)
+            # New sentiment scale is -1..1. Legacy neutral=5.0 is normalized here too.
+            sentiment_unit = normalize_restaurant_sentiment(getattr(r, "sentiment_score", None))
+            sentiment_int = int(sentiment_unit * 100)
 
             # 4. Trạng thái mở cửa — dùng is_open_now (bản NEW)
             is_open_int = 1 if getattr(r, "is_open_now", False) else 0

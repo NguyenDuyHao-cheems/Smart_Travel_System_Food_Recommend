@@ -16,6 +16,10 @@ from .schemas import (
 )
 from app.services.ai_client import AIServiceClient
 from app.services.recommendation_service import recommend
+from app.services.review_sentiment import (
+    normalize_restaurant_sentiment,
+    sentiment_label_for_score,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -63,6 +67,7 @@ class SearchService:
             user_location=[request.lat, request.lng],
             tag_name=request.tag_name,
             cleaned_query=ai_response.cleaned_query,
+            search_mode=request.search_mode or "basic",
         )
 
         top_k = getattr(request, "top_k", 24) or 24
@@ -233,6 +238,9 @@ class SearchService:
             total_reviews=getattr(model, "total_reviews", 0) or 0,
             google_maps_url=getattr(model, "google_maps_url", None),
             allergen_warning=getattr(model, "allergen_warning", None),
+            sentiment_score=normalize_restaurant_sentiment(getattr(model, "sentiment_score", None)),
+            sentiment_label=sentiment_label_for_score(getattr(model, "sentiment_score", None)),
+            sentiment_review_count=getattr(model, "total_reviews", 0) or 0,
         )
 
     @staticmethod
@@ -260,6 +268,10 @@ class SearchService:
             # Chỉ coi là "Đánh giá cao" nếu thực sự có review, tránh case default 5.0
             if getattr(model, 'total_reviews', 0) > 0:
                 reasons.append("Đánh giá cao")
+
+        sentiment = normalize_restaurant_sentiment(getattr(model, "sentiment_score", None))
+        if sentiment >= 0.35 and getattr(model, "total_reviews", 0) > 0:
+            reasons.append("Review tích cực")
             
         if reasons:
             return " · ".join(reasons)
