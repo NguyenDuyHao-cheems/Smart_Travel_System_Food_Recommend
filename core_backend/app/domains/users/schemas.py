@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, field_validator
-from typing import List, Optional, Literal
+from typing import List, Optional, Literal, Dict
 from datetime import datetime
 
 
@@ -133,11 +133,18 @@ class UserInteractionResponse(BaseModel):
     interaction_id: str
 
 
+class BadgeProgress(BaseModel):
+    unlocked: bool
+    progress: int
+    target: int
+
+
 class UserProfileResponse(BaseModel):
     id: str
     username: str
     full_name: Optional[str] = None
     avatar_url: Optional[str] = None
     created_at: datetime
+    badges: Dict[str, BadgeProgress]
 
 

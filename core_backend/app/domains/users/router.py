@@ -5,7 +5,8 @@ from .models import UserAccount
 from .schemas import (
     OnboardingRequest, OnboardingResponse, SignUpRequest, SignInRequest, 
     GoogleAuthRequest, AuthResponse, UserUpdateRequest,
-    UserInteractionRequest, UserInteractionResponse, UserProfileResponse
+    UserInteractionRequest, UserInteractionResponse, UserProfileResponse,
+    BadgeProgress
 )
 from .service import OnboardingService, AuthService, UserInteractionService
 from .repository import UserOnboardingRepository, UserAccountRepository, UserInteractionRepository
@@ -70,14 +71,76 @@ async def google_auth(
 @router.get("/me", response_model=UserProfileResponse)
 def get_current_user_profile(
     current_user: UserAccount = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ) -> UserProfileResponse:
-    """Trả về thông tin hồ sơ của tài khoản đang đăng nhập."""
+    """Trả về thông tin hồ sơ của tài khoản đang đăng nhập kèm trạng thái huy hiệu."""
+    import uuid
+    from app.domains.users.models import UserOnboarding
+    from app.domains.search.models import SearchSession
+    
+    # 1. Truy vấn thông tin Onboarding để check Ăn chay
+    onboarding = db.query(UserOnboarding).filter(UserOnboarding.user_id == str(current_user.id)).first()
+    is_vegetarian = onboarding.is_vegetarian if onboarding else False
+
+    # 2. Truy vấn lịch sử tìm kiếm để tính toán tiến độ
+    user_uuid = uuid.UUID(str(current_user.id))
+    sessions = db.query(SearchSession).filter(SearchSession.user_id == user_uuid).all()
+
+    # 3. Tính toán đếm số lần theo từ khóa
+    pho_count = 0
+    cay_count = 0
+    rau_count = 0
+    kem_count = 0
+    thit_count = 0
+    night_count = 0
+
+    for s in sessions:
+        q = (s.query or "").lower()
+        
+        # 🍜 Phở Master
+        if "phở" in q:
+            pho_count += 1
+            
+        # 🌶️ Cay Vô Đối
+        if any(k in q for k in ["cay", "lẩu thái", "mì cay", "ớt", "lẩu xuyên tiêu"]):
+            cay_count += 1
+            
+        # 🥬 Thánh Rau
+        if any(k in q for k in ["rau", "chay", "salad", "nấm", "diet"]):
+            rau_count += 1
+            
+        # 🍦 Kem Lạnh
+        if any(k in q for k in ["kem", "chè", "bánh ngọt", "tráng miệng", "ice cream", "sữa chua"]):
+            kem_count += 1
+            
+        # 🥓 Team Thịt
+        if any(k in q for k in ["thịt", "nướng", "bbq", "steak", "lợn", "bò", "gà"]):
+            thit_count += 1
+            
+        # ☕ Cú Đêm (22h đêm - 4h sáng VN, tức s.created_at + 7 tiếng)
+        if s.created_at:
+            local_hour = (s.created_at.hour + 7) % 24
+            if local_hour >= 22 or local_hour < 4:
+                night_count += 1
+
+    # Giới hạn tiến trình không vượt quá target
+    badges_data = {
+        "🍜": BadgeProgress(unlocked=pho_count >= 20, progress=min(pho_count, 20), target=20),
+        "🌶️": BadgeProgress(unlocked=cay_count >= 20, progress=min(cay_count, 20), target=20),
+        "🥬": BadgeProgress(unlocked=rau_count >= 20, progress=min(rau_count, 20), target=20),
+        "🍦": BadgeProgress(unlocked=kem_count >= 20, progress=min(kem_count, 20), target=20),
+        "🥓": BadgeProgress(unlocked=thit_count >= 20, progress=min(thit_count, 20), target=20),
+        "☕": BadgeProgress(unlocked=night_count >= 20, progress=min(night_count, 20), target=20),
+        "🧘": BadgeProgress(unlocked=is_vegetarian, progress=1 if is_vegetarian else 0, target=1)
+    }
+
     return UserProfileResponse(
         id=str(current_user.id),
         username=current_user.username,
         full_name=current_user.full_name,
         avatar_url=current_user.avatar_url,
         created_at=current_user.created_at,
+        badges=badges_data,
     )
 
 
