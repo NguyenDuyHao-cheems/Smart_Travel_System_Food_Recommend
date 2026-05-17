@@ -270,6 +270,7 @@ def get_current_user_profile(
     ).filter(UserInteraction.user_id == str(current_user.id)).all()
     active_dates = [str(d[0]) for d in active_dates_query if d[0]]
 
+
     return UserProfileResponse(
         id=str(current_user.id),
         username=current_user.username,
