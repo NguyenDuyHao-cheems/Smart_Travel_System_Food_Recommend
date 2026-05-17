@@ -1,15 +1,10 @@
 from datetime import datetime, timezone
 import uuid
-
 from sqlalchemy import Column, String, Integer, JSON, DateTime, event, DDL, ForeignKey, Boolean
-from sqlalchemy.orm import DeclarativeBase
+from app.core.database import Base
 from pgvector.sqlalchemy import Vector
 from sqlalchemy.ext.compiler import compiles
 from app.core.config import settings
-
-
-class Base(DeclarativeBase):
-    pass
 
 
 @compiles(Vector, "sqlite")

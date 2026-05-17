@@ -3,6 +3,7 @@ from sqlalchemy.orm import relationship
 from app.core.database import Base
 from pgvector.sqlalchemy import Vector
 from app.core.config import settings
+from app.domains.users.models import UserAccount
 
 
 class RestaurantModel(Base):
@@ -94,6 +95,7 @@ class ReviewModel(Base):
 
     id = Column(String, primary_key=True, index=True)
     res_id = Column(String, ForeignKey("restaurants.id"), index=True)
+    user_id = Column(String, ForeignKey("users.id"), nullable=True, index=True)
     reviewer_name = Column(String, nullable=True)
     rating = Column(Float, nullable=True)
     text = Column(String, nullable=True)
@@ -103,3 +105,7 @@ class ReviewModel(Base):
     sentiment_confidence = Column(Float, nullable=True)
     sentiment_model = Column(String, nullable=True)
     sentiment_analyzed_at = Column(DateTime(timezone=True), nullable=True)
+    is_anonymous = Column(Boolean, default=False)
+    anonymous_number = Column(Integer, nullable=True)
+
+    user = relationship("UserAccount")

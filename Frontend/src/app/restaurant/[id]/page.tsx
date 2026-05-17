@@ -14,7 +14,11 @@ import {
   ChevronRight,
   X,
   AlertTriangle,
-  ShieldCheck
+  ShieldCheck,
+  Trash2,
+  MessageSquarePlus,
+  Send,
+  Eye
 } from 'lucide-react';
 import Image from 'next/image';
 import { interactionService } from '../../../services/interactionService';
@@ -30,10 +34,13 @@ interface Dish {
 
 interface Review {
   id: string;
+  user_id: string | null;
   reviewer_name: string;
   rating: number;
   text: string;
   date: string;
+  is_anonymous: boolean;
+  anonymous_number: number | null;
 }
 
 interface Restaurant {
@@ -68,6 +75,42 @@ export default function RestaurantDetailPage() {
   const [isMapModalOpen, setIsMapModalOpen] = useState(false);
   const [userAllergies, setUserAllergies] = useState<string[]>([]);
   const [isAllergenSectionOpen, setIsAllergenSectionOpen] = useState(true);
+
+  // Auth & reviews state
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [authToken, setAuthToken] = useState<string | null>(null);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [isAllReviewsOpen, setIsAllReviewsOpen] = useState(false);
+  const [isWriteReviewOpen, setIsWriteReviewOpen] = useState(false);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  useEffect(() => {
+    setCurrentUserId(localStorage.getItem('user_id'));
+    setAuthToken(localStorage.getItem('access_token'));
+  }, []);
+
+  useEffect(() => {
+    if (restaurant) setReviews(restaurant.reviews || []);
+  }, [restaurant]);
+
+  const handleDeleteReview = async (reviewId: string) => {
+    if (!authToken) return;
+    setIsDeleting(true);
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+    try {
+      const res = await fetch(`${apiUrl}/api/v1/restaurants/${restaurantId}/reviews/${reviewId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${authToken}` },
+      });
+      if (res.ok || res.status === 204) {
+        setReviews(prev => prev.filter(r => r.id !== reviewId));
+      }
+    } finally {
+      setPendingDeleteId(null);
+      setIsDeleting(false);
+    }
+  };
 
   useEffect(() => {
     let idToUse: string | null = null;
@@ -429,56 +472,7 @@ export default function RestaurantDetailPage() {
               </div>
             </section>
 
-            {/* Reviews Section */}
-            <section className="pt-6 border-t border-gray-100 dark:border-[#3D312A]">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="p-2 bg-yellow-100 dark:bg-yellow-500/20 rounded-lg">
-                  <Star className="w-6 h-6 text-yellow-500 fill-yellow-500" />
-                </div>
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-[#E6DFD5]">Bình luận từ thực khách</h2>
-              </div>
-
-              <div className="space-y-4">
-                {restaurant.reviews && restaurant.reviews.length > 0 ? (
-                  restaurant.reviews.map((review, idx) => (
-                    <motion.div
-                      key={review.id || idx}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: idx * 0.1 }}
-                      className="bg-white dark:bg-[#3D312A] p-5 rounded-2xl shadow-sm border border-gray-100 dark:border-[#4D3D32]"
-                    >
-                      <div className="flex justify-between items-start mb-3">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-gradient-to-br from-brand to-pink-500 rounded-full flex items-center justify-center text-white font-bold">
-                            {(review.reviewer_name || "Ẩn danh").charAt(0).toUpperCase()}
-                          </div>
-                          <div>
-                            <p className="font-bold text-gray-900 dark:text-[#E6DFD5] text-sm">{review.reviewer_name || "Thực khách ẩn danh"}</p>
-                            <p className="text-xs text-gray-400">{review.date || "Gần đây"}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-1 px-2 py-1 bg-yellow-50 dark:bg-yellow-500/10 rounded-lg">
-                          <Star className="w-3.5 h-3.5 text-yellow-500 fill-yellow-500" />
-                          <span className="text-sm font-bold text-yellow-700 dark:text-yellow-500">
-                            {review.rating ? review.rating.toFixed(1) : "N/A"}
-                          </span>
-                        </div>
-                      </div>
-                      <p className="text-gray-600 dark:text-[#C8BFB0] text-sm leading-relaxed">
-                        {review.text || "Người dùng không để lại lời bình luận nào."}
-                      </p>
-                    </motion.div>
-                  ))
-                ) : (
-                  <div className="py-8 text-center bg-gray-50 dark:bg-[#3D312A]/30 rounded-2xl border border-dashed border-gray-200 dark:border-[#4D3D32]">
-                    <p className="text-gray-500">Chưa có bình luận nào cho nhà hàng này.</p>
-                  </div>
-                )}
-              </div>
-            </section>
-
-            {/* Removed Map Section from here */}
+            {/* Reviews removed from left column — now in sidebar */}
           </div>
 
           {/* Right Column: Sidebar Info */}
@@ -528,6 +522,54 @@ export default function RestaurantDetailPage() {
                   </div>
                 )}
               </div>
+            </div>
+
+            {/* Reviews Panel — above map */}
+            <div className="bg-white dark:bg-[#3D312A] p-5 rounded-3xl shadow-sm border border-gray-100 dark:border-[#4D3D32]">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-base font-bold flex items-center gap-2 text-gray-900 dark:text-[#E6DFD5]">
+                  <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
+                  Bình luận
+                </h3>
+                <div className="flex gap-1.5">
+                  {authToken && (
+                    <button onClick={() => setIsWriteReviewOpen(true)} className="flex items-center gap-1 px-3 py-1.5 text-xs font-bold rounded-xl bg-brand text-white hover:bg-brand-hover transition-colors shadow-sm shadow-brand/10">
+                      <MessageSquarePlus className="w-3.5 h-3.5" />
+                      Đánh giá
+                    </button>
+                  )}
+                </div>
+              </div>
+              <div className="space-y-3 max-h-[280px] overflow-y-auto pr-1">
+                {reviews.slice(0, 3).map((review, idx) => (
+                  <div key={review.id || idx} className="bg-gray-50 dark:bg-[#2A2420] p-3 rounded-2xl border border-gray-100 dark:border-[#4D3D32]">
+                    <div className="flex justify-between items-start mb-1">
+                      <p className="font-bold text-[11px] text-gray-800 dark:text-[#E6DFD5] line-clamp-1">{review.reviewer_name || 'Ẩn danh'}</p>
+                      <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-0.5">
+                          <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />
+                          <span className="text-[10px] font-bold text-yellow-700 dark:text-yellow-400">{review.rating?.toFixed(1)}</span>
+                        </div>
+                        {currentUserId && review.user_id === currentUserId && (
+                          <button onClick={() => setPendingDeleteId(review.id)}
+                            className="p-1 rounded-lg text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 hover:text-red-600 transition-colors">
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    <p className="text-[11px] text-gray-500 dark:text-[#9A8A7A] line-clamp-2">{review.text || 'Không có nội dung.'}</p>
+                  </div>
+                ))}
+                {reviews.length === 0 && (
+                  <p className="text-center text-xs text-gray-400 py-4">Chưa có bình luận nào.</p>
+                )}
+              </div>
+              {reviews.length > 3 && (
+                <button onClick={() => setIsAllReviewsOpen(true)} className="w-full mt-3 text-xs font-semibold text-brand hover:underline">
+                  Xem tất cả bình luận →
+                </button>
+              )}
             </div>
 
             {/* Map Section */}
@@ -623,6 +665,44 @@ export default function RestaurantDetailPage() {
           </motion.div>
         )}
       </AnimatePresence>
+      {/* ── All Reviews Modal ── */}
+      <AnimatePresence>
+        {isAllReviewsOpen && (
+          <AllReviewsModal
+            restaurantId={restaurantId}
+            restaurantName={restaurant.name}
+            reviews={reviews}
+            currentUserId={currentUserId}
+            authToken={authToken}
+            onClose={() => setIsAllReviewsOpen(false)}
+            onReviewDeleted={(id) => setReviews(prev => prev.filter(r => r.id !== id))}
+            onWriteReview={() => { setIsAllReviewsOpen(false); setIsWriteReviewOpen(true); }}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* ── Write Review Modal ── */}
+      <AnimatePresence>
+        {isWriteReviewOpen && (
+          <WriteReviewModal
+            restaurantId={restaurantId}
+            restaurantName={restaurant.name}
+            authToken={authToken}
+            onClose={() => setIsWriteReviewOpen(false)}
+            onReviewAdded={(r) => setReviews(prev => [r, ...prev])}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* ── Delete Confirm Modal ── */}
+      <AnimatePresence>
+        {pendingDeleteId && (
+          <DeleteConfirmModal
+            onConfirm={() => handleDeleteReview(pendingDeleteId)}
+            onCancel={() => setPendingDeleteId(null)}
+          />
+        )}
+      </AnimatePresence>
 
     </div>
     </AppShell>
@@ -666,5 +746,282 @@ function ErrorState({ message, onBack }: { message: string; onBack: () => void }
         </button>
       </div>
     </div>
+  );
+}
+
+/* ── AllReviewsModal ── */
+/* ── AllReviewsModal ── */
+interface AllReviewsModalProps {
+  restaurantId: string;
+  restaurantName: string;
+  reviews: Review[];
+  currentUserId: string | null;
+  authToken: string | null;
+  onClose: () => void;
+  onReviewDeleted: (id: string) => void;
+  onWriteReview?: () => void;
+}
+
+function AllReviewsModal({ restaurantId, restaurantName, reviews, currentUserId, authToken, onClose, onReviewDeleted, onWriteReview }: AllReviewsModalProps) {
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
+  const handleDelete = async (reviewId: string) => {
+    if (!authToken) return;
+    const res = await fetch(`${apiUrl}/api/v1/restaurants/${restaurantId}/reviews/${reviewId}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${authToken}` },
+    });
+    if (res.ok || res.status === 204) {
+      onReviewDeleted(reviewId);
+      setPendingDeleteId(null);
+    }
+  };
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-6 sm:p-10 md:p-16 bg-black/60 backdrop-blur-sm" onClick={onClose}>
+      <motion.div initial={{ scale: 0.95, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0, y: 20 }}
+        onClick={e => e.stopPropagation()}
+        className="relative w-full max-w-2xl max-h-[80vh] my-auto bg-white dark:bg-[#2A2420] rounded-3xl overflow-hidden shadow-2xl flex flex-col">
+        
+        {/* Header */}
+        <div className="p-5 border-b border-gray-100 dark:border-[#3D312A] flex justify-between items-center">
+          <div>
+            <h3 className="text-xl font-bold text-gray-900 dark:text-[#E6DFD5] flex items-center gap-2">
+              <Star className="w-5 h-5 text-yellow-500 fill-yellow-500" /> Bình luận
+            </h3>
+            <p className="text-xs text-gray-400 mt-0.5">{restaurantName}</p>
+          </div>
+          <div className="flex items-center gap-2">
+            {authToken && onWriteReview && (
+              <button onClick={onWriteReview} className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl bg-brand text-white hover:bg-brand-hover transition-colors shadow-md shadow-brand/10 mr-1">
+                <MessageSquarePlus className="w-4 h-4" />
+                Viết đánh giá
+              </button>
+            )}
+            <button onClick={onClose} className="p-2 bg-gray-100 hover:bg-gray-200 dark:bg-[#3D312A] dark:hover:bg-[#4D3D32] rounded-full transition-colors">
+              <X className="w-5 h-5 text-gray-700 dark:text-[#C8BFB0]" />
+            </button>
+          </div>
+        </div>
+
+        {/* List */}
+        <div className="flex-1 overflow-y-auto p-5 space-y-3">
+          {reviews.length === 0 && (
+            <div className="py-12 text-center text-gray-400">
+              <Star className="w-10 h-10 mx-auto mb-3 opacity-30" />
+              <p>Chưa có bình luận nào. Hãy là người đầu tiên!</p>
+            </div>
+          )}
+          {reviews.map((review, idx) => (
+            <motion.div key={review.id || idx} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.04 }}
+              className="bg-gray-50 dark:bg-[#3D312A] p-4 rounded-2xl border border-gray-100 dark:border-[#4D3D32]">
+              <div className="flex justify-between items-start mb-2">
+                <div className="flex items-center gap-2">
+                  <div className="w-9 h-9 bg-gradient-to-br from-brand to-pink-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                    {(review.reviewer_name || 'A').charAt(0).toUpperCase()}
+                  </div>
+                  <div>
+                    <p className="font-bold text-sm text-gray-900 dark:text-[#E6DFD5]">{review.reviewer_name || 'Ẩn danh'}</p>
+                    <p className="text-xs text-gray-400">{review.date || 'Gần đây'}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1 px-2 py-0.5 bg-yellow-50 dark:bg-yellow-500/10 rounded-lg">
+                    <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />
+                    <span className="text-xs font-bold text-yellow-700 dark:text-yellow-400">{review.rating?.toFixed(1)}</span>
+                  </div>
+                  {currentUserId && review.user_id === currentUserId && (
+                    <button onClick={() => setPendingDeleteId(review.id)}
+                      className="p-1.5 rounded-lg text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 hover:text-red-600 transition-colors">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              </div>
+              <p className="text-sm text-gray-600 dark:text-[#C8BFB0] leading-relaxed">{review.text || 'Không có nội dung.'}</p>
+            </motion.div>
+          ))}
+        </div>
+        
+        <AnimatePresence>
+          {pendingDeleteId && (
+            <DeleteConfirmModal onConfirm={() => handleDelete(pendingDeleteId)} onCancel={() => setPendingDeleteId(null)} />
+          )}
+        </AnimatePresence>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+/* ── WriteReviewModal ── */
+interface WriteReviewModalProps {
+  restaurantId: string;
+  restaurantName: string;
+  authToken: string | null;
+  onClose: () => void;
+  onReviewAdded: (r: Review) => void;
+}
+
+function WriteReviewModal({ restaurantId, restaurantName, authToken, onClose, onReviewAdded }: WriteReviewModalProps) {
+  const [rating, setRating] = useState(0);
+  const [hoverRating, setHoverRating] = useState(0);
+  const [text, setText] = useState('');
+  const [isAnonymous, setIsAnonymous] = useState(false);
+  const [anonymousPreview, setAnonymousPreview] = useState<number | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
+  const handleToggleAnonymous = async () => {
+    const newVal = !isAnonymous;
+    setIsAnonymous(newVal);
+    if (newVal && authToken) {
+      try {
+        const res = await fetch(`${apiUrl}/api/v1/reviews/check-anonymous?restaurant_id=${restaurantId}`, {
+          headers: { Authorization: `Bearer ${authToken}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setAnonymousPreview(data.anonymous_number);
+        }
+      } catch (err) {
+        console.error("Failed to check anonymous status:", err);
+      }
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (rating === 0 || !authToken) return;
+    setIsSubmitting(true);
+    try {
+      const res = await fetch(`${apiUrl}/api/v1/restaurants/${restaurantId}/reviews`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
+        body: JSON.stringify({ rating: rating * 2, text: text.trim() || null, is_anonymous: isAnonymous }),
+      });
+      if (res.ok) {
+        const r = await res.json();
+        onReviewAdded(r);
+        setRating(0);
+        setText('');
+        setIsAnonymous(false);
+        setAnonymousPreview(null);
+        onClose();
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-6 sm:p-10 md:p-16 bg-black/60 backdrop-blur-sm" onClick={onClose}>
+      <motion.div initial={{ scale: 0.95, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0, y: 20 }}
+        onClick={e => e.stopPropagation()}
+        className="relative w-full max-w-lg my-auto bg-white dark:bg-[#2A2420] rounded-3xl overflow-hidden shadow-2xl flex flex-col p-6 space-y-4">
+        
+        {/* Header */}
+        <div className="flex justify-between items-center border-b border-gray-100 dark:border-[#3D312A] pb-3">
+          <div>
+            <h3 className="text-xl font-bold text-gray-900 dark:text-[#E6DFD5] flex items-center gap-2">
+              <MessageSquarePlus className="w-5 h-5 text-brand" /> Viết đánh giá
+            </h3>
+            <p className="text-xs text-gray-400 mt-0.5">{restaurantName}</p>
+          </div>
+          <button onClick={onClose} className="p-2 bg-gray-100 hover:bg-gray-200 dark:bg-[#3D312A] dark:hover:bg-[#4D3D32] rounded-full transition-colors">
+            <X className="w-5 h-5 text-gray-700 dark:text-[#C8BFB0]" />
+          </button>
+        </div>
+
+        {/* Form Body */}
+        {authToken ? (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-semibold text-gray-600 dark:text-[#C8BFB0] mr-2">Điểm:</span>
+              <div className="flex items-center gap-1">
+                {[1,2,3,4,5].map(s => (
+                  <button key={s} onMouseEnter={() => setHoverRating(s)} onMouseLeave={() => setHoverRating(0)} onClick={() => setRating(s)}
+                    className={`w-7 h-7 transition-transform hover:scale-125 ${s <= (hoverRating || rating) ? 'text-yellow-500' : 'text-gray-300 dark:text-gray-600'}`}>
+                    <Star className="w-full h-full fill-current" />
+                  </button>
+                ))}
+                <span className="ml-2 text-xs text-gray-400">{rating > 0 ? `${rating * 2}/10` : 'Chưa chọn'}</span>
+              </div>
+            </div>
+
+            {/* Toggle Switch "Đánh giá ẩn danh" */}
+            <div className="flex flex-col gap-1 bg-gray-50 dark:bg-[#3D312A] p-3 rounded-2xl border border-gray-100 dark:border-[#4D3D32] transition-colors duration-300">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-gray-700 dark:text-[#C8BFB0]">Đánh giá ẩn danh:</span>
+                <button
+                  type="button"
+                  onClick={handleToggleAnonymous}
+                  className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-brand/40 ${
+                    isAnonymous ? 'bg-brand' : 'bg-gray-200 dark:bg-gray-700'
+                  }`}
+                >
+                  <span
+                    aria-hidden="true"
+                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                      isAnonymous ? 'translate-x-5' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+              </div>
+              {isAnonymous && (
+                <p className="text-[11px] text-brand dark:text-[#E8735A] font-semibold mt-1">
+                  {anonymousPreview !== null
+                    ? `Bạn sẽ bình luận dưới tên: Người ẩn danh số ${anonymousPreview}`
+                    : 'Bạn sẽ bình luận dưới tên: Người ẩn danh mới'}
+                </p>
+              )}
+            </div>
+
+            <textarea value={text} onChange={e => setText(e.target.value)} maxLength={500}
+              placeholder="Chia sẻ trải nghiệm của bạn..." rows={4}
+              className="w-full px-4 py-3 rounded-2xl bg-white dark:bg-[#3D312A] border border-gray-200 dark:border-[#4D3D32] text-sm text-gray-800 dark:text-[#E6DFD5] placeholder-gray-400 resize-none focus:outline-none focus:ring-2 focus:ring-brand/40" />
+            
+            <div className="flex justify-end pt-2">
+              <button onClick={handleSubmit} disabled={rating === 0 || isSubmitting}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-brand text-white text-sm font-bold hover:bg-brand-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed w-full justify-center md:w-auto shadow-md shadow-brand/15">
+                <Send className="w-4 h-4" />{isSubmitting ? 'Đang gửi...' : 'Gửi đánh giá'}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center py-6 text-center">
+            <p className="text-sm text-gray-500 mb-4">Vui lòng đăng nhập để viết đánh giá.</p>
+            <a href="/auth" className="px-6 py-2 rounded-xl bg-brand text-white text-sm font-bold hover:bg-brand-hover transition-colors">Đăng nhập</a>
+          </div>
+        )}
+      </motion.div>
+    </motion.div>
+  );
+}
+
+/* ── DeleteConfirmModal ── */
+function DeleteConfirmModal({ onConfirm, onCancel }: { onConfirm: () => void; onCancel: () => void }) {
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={onCancel}>
+      <motion.div initial={{ scale: 0.85, opacity: 0, y: 24 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.85, opacity: 0, y: 16 }}
+        transition={{ type: 'spring', damping: 22, stiffness: 320 }} onClick={e => e.stopPropagation()}
+        className="w-full max-w-sm bg-white dark:bg-[#2A2420] rounded-3xl shadow-2xl overflow-hidden border border-gray-100 dark:border-[#4D3D32]">
+        <div className="flex justify-center pt-8 pb-2">
+          <div className="w-16 h-16 bg-red-50 dark:bg-red-500/10 rounded-full flex items-center justify-center">
+            <Trash2 className="w-7 h-7 text-red-500" />
+          </div>
+        </div>
+        <div className="px-7 pt-3 pb-7 text-center">
+          <h3 className="text-lg font-bold text-gray-900 dark:text-[#E6DFD5] mb-2">Xóa bình luận?</h3>
+          <p className="text-sm text-gray-500 dark:text-[#9A8A7A] leading-relaxed mb-7">Hành động này không thể hoàn tác.</p>
+          <div className="flex gap-3">
+            <button onClick={onCancel} className="flex-1 py-3 rounded-2xl text-sm font-semibold bg-gray-100 hover:bg-gray-200 dark:bg-[#3D312A] dark:hover:bg-[#4D3D32] text-gray-700 dark:text-[#C8BFB0] transition-all">Hủy</button>
+            <button onClick={onConfirm} className="flex-1 py-3 rounded-2xl text-sm font-bold bg-red-500 hover:bg-red-600 text-white transition-all shadow-lg shadow-red-500/25 hover:-translate-y-0.5">Xóa ngay</button>
+          </div>
+        </div>
+      </motion.div>
+    </motion.div>
   );
 }
