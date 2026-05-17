@@ -38,6 +38,8 @@ _NEGATIVE_TERMS = {
     "te",
     "rat te",
     "qua te",
+    "do_bad",
+    "do_bad te",
     "do te",
     "khong ngon",
     "that vong",
@@ -60,7 +62,9 @@ _NEGATIVE_TERMS = {
     "phuc vu kem",
 }
 
-_NEGATION_PREFIXES = ("khong ", "chua ", "chang ", "ko ", "k ")
+_NEGATION_TOKENS = {"khong", "kh", "chua", "chang", "ko", "k"}
+_NEGATION_BRIDGES = {"he", "co", "qua", "may", "thay"}
+_NEGATION_WINDOW = 3
 
 
 @dataclass(frozen=True)
@@ -83,7 +87,8 @@ class RestaurantSentimentSummary:
 def normalize_vietnamese(text: str) -> str:
     if not text:
         return ""
-    normalized = unicodedata.normalize("NFD", text.lower())
+    lowered = re.sub(r"\bdở\b", "do_bad", text.lower())
+    normalized = unicodedata.normalize("NFD", lowered)
     normalized = "".join(ch for ch in normalized if unicodedata.category(ch) != "Mn")
     normalized = normalized.replace("đ", "d")
     return re.sub(r"\s+", " ", normalized).strip()
@@ -186,18 +191,18 @@ def _score_text(normalized: str) -> float:
     if not normalized:
         return 0.0
 
-    positive_hits = _count_terms(normalized, _POSITIVE_TERMS)
-    negative_hits = _count_terms(normalized, _NEGATIVE_TERMS)
+    positive_hits = 0
+    negative_hits = 0
 
-    for term in _POSITIVE_TERMS:
-        if any(f"{prefix}{term}" in normalized for prefix in _NEGATION_PREFIXES):
-            positive_hits -= 1
-            negative_hits += 1
+    for match in _find_sentiment_matches(normalized):
+        polarity = match["polarity"]
+        if match["negated"]:
+            polarity *= -1
 
-    for term in _NEGATIVE_TERMS:
-        if any(f"{prefix}{term}" in normalized for prefix in _NEGATION_PREFIXES):
-            negative_hits -= 1
+        if polarity > 0:
             positive_hits += 1
+        elif polarity < 0:
+            negative_hits += 1
 
     raw = positive_hits - negative_hits
     if raw == 0:
@@ -218,8 +223,55 @@ def _score_rating(rating: Optional[float]) -> Optional[float]:
     return _clamp(normalized, -1.0, 1.0)
 
 
-def _count_terms(text: str, terms: set[str]) -> int:
-    return sum(1 for term in terms if term in text)
+def _find_sentiment_matches(text: str) -> list[dict[str, int | bool]]:
+    tokens = re.findall(r"\w+", text)
+    if not tokens:
+        return []
+
+    term_specs = [
+        (tuple(term.split()), 1, term.split()[0] in _NEGATION_TOKENS)
+        for term in _POSITIVE_TERMS
+    ] + [
+        (tuple(term.split()), -1, term.split()[0] in _NEGATION_TOKENS)
+        for term in _NEGATIVE_TERMS
+    ]
+    term_specs.sort(key=lambda spec: len(spec[0]), reverse=True)
+
+    occupied: set[int] = set()
+    matches: list[dict[str, int | bool]] = []
+
+    for index in range(len(tokens)):
+        if index in occupied:
+            continue
+
+        for term_tokens, polarity, includes_negation in term_specs:
+            end = index + len(term_tokens)
+            if end > len(tokens) or any(pos in occupied for pos in range(index, end)):
+                continue
+            if tuple(tokens[index:end]) != term_tokens:
+                continue
+
+            for pos in range(index, end):
+                occupied.add(pos)
+            matches.append(
+                {
+                    "polarity": polarity,
+                    "negated": False if includes_negation else _has_negation_before(tokens, index),
+                }
+            )
+            break
+
+    return matches
+
+
+def _has_negation_before(tokens: list[str], start_index: int) -> bool:
+    lower_bound = max(0, start_index - _NEGATION_WINDOW)
+    for negation_index in range(start_index - 1, lower_bound - 1, -1):
+        if tokens[negation_index] not in _NEGATION_TOKENS:
+            continue
+        bridge_tokens = tokens[negation_index + 1:start_index]
+        return all(token in _NEGATION_BRIDGES for token in bridge_tokens)
+    return False
 
 
 def _label_for_score(score: float) -> str:

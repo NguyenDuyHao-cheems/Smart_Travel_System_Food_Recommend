@@ -30,6 +30,27 @@ def test_analyze_review_sentiment_detects_negative_review():
     assert result.score < -0.2
 
 
+def test_analyze_review_sentiment_handles_negated_bad_review_with_abbreviation():
+    result = analyze_review_sentiment("Quán kh hề dở")
+
+    assert result.label == "positive"
+    assert result.score > 0
+
+
+def test_analyze_review_sentiment_does_not_double_count_negated_bad_phrase():
+    result = analyze_review_sentiment("Quán ăn không hề dở tệ?")
+
+    assert result.label == "positive"
+    assert 0 < result.score < 0.7
+
+
+def test_analyze_review_sentiment_does_not_confuse_do_an_with_bad():
+    result = analyze_review_sentiment("Đồ ăn ngon")
+
+    assert result.label == "positive"
+    assert result.score > 0
+
+
 def test_aggregate_restaurant_sentiment_uses_smoothing():
     sentiments = [
         analyze_review_sentiment("Ngon và sạch sẽ", rating=5),
