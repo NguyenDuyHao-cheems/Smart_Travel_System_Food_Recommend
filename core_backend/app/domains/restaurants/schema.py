@@ -1,9 +1,11 @@
 from pydantic import BaseModel, field_validator
-from typing import List, Optional, Any
+from typing import List, Optional, Union, Any
 from uuid import UUID
 
+
 class DishResponse(BaseModel):
-    id: UUID
+    id: Union[str, UUID]
+
     name: str
     price: int
     image_url: Optional[str] = None
@@ -36,7 +38,8 @@ class ReviewResponse(BaseModel):
         from_attributes = True
 
 class RestaurantDetailResponse(BaseModel):
-    id: UUID
+    id: Union[str, UUID]
+
     name: str
     address: str
     google_maps_url: Optional[str] = None

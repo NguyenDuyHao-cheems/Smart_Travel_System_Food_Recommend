@@ -23,6 +23,7 @@ class SearchRecommendRequest(BaseModel):
         "basic",
         description="Loại tìm kiếm (basic hoặc emotion). emotion kết hợp cảm xúc query và tín hiệu review sentiment.",
     )
+    top_k: Optional[int] = Field(24, description="Số lượng kết quả tối đa cần trả về")
 
 class AllergenDishWarning(BaseModel):
     """Thông tin chi tiết món ăn gây dị ứng trong 1 quán."""

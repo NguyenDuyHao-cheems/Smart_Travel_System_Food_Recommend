@@ -1,5 +1,7 @@
 import logging
 import uuid as _uuid
+import shortuuid
+
 
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
@@ -68,7 +70,8 @@ class SearchService:
             search_mode=request.search_mode or "basic",
         )
 
-        raw_candidates = recommend_results["results"][:15]
+        top_k = getattr(request, "top_k", 24) or 24
+        raw_candidates = recommend_results["results"][:top_k]
         filtered_out_count = recommend_results.get("filtered_out_count", 0)
         allergen_flagged_count = recommend_results.get("allergen_flagged_count", 0)
         warning = recommend_results.get("warning")
@@ -139,8 +142,9 @@ class SearchService:
         logger.info("Saved search session: id=%s", session_obj.id)
 
         return SessionCreateResponse(
-            session_id=str(session_obj.id),
+            session_id=shortuuid.encode(session_obj.id),
             results=results,
+
             fallback_applied=recommend_results.get("fallback_applied", False),
             fallback_reason=fallback_reason,
             applied_budget=effective_budget,
@@ -151,13 +155,23 @@ class SearchService:
 
     @staticmethod
     def get_session(session_id: str, db: Session) -> SessionDataResponse:
-        """Truy vấn DB theo session_id, trả về SessionDataResponse hoặc 404."""
+        """Truy vấn DB theo session_id (hỗ trợ cả short ID và raw UUID), trả về SessionDataResponse hoặc 404."""
         from .models import SearchSession
 
+        uid = None
+        # Thử giải mã nếu là shortuuid
         try:
-            uid = _uuid.UUID(session_id)
-        except ValueError:
-            raise HTTPException(status_code=422, detail="session_id không hợp lệ.")
+            if len(session_id) < 36:  # Short IDs are usually 22 chars
+                uid = shortuuid.decode(session_id)
+            else:
+                uid = _uuid.UUID(session_id)
+        except Exception:
+            # Nếu không giải mã được, thử xem có phải UUID trực tiếp không
+            try:
+                uid = _uuid.UUID(session_id)
+            except ValueError:
+                raise HTTPException(status_code=422, detail="session_id không hợp lệ.")
+
 
         obj = db.query(SearchSession).filter(SearchSession.id == uid).first()
         if not obj:
@@ -171,8 +185,9 @@ class SearchService:
         results = [RecommendResult(**r) for r in data.get("results", [])]
         
         return SessionDataResponse(
-            session_id=str(obj.id),
+            session_id=shortuuid.encode(obj.id),
             query=obj.query,
+
             results=results,
             fallback_applied=data.get("fallback_applied", False),
             fallback_reason=data.get("fallback_reason"),
@@ -210,8 +225,9 @@ class SearchService:
             rating_display = "Chưa có đánh giá"
 
         return RecommendResult(
-            id=str(model.id),
+            id=shortuuid.encode(model.id),
             name=model.name or "Không rõ tên",
+
             match=match_str,
             dist=f"{dist_km:.1f} km",
             distance_km=round(dist_km, 2),

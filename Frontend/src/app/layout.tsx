@@ -3,6 +3,8 @@ import { Be_Vietnam_Pro } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "../components/ThemeProvider";
 import { Toaster } from "sonner";
+import { StoreProvider } from "../store/StoreProvider";
+import { LocationInitializer } from "../components/LocationInitializer";
 
 const beVietnamPro = Be_Vietnam_Pro({
   subsets: ["latin", "vietnamese"],
@@ -26,15 +28,18 @@ export default function RootLayout({
         suppressHydrationWarning
         className={`${beVietnamPro.className} antialiased text-slate-800 dark:text-[#E6DFD5] bg-slate-50 dark:bg-[#2A2420]`}
       >
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
-          {children}
-          <Toaster position="top-center" richColors />
-        </ThemeProvider>
+        <StoreProvider>
+          <LocationInitializer />
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+          >
+            {children}
+            <Toaster position="top-center" richColors />
+          </ThemeProvider>
+        </StoreProvider>
       </body>
     </html>
   );

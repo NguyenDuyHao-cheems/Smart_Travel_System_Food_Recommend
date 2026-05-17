@@ -29,6 +29,7 @@ import { historyService } from '../../services/historyService';
 import { AddToCollectionModal } from '../../components/AddToCollectionModal';
 import { toast } from 'sonner';
 import { interactionService } from '../../services/interactionService';
+import { useOptimizedLocation } from '../../hooks/useOptimizedLocation';
 
 export interface AllergenDishWarning {
   dish_name: string;
@@ -107,6 +108,10 @@ function getMatchColor(match: string): string {
    ───────────────────────────────────────────────────────────── */
 function HeroResultCard({ item, sessionId, searchMode, onAddCollection, isModalOpen }: { item: RecommendResult; sessionId?: string; searchMode?: SearchMode; onAddCollection: (item: RecommendResult) => void; isModalOpen: boolean }) {
   const router = useRouter();
+  const generateSlug = (name: string) => {
+    return name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+  };
+
   const handleNavigate = () => {
     const params = new URLSearchParams();
     if (sessionId) params.set('session_id', sessionId);
@@ -121,7 +126,12 @@ function HeroResultCard({ item, sessionId, searchMode, onAddCollection, isModalO
       metadata: { source: "hero_card" }
     });
 
-    router.push(`/restaurant/${item.id}${qs ? `?${qs}` : ''}`);
+    // [FIX-CONFLICT]: Ẩn ID nhà hàng vào sessionStorage thay vì để Base64 trên URL
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('current_res_id', item.id);
+    }
+    const slug = generateSlug(item.name) || 'restaurant';
+    router.push(`/restaurant/${slug}`);
   };
 
   const [isFav, setIsFav] = useState(false);
@@ -275,6 +285,10 @@ function SmallResultCard({ item, index, sessionId, searchMode, onAddCollection, 
   const tags = getTagsForItem(item, index);
   const matchColor = getMatchColor(item.match);
 
+  const generateSlug = (name: string) => {
+    return name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+  };
+
   const handleNavigate = () => {
     const params = new URLSearchParams();
     if (sessionId) params.set('session_id', sessionId);
@@ -289,7 +303,12 @@ function SmallResultCard({ item, index, sessionId, searchMode, onAddCollection, 
       metadata: { source: "small_card", rank: index + 2 }
     });
 
-    router.push(`/restaurant/${item.id}${qs ? `?${qs}` : ''}`);
+    // [FIX-CONFLICT]: Ẩn ID nhà hàng vào sessionStorage thay vì để Base64 trên URL
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('current_res_id', item.id);
+    }
+    const slug = generateSlug(item.name) || 'restaurant';
+    router.push(`/restaurant/${slug}`);
   };
 
   const [isFav, setIsFav] = useState(false);
@@ -453,7 +472,11 @@ function FeatureBar() {
 function ResultPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const sessionIdFromUrl = searchParams.get('session_id') || '';
+  let sessionIdFromUrl = searchParams.get('session_id') || '';
+  // [FIX-CONFLICT]: Lấy session_id từ sessionStorage (nếu URL không có) vì ta đã giấu nó đi
+  if (typeof window !== 'undefined' && !sessionIdFromUrl) {
+    sessionIdFromUrl = sessionStorage.getItem('current_search_session_id') || '';
+  }
 
   // Check for cache instantly to avoid flicker
   const [mounted, setMounted] = useState(false);
@@ -466,7 +489,10 @@ function ResultPageContent() {
     if (typeof window === 'undefined') return true;
     const searchParams = new URLSearchParams(window.location.search);
     const q = searchParams.get('q');
-    const sessionId = searchParams.get('session_id');
+    let sessionId = searchParams.get('session_id');
+    if (!sessionId) {
+      sessionId = sessionStorage.getItem('current_search_session_id');
+    }
     const isRefresh = searchParams.get('refresh') === 'true';
     if (sessionId && !isRefresh) {
       if (sessionStorage.getItem(`session_data_${sessionId}`)) return false;
@@ -480,6 +506,7 @@ function ResultPageContent() {
   const [searchQuery, setSearchQuery] = useState('');
   const { query: inputValue, setQuery: setInputValue, searchMode, setSearchMode } = useSearchState("");
   const [budget, setBudget] = useState<BudgetOption>('auto');
+  const { getOptimizedLocation } = useOptimizedLocation();
 
   const [fallbackApplied, setFallbackApplied] = useState(false);
   const [fallbackReason, setFallbackReason] = useState<string>('');
@@ -512,7 +539,10 @@ function ResultPageContent() {
   const [results, setResults] = useState<RecommendResult[]>(() => {
     if (typeof window === 'undefined') return [];
     const searchParams = new URLSearchParams(window.location.search);
-    const sessionId = searchParams.get('session_id');
+    let sessionId = searchParams.get('session_id');
+    if (!sessionId) {
+      sessionId = sessionStorage.getItem('current_search_session_id');
+    }
     if (sessionId) {
       const cached = sessionStorage.getItem(`session_data_${sessionId}`);
       if (cached) return JSON.parse(cached).results || [];
@@ -594,15 +624,13 @@ function ResultPageContent() {
 
     try {
       setSearchLoadingMsg("Đang xác định vị trí của bạn...");
-      // ✅ FIX: fallback to HCM coords instead of rejecting on GPS error
-      const gps = await new Promise<{ lat: number; lng: number }>((resolve) => {
-        if (!navigator.geolocation) return resolve({ lat: 10.762622, lng: 106.660172 });
-        navigator.geolocation.getCurrentPosition(
-          (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-          () => resolve({ lat: 10.762622, lng: 106.660172 }),
-          { timeout: 5000 }
-        );
-      });
+      
+      const gps = await getOptimizedLocation();
+      if (!gps) {
+        setApiError("Không thể xác định vị trí thực tế của bạn. Vui lòng kiểm tra quyền truy cập GPS để tiếp tục.");
+        setIsSearching(false);
+        return;
+      }
 
       setSearchLoadingMsg("AI đang phân tích khẩu vị của bạn...");
       const token = localStorage.getItem('access_token');
@@ -622,7 +650,7 @@ function ResultPageContent() {
           user_id: userId || undefined,
           budget: finalBudget === 'auto' ? undefined : parseInt(finalBudget, 10),
           search_mode: searchMode,
-          top_k: 16,
+          top_k: 24, // Xin dư ra 24 món để bù trừ khi lọc trùng tên
         }),
       });
 
@@ -639,7 +667,12 @@ function ResultPageContent() {
           );
         }
         setSearchLoadingMsg("Đã có kết quả mới! Đang chuẩn bị...");
-        router.push(`/result?session_id=${data.session_id}&mode=${searchMode}`);
+        // [FIX-CONFLICT]: Ẩn session_id và mode vào sessionStorage, đẩy query q lên URL
+        if (typeof window !== 'undefined') {
+          sessionStorage.setItem('current_search_session_id', data.session_id);
+          sessionStorage.setItem('current_search_mode', searchMode);
+        }
+        window.location.href = `/result?q=${encodeURIComponent(finalQuery)}`;
       } else {
         throw new Error("Không thể kết nối với hệ thống AI.");
       }
@@ -659,12 +692,15 @@ function ResultPageContent() {
 
     // [FIX-CONFLICT]: Thêm logic lọc bỏ các kết quả bị trùng lặp tên (remove duplicates by name) để hiển thị danh sách sạch hơn
     const seen = new Set();
-    return filtered.filter(item => {
+    const unique = filtered.filter(item => {
       if (!item.name) return true;
       const duplicate = seen.has(item.name);
       seen.add(item.name);
       return !duplicate;
     });
+    
+    // Cắt lấy đúng 16 món để hiển thị (1 hero + 15 small)
+    return unique.slice(0, 16);
   }, [results, distanceFilterEnabled, distanceRadius]);
 
   const heroItem = displayResults[0];

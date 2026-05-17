@@ -43,17 +43,28 @@ export default function HistoryPage() {
   };
 
   const handleSearchAgain = (item: SearchHistoryItem) => {
-    const params = new URLSearchParams();
+    // [FIX-CONFLICT]: Ẩn session_id và mode vào sessionStorage, đẩy query q lên URL
+    if (typeof window !== 'undefined') {
+      if (item.sessionId) {
+        sessionStorage.setItem('current_search_session_id', item.sessionId);
+      } else {
+        sessionStorage.removeItem('current_search_session_id');
+      }
+      if (item.searchMode) {
+        sessionStorage.setItem('current_search_mode', item.searchMode);
+      } else {
+        sessionStorage.removeItem('current_search_mode');
+      }
+    }
+
     if (item.sessionId) {
-      params.set("session_id", item.sessionId);
-      if (item.searchMode) params.set("mode", item.searchMode);
-      router.push(`/result?${params.toString()}`);
+      router.push(`/result?q=${encodeURIComponent(item.query)}`);
       return;
     }
 
+    const params = new URLSearchParams();
     params.set("q", item.query);
     params.set("budget", String(item.budget));
-    if (item.searchMode) params.set("mode", item.searchMode);
     router.push(`/result?${params.toString()}`);
   };
 
