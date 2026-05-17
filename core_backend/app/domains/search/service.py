@@ -67,6 +67,7 @@ class SearchService:
 
         raw_candidates = recommend_results["results"][:15]
         filtered_out_count = recommend_results.get("filtered_out_count", 0)
+        allergen_flagged_count = recommend_results.get("allergen_flagged_count", 0)
         warning = recommend_results.get("warning")
         fallback_reason = recommend_results.get("fallback_reason")
 
@@ -117,6 +118,7 @@ class SearchService:
             "fallback_reason": fallback_reason,
             "applied_budget": effective_budget,
             "filtered_out_count": filtered_out_count,
+            "allergen_flagged_count": allergen_flagged_count,
             "warning": warning
         }
 
@@ -141,6 +143,7 @@ class SearchService:
             fallback_reason=fallback_reason,
             applied_budget=effective_budget,
             filtered_out_count=filtered_out_count,
+            allergen_flagged_count=allergen_flagged_count,
             warning=warning,
         )
 
@@ -184,6 +187,7 @@ class SearchService:
             fallback_reason=data.get("fallback_reason"),
             applied_budget=data.get("applied_budget"),
             filtered_out_count=data.get("filtered_out_count", 0),
+            allergen_flagged_count=data.get("allergen_flagged_count", 0),
             warning=data.get("warning"),
             created_at=obj.created_at,
         )
@@ -227,6 +231,7 @@ class SearchService:
             img=model.image_url or "/images/default_food.jpg",
             total_reviews=getattr(model, "total_reviews", 0) or 0,
             google_maps_url=getattr(model, "google_maps_url", None),
+            allergen_warning=getattr(model, "allergen_warning", None),
         )
 
     @staticmethod

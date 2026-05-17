@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wanderbite Component Library</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          },
+          colors: {
+            brand: '#A91B0D',
+            'brand-hover': '#8A150A',
+            'brand-muted': '#F4EAD5',
+            'brand-dark': '#E8735A',
+            base: '#FFFDF9',
+            'base-dark': '#2A2420',
+            surface: '#FFFFFF',
+            'surface-dark': '#3D312A',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      transition: background-color 0.3s, color 0.3s;
+    }
+  </style>
+</head>
+<body class="bg-base dark:bg-base-dark text-gray-900 dark:text-gray-100 min-h-screen p-8">
+  
+  <div class="max-w-6xl mx-auto">
+    <div class="flex justify-between items-center mb-10 pb-4 border-b border-gray-200 dark:border-gray-700">
+      <div>
+        <h1 class="text-3xl font-bold text-brand dark:text-brand-dark">Wanderbite UI Components</h1>
+        <p class="text-gray-500 mt-2">Thư viện các component tái sử dụng (HTML/Tailwind)</p>
+      </div>
+      <button onclick="toggleDarkMode()" class="px-4 py-2 rounded-xl bg-gray-200 dark:bg-surface-dark font-semibold shadow-sm hover:scale-105 transition-transform">
+        Toggle Dark Mode 🌓
+      </button>
+    </div>
+
+    <!-- 1. Buttons & Controls -->
+    <section class="mb-12">
+      <h2 class="text-xl font-bold mb-6 flex items-center gap-2">🕹️ Buttons & Controls</h2>
+      <div class="flex flex-wrap gap-4 items-center p-6 bg-surface dark:bg-surface-dark rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm">
+        
+        <!-- Primary Search Button -->
+        <button class="flex items-center gap-2 bg-brand hover:bg-brand-hover text-white px-8 py-3 rounded-full font-bold text-sm uppercase tracking-wide transition-colors shadow-md">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+          Tìm Kiếm
+        </button>
+
+        <!-- Secondary Outline Button -->
+        <button class="px-4 py-2 text-xs font-bold uppercase tracking-[1.5px] border-2 border-gray-900/20 dark:border-gray-100/20 bg-white/80 dark:bg-gray-800/80 hover:bg-brand hover:text-white hover:border-brand transition-all rounded-full shadow-sm text-gray-900 dark:text-gray-100">
+          🔥 Trending
+        </button>
+
+        <!-- Action Icon Button (Heart) -->
+        <button class="w-10 h-10 rounded-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex items-center justify-center hover:scale-110 transition-all cursor-pointer shadow-sm text-gray-400 hover:text-red-500">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path></svg>
+        </button>
+
+        <!-- Active Pill (Budget/Filter) -->
+        <button class="px-3 py-1.5 rounded-full text-xs font-semibold border bg-brand-muted dark:bg-brand/10 border-brand/30 text-brand-hover dark:text-brand-dark shadow-sm">
+          📍 Lọc quán ở gần tôi
+        </button>
+      </div>
+    </section>
+
+    <!-- 2. Search Bar (Retro Pill) -->
+    <section class="mb-12">
+      <h2 class="text-xl font-bold mb-6 flex items-center gap-2">🔍 Search Bar (Hero)</h2>
+      <div class="p-8 bg-brand-muted/20 dark:bg-surface-dark rounded-2xl">
+        <div class="max-w-2xl mx-auto">
+          
+          <form class="flex items-stretch bg-base dark:bg-[#DFD8C8] rounded-full border-2 border-gray-900 shadow-[4px_4px_0px_rgba(17,24,39,1)] transition-all duration-150 focus-within:translate-x-[2px] focus-within:translate-y-[2px] focus-within:shadow-[2px_2px_0px_rgba(17,24,39,1)]">
+            
+            <div class="flex items-center pl-4 py-2">
+              <div class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-brand-muted dark:hover:bg-brand/10 text-brand dark:text-brand-hover cursor-pointer transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"></path></svg>
+              </div>
+            </div>
+
+            <input type="text" placeholder="Một tô phở bò nóng hổi..." class="flex-1 bg-transparent border-none outline-none py-4 px-3 text-[15px] text-gray-900 placeholder:text-gray-500 font-normal">
+
+            <button type="button" class="flex items-center gap-2 bg-brand hover:bg-brand-hover text-white px-8 py-3 rounded-full font-bold text-[14px] uppercase tracking-wide border-l-2 border-gray-900 transition-colors">
+              Tìm kiếm
+            </button>
+          </form>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. Food Card -->
+    <section class="mb-12">
+      <h2 class="text-xl font-bold mb-6 flex items-center gap-2">🍱 Food Card (Result)</h2>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+        
+        <!-- Card Item -->
+        <div class="bg-surface dark:bg-surface-dark rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden group relative flex flex-col">
+          
+          <div class="relative h-[180px] overflow-hidden cursor-pointer">
+            <img src="https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=600&auto=format&fit=crop" alt="Food" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+            <div class="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent pointer-events-none"></div>
+            
+            <div class="absolute top-3 right-3 flex flex-col gap-2">
+              <button class="w-8 h-8 rounded-full bg-white/90 dark:bg-gray-900/80 flex items-center justify-center hover:scale-110 transition-all shadow-sm">
+                <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path></svg>
+              </button>
+              <button class="w-8 h-8 rounded-full bg-white/90 dark:bg-gray-900/80 flex items-center justify-center hover:scale-110 hover:bg-brand-muted transition-all shadow-sm">
+                <svg class="w-4 h-4 text-brand dark:text-brand-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+              </button>
+            </div>
+
+            <div class="absolute bottom-3 left-3 right-3 flex items-center justify-between pointer-events-none">
+              <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-green-500 text-white">
+                🤖 98% Match
+              </span>
+              <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-semibold bg-white/90 dark:bg-gray-900/80 text-gray-600 dark:text-gray-300 backdrop-blur-sm">
+                📍 1.2 km (45)
+              </span>
+            </div>
+          </div>
+
+          <div class="p-4 flex-1 flex flex-col">
+            <h3 class="text-base font-bold text-gray-800 dark:text-gray-100 mb-1 line-clamp-1">Cơm Tấm Ba Ghiền</h3>
+            <p class="text-xs font-semibold text-brand dark:text-brand-dark mb-2">Ba Ghiền Original</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400 leading-relaxed mb-3 line-clamp-2 flex-1">
+              Sườn nướng khổng lồ thơm nức mũi chuẩn vị Sài Gòn truyền thống.
+            </p>
+            
+            <div class="flex flex-wrap gap-1.5 mt-auto pt-2">
+              <span class="px-2 py-1 rounded-full text-[10px] font-medium bg-red-50 dark:bg-red-500/10 text-red-500 border border-red-100 dark:border-red-500/20">🔥 Spicy</span>
+              <span class="px-2 py-1 rounded-full text-[10px] font-medium bg-amber-50 dark:bg-brand/10 text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-500/20">⭐ Popular</span>
+              <span class="px-2 py-1 rounded-full text-[10px] font-medium bg-brand-muted dark:bg-brand/10 text-brand-hover dark:text-gray-100 border border-brand-muted/50 dark:border-brand/20">📍 Local</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </div>
+
+  <script>
+    function toggleDarkMode() {
+      document.documentElement.classList.toggle('dark');
+    }
+  </script>
+</body>
+</html>

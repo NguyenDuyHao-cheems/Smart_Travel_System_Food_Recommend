@@ -115,6 +115,35 @@ async def user_onboarding(
         raise HTTPException(status_code=500, detail=f"Onboarding failed: {exc}")
 
 
+@router.get("/{user_id}/allergies")
+def get_user_allergies(
+    user_id: str,
+    db: Session = Depends(get_db),
+):
+    """
+    Lấy danh sách dị ứng của user.
+    Tra cứu theo thứ tự: user_onboardings → users.
+    """
+    try:
+        # Source 1: user_onboardings table
+        onboarding_repo = UserOnboardingRepository(db=db)
+        record = onboarding_repo.get_by_user_id(user_id)
+        if record and record.allergies:
+            return {"user_id": user_id, "allergies": record.allergies}
+
+        # Source 2: users table (allergies column)
+        account_repo = UserAccountRepository(db=db)
+        account = account_repo.get_by_id(user_id)
+        if account:
+            return {"user_id": user_id, "allergies": account.allergies or []}
+
+        return {"user_id": user_id, "allergies": []}
+
+    except Exception as exc:
+        # Do not crash — just return empty list
+        return {"user_id": user_id, "allergies": [], "error": str(exc)[:100]}
+
+
 @router.post("/interaction", response_model=UserInteractionResponse)
 def log_user_interaction(
     request: Request,
