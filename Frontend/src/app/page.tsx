@@ -236,6 +236,88 @@ export default function Home() {
           className="relative w-full overflow-hidden"
           style={{ minHeight: "calc(100vh - 64px)" }}
         >
+          {/* ── Floating Food Decorations ── */}
+
+          {/* Bánh canh — top-left */}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute hidden md:block"
+            style={{
+              top: "8%",
+              left: "2%",
+              width: 160,
+              animation: "float-a 6s ease-in-out infinite",
+              zIndex: 1,
+            }}
+          >
+            <img
+              src="/images/banh-canh.png"
+              alt=""
+              className="w-full h-auto drop-shadow-xl"
+              style={{ filter: "drop-shadow(0 12px 20px rgba(0,0,0,0.22))" }}
+            />
+          </div>
+
+          {/* Bánh tráng nướng — top-right */}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute hidden md:block"
+            style={{
+              top: "6%",
+              right: "3%",
+              width: 145,
+              animation: "float-b 7s ease-in-out 1s infinite",
+              zIndex: 1,
+            }}
+          >
+            <img
+              src="/images/banh-trang-nuong.png"
+              alt=""
+              className="w-full h-auto"
+              style={{ filter: "drop-shadow(0 12px 20px rgba(0,0,0,0.20))" }}
+            />
+          </div>
+
+          {/* Cơm tấm — bottom-left */}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute hidden md:block"
+            style={{
+              bottom: "14%",
+              left: "1%",
+              width: 170,
+              animation: "float-c 8s ease-in-out 2s infinite",
+              zIndex: 1,
+            }}
+          >
+            <img
+              src="/images/com-tam.png"
+              alt=""
+              className="w-full h-auto"
+              style={{ filter: "drop-shadow(0 14px 24px rgba(0,0,0,0.22))" }}
+            />
+          </div>
+
+          {/* Hủ tiếu — bottom-right */}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute hidden md:block"
+            style={{
+              bottom: "12%",
+              right: "1%",
+              width: 155,
+              animation: "float-d 6.5s ease-in-out 0.5s infinite",
+              zIndex: 1,
+            }}
+          >
+            <img
+              src="/images/hu-tieu.png"
+              alt=""
+              className="w-full h-auto"
+              style={{ filter: "drop-shadow(0 12px 20px rgba(0,0,0,0.20))" }}
+            />
+          </div>
+
           {/* Bottom fade */}
           <div
             className="absolute bottom-0 left-0 right-0 h-16 z-10"

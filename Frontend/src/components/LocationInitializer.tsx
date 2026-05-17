@@ -13,7 +13,7 @@ export function LocationInitializer() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    
+
     const isFetched = sessionStorage.getItem('gps_fetched');
     if (isFetched === 'true') {
       return; // Already fetched in this session
@@ -42,7 +42,7 @@ export function LocationInitializer() {
         },
         (error) => {
           console.warn('Background GPS fetch failed:', error.message);
-          
+
           if (attemptRef.current < RETRY_DELAYS.length) {
             const delay = RETRY_DELAYS[attemptRef.current];
             attemptRef.current += 1;
