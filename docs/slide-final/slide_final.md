@@ -98,38 +98,38 @@ Người dùng nhập vào thanh tìm kiếm
 ![bg](bg2.png)
 
 # Luồng xử lí của hệ thống
-* **Nhận input**: câu văn tiếng Việt, tọa độ GPS, ID người dùng, ngân sách, chế độ tìm kiếm (bình thường hoặc cảm xúc)
-- Làm sạch câu truy vấn: nhận câu văn, sử dụng mô hình gemini dịch ngữ cảnh mơ hồ thành danh sách tên món ăn cụ thể.
-- Tách từ tiếng Việt bằng mô hình **underthesea** 
-- Tạo vector 768 chiều bằng mô hình **vietnamese-bi-encoder**
+1. **Nhận input**: câu văn tiếng Việt, tọa độ GPS, ID người dùng, ngân sách, chế độ tìm kiếm (bình thường hoặc cảm xúc)
+2. Làm sạch câu truy vấn: nhận câu văn, sử dụng mô hình gemini dịch ngữ cảnh mơ hồ thành danh sách tên món ăn cụ thể.
+3. Tách từ tiếng Việt bằng mô hình **underthesea** 
+4. Tạo vector 768 chiều bằng mô hình **vietnamese-bi-encoder**
 
 ---
 ![bg](bg2.png)
 
 # Luồng xử lí của hệ thống
-- Kết hợp vector người dùng và vector câu truy vấn (theo tỉ lệ 85% truy vấn hiện tại-15% sở thích người dùng)
-- Lọc quán đang hoạt động
-- Lọc theo ngân sách (lấy quán có khoảng giá <= ngân sách)
-- Lọc món chay (nếu truy vấn không chứa từ khóa chay -> loại quán thuần chay)
+5. Kết hợp vector người dùng và vector câu truy vấn (theo tỉ lệ 85% truy vấn hiện tại-15% sở thích người dùng)
+6. Lọc quán đang hoạt động
+7. Lọc theo ngân sách (lấy quán có khoảng giá <= ngân sách)
+8. Lọc món chay (nếu truy vấn không chứa từ khóa chay -> loại quán thuần chay)
 ---
 ![bg](bg2.png)
 
 # Luồng xử lí của hệ thống
-- Lọc theo tags
-- Sắp xếp theo khoảng cách cosine (lấy tối đa 500 quán)
-- Tăng điểm cho quán có tên khớp với truy vấn
-- Tìm kiếm vector trên danh sách **món ăn**
-- Sắp xếp lại theo khoảng cách cosine tăng dần
+9. Lọc theo tags
+10. Sắp xếp theo khoảng cách cosine (lấy tối đa 500 quán)
+11. Tăng điểm cho quán có tên khớp với truy vấn
+12. Tìm kiếm vector trên danh sách **món ăn**
+13. Sắp xếp lại theo khoảng cách cosine tăng dần
 ---
 ![bg](bg2.png)
 
 # Luồng xử lí của hệ thống
-- Gán nhãn cảnh báo dị ứng
-- Xây dựng đặc trưng xếp hạng cho mỗi quán
-- Sắp xếp lại bằng **LambdaMART**
-- Sắp xếp lại theo cảm xúc (hoạt động với chế độ tìm theo cảm xúc)
-- Format kết quả + tính điểm phù hợp %
-- **Output**: trả về top 16 quán.
+14. Gán nhãn cảnh báo dị ứng
+15. Xây dựng đặc trưng xếp hạng cho mỗi quán (7 đặc trưng: `similarity_score`, `distance`,`sentiment_score`, `price`, `rating`,`tag_match`,`review_count` )
+16. Sắp xếp lại bằng **LambdaMART**
+17. Sắp xếp lại theo cảm xúc (hoạt động với chế độ tìm theo cảm xúc)
+18. Format kết quả + tính điểm phù hợp %
+19. **Output**: trả về top 16 quán đã sắp xếp.
 
 ---
 
