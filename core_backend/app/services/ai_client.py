@@ -70,6 +70,29 @@ class AIServiceClient:
         )
         return None
 
+    async def reload_recommendation_model(self) -> dict:
+        """
+        Gửi yêu cầu reload mô hình LightFM sang AI Engine.
+        """
+        response = await self._client.post("/api/v1/admin/recommendations/reload")
+        response.raise_for_status()
+        return response.json()
+
+    async def get_lightfm_recommendations(self, user_id: str, limit: int = 10) -> List[str]:
+        """
+        Lấy danh sách Restaurant IDs từ AI Engine dựa trên mô hình LightFM.
+        """
+        try:
+            response = await self._client.get(
+                "/api/v1/restaurants/recommendations",
+                params={"user_id": str(user_id), "limit": limit}
+            )
+            response.raise_for_status()
+            return response.json()
+        except Exception as e:
+            logger.error("Error communicating with AI Engine recommendations: %s", e)
+            return []
+
 
 # ---------------------------------------------------------------------------
 # Singleton factory — Fix PR Issue #5: không tạo client mới mỗi request
