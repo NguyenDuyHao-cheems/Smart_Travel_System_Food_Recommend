@@ -14,7 +14,8 @@ async def extract_intent(request: ExtractIntentRequest):
     """
     # Step 1: Gemini reformulates raw query
     cleaned_query = await clean_query_with_gemini(request.text)
-
+    print("request.text", request.text)
+    print("cleaned_query", cleaned_query)
     # Step 2: Embed the CLEANED query (not raw text!)
     # generate_mean_pooled_embedding already calls word_tokenize internally
     vector = await asyncio.to_thread(generate_mean_pooled_embedding, cleaned_query)
