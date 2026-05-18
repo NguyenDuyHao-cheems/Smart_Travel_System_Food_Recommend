@@ -12,13 +12,27 @@ export function useOptimizedLocation() {
     if (reduxCoords) {
       return reduxCoords;
     }
+
+    // Lấy tọa độ đã lưu/cache trước đó từ localStorage (nếu có)
+    let cachedCoords: { lat: number; lng: number } | null = null;
     try {
-      // Create a promise that rejects after 5000ms
+      if (typeof window !== 'undefined') {
+        const cachedStr = localStorage.getItem('user_cached_gps');
+        if (cachedStr) {
+          cachedCoords = JSON.parse(cachedStr);
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to read user_cached_gps from localStorage:', e);
+    }
+
+    try {
+      // Tạo promise quá giờ sau 5000ms
       const timeoutPromise = new Promise<{ lat: number; lng: number }>((_, reject) => {
         setTimeout(() => reject(new Error('GPS timeout')), 5000);
       });
 
-      // Create a promise to get actual GPS
+      // Tạo promise lấy GPS thực tế
       const gpsPromise = new Promise<{ lat: number; lng: number }>((resolve, reject) => {
         if (!navigator.geolocation) {
           reject(new Error('Geolocation not supported'));
@@ -31,17 +45,28 @@ export function useOptimizedLocation() {
         );
       });
 
-      // Race them
+      // Đua tốc độ lấy GPS trong 5s
       const result = await Promise.race([gpsPromise, timeoutPromise]);
-      
-      // If success within 5s, save to Redux and return
+
+      // Nếu thành công trong 5s, lưu vào Redux, cập nhật cache localStorage và trả về
       dispatch(setLocation(result));
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('user_cached_gps', JSON.stringify(result));
+      }
       return result;
 
     } catch (err) {
-      console.warn('Optimized location fallback to Redux:', err);
-      // If timeout or error, return coords from Redux store. NO fallback hardcoded coords!
-      return reduxCoords;
+      console.warn('Optimized location fallback to previously saved GPS:', err);
+      
+      // Nếu quá 5s hoặc bị lỗi phần cứng, lấy địa chỉ đã được lưu trước đó (từ Redux hoặc localStorage)
+      const fallbackCoords = reduxCoords || cachedCoords;
+      if (fallbackCoords) {
+        console.info('Successfully retrieved and returning cached GPS fallback:', fallbackCoords);
+        return fallbackCoords;
+      }
+      
+      // Nếu hoàn toàn chưa có địa chỉ nào lưu trước đó, trả về null để báo lỗi đỏ
+      return null;
     }
   }, [dispatch, reduxCoords]);
 
