@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field, field_validator
-from typing import List, Optional, Literal, Dict
+from typing import List, Optional, Literal, Dict, Union
 from datetime import datetime
+from uuid import UUID
 
 
 
@@ -165,6 +166,64 @@ class UserProfileResponse(BaseModel):
     culinary_vibes: List[CulinaryVibe]
     recent_activities: List[RecentActivityResponse]
     active_dates: List[str] = []
+
+
+class FavoriteCreateRequest(BaseModel):
+    res_id: str
+
+
+class FavoriteResponse(BaseModel):
+    id: Union[str, UUID]
+    user_id: Union[str, UUID]
+    res_id: Union[str, UUID]
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class CollectionCreateRequest(BaseModel):
+    name: str
+    description: Optional[str] = None
+
+
+class CollectionUpdateRequest(BaseModel):
+    name: str
+    description: Optional[str] = None
+
+
+class CollectionItemCreateRequest(BaseModel):
+    res_id: str
+    dish_id: Optional[str] = None
+    item_type: Optional[str] = None
+    note: Optional[str] = None
+
+
+class CollectionItemResponse(BaseModel):
+    id: Union[str, UUID]
+    collection_id: Union[str, UUID]
+    user_id: Union[str, UUID]
+    res_id: Optional[Union[str, UUID]] = None
+    dish_id: Optional[Union[str, UUID]] = None
+    item_type: Optional[str] = None
+    note: Optional[str] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class CollectionResponse(BaseModel):
+    id: Union[str, UUID]
+    user_id: Union[str, UUID]
+    name: str
+    description: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+    items: List[CollectionItemResponse] = []
+
+    class Config:
+        from_attributes = True
 
 
 

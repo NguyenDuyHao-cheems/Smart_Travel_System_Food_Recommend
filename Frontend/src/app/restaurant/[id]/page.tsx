@@ -121,16 +121,10 @@ export default function RestaurantDetailPage() {
       idToUse = sessionStorage.getItem('current_res_id');
     }
 
-    // Ưu tiên 2: Fallback lấy từ URL nếu không có (VD: F5 hoặc share link cũ)
+    // Ưu tiên 2: Fallback lấy từ URL nếu không có (VD: F5, share link, hoặc từ bộ sưu tập)
+    // ID trong URL là shortuuid — KHÔNG cần decode gì cả, dùng thẳng
     if (!idToUse) {
-      let idFromUrl = params.id as string;
-      try {
-        idFromUrl = decodeURIComponent(idFromUrl);
-        idFromUrl = atob(idFromUrl);
-      } catch (e) {
-        // Fallback for raw ID
-      }
-      idToUse = idFromUrl;
+      idToUse = params.id as string;
     }
 
     setActiveRestaurantId(idToUse);

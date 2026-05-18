@@ -1,12 +1,15 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
-from .models import UserAccount
+from .models import UserAccount, UserFavorite, UserCollection, UserCollectionItem
 from .schemas import (
     OnboardingRequest, OnboardingResponse, SignUpRequest, SignInRequest, 
     GoogleAuthRequest, AuthResponse, UserUpdateRequest,
     UserInteractionRequest, UserInteractionResponse, UserProfileResponse,
-    BadgeProgress, CulinaryVibe, RecentActivityResponse
+    BadgeProgress, CulinaryVibe, RecentActivityResponse,
+    FavoriteCreateRequest, FavoriteResponse, CollectionCreateRequest,
+    CollectionUpdateRequest, CollectionItemCreateRequest, CollectionItemResponse,
+    CollectionResponse
 )
 from .service import OnboardingService, AuthService, UserInteractionService
 from .repository import UserOnboardingRepository, UserAccountRepository, UserInteractionRepository
@@ -419,3 +422,339 @@ def log_user_interaction(
         return service.log_interaction(payload=payload, user_id=user_id)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed to log interaction: {exc}")
+
+
+# ── Favorites & Collections Endpoints ─────────────────────────────────────────
+from app.domains.ranking.models import RestaurantModel
+import shortuuid
+
+def _decode_id(obfuscated_id: str) -> str:
+    if not obfuscated_id:
+        return obfuscated_id
+    try:
+        if len(obfuscated_id) < 36:
+            return str(shortuuid.decode(obfuscated_id))
+    except Exception:
+        pass
+    return obfuscated_id
+
+@router.post("/favorites", response_model=FavoriteResponse)
+def add_favorite(
+    payload: FavoriteCreateRequest,
+    db: Session = Depends(get_db),
+    current_user: UserAccount = Depends(get_current_user),
+):
+    try:
+        decoded_res_id = _decode_id(payload.res_id)
+        # Check if already exists
+        existing = db.query(UserFavorite).filter(
+            UserFavorite.user_id == str(current_user.id),
+            UserFavorite.res_id == decoded_res_id
+        ).first()
+        
+        if existing:
+            return existing
+            
+        fav = UserFavorite(
+            user_id=str(current_user.id),
+            res_id=decoded_res_id
+        )
+        db.add(fav)
+        db.commit()
+        db.refresh(fav)
+        return fav
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to add favorite: {exc}")
+
+
+@router.get("/favorites")
+def get_favorites(
+    db: Session = Depends(get_db),
+    current_user: UserAccount = Depends(get_current_user),
+):
+    try:
+        favs = db.query(UserFavorite).filter(UserFavorite.user_id == str(current_user.id)).all()
+        results = []
+        for fav in favs:
+            res = db.query(RestaurantModel).filter(RestaurantModel.id == fav.res_id).first()
+            if res:
+                results.append({
+                    "id": shortuuid.encode(res.id),
+                    "name": res.name,
+                    "match": "100%",
+                    "dist": "",
+                    "distance_km": 0.0,
+                    "price": res.price_range or "0",
+                    "rating": str(res.rating_avg or 0.0),
+                    "reason": "Món ăn đã được thêm vào mục yêu thích của bạn.",
+                    "img": res.image_url or "",
+                    "total_reviews": res.total_reviews or 0,
+                    "google_maps_url": res.google_maps_url or "",
+                    "tags": [tag.name for tag in res.tags] if res.tags else [],
+                })
+        return results
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to get favorites: {exc}")
+
+
+@router.delete("/favorites/{res_id}")
+def remove_favorite(
+    res_id: str,
+    db: Session = Depends(get_db),
+    current_user: UserAccount = Depends(get_current_user),
+):
+    try:
+        decoded_res_id = _decode_id(res_id)
+        fav = db.query(UserFavorite).filter(
+            UserFavorite.user_id == str(current_user.id),
+            UserFavorite.res_id == decoded_res_id
+        ).first()
+        
+        if not fav:
+            raise HTTPException(status_code=404, detail="Favorite not found")
+            
+        db.delete(fav)
+        db.commit()
+        return {"status": "success", "message": "Removed from favorites"}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to remove favorite: {exc}")
+
+
+@router.post("/collections", response_model=CollectionResponse)
+def create_collection(
+    payload: CollectionCreateRequest,
+    db: Session = Depends(get_db),
+    current_user: UserAccount = Depends(get_current_user),
+):
+    try:
+        coll = UserCollection(
+            user_id=str(current_user.id),
+            name=payload.name,
+            description=payload.description
+        )
+        db.add(coll)
+        db.commit()
+        db.refresh(coll)
+        return {
+            "id": coll.id,
+            "user_id": coll.user_id,
+            "name": coll.name,
+            "description": coll.description,
+            "created_at": coll.created_at,
+            "updated_at": coll.updated_at,
+            "items": []
+        }
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to create collection: {exc}")
+
+
+@router.get("/collections")
+def list_collections(
+    db: Session = Depends(get_db),
+    current_user: UserAccount = Depends(get_current_user),
+):
+    try:
+        colls = db.query(UserCollection).filter(UserCollection.user_id == str(current_user.id)).all()
+        results = []
+        for coll in colls:
+            items = db.query(UserCollectionItem).filter(UserCollectionItem.collection_id == coll.id).all()
+            formatted_items = []
+            for item in items:
+                res = db.query(RestaurantModel).filter(RestaurantModel.id == item.res_id).first()
+                if res:
+                    formatted_items.append({
+                        "id": shortuuid.encode(res.id),
+                        "name": res.name,
+                        "match": "100%",
+                        "dist": "",
+                        "distance_km": 0.0,
+                        "price": res.price_range or "0",
+                        "rating": str(res.rating_avg or 0.0),
+                        "reason": item.note or "Được lưu trong bộ sưu tập.",
+                        "img": res.image_url or "",
+                        "total_reviews": res.total_reviews or 0,
+                        "google_maps_url": res.google_maps_url or "",
+                        "tags": [tag.name for tag in res.tags] if res.tags else [],
+                    })
+            results.append({
+                "id": coll.id,
+                "user_id": coll.user_id,
+                "name": coll.name,
+                "description": coll.description,
+                "created_at": coll.created_at,
+                "updated_at": coll.updated_at,
+                "items": formatted_items
+            })
+        return results
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to list collections: {exc}")
+
+
+@router.put("/collections/{collection_id}", response_model=CollectionResponse)
+def update_collection(
+    collection_id: str,
+    payload: CollectionUpdateRequest,
+    db: Session = Depends(get_db),
+    current_user: UserAccount = Depends(get_current_user),
+):
+    try:
+        coll = db.query(UserCollection).filter(
+            UserCollection.id == collection_id,
+            UserCollection.user_id == str(current_user.id)
+        ).first()
+        
+        if not coll:
+            raise HTTPException(status_code=404, detail="Collection not found")
+            
+        coll.name = payload.name
+        coll.description = payload.description
+        db.commit()
+        db.refresh(coll)
+        
+        # Get items for returning full response
+        items = db.query(UserCollectionItem).filter(UserCollectionItem.collection_id == coll.id).all()
+        formatted_items = []
+        for item in items:
+            res = db.query(RestaurantModel).filter(RestaurantModel.id == item.res_id).first()
+            if res:
+                formatted_items.append({
+                    "id": shortuuid.encode(res.id),
+                    "name": res.name,
+                    "match": "100%",
+                    "dist": "",
+                    "distance_km": 0.0,
+                    "price": res.price_range or "0",
+                    "rating": str(res.rating_avg or 0.0),
+                    "reason": item.note or "Được lưu trong bộ sưu tập.",
+                    "img": res.image_url or "",
+                    "total_reviews": res.total_reviews or 0,
+                    "google_maps_url": res.google_maps_url or "",
+                    "tags": [tag.name for tag in res.tags] if res.tags else [],
+                })
+                
+        return {
+            "id": coll.id,
+            "user_id": coll.user_id,
+            "name": coll.name,
+            "description": coll.description,
+            "created_at": coll.created_at,
+            "updated_at": coll.updated_at,
+            "items": formatted_items
+        }
+    except HTTPException:
+        raise
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to update collection: {exc}")
+
+
+@router.delete("/collections/{collection_id}")
+def delete_collection(
+    collection_id: str,
+    db: Session = Depends(get_db),
+    current_user: UserAccount = Depends(get_current_user),
+):
+    try:
+        coll = db.query(UserCollection).filter(
+            UserCollection.id == collection_id,
+            UserCollection.user_id == str(current_user.id)
+        ).first()
+        
+        if not coll:
+            raise HTTPException(status_code=404, detail="Collection not found")
+            
+        # Cascades to user_collection_items due to ForeignKey constraint
+        db.delete(coll)
+        db.commit()
+        return {"status": "success", "message": "Collection deleted"}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to delete collection: {exc}")
+
+
+@router.post("/collections/{collection_id}/items")
+def add_item_to_collection(
+    collection_id: str,
+    payload: CollectionItemCreateRequest,
+    db: Session = Depends(get_db),
+    current_user: UserAccount = Depends(get_current_user),
+):
+    try:
+        coll = db.query(UserCollection).filter(
+            UserCollection.id == collection_id,
+            UserCollection.user_id == str(current_user.id)
+        ).first()
+        
+        if not coll:
+            raise HTTPException(status_code=404, detail="Collection not found")
+            
+        decoded_res_id = _decode_id(payload.res_id)
+        # Check if item already exists in collection
+        existing = db.query(UserCollectionItem).filter(
+            UserCollectionItem.collection_id == collection_id,
+            UserCollectionItem.user_id == str(current_user.id),
+            UserCollectionItem.res_id == decoded_res_id
+        ).first()
+        
+        if existing:
+            return {"status": "success", "message": "Item already in collection"}
+            
+        item = UserCollectionItem(
+            collection_id=collection_id,
+            user_id=str(current_user.id),
+            res_id=decoded_res_id,
+            dish_id=payload.dish_id,
+            item_type=payload.item_type or "restaurant",
+            note=payload.note
+        )
+        db.add(item)
+        db.commit()
+        return {"status": "success", "message": "Item added to collection"}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to add item to collection: {exc}")
+
+
+@router.delete("/collections/{collection_id}/items/{res_id}")
+def remove_item_from_collection(
+    collection_id: str,
+    res_id: str,
+    db: Session = Depends(get_db),
+    current_user: UserAccount = Depends(get_current_user),
+):
+    try:
+        coll = db.query(UserCollection).filter(
+            UserCollection.id == collection_id,
+            UserCollection.user_id == str(current_user.id)
+        ).first()
+        
+        if not coll:
+            raise HTTPException(status_code=404, detail="Collection not found")
+            
+        decoded_res_id = _decode_id(res_id)
+        item = db.query(UserCollectionItem).filter(
+            UserCollectionItem.collection_id == collection_id,
+            UserCollectionItem.user_id == str(current_user.id),
+            UserCollectionItem.res_id == decoded_res_id
+        ).first()
+        
+        if not item:
+            raise HTTPException(status_code=404, detail="Item not found in collection")
+            
+        db.delete(item)
+        db.commit()
+        return {"status": "success", "message": "Item removed from collection"}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to remove item from collection: {exc}")
