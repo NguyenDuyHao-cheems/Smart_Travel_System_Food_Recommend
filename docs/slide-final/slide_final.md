@@ -5,7 +5,7 @@ paginate: true
 ---
 
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;800&display=swap');
 
 section {
     /* Set body font to Montserrat and text color to black */
@@ -16,6 +16,7 @@ section {
 h1, h2, h3 {
     /* Set heading font to Open Sauce One */
     font-family: 'Open Sauce One', 'Montserrat', sans-serif; 
+    font-weight: 800; /* Make headings thicker and bolder */
     
     /* Apply linear gradient color to headings */
     background: linear-gradient(to right, #ff1313, #F44B16, #F6623C, #DF8748, #FFA24B);
@@ -130,6 +131,13 @@ Người dùng nhập vào thanh tìm kiếm
 ![bg](bg3.png)
 
 ---
+# Tính năng chính
+![bg](bg2.png)
+
+* feature a
+* b
+---
+
 
 # Kiểm thử - điểm yếu & cải tiến
 ![bg](bg1.png)
@@ -139,15 +147,6 @@ Người dùng nhập vào thanh tìm kiếm
   * Branch & bound
   * Metaheuristics (e.g., genetic algorithms)
 * GUI visualization
-
----
-
-# Kết quả làm được
-![bg](bg2.png)
-
-* feature a
-* b
-
 ---
 
 # Demo dự án qua video
