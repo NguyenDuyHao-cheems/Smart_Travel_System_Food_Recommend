@@ -80,6 +80,9 @@ export function FoodCard({ item, userId, onRemove, showRemove, showAddCollection
       return;
     }
     
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('came_from_search', 'false');
+    }
     router.push(`/restaurant/${item.id}`);
   };
 
@@ -187,12 +190,14 @@ export function FoodCard({ item, userId, onRemove, showRemove, showAddCollection
         )}
       </div>
 
-      <AddToCollectionModal 
-        isOpen={isCollectionModalOpen} 
-        onClose={() => setIsCollectionModalOpen(false)} 
-        item={item} 
-        onSuccess={refreshCollectionStatus}
-      />
+      <div onClick={(e) => e.stopPropagation()}>
+        <AddToCollectionModal 
+          isOpen={isCollectionModalOpen} 
+          onClose={() => setIsCollectionModalOpen(false)} 
+          item={item} 
+          onSuccess={refreshCollectionStatus}
+        />
+      </div>
     </div>
   );
 }

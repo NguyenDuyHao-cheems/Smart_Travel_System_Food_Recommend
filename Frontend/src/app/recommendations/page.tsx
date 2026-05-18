@@ -28,20 +28,23 @@ export default function RecommendationsPage() {
       }
       setUserId(id);
 
-      // Check cache first
+      const cacheKey = `full_recommendations_${id}`;
+
+      // Check user-specific cache first
       try {
-        const cachedRecs = sessionStorage.getItem("full_recommendations");
+        const cachedRecs = sessionStorage.getItem(cacheKey);
         if (cachedRecs) {
           setRecommendations(JSON.parse(cachedRecs));
           setIsLoading(false);
-          return;
         }
       } catch (err) {
         console.error("Lỗi khi đọc cache:", err);
       }
 
       try {
-        setIsLoading(true);
+        if (!sessionStorage.getItem(cacheKey)) {
+          setIsLoading(true);
+        }
         const gps = await getOptimizedLocation();
         if (!gps) {
           toast.error("Không thể xác định vị trí. Vui lòng bật GPS.");
@@ -74,10 +77,13 @@ export default function RecommendationsPage() {
             });
             const finalRecs = uniqueResults.slice(0, 16);
             setRecommendations(finalRecs);
-            
+
+            // Save to user-specific cache
             try {
-              sessionStorage.setItem("full_recommendations", JSON.stringify(finalRecs));
-            } catch (err) {}
+              sessionStorage.setItem(cacheKey, JSON.stringify(finalRecs));
+            } catch (err) {
+              console.error("Lỗi khi lưu cache:", err);
+            }
           }
         } else {
           toast.error("Không thể lấy dữ liệu gợi ý.");
@@ -116,7 +122,7 @@ export default function RecommendationsPage() {
           <Sparkles className="w-16 h-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
           <h2 className="text-xl font-bold text-gray-700 dark:text-[#E6DFD5] mb-2">Chưa có đủ dữ liệu để gợi ý</h2>
           <p className="text-gray-500 dark:text-[#9A8A7A] mb-6">Hãy tìm kiếm và yêu thích thêm các món ăn để AI hiểu bạn hơn nhé!</p>
-          <button 
+          <button
             onClick={() => router.push('/')}
             className="px-6 py-2.5 bg-brand hover:bg-brand-hover text-white rounded-full font-semibold transition-colors"
           >
@@ -126,10 +132,10 @@ export default function RecommendationsPage() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {recommendations.map((item, idx) => (
-            <FoodCard 
-              key={item.id || idx} 
-              item={item} 
-              userId={userId!} 
+            <FoodCard
+              key={item.id || idx}
+              item={item}
+              userId={userId!}
             />
           ))}
         </div>
