@@ -61,6 +61,14 @@ function HomeContent() {
   const [recommendations, setRecommendations] = useState<RecommendResult[]>(() => {
     if (typeof window !== "undefined") {
       try {
+        // Detect page reload and clear cache immediately
+        const navEntries = performance.getEntriesByType("navigation");
+        const isReload = navEntries.length > 0 && (navEntries[0] as PerformanceNavigationTiming).type === "reload";
+        if (isReload) {
+          sessionStorage.removeItem("home_recommendations");
+          return [];
+        }
+
         const cached = sessionStorage.getItem("home_recommendations");
         if (cached) return JSON.parse(cached);
       } catch (err) {}
@@ -70,6 +78,10 @@ function HomeContent() {
   const [isLoadingRecs, setIsLoadingRecs] = useState(() => {
     if (typeof window !== "undefined") {
       try {
+        const navEntries = performance.getEntriesByType("navigation");
+        const isReload = navEntries.length > 0 && (navEntries[0] as PerformanceNavigationTiming).type === "reload";
+        if (isReload) return true;
+
         if (sessionStorage.getItem("home_recommendations")) return false;
       } catch (err) {}
     }
