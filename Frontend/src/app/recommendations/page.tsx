@@ -8,6 +8,7 @@ import { Sparkles, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { useOptimizedLocation } from "../../hooks/useOptimizedLocation";
+import { store } from "../../store";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -19,7 +20,7 @@ export default function RecommendationsPage() {
   const { getOptimizedLocation } = useOptimizedLocation();
 
   useEffect(() => {
-    async function fetchRecs() {
+    async function fetchRecommendations() {
       const id = localStorage.getItem("user_id");
       if (!id) {
         toast.error("Vui lòng đăng nhập để xem gợi ý");
@@ -28,23 +29,27 @@ export default function RecommendationsPage() {
       }
       setUserId(id);
 
-      // Check cache first
+      const cacheKey = `full_recommendations_${id}`;
+
+      // Check user-specific cache first
       try {
-        const cachedRecs = sessionStorage.getItem("full_recommendations");
+        const cachedRecs = sessionStorage.getItem(cacheKey);
         if (cachedRecs) {
           setRecommendations(JSON.parse(cachedRecs));
           setIsLoading(false);
-          return;
         }
       } catch (err) {
         console.error("Lỗi khi đọc cache:", err);
       }
 
       try {
-        setIsLoading(true);
+        if (!sessionStorage.getItem(cacheKey)) {
+          setIsLoading(true);
+        }
         const gps = await getOptimizedLocation();
         if (!gps) {
-          toast.error("Không thể xác định vị trí. Vui lòng bật GPS.");
+          const errMsg = store.getState().location.errorMessage || "Không thể xác định vị trí. Vui lòng bật GPS.";
+          toast.error(errMsg);
           setIsLoading(false);
           return;
         }
@@ -90,7 +95,7 @@ export default function RecommendationsPage() {
       }
     }
 
-    fetchRecs();
+    fetchRecommendations();
   }, [router, getOptimizedLocation]);
 
   return (

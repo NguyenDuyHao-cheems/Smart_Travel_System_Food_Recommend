@@ -16,7 +16,7 @@ import { FoodCard } from "../components/FoodCard";
 import { RecommendResult } from "./result/page";
 import { useOptimizedLocation } from "../hooks/useOptimizedLocation";
 import { useSelector } from "react-redux";
-import { RootState } from "../store";
+import { RootState, store } from "../store";
 
 /* ── Types ── */
 type HealthStatus = "loading" | "ok" | "degraded" | "error";
@@ -186,7 +186,8 @@ function HomeContent() {
 
       const gps = await getOptimizedLocation();
       if (!gps) {
-        setApiError("Không thể xác định vị trí thực tế của bạn. Vui lòng kiểm tra quyền truy cập GPS để tiếp tục.");
+        const errMsg = store.getState().location.errorMessage || "Không thể xác định vị trí thực tế của bạn. Vui lòng kiểm tra quyền truy cập GPS để tiếp tục.";
+        setApiError(errMsg);
         setIsSearching(false);
         return;
       }
