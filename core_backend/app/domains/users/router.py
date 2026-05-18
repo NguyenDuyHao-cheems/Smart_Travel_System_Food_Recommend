@@ -359,7 +359,7 @@ def get_current_user_profile(
         )
 
     # 6. Fetch active dates and convert from UTC to local Vietnam timezone (+07:00)
-    from datetime import timezone as _timezone, timedelta as _timedelta
+    from datetime import timezone as _timezone, timedelta as _timedelta, datetime
     vn_tz = _timezone(_timedelta(hours=7))
     today_str = datetime.now(vn_tz).strftime("%Y-%m-%d")
     yesterday_str = (datetime.now(vn_tz) - _timedelta(days=1)).strftime("%Y-%m-%d")
@@ -577,7 +577,7 @@ def log_user_interaction(
                 updated = False
                 
                 # 1. Update Active date & Streak
-                from datetime import timezone as _timezone, timedelta as _timedelta
+                from datetime import timezone as _timezone, timedelta as _timedelta, datetime
                 vn_tz = _timezone(_timedelta(hours=7))
                 today_str = datetime.now(vn_tz).strftime("%Y-%m-%d")
                 yesterday_str = (datetime.now(vn_tz) - _timedelta(days=1)).strftime("%Y-%m-%d")
