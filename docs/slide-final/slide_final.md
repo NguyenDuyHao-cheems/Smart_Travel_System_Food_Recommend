@@ -48,7 +48,7 @@ blockquote {
 ![bg](bg3.png)
 
 # Nhắc lại bài toán
-> Gợi ý quán ăn cho khách du lịch, sử dụng AI để hiểu câu tìm kiếm tiếng Việt. Cá nhân hóa kết quả theo người dùng.
+> Hệ thống gợi ý quán ăn cho khách du lịch, sử dụng AI để hiểu câu tìm kiếm tiếng Việt. Cá nhân hóa kết quả theo người dùng.
 ---
 ![bg](bg3.png)
 
@@ -75,7 +75,7 @@ Người dùng nhập vào thanh tìm kiếm
 * **Input:**
   - Câu truy vấn người dùng.
   - Ngữ cảnh người dùng: tọa độ GPS.
-  - Hồ sơ cá nhân: dị ứng, sở thích.
+  - Hồ sơ cá nhân: dị ứng, sở thích, khẩu vị, ngân sách.
 * **Output:**
   - Top N quán ăn phù hợp đã được sắp xếp
   - Thông tin chi tiết mỗi quán (khoảng cách, điểm đánh giá, danh sách món, giá)
@@ -85,7 +85,44 @@ Người dùng nhập vào thanh tìm kiếm
 ![bg](bg3.png)
 **Ràng buộc:**
 - Tối thiểu trả về 16 kết quả cho người dùng
+- Tốc độ phản hồi trong khoảng 5 giây
 
+---
+![bg](bg2.png)
+
+# Luồng xử lí của hệ thống
+* **Nhận input**: câu văn tiếng Việt, tọa độ GPS, ID người dùng, ngân sách, chế độ tìm kiếm (bình thường hoặc cảm xúc)
+- Làm sạch câu truy vấn: nhận câu văn, sử dụng mô hình gemini dịch ngữ cảnh mơ hồ thành danh sách tên món ăn cụ thể.
+- Tách từ tiếng Việt bằng mô hình **underthesea** 
+- Tạo vector 768 chiều bằng mô hình **vietnamese-bi-encoder**
+
+---
+![bg](bg2.png)
+
+# Luồng xử lí của hệ thống
+- Kết hợp vector người dùng và vector câu truy vấn (theo tỉ lệ 85% truy vấn hiện tại-15% sở thích người dùng)
+- Lọc quán đang hoạt động
+- Lọc theo ngân sách (lấy quán có khoảng giá <= ngân sách)
+- Lọc món chay (nếu truy vấn không chứa từ khóa chay -> loại quán thuần chay)
+---
+![bg](bg2.png)
+
+# Luồng xử lí của hệ thống
+- Lọc theo tags
+- Sắp xếp theo khoảng cách cosine (lấy tối đa 500 quán)
+- Tăng điểm cho quán có tên khớp với truy vấn
+- Tìm kiếm vector trên danh sách **món ăn**
+- Sắp xếp lại theo khoảng cách cosine tăng dần
+---
+![bg](bg2.png)
+
+# Luồng xử lí của hệ thống
+- Gán nhãn cảnh báo dị ứng
+- Xây dựng đặc trưng xếp hạng cho mỗi quán
+- Sắp xếp lại bằng **LambdaMART**
+- Sắp xếp lại theo cảm xúc (hoạt động với chế độ tìm theo cảm xúc)
+- Format kết quả + tính điểm phù hợp %
+- **Output**: trả về top 16 quán.
 
 ---
 
