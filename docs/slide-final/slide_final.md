@@ -1,6 +1,7 @@
 ---
 marp: true
 size: 16:9
+paginate: true
 ---
 
 <style>
@@ -22,6 +23,15 @@ h1, h2, h3 {
     -webkit-text-fill-color: transparent;
     width: fit-content;
 }
+blockquote {
+    border-left: 8px solid #F44B16;
+    background: rgba(255, 255, 255, 0.85);
+    padding: 15px 25px;
+    margin: 20px 0;
+    color: #1a1a1a;
+    border-radius: 4px;
+    font-weight: 500;
+}
 </style>
 ![bg](bg1.png)
 # Wanderbite
@@ -38,46 +48,44 @@ h1, h2, h3 {
 ![bg](bg3.png)
 
 # Nhắc lại bài toán
+> Gợi ý quán ăn cho khách du lịch, sử dụng AI để hiểu câu tìm kiếm tiếng Việt. Cá nhân hóa kết quả theo người dùng.
+---
+![bg](bg3.png)
 
-* Đưa ra 1 ví dụ cụ thể
+# Nhắc lại bài toán
+**Bài toán con**
+- Hiểu ngôn ngữ tự nhiên tiếng Việt
+- Gợi ý đa tiêu chí 
+- Xếp hạng thông minh 
+---
+![bg](bg3.png)
+
+# Nhắc lại bài toán
+## ví dụ
+Người dùng nhập vào thanh tìm kiếm
+> "Hôm nay trời lạnh, thèm ăn món nóng."
 
 ---
 
-# Problem definition
+
+
+# Nhắc lại bài toán
 ![bg](bg1.png)
 
 * **Input:**
+  - Câu truy vấn người dùng.
+  - Ngữ cảnh người dùng: tọa độ GPS.
+  - Hồ sơ cá nhân: dị ứng, sở thích.
 * **Output:**
-* **Constraint:**
-
+  - Top N quán ăn phù hợp đã được sắp xếp
+  - Thông tin chi tiết mỗi quán (khoảng cách, điểm đánh giá, danh sách món, giá)
+  - Điểm số đánh giá mức độ phù hợp
 ---
-
-# Decomposition
-![bg](bg2.png)
-
-* a
-* b
-
----
-
-# Pattern recognition
+# Nhắc lại bài toán
 ![bg](bg3.png)
+**Ràng buộc:**
+- Tối thiểu trả về 16 kết quả cho người dùng
 
-* a
-* b
-
----
-
-# Abstraction
-![bg](bg1.png)
-
----
-
-# Algorithm Design
-![bg](bg2.png)
-
-* a
-* b
 
 ---
 
