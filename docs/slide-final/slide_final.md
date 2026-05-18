@@ -35,7 +35,7 @@ blockquote {
 }
 </style>
 ![bg](bg1.png)
-# Wanderbite
+# <span style="font-size: 3em;">Wanderbite</span>
 ## FINAL PRESENTATION
 
 **GVHD:** TS.Bùi Văn Thạch, ThS.Lê Đức Khoan
@@ -45,6 +45,12 @@ blockquote {
 
 # Mục lục
 
+- Nhắc lại bài toán
+- Luồng xử lí của hệ thống
+- Tính năng chính
+- Kiểm thử
+- Đánh giá - Cải tiến
+- Demo dự án qua video
 ---
 ![bg](bg3.png)
 
@@ -134,23 +140,44 @@ Người dùng nhập vào thanh tìm kiếm
 # Tính năng chính
 ![bg](bg2.png)
 
-* feature a
-* b
+* Tìm kiếm quán ăn
+- Lưu, tạo bộ sưu tập, xem lại lịch sử tìm kiếm
+* Hồ sơ cá nhân 
+- Cảnh báo dị ứng
 ---
 
-
-# Kiểm thử - điểm yếu & cải tiến
 ![bg](bg1.png)
+# Kiểm thử
 
-* Verify each solution meets constraints
-* Advanced methods:
-  * Branch & bound
-  * Metaheuristics (e.g., genetic algorithms)
-* GUI visualization
+> Câu truy vấn sau khi làm sạch bằng gemini
+
+![alt text](image-1.png)
+
+---
+![bg](bg1.png)
+# Kiểm thử
+> Thứ tự kết quả khi mô hình xếp hạng lambdaMART bị lỗi
+
+![alt text](image-2.png)
+
+---
+![bg](bg1.png)
+# Đánh giá - Cải tiến
+## Đánh giá
+- **Khoảng cách** từ người dùng đến quán ăn chưa theo tuyến đường
+- Phụ thuộc vào mô hình **gemini API**
+- **Dị ứng** chỉ hỗ trợ 8 loại cố định, không cho phép người dùng tự thêm
+---
+![bg](bg1.png)
+# Đánh giá - Cải tiến
+## Cải tiến
+- **Khoảng cách** từ người dùng đến quán ăn theo tuyến đường
+- Xây dựng mô hình **openrouter** để thay thế **gemini API**
+- **Dị ứng** cho phép người dùng tự thêm
 ---
 
 # Demo dự án qua video
 
 ---
-
+![bg](bg1.png)
 # Kết thúc
