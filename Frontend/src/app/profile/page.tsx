@@ -20,6 +20,7 @@ import {
 import { AppShell } from "../../components/AppShell";
 import { useRouter } from "next/navigation";
 import { AttendanceCalendarModal } from "../../components/AttendanceCalendarModal";
+import { toast } from "sonner";
 
 interface RecentActivity {
   title: string;
@@ -29,6 +30,7 @@ interface RecentActivity {
   res_id?: string;
   res_name?: string;
   collection_name?: string;
+  review_id?: string;
 }
 
 const BADGE_CONFIGS: Record<string, {
@@ -113,10 +115,20 @@ export default function ProfilePage() {
       // Decode if base64 encoded, or pass directly
       let idToUse = activity.res_id;
       // Mask session ID or expose normal restaurant ID
-      router.push(`/restaurant/${idToUse}`);
+      if (activity.icon_type === "star") {
+        if (activity.review_id) {
+          router.push(`/restaurant/${idToUse}?reviewId=${activity.review_id}#reviews-section`);
+        } else {
+          router.push(`/restaurant/${idToUse}#reviews-section`);
+        }
+      } else {
+        router.push(`/restaurant/${idToUse}`);
+      }
     } else if (activity.icon_type === "trash") {
       if (activity.title.includes("Yêu thích")) {
         router.push("/favorites");
+      } else if (activity.title.includes("Xóa bình luận") && activity.res_id) {
+        router.push(`/restaurant/${activity.res_id}`);
       } else {
         const collName = activity.collection_name || "";
         router.push(`/collections?collection=${encodeURIComponent(collName)}`);
@@ -138,7 +150,11 @@ export default function ProfilePage() {
     const fetchProfile = async () => {
       try {
         const token = localStorage.getItem("access_token");
-        if (!token) return;
+        if (!token) {
+          toast.error("Vui lòng đăng nhập để xem trang cá nhân!");
+          router.push("/auth");
+          return;
+        }
 
         const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
         const res = await fetch(`${API_BASE}/api/v1/users/me`, {
@@ -177,6 +193,8 @@ export default function ProfilePage() {
           if (data.active_dates) {
             setActiveDates(data.active_dates);
           }
+        } else if (res.status === 401) {
+          window.dispatchEvent(new Event("auth-session-expired"));
         }
       } catch (err) {
         console.error("Failed to fetch profile:", err);
