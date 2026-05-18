@@ -206,15 +206,23 @@ export default function RestaurantDetailPage() {
   }, [restaurant, sessionId]);
 
   const handleBack = () => {
+    // 1. Ưu tiên sử dụng lịch sử trình duyệt để quay lại chính xác trang cũ cùng bộ lọc, thanh cuộn
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      router.back();
+      return;
+    }
+
+    // Fallback nếu người dùng tải lại trang trực tiếp
     let mode = searchParams.get('mode');
     let sId = sessionId;
-    // [FIX-CONFLICT]: Lấy lại session_id và mode từ bộ nhớ ngầm để quay về trang kết quả mượt mà
+    let cameFromSearch = 'false';
     if (typeof window !== 'undefined') {
       if (!mode) mode = sessionStorage.getItem('current_search_mode');
       if (!sId) sId = sessionStorage.getItem('current_search_session_id');
+      cameFromSearch = sessionStorage.getItem('came_from_search') || 'false';
     }
     
-    if (sId) {
+    if (cameFromSearch === 'true' && sId) {
       router.push(`/result`);
     } else {
       router.push('/');
