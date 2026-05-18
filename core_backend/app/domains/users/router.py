@@ -71,6 +71,90 @@ async def google_auth(
         raise HTTPException(status_code=401, detail=str(exc))
 
 
+def initialize_profile_stats(db: Session, user: UserAccount) -> dict:
+    from app.domains.users.models import UserInteraction, UserFavorite
+    from sqlalchemy import func
+    from datetime import timezone as _timezone, timedelta as _timedelta, datetime
+    from sqlalchemy.orm.attributes import flag_modified
+    
+    vn_tz = _timezone(_timedelta(hours=7))
+    
+    # 1. Calculate active dates from UserInteraction table
+    active_dates_query = db.query(UserInteraction.created_at).filter(
+        UserInteraction.user_id == str(user.id)
+    ).all()
+    active_dates_set = set()
+    for row in active_dates_query:
+        if row[0]:
+            dt = row[0]
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=_timezone.utc)
+            local_dt = dt.astimezone(vn_tz)
+            active_dates_set.add(local_dt.strftime("%Y-%m-%d"))
+    active_dates = sorted(list(active_dates_set))
+
+    # 2. Calculate unique discoveries (res_ids visited)
+    discoveries_query = db.query(UserInteraction.res_id).filter(
+        UserInteraction.user_id == str(user.id),
+        UserInteraction.res_id.isnot(None)
+    ).distinct().all()
+    discovered_res_ids = [str(r[0]) for r in discoveries_query if r[0]]
+    discoveries_count = len(discovered_res_ids)
+
+    # 3. Calculate reviews count
+    reviews_count = db.query(UserInteraction).filter(
+        UserInteraction.user_id == str(user.id),
+        UserInteraction.action_type.like("%REVIEW%")
+    ).count()
+
+    # 4. Calculate favorites count
+    favorites_count = db.query(UserFavorite).filter(UserFavorite.user_id == str(user.id)).count()
+
+    # 5. Calculate current streak from active_dates
+    active_dates_parsed = []
+    for date_str in active_dates:
+        try:
+            active_dates_parsed.append(datetime.strptime(date_str, "%Y-%m-%d").date())
+        except ValueError:
+            pass
+
+    streak_count = 0
+    if active_dates_parsed:
+        today_date = datetime.now(vn_tz).date()
+        yesterday_date = today_date - _timedelta(days=1)
+        active_set = set(active_dates_parsed)
+        
+        start_date = None
+        if today_date in active_set:
+            start_date = today_date
+        elif yesterday_date in active_set:
+            start_date = yesterday_date
+            
+        if start_date:
+            streak_count = 1
+            current_check = start_date - _timedelta(days=1)
+            while current_check in active_set:
+                streak_count += 1
+                current_check -= _timedelta(days=1)
+
+    last_active = active_dates[-1] if active_dates else None
+
+    stats = {
+        "discoveries_count": discoveries_count,
+        "favorites_count": favorites_count,
+        "reviews_count": reviews_count,
+        "streak_count": streak_count,
+        "last_active_date": last_active,
+        "discovered_res_ids": discovered_res_ids,
+        "active_dates": active_dates,
+        "unlocked_badges": []
+    }
+    user.profile_stats = stats
+    flag_modified(user, "profile_stats")
+    db.commit()
+    return stats
+
+
 @router.get("/me", response_model=UserProfileResponse)
 def get_current_user_profile(
     current_user: UserAccount = Depends(get_current_user),
@@ -286,78 +370,18 @@ def get_current_user_profile(
 
     stats = current_user.profile_stats
     if stats is None:
-        # --- LAZY INITIALIZATION (Run once for existing users) ---
-        # 1. Calculate active dates from UserInteraction table
-        active_dates_query = db.query(UserInteraction.created_at).filter(
-            UserInteraction.user_id == str(current_user.id)
-        ).all()
-        active_dates_set = set()
-        for row in active_dates_query:
-            if row[0]:
-                dt = row[0]
-                if dt.tzinfo is None:
-                    dt = dt.replace(tzinfo=_timezone.utc)
-                local_dt = dt.astimezone(vn_tz)
-                active_dates_set.add(local_dt.strftime("%Y-%m-%d"))
-        active_dates = sorted(list(active_dates_set))
-
-        # 2. Calculate unique discoveries (res_ids visited)
-        from sqlalchemy import func
-        discoveries_query = db.query(UserInteraction.res_id).filter(
-            UserInteraction.user_id == str(current_user.id),
-            UserInteraction.res_id.isnot(None)
-        ).distinct().all()
-        discovered_res_ids = [str(r[0]) for r in discoveries_query if r[0]]
-        discoveries_count = len(discovered_res_ids)
-
-        # 3. Calculate reviews count from user_interaction
-        reviews_count = db.query(UserInteraction).filter(
-            UserInteraction.user_id == str(current_user.id),
-            UserInteraction.action_type.like("%REVIEW%")
-        ).count()
-
-        # 4. Calculate current streak from active_dates
-        active_dates_parsed = []
-        for date_str in active_dates:
-            try:
-                active_dates_parsed.append(datetime.strptime(date_str, "%Y-%m-%d").date())
-            except ValueError:
-                pass
-
-        streak_count = 0
-        if active_dates_parsed:
-            today_date = datetime.now(vn_tz).date()
-            yesterday_date = today_date - _timedelta(days=1)
-            active_set = set(active_dates_parsed)
-            
-            start_date = None
-            if today_date in active_set:
-                start_date = today_date
-            elif yesterday_date in active_set:
-                start_date = yesterday_date
-                
-            if start_date:
-                streak_count = 1
-                current_check = start_date - _timedelta(days=1)
-                while current_check in active_set:
-                    streak_count += 1
-                    current_check -= _timedelta(days=1)
-
-        last_active = active_dates[-1] if active_dates else None
-
-        # Build stats JSON
-        stats = {
-            "discoveries_count": discoveries_count,
-            "favorites_count": favorites_count,
-            "reviews_count": reviews_count,
-            "streak_count": streak_count,
-            "last_active_date": last_active,
-            "discovered_res_ids": discovered_res_ids,
-            "active_dates": active_dates,
-            "unlocked_badges": [badgeIcon for badgeIcon, info in badges_data.items() if info.unlocked]
-        }
-        current_user.profile_stats = stats
+        stats = initialize_profile_stats(db, current_user)
+        # Sync unlocked badges right after initialization
+        stats["unlocked_badges"] = [badgeIcon for badgeIcon, info in badges_data.items() if info.unlocked]
+        current_user.profile_stats = dict(stats)
+        from sqlalchemy.orm.attributes import flag_modified
+        flag_modified(current_user, "profile_stats")
         db.commit()
+        
+        discoveries_count = stats["discoveries_count"]
+        reviews_count = stats["reviews_count"]
+        streak_count = stats["streak_count"]
+        active_dates = stats["active_dates"]
     else:
         # --- CACHED READ WITH AUTOMATIC STREAK DECAY ON VIEW ---
         discoveries_count = stats.get("discoveries_count", 0)
@@ -393,7 +417,9 @@ def get_current_user_profile(
                     unlocked_badges.append(b)
             stats["unlocked_badges"] = unlocked_badges
 
-            current_user.profile_stats = stats
+            current_user.profile_stats = dict(stats)
+            from sqlalchemy.orm.attributes import flag_modified
+            flag_modified(current_user, "profile_stats")
             db.commit()
 
     return UserProfileResponse(
@@ -540,10 +566,14 @@ def log_user_interaction(
         res = service.log_interaction(payload=payload, user_id=user_id)
         
         # Incremental Updates for profile_stats (Active dates, Streaks, and Discoveries)
-        if current_user and current_user.profile_stats:
+        if current_user:
             db_user = db.query(UserAccount).filter(UserAccount.id == current_user.id).first()
-            if db_user and db_user.profile_stats:
-                stats = dict(db_user.profile_stats)
+            if db_user:
+                stats = db_user.profile_stats
+                if stats is None:
+                    stats = initialize_profile_stats(db, db_user)
+                
+                stats = dict(stats)
                 updated = False
                 
                 # 1. Update Active date & Streak
@@ -580,7 +610,9 @@ def log_user_interaction(
                         updated = True
                 
                 if updated:
-                    db_user.profile_stats = stats
+                    db_user.profile_stats = dict(stats)
+                    from sqlalchemy.orm.attributes import flag_modified
+                    flag_modified(db_user, "profile_stats")
                     db.commit()
                     
         return res

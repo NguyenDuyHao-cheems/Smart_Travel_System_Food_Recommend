@@ -178,7 +178,9 @@ class RestaurantService:
             if current_user.profile_stats:
                 stats = dict(current_user.profile_stats)
                 stats["reviews_count"] = stats.get("reviews_count", 0) + 1
-                current_user.profile_stats = stats
+                current_user.profile_stats = dict(stats)
+                from sqlalchemy.orm.attributes import flag_modified
+                flag_modified(current_user, "profile_stats")
                 db.commit()
         except Exception as e:
             import logging
@@ -215,7 +217,9 @@ class RestaurantService:
             if current_user.profile_stats:
                 stats = dict(current_user.profile_stats)
                 stats["reviews_count"] = max(0, stats.get("reviews_count", 0) - 1)
-                current_user.profile_stats = stats
+                current_user.profile_stats = dict(stats)
+                from sqlalchemy.orm.attributes import flag_modified
+                flag_modified(current_user, "profile_stats")
                 db.commit()
         except Exception as e:
             import logging
