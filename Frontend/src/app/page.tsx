@@ -58,8 +58,41 @@ function HomeContent() {
   const [mounted, setMounted] = useState(false);
 
   const coords = useSelector((state: RootState) => state.location.coords);
-  const [recommendations, setRecommendations] = useState<RecommendResult[]>([]);
-  const [isLoadingRecs, setIsLoadingRecs] = useState(true);
+  const [recommendations, setRecommendations] = useState<RecommendResult[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const userId = localStorage.getItem("user_id") || "guest";
+        const cacheKey = `home_recommendations_${userId}`;
+
+        // Detect page reload and clear cache immediately
+        const navEntries = performance.getEntriesByType("navigation");
+        const isReload = navEntries.length > 0 && (navEntries[0] as PerformanceNavigationTiming).type === "reload";
+        if (isReload) {
+          sessionStorage.removeItem(cacheKey);
+          return [];
+        }
+
+        const cached = sessionStorage.getItem(cacheKey);
+        if (cached) return JSON.parse(cached);
+      } catch (err) {}
+    }
+    return [];
+  });
+  const [isLoadingRecs, setIsLoadingRecs] = useState(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const userId = localStorage.getItem("user_id") || "guest";
+        const cacheKey = `home_recommendations_${userId}`;
+
+        const navEntries = performance.getEntriesByType("navigation");
+        const isReload = navEntries.length > 0 && (navEntries[0] as PerformanceNavigationTiming).type === "reload";
+        if (isReload) return true;
+
+        if (sessionStorage.getItem(cacheKey)) return false;
+      } catch (err) {}
+    }
+    return true;
+  });
 
   /* ── Fetch Real Recommendations ── */
   useEffect(() => {

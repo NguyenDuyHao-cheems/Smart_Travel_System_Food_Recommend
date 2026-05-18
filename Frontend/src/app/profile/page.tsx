@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { 
   Trophy, 
   MapPin, 
@@ -20,6 +20,7 @@ import {
 import { AppShell } from "../../components/AppShell";
 import { useRouter } from "next/navigation";
 import { AttendanceCalendarModal } from "../../components/AttendanceCalendarModal";
+import { toast } from "sonner";
 
 interface RecentActivity {
   title: string;
@@ -29,7 +30,66 @@ interface RecentActivity {
   res_id?: string;
   res_name?: string;
   collection_name?: string;
+  review_id?: string;
 }
+
+const BADGE_CONFIGS: Record<string, {
+  label: string;
+  colorClass: string;
+  bgClass: string;
+  emoji: string;
+  description: string;
+}> = {
+  "🍜": {
+    label: "Phở Master",
+    colorClass: "bg-orange-50 dark:bg-orange-950/20 border-orange-200/50 dark:border-orange-900/30 text-orange-600",
+    bgClass: "bg-gradient-to-tr from-orange-500 to-amber-500 text-white shadow-orange-500/20",
+    emoji: "🍜",
+    description: "Ăn phở như một vị thần"
+  },
+  "🌶️": {
+    label: "Cay Vô Đối",
+    colorClass: "bg-red-50 dark:bg-red-950/20 border-red-200/50 dark:border-red-900/30 text-red-600",
+    bgClass: "bg-gradient-to-tr from-red-500 to-rose-500 text-white shadow-red-500/20",
+    emoji: "🌶️",
+    description: "Kẻ thách thức mọi cấp độ cay"
+  },
+  "🥬": {
+    label: "Thánh Rau",
+    colorClass: "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200/50 dark:border-emerald-900/30 text-emerald-600",
+    bgClass: "bg-gradient-to-tr from-emerald-500 to-teal-500 text-white shadow-emerald-500/20",
+    emoji: "🥬",
+    description: "Tín đồ của sự thanh tịnh và chất xơ"
+  },
+  "🍦": {
+    label: "Kem Lạnh",
+    colorClass: "bg-sky-50 dark:bg-sky-950/20 border-sky-200/50 dark:border-sky-900/30 text-sky-600",
+    bgClass: "bg-gradient-to-tr from-sky-500 to-blue-500 text-white shadow-sky-500/20",
+    emoji: "🍦",
+    description: "Tâm hồn ngọt ngào và mát lạnh"
+  },
+  "🥓": {
+    label: "Team Thịt",
+    colorClass: "bg-amber-50 dark:bg-amber-950/20 border-amber-200/50 dark:border-amber-900/30 text-amber-600",
+    bgClass: "bg-gradient-to-tr from-amber-500 to-yellow-600 text-white shadow-amber-500/20",
+    emoji: "🥓",
+    description: "Không thịt đời không nể"
+  },
+  "☕": {
+    label: "Cú Đêm",
+    colorClass: "bg-purple-50 dark:bg-purple-950/20 border-purple-200/50 dark:border-purple-900/30 text-purple-600",
+    bgClass: "bg-gradient-to-tr from-purple-500 to-indigo-500 text-white shadow-purple-500/20",
+    emoji: "☕",
+    description: "Thợ săn đồ ăn đêm chuyên nghiệp"
+  },
+  "🧘": {
+    label: "Thiền Sư",
+    colorClass: "bg-gradient-to-tr from-amber-50 to-yellow-100 dark:from-amber-950/20 dark:to-yellow-950/40 border border-yellow-300/30 text-amber-600",
+    bgClass: "bg-gradient-to-tr from-yellow-500 to-amber-500 text-white shadow-yellow-500/30",
+    emoji: "🧘",
+    description: "Ăn chay trường, tâm tịnh như nước"
+  }
+};
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -43,6 +103,8 @@ export default function ProfilePage() {
   const [visibleActivitiesCount, setVisibleActivitiesCount] = useState<number>(5);
   const [activeDates, setActiveDates] = useState<string[]>([]);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [activeBadge, setActiveBadge] = useState<string | null>(null);
+  const [isBadgeModalOpen, setIsBadgeModalOpen] = useState(false);
 
   const handleActivityClick = (activity: RecentActivity) => {
     if (activity.icon_type === "heart" && activity.res_name) {
@@ -53,10 +115,20 @@ export default function ProfilePage() {
       // Decode if base64 encoded, or pass directly
       let idToUse = activity.res_id;
       // Mask session ID or expose normal restaurant ID
-      router.push(`/restaurant/${idToUse}`);
+      if (activity.icon_type === "star") {
+        if (activity.review_id) {
+          router.push(`/restaurant/${idToUse}?reviewId=${activity.review_id}#reviews-section`);
+        } else {
+          router.push(`/restaurant/${idToUse}#reviews-section`);
+        }
+      } else {
+        router.push(`/restaurant/${idToUse}`);
+      }
     } else if (activity.icon_type === "trash") {
       if (activity.title.includes("Yêu thích")) {
         router.push("/favorites");
+      } else if (activity.title.includes("Xóa bình luận") && activity.res_id) {
+        router.push(`/restaurant/${activity.res_id}`);
       } else {
         const collName = activity.collection_name || "";
         router.push(`/collections?collection=${encodeURIComponent(collName)}`);
@@ -68,11 +140,21 @@ export default function ProfilePage() {
     setMounted(true);
     setUsername(localStorage.getItem("username"));
     setAvatar(localStorage.getItem("user_avatar"));
+    
+    // Load active badge from localStorage on mount
+    const savedBadge = localStorage.getItem("active_badge");
+    if (savedBadge) {
+      setActiveBadge(savedBadge);
+    }
 
     const fetchProfile = async () => {
       try {
         const token = localStorage.getItem("access_token");
-        if (!token) return;
+        if (!token) {
+          toast.error("Vui lòng đăng nhập để xem trang cá nhân!");
+          router.push("/auth");
+          return;
+        }
 
         const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
         const res = await fetch(`${API_BASE}/api/v1/users/me`, {
@@ -91,6 +173,16 @@ export default function ProfilePage() {
           }
           if (data.badges) {
             setBadges(data.badges);
+            
+            // Auto select first unlocked badge if nothing is saved yet
+            const currentSavedBadge = localStorage.getItem("active_badge");
+            if (!currentSavedBadge) {
+              const firstUnlocked = Object.entries(data.badges).find(([_, info]: any) => info.unlocked);
+              if (firstUnlocked) {
+                localStorage.setItem("active_badge", firstUnlocked[0]);
+                setActiveBadge(firstUnlocked[0]);
+              }
+            }
           }
           if (data.culinary_vibes) {
             setCulinaryVibes(data.culinary_vibes);
@@ -101,6 +193,8 @@ export default function ProfilePage() {
           if (data.active_dates) {
             setActiveDates(data.active_dates);
           }
+        } else if (res.status === 401) {
+          window.dispatchEvent(new Event("auth-session-expired"));
         }
       } catch (err) {
         console.error("Failed to fetch profile:", err);
@@ -125,26 +219,71 @@ export default function ProfilePage() {
               
               <div className="px-8 pb-8 relative">
                 {/* Avatar */}
-                <div className="absolute -top-16 left-8">
-                  <div className="w-32 h-32 rounded-[32px] border-8 border-white dark:border-[#3D312A] bg-white dark:bg-[#3D312A] shadow-xl overflow-hidden">
-                    {avatar ? (
-                      <img src={avatar} alt="Profile" className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-brand-muted text-brand dark:text-[#E8735A]">
-                        <span className="text-4xl font-bold">{username?.[0]}</span>
+                {(() => {
+                  const unlockedBadges = Object.keys(badges).filter(k => badges[k]?.unlocked);
+                  const currentActiveBadge = activeBadge === "none" 
+                    ? null 
+                    : (activeBadge && badges[activeBadge]?.unlocked 
+                        ? activeBadge 
+                        : (activeBadge === null && unlockedBadges.length > 0 ? unlockedBadges[0] : null));
+                  const activeConfig = currentActiveBadge ? BADGE_CONFIGS[currentActiveBadge] : null;
+
+                  return (
+                    <div className="absolute -top-16 left-8">
+                      <div className="w-32 h-32 rounded-[32px] border-8 border-white dark:border-[#3D312A] bg-white dark:bg-[#3D312A] shadow-xl overflow-hidden">
+                        {avatar ? (
+                          <img src={avatar} alt="Profile" className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center bg-brand-muted text-brand dark:text-[#E8735A]">
+                            <span className="text-4xl font-bold">{username?.[0]}</span>
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
-                  <div className="absolute -bottom-2 -right-2 w-10 h-10 bg-emerald-500 text-white rounded-2xl flex items-center justify-center border-4 border-white dark:border-[#3D312A] shadow-lg">
-                    <Award className="w-5 h-5" />
-                  </div>
-                </div>
+                      {activeConfig && (
+                        <div 
+                          onClick={() => setIsBadgeModalOpen(true)}
+                          className={`absolute -bottom-2 -right-2 w-10 h-10 ${activeConfig.bgClass} border-4 border-white dark:border-[#3D312A] rounded-2xl flex items-center justify-center shadow-lg cursor-pointer hover:scale-110 active:scale-95 transition-all duration-200 select-none`}
+                          title="Chọn huy hiệu hiển thị"
+                        >
+                          <Award className="w-5 h-5 text-white" />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 <div className="pt-20 flex flex-col md:flex-row md:items-end justify-between gap-6">
                   <div>
                     <h1 className="text-3xl font-black text-gray-900 dark:text-[#E6DFD5] tracking-tight mb-1">{username || "Linh Nguyen"}</h1>
                     <p className="text-gray-500 dark:text-[#9A8A7A] font-medium flex items-center gap-2 text-sm">
-                      <span className="px-2.5 py-0.5 rounded-full bg-brand-muted dark:bg-brand/20 text-brand-hover dark:text-[#E6DFD5] font-bold text-[10px] uppercase tracking-wider">Bậc thầy Phở</span>
+                      {(() => {
+                        const unlockedBadges = Object.keys(badges).filter(k => badges[k]?.unlocked);
+                        const currentActiveBadge = activeBadge === "none" 
+                          ? null 
+                          : (activeBadge && badges[activeBadge]?.unlocked 
+                              ? activeBadge 
+                              : (activeBadge === null && unlockedBadges.length > 0 ? unlockedBadges[0] : null));
+                        const activeConfig = currentActiveBadge ? BADGE_CONFIGS[currentActiveBadge] : null;
+                        
+                        return activeConfig ? (
+                          <span 
+                            onClick={() => setIsBadgeModalOpen(true)}
+                            className={`px-2.5 py-0.5 rounded-full ${activeConfig.colorClass} font-bold text-[10px] uppercase tracking-wider cursor-pointer hover:scale-105 active:scale-95 transition-all duration-200 shadow-sm flex items-center gap-1 select-none`}
+                            title="Click để đổi danh hiệu"
+                          >
+                            <span>{activeConfig.emoji}</span>
+                            <span>{activeConfig.label}</span>
+                          </span>
+                        ) : (
+                          <span 
+                            onClick={() => setIsBadgeModalOpen(true)}
+                            className="px-2.5 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 font-bold text-[10px] uppercase tracking-wider cursor-pointer hover:scale-105 active:scale-95 transition-all duration-200 shadow-sm flex items-center gap-1 select-none"
+                            title="Click để chọn danh hiệu"
+                          >
+                            Chưa có danh hiệu
+                          </span>
+                        );
+                      })()}
                       • Tham gia từ {joinDate || "tháng 5, 2024"}
                     </p>
                   </div>
@@ -194,29 +333,22 @@ export default function ProfilePage() {
                     Huy hiệu của bạn
                   </h3>
                   <div className="grid grid-cols-3 gap-4 text-center">
-                    {[
-                      { icon: "🍜", label: "Phở Master", colorClass: "bg-orange-50 dark:bg-orange-950/20 border-orange-200/50 dark:border-orange-900/30 text-orange-600" },
-                      { icon: "🌶️", label: "Cay Vô Đối", colorClass: "bg-red-50 dark:bg-red-950/20 border-red-200/50 dark:border-red-900/30 text-red-600" },
-                      { icon: "🥬", label: "Thánh Rau", colorClass: "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200/50 dark:border-emerald-900/30 text-emerald-600" },
-                      { icon: "🍦", label: "Kem Lạnh", colorClass: "bg-sky-50 dark:bg-sky-950/20 border-sky-200/50 dark:border-sky-900/30 text-sky-600" },
-                      { icon: "🥓", label: "Team Thịt", colorClass: "bg-amber-50 dark:bg-amber-950/20 border-amber-200/50 dark:border-amber-900/30 text-amber-600" },
-                      { icon: "☕", label: "Cú Đêm", colorClass: "bg-purple-50 dark:bg-purple-950/20 border-purple-200/50 dark:border-purple-900/30 text-purple-600" },
-                      { icon: "🧘", label: "Thiền Sư", isZen: true },
-                    ].map((badge, idx) => {
-                      const info = badges[badge.icon] || { unlocked: false, progress: 0, target: badge.isZen ? 1 : 20 };
+                    {Object.entries(BADGE_CONFIGS).map(([badgeIcon, badge], idx) => {
+                      const info = badges[badgeIcon] || { unlocked: false, progress: 0, target: badgeIcon === "🧘" ? 1 : 20 };
+                      const isZen = badgeIcon === "🧘";
                       return (
                         <div key={idx} className="group cursor-help relative flex flex-col items-center">
                           <div className={`w-16 h-16 rounded-2xl flex items-center justify-center text-2xl mb-1.5 transition-all duration-300 relative overflow-hidden ${
                             info.unlocked 
-                              ? (badge.isZen 
+                              ? (isZen 
                                   ? "bg-gradient-to-tr from-amber-50 to-yellow-100 dark:from-amber-950/20 dark:to-yellow-950/40 border border-yellow-300/30 shadow-[0_0_15px_rgba(251,191,36,0.25)] scale-100 group-hover:scale-110" 
                                   : `${badge.colorClass} border scale-100 group-hover:scale-110`)
                               : "bg-gray-100/70 dark:bg-[#2A2420]/50 border border-dashed border-gray-200 dark:border-gray-800 opacity-40 grayscale group-hover:opacity-60"
                           }`}>
-                            {badge.isZen && info.unlocked && (
+                            {isZen && info.unlocked && (
                               <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(251,191,36,0.6)_0%,transparent_70%)] animate-pulse rounded-full w-12 h-12 m-auto" />
                             )}
-                            <span className="relative z-10">{badge.icon}</span>
+                            <span className="relative z-10">{badgeIcon}</span>
                           </div>
                           <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{badge.label}</span>
                           
@@ -225,7 +357,7 @@ export default function ProfilePage() {
                             {info.unlocked ? (
                               <span className="text-yellow-400 font-bold flex items-center gap-1">🌟 Đã mở khóa!</span>
                             ) : (
-                              badge.isZen 
+                              isZen 
                                 ? <span className="text-gray-300 font-bold">🧘 Ăn chay để mở khóa</span>
                                 : <span className="text-gray-300">Tiến độ: <strong className="text-brand dark:text-[#E8735A] font-extrabold">{info.progress}</strong>/{info.target}</span>
                             )}
@@ -363,6 +495,174 @@ export default function ProfilePage() {
         onClose={() => setIsCalendarOpen(false)}
         activeDates={activeDates}
       />
+
+      {/* Badge Selection Modal */}
+      <AnimatePresence>
+        {isBadgeModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+            {/* Backdrop */}
+            <div 
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
+              onClick={() => setIsBadgeModalOpen(false)}
+            />
+            
+            {/* Modal Container */}
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              transition={{ type: "spring", duration: 0.5 }}
+              className="relative bg-white dark:bg-[#3D312A] w-full max-w-lg rounded-[32px] shadow-2xl border border-gray-100 dark:border-[#4D3D32] overflow-hidden z-10"
+            >
+              {/* Header */}
+              <div className="px-6 pt-6 pb-4 border-b border-gray-50 dark:border-[#4D3D32] flex justify-between items-center">
+                <div>
+                  <h3 className="text-xl font-black text-gray-900 dark:text-[#E6DFD5] tracking-tight">
+                    Chọn Danh Hiệu Hiển Thị
+                  </h3>
+                  <p className="text-xs text-gray-500 dark:text-[#9A8A7A] mt-0.5">
+                    Danh hiệu được chọn sẽ xuất hiện dưới tên và làm đẹp cho Avatar của bạn
+                  </p>
+                </div>
+                <button 
+                  onClick={() => setIsBadgeModalOpen(false)}
+                  className="w-8 h-8 rounded-full bg-gray-50 dark:bg-[#2A2420] text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center transition-colors cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+              
+              {/* Content */}
+              <div className="p-6 max-h-[60vh] overflow-y-auto space-y-6">
+                {/* Section 1: Owned Badges */}
+                <div>
+                  {(() => {
+                    const unlockedBadges = Object.keys(badges).filter(k => badges[k]?.unlocked);
+                    const currentActiveBadge = activeBadge === "none" 
+                      ? null 
+                      : (activeBadge && badges[activeBadge]?.unlocked 
+                          ? activeBadge 
+                          : (activeBadge === null && unlockedBadges.length > 0 ? unlockedBadges[0] : null));
+                    
+                    return (
+                      <>
+                        <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                          <span>🌟</span> Danh hiệu đã sở hữu ({unlockedBadges.length})
+                        </h4>
+                        {unlockedBadges.length === 0 ? (
+                          <div className="text-center py-6 bg-gray-50 dark:bg-[#2A2420]/30 rounded-2xl border border-dashed border-gray-200 dark:border-[#4D3D32]">
+                            <p className="text-sm text-gray-400 font-semibold">Bạn chưa mở khóa danh hiệu nào</p>
+                            <p className="text-xs text-gray-400 mt-1 px-4">Hãy tiếp tục tương tác và tìm kiếm để tích lũy huy hiệu nhé!</p>
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-1 gap-3">
+                            {unlockedBadges.map((badgeKey) => {
+                              const cfg = BADGE_CONFIGS[badgeKey];
+                              const isSelected = currentActiveBadge === badgeKey;
+                              if (!cfg) return null;
+                              return (
+                                <div 
+                                  key={badgeKey}
+                                  onClick={() => {
+                                    if (isSelected) {
+                                      localStorage.setItem("active_badge", "none");
+                                      setActiveBadge("none");
+                                    } else {
+                                      localStorage.setItem("active_badge", badgeKey);
+                                      setActiveBadge(badgeKey);
+                                    }
+                                    setIsBadgeModalOpen(false);
+                                  }}
+                                  className={`flex items-center gap-4 p-4 rounded-2xl border cursor-pointer transition-all duration-200 group ${
+                                    isSelected 
+                                      ? "bg-brand/5 border-brand dark:bg-brand/10 dark:border-brand/40 shadow-sm" 
+                                      : "bg-white dark:bg-[#2A2420]/50 border-gray-100 dark:border-transparent hover:border-gray-200 dark:hover:border-[#4D3D32] hover:bg-gray-50 dark:hover:bg-gray-800"
+                                  }`}
+                                >
+                                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl ${cfg.bgClass} flex-shrink-0 transition-transform group-hover:scale-105`}>
+                                    {cfg.emoji}
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <h5 className="text-sm font-black text-gray-900 dark:text-[#E6DFD5] flex items-center gap-1.5">
+                                      {cfg.label}
+                                      {isSelected && (
+                                        <span className="px-2 py-0.5 rounded-full bg-brand/10 text-brand text-[9px] font-bold">Đang hiển thị</span>
+                                      )}
+                                    </h5>
+                                    <p className="text-xs text-gray-500 dark:text-[#9A8A7A] truncate mt-0.5">{cfg.description}</p>
+                                  </div>
+                                  <div className={`w-5 h-5 rounded-full border flex items-center justify-center flex-shrink-0 transition-colors ${
+                                    isSelected 
+                                      ? "bg-brand border-brand text-white" 
+                                      : "border-gray-200 dark:border-gray-700 text-transparent"
+                                  }`}>
+                                    ✓
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
+                </div>
+                
+                {/* Section 2: Locked Badges */}
+                <div>
+                  {(() => {
+                    const unlockedBadges = Object.keys(badges).filter(k => badges[k]?.unlocked);
+                    
+                    return (
+                      <>
+                        <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                          <span>🔒</span> Chưa sở hữu ({Object.keys(BADGE_CONFIGS).length - unlockedBadges.length})
+                        </h4>
+                        <div className="grid grid-cols-1 gap-3">
+                          {Object.keys(BADGE_CONFIGS).map((badgeKey) => {
+                            const cfg = BADGE_CONFIGS[badgeKey];
+                            const info = badges[badgeKey] || { unlocked: false, progress: 0, target: badgeKey === "🧘" ? 1 : 20 };
+                            if (info.unlocked) return null;
+                            if (!cfg) return null;
+                            return (
+                              <div 
+                                key={badgeKey}
+                                className="flex items-center gap-4 p-4 rounded-2xl bg-gray-50/50 dark:bg-[#2A2420]/20 border border-transparent opacity-60 grayscale select-none"
+                              >
+                                <div className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl bg-gray-200 dark:bg-gray-800 text-gray-400 flex-shrink-0">
+                                  {cfg.emoji}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <h5 className="text-sm font-bold text-gray-700 dark:text-[#9A8A7A] flex items-center gap-1.5">
+                                    {cfg.label}
+                                  </h5>
+                                  {/* Progress bar */}
+                                  <div className="mt-2 flex items-center gap-2">
+                                    <div className="flex-1 h-1.5 bg-gray-200 dark:bg-gray-800 rounded-full overflow-hidden">
+                                      <div 
+                                        className="h-full bg-gray-400 dark:bg-gray-600 rounded-full"
+                                        style={{ width: `${(info.progress / info.target) * 100}%` }}
+                                      />
+                                    </div>
+                                    <span className="text-[10px] font-bold text-gray-400 whitespace-nowrap">
+                                      {info.progress}/{info.target}
+                                    </span>
+                                  </div>
+                                </div>
+                                <span className="text-gray-400 dark:text-gray-600">🔒</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </>
+                    );
+                  })()}
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </AppShell>
   );
 }
