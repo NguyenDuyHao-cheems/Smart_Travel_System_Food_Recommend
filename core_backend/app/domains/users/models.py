@@ -78,6 +78,7 @@ class UserAccount(Base):
     password_hash = Column(String, nullable=False)
     preferences_vector = Column(Vector(settings.VECTOR_DIM), nullable=True)
     allergies = Column(JSON, nullable=True)
+    profile_stats = Column(JSON, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc),
                         onupdate=lambda: datetime.now(timezone.utc))

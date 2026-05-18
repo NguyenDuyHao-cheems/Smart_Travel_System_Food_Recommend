@@ -165,7 +165,6 @@ def get_current_user_profile(
     # Sắp xếp gu nổi bật nhất lên đầu
     vibes_list.sort(key=lambda x: x.percent, reverse=True)
 
-    # Giới hạn tiến trình không vượt quá target cho Huy hiệu
     badges_data = {
         "🍜": BadgeProgress(unlocked=pho_count >= 20, progress=min(pho_count, 20), target=20),
         "🌶️": BadgeProgress(unlocked=cay_count >= 20, progress=min(cay_count, 20), target=20),
@@ -175,6 +174,14 @@ def get_current_user_profile(
         "☕": BadgeProgress(unlocked=night_count >= 20, progress=min(night_count, 20), target=20),
         "🧘": BadgeProgress(unlocked=is_vegetarian, progress=1 if is_vegetarian else 0, target=1)
     }
+
+    if current_user.profile_stats:
+        unlocked_list = current_user.profile_stats.get("unlocked_badges", [])
+        for badgeIcon, info in badges_data.items():
+            if badgeIcon in unlocked_list:
+                info.unlocked = True
+                info.progress = info.target
+
 
     # 5. Truy vấn Hoạt động gần đây (trong vòng 3 ngày qua, tối đa 15 hoạt động)
     from app.domains.users.models import UserInteraction
@@ -270,18 +277,124 @@ def get_current_user_profile(
     # 6. Fetch active dates and convert from UTC to local Vietnam timezone (+07:00)
     from datetime import timezone as _timezone, timedelta as _timedelta
     vn_tz = _timezone(_timedelta(hours=7))
-    active_dates_query = db.query(UserInteraction.created_at).filter(
-        UserInteraction.user_id == str(current_user.id)
-    ).all()
-    active_dates_set = set()
-    for row in active_dates_query:
-        if row[0]:
-            dt = row[0]
-            if dt.tzinfo is None:
-                dt = dt.replace(tzinfo=_timezone.utc)
-            local_dt = dt.astimezone(vn_tz)
-            active_dates_set.add(local_dt.strftime("%Y-%m-%d"))
-    active_dates = sorted(list(active_dates_set))
+    today_str = datetime.now(vn_tz).strftime("%Y-%m-%d")
+    yesterday_str = (datetime.now(vn_tz) - _timedelta(days=1)).strftime("%Y-%m-%d")
+
+    # Dynamic Stats Calculation and Persistent Caching (Lazy-Initialization strategy)
+    from app.domains.users.models import UserFavorite
+    favorites_count = db.query(UserFavorite).filter(UserFavorite.user_id == str(current_user.id)).count()
+
+    stats = current_user.profile_stats
+    if stats is None:
+        # --- LAZY INITIALIZATION (Run once for existing users) ---
+        # 1. Calculate active dates from UserInteraction table
+        active_dates_query = db.query(UserInteraction.created_at).filter(
+            UserInteraction.user_id == str(current_user.id)
+        ).all()
+        active_dates_set = set()
+        for row in active_dates_query:
+            if row[0]:
+                dt = row[0]
+                if dt.tzinfo is None:
+                    dt = dt.replace(tzinfo=_timezone.utc)
+                local_dt = dt.astimezone(vn_tz)
+                active_dates_set.add(local_dt.strftime("%Y-%m-%d"))
+        active_dates = sorted(list(active_dates_set))
+
+        # 2. Calculate unique discoveries (res_ids visited)
+        from sqlalchemy import func
+        discoveries_query = db.query(UserInteraction.res_id).filter(
+            UserInteraction.user_id == str(current_user.id),
+            UserInteraction.res_id.isnot(None)
+        ).distinct().all()
+        discovered_res_ids = [str(r[0]) for r in discoveries_query if r[0]]
+        discoveries_count = len(discovered_res_ids)
+
+        # 3. Calculate reviews count from user_interaction
+        reviews_count = db.query(UserInteraction).filter(
+            UserInteraction.user_id == str(current_user.id),
+            UserInteraction.action_type.like("%REVIEW%")
+        ).count()
+
+        # 4. Calculate current streak from active_dates
+        active_dates_parsed = []
+        for date_str in active_dates:
+            try:
+                active_dates_parsed.append(datetime.strptime(date_str, "%Y-%m-%d").date())
+            except ValueError:
+                pass
+
+        streak_count = 0
+        if active_dates_parsed:
+            today_date = datetime.now(vn_tz).date()
+            yesterday_date = today_date - _timedelta(days=1)
+            active_set = set(active_dates_parsed)
+            
+            start_date = None
+            if today_date in active_set:
+                start_date = today_date
+            elif yesterday_date in active_set:
+                start_date = yesterday_date
+                
+            if start_date:
+                streak_count = 1
+                current_check = start_date - _timedelta(days=1)
+                while current_check in active_set:
+                    streak_count += 1
+                    current_check -= _timedelta(days=1)
+
+        last_active = active_dates[-1] if active_dates else None
+
+        # Build stats JSON
+        stats = {
+            "discoveries_count": discoveries_count,
+            "favorites_count": favorites_count,
+            "reviews_count": reviews_count,
+            "streak_count": streak_count,
+            "last_active_date": last_active,
+            "discovered_res_ids": discovered_res_ids,
+            "active_dates": active_dates,
+            "unlocked_badges": [badgeIcon for badgeIcon, info in badges_data.items() if info.unlocked]
+        }
+        current_user.profile_stats = stats
+        db.commit()
+    else:
+        # --- CACHED READ WITH AUTOMATIC STREAK DECAY ON VIEW ---
+        discoveries_count = stats.get("discoveries_count", 0)
+        reviews_count = stats.get("reviews_count", 0)
+        streak_count = stats.get("streak_count", 0)
+        last_active_date = stats.get("last_active_date")
+        discovered_res_ids = stats.get("discovered_res_ids", [])
+        active_dates = stats.get("active_dates", [])
+        unlocked_badges = stats.get("unlocked_badges", [])
+
+        # Streak Decay & Day Transition Logic:
+        # If last active date is not today, check if they active today (viewing profile counts as active today!)
+        if last_active_date != today_str:
+            if last_active_date == yesterday_str:
+                streak_count += 1
+            else:
+                streak_count = 1  # Streak broken, starts today
+            
+            last_active_date = today_str
+            if today_str not in active_dates:
+                active_dates.append(today_str)
+                active_dates.sort()
+
+            # Update database
+            stats["streak_count"] = streak_count
+            stats["last_active_date"] = last_active_date
+            stats["active_dates"] = active_dates
+            
+            # Sync unlocked badges
+            current_unlocked = [badgeIcon for badgeIcon, info in badges_data.items() if info.unlocked]
+            for b in current_unlocked:
+                if b not in unlocked_badges:
+                    unlocked_badges.append(b)
+            stats["unlocked_badges"] = unlocked_badges
+
+            current_user.profile_stats = stats
+            db.commit()
 
     return UserProfileResponse(
         id=str(current_user.id),
@@ -293,6 +406,10 @@ def get_current_user_profile(
         culinary_vibes=vibes_list,
         recent_activities=recent_activities,
         active_dates=active_dates,
+        discoveries_count=discoveries_count,
+        favorites_count=favorites_count,
+        reviews_count=reviews_count,
+        streak_count=streak_count,
     )
 
 
@@ -414,12 +531,59 @@ def get_user_allergies(
 def log_user_interaction(
     request: Request,
     payload: UserInteractionRequest,
+    db: Session = Depends(get_db),
     service: UserInteractionService = Depends(get_interaction_service),
     current_user: UserAccount | None = Depends(get_optional_current_user),
 ):
     try:
         user_id = str(current_user.id) if current_user else None
-        return service.log_interaction(payload=payload, user_id=user_id)
+        res = service.log_interaction(payload=payload, user_id=user_id)
+        
+        # Incremental Updates for profile_stats (Active dates, Streaks, and Discoveries)
+        if current_user and current_user.profile_stats:
+            db_user = db.query(UserAccount).filter(UserAccount.id == current_user.id).first()
+            if db_user and db_user.profile_stats:
+                stats = dict(db_user.profile_stats)
+                updated = False
+                
+                # 1. Update Active date & Streak
+                from datetime import timezone as _timezone, timedelta as _timedelta
+                vn_tz = _timezone(_timedelta(hours=7))
+                today_str = datetime.now(vn_tz).strftime("%Y-%m-%d")
+                yesterday_str = (datetime.now(vn_tz) - _timedelta(days=1)).strftime("%Y-%m-%d")
+                
+                last_active_date = stats.get("last_active_date")
+                if last_active_date != today_str:
+                    streak_count = stats.get("streak_count", 0)
+                    active_dates = stats.get("active_dates", [])
+                    
+                    if last_active_date == yesterday_str:
+                        streak_count += 1
+                    else:
+                        streak_count = 1
+                        
+                    stats["streak_count"] = streak_count
+                    stats["last_active_date"] = today_str
+                    if today_str not in active_dates:
+                        active_dates.append(today_str)
+                        active_dates.sort()
+                    stats["active_dates"] = active_dates
+                    updated = True
+                
+                # 2. Update Discoveries (if they viewed a restaurant details)
+                if payload.res_id and "VIEW" in payload.action_type.upper():
+                    discovered_res_ids = stats.get("discovered_res_ids", [])
+                    if payload.res_id not in discovered_res_ids:
+                        discovered_res_ids.append(payload.res_id)
+                        stats["discovered_res_ids"] = discovered_res_ids
+                        stats["discoveries_count"] = len(discovered_res_ids)
+                        updated = True
+                
+                if updated:
+                    db_user.profile_stats = stats
+                    db.commit()
+                    
+        return res
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed to log interaction: {exc}")
 

@@ -166,6 +166,12 @@ class UserProfileResponse(BaseModel):
     culinary_vibes: List[CulinaryVibe]
     recent_activities: List[RecentActivityResponse]
     active_dates: List[str] = []
+    
+    # Dynamic Stats Fields
+    discoveries_count: int = 0
+    favorites_count: int = 0
+    reviews_count: int = 0
+    streak_count: int = 0
 
 
 class FavoriteCreateRequest(BaseModel):

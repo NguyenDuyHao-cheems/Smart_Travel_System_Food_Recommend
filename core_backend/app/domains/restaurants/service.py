@@ -163,7 +163,7 @@ class RestaurantService:
                 anonymous_number=None
             )
 
-        # Tích hợp tracking tương tác (Interaction Tracking)
+        # Tích hợp tracking tương tác (Interaction Tracking) và cập nhật profile_stats
         try:
             from app.domains.users.repository import UserInteractionRepository
             interaction_repo = UserInteractionRepository(db)
@@ -173,10 +173,17 @@ class RestaurantService:
                 res_id=str(review.res_id) if review.res_id else None,
                 metadata={"rating": review.rating}
             )
+            
+            # Increment reviews_count in user's profile_stats if initialized
+            if current_user.profile_stats:
+                stats = dict(current_user.profile_stats)
+                stats["reviews_count"] = stats.get("reviews_count", 0) + 1
+                current_user.profile_stats = stats
+                db.commit()
         except Exception as e:
             import logging
             logger = logging.getLogger("uvicorn.error")
-            logger.error(f"Failed to log review interaction: {e}")
+            logger.error(f"Failed to log review interaction/update stats: {e}")
 
         display_name = f"Người ẩn danh số {review.anonymous_number}" if review.is_anonymous else reviewer_name
 
@@ -202,3 +209,15 @@ class RestaurantService:
             raise HTTPException(status_code=403, detail="Bạn không có quyền xóa bình luận này.")
 
         RestaurantRepository.delete_review(db, review_id)
+        
+        # Decrement reviews_count in user's profile_stats if initialized
+        try:
+            if current_user.profile_stats:
+                stats = dict(current_user.profile_stats)
+                stats["reviews_count"] = max(0, stats.get("reviews_count", 0) - 1)
+                current_user.profile_stats = stats
+                db.commit()
+        except Exception as e:
+            import logging
+            logger = logging.getLogger("uvicorn.error")
+            logger.error(f"Failed to decrement review count in stats: {e}")
