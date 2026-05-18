@@ -151,7 +151,7 @@ Người dùng nhập vào thanh tìm kiếm
 
 > Câu truy vấn sau khi làm sạch bằng gemini
 
-![alt text](image-1.png)
+![w:1000 center](image-1.png)
 
 ---
 ![bg](bg1.png)
@@ -164,7 +164,7 @@ Người dùng nhập vào thanh tìm kiếm
 ![bg](bg1.png)
 # Đánh giá - Cải tiến
 ## Đánh giá
-- **Khoảng cách** từ người dùng đến quán ăn chưa theo tuyến đường
+- **Khoảng cách** từ người dùng đến quán ăn đang tính theo đường chim bay.
 - Phụ thuộc vào mô hình **gemini API**
 - **Dị ứng** chỉ hỗ trợ 8 loại cố định, không cho phép người dùng tự thêm
 ---
