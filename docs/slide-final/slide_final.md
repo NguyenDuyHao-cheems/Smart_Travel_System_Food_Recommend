@@ -125,7 +125,7 @@ Người dùng nhập vào thanh tìm kiếm
 
 # Luồng xử lí của hệ thống
 14. Gán nhãn cảnh báo dị ứng
-15. Xây dựng đặc trưng xếp hạng cho mỗi quán (7 đặc trưng: `similarity_score`, `distance`,`sentiment_score`, `price`, `rating`,`tag_match`,`review_count` )
+15. Xây dựng đặc trưng xếp hạng cho mỗi quán (6 đặc trưng: `similarity_score`, `rating_norm`, `sentiment_norm`, `distance_log`, `price_clipped`, `review_log`)
 16. Sắp xếp theo cảm xúc (tùy chọn)
 17. Sắp xếp lại bằng **LambdaMART**
 18. Phân rã khoảng cách + nhận diện mật độ quán ăn
