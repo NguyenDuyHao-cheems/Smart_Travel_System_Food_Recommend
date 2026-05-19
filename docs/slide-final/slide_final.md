@@ -173,7 +173,7 @@ Người dùng nhập vào thanh tìm kiếm
 # Đánh giá - Cải tiến
 ## Cải tiến
 - **Khoảng cách** từ người dùng đến quán ăn theo tuyến đường
-- Xây dựng mô hình **openrouter** để thay thế **gemini API**
+-  Tích hợp cổng **API OpenRouter** để linh hoạt chuyển đổi giữa nhiều mô hình AI 
 - **Dị ứng** cho phép người dùng tự thêm
 ---
 
