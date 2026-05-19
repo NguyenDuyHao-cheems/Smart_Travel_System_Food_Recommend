@@ -193,13 +193,14 @@ export default function SettingsPage() {
                   />
                 )}
                 {activeTab === "appearance" && <AppearanceSettings />}
-                {!["account", "appearance"].includes(activeTab) && (
+                {activeTab === "privacy" && <PrivacySettings />}
+                {!["account", "appearance", "privacy"].includes(activeTab) && (
                   <div className="bg-[#FDFBF7] dark:bg-[#2A2420]/80 rounded-[32px] p-12 text-center shadow-sm border border-[#E6DFD5] dark:border-[#3D312A]">
                     <div className="w-16 h-16 bg-brand-muted dark:bg-brand/10 rounded-full flex items-center justify-center mx-auto mb-4 text-brand dark:text-[#E8735A]">
                       <Settings className="w-8 h-8" />
                     </div>
                     <h3 className="text-lg font-bold text-[#3D312A] dark:text-[#E6DFD5] mb-2">Tính năng đang phát triển</h3>
-                    <p className="text-[#7A6A5A] dark:text-[#9A8A7A] text-sm">Chúng tôi đang hoàn thiện phần này. Vui lòng quay lại sau!</p>
+                    <p className="text-[#7A6A5A] dark:text-[#9A8A7A] text-sm">Tính năng này sẽ sớm ra mắt!</p>
                   </div>
                 )}
               </motion.div>
@@ -613,7 +614,10 @@ function AppearanceSettings() {
         <div className="mt-8 pt-8 border-t border-gray-50 dark:border-[#3D312A]">
           <label className="text-[13px] font-bold text-gray-400 uppercase tracking-wider block mb-3">Ngôn ngữ</label>
           <div className="relative">
-            <div className="w-full bg-gray-50 dark:bg-[#3D312A] border border-gray-100 dark:border-[#4D3D32] rounded-2xl px-5 py-3.5 flex items-center justify-between cursor-pointer group">
+            <div 
+              onClick={() => toast.info('Tính năng này sẽ sớm ra mắt')}
+              className="w-full bg-gray-50 dark:bg-[#3D312A] border border-gray-100 dark:border-[#4D3D32] rounded-2xl px-5 py-3.5 flex items-center justify-between cursor-pointer group"
+            >
               <div className="flex items-center gap-3">
                 <Globe className="w-5 h-5 text-gray-400" />
                 <span className="text-sm font-bold text-gray-800 dark:text-[#E6DFD5]">Tiếng Việt</span>
@@ -648,7 +652,10 @@ function PrivacySettings() {
                 <p className="text-[11px] text-gray-500 dark:text-[#9A8A7A]">{item.desc}</p>
               </div>
             </div>
-            <div className={`w-12 h-6 rounded-full relative cursor-pointer transition-colors ${item.active ? 'bg-brand' : 'bg-gray-200 dark:bg-[#4D3D32]'}`}>
+            <div 
+              onClick={() => toast.info('Tính năng này sẽ sớm ra mắt')}
+              className={`w-12 h-6 rounded-full relative cursor-pointer transition-colors ${item.active ? 'bg-brand' : 'bg-gray-200 dark:bg-[#4D3D32]'}`}
+            >
               <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${item.active ? 'left-7' : 'left-1'}`} />
             </div>
           </div>
