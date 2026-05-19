@@ -44,9 +44,66 @@ def _stub_sentence_transformers():
     sys.modules["sentence_transformers"] = st_mock
 
 
+def _stub_lightgbm():
+    """Inject a fake 'lightgbm' module into sys.modules."""
+    if "lightgbm" in sys.modules:
+        return
+
+    lgb_mock = types.ModuleType("lightgbm")
+
+    class MockBooster:
+        def __init__(self, model_file=None, *args, **kwargs):
+            self.model_file = model_file
+            if model_file:
+                import pathlib
+                p = pathlib.Path(model_file)
+                if p.exists() and p.read_text() == "not a valid model file":
+                    raise Exception("LightGBM error: Cannot open model file")
+
+        def predict(self, X):
+            import numpy as np
+            # Return some random scores or deterministic decreasing scores
+            return np.linspace(1.0, 0.1, len(X), dtype=np.float32)
+
+        def save_model(self, path):
+            import pathlib
+            pathlib.Path(path).parent.mkdir(parents=True, exist_ok=True)
+            pathlib.Path(path).write_text("dummy booster data")
+
+    class MockDataset:
+        def __init__(self, data, label=None, group=None, feature_name=None, free_raw_data=False):
+            pass
+
+    def mock_train(params, train_set, num_boost_round=100, valid_sets=None, callbacks=None):
+        return MockBooster()
+
+    def mock_log_evaluation(period=20):
+        return lambda x: None
+
+    lgb_mock.Booster = MockBooster
+    lgb_mock.Dataset = MockDataset
+    lgb_mock.train = mock_train
+    lgb_mock.log_evaluation = mock_log_evaluation
+    lgb_mock.__spec__ = MagicMock()
+    sys.modules["lightgbm"] = lgb_mock
+
+
+def _stub_lightfm():
+    """Inject a fake 'lightfm' module into sys.modules."""
+    if "lightfm" in sys.modules:
+        return
+
+    lfm_mock = types.ModuleType("lightfm")
+    lfm_mock.LightFM = MagicMock()
+    lfm_mock.__spec__ = MagicMock()
+    sys.modules["lightfm"] = lfm_mock
+
+
 # Stub BEFORE any app imports
 _stub_torch()
 _stub_sentence_transformers()
+_stub_lightgbm()
+_stub_lightfm()
 
 
 # ---------------------------------------------------------------------------

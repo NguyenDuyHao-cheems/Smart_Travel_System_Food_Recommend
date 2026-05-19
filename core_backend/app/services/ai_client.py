@@ -52,23 +52,27 @@ class AIServiceClient:
         if not text.strip():
             return None
 
-        response = await self._client.post(
-            "/api/v1/nlp/embed",
-            json={"text": text},
-        )
-        response.raise_for_status()
-        data = response.json()
-        vector = data.get("vector")
+        try:
+            response = await self._client.post(
+                "/api/v1/nlp/embed",
+                json={"text": text},
+            )
+            response.raise_for_status()
+            data = response.json()
+            vector = data.get("vector")
 
-        if vector and len(vector) == settings.VECTOR_DIM:
-            return vector
+            if vector and len(vector) == settings.VECTOR_DIM:
+                return vector
 
-        logger.warning(
-            "AI vector dim mismatch: expected %d, got %d",
-            settings.VECTOR_DIM,
-            len(vector) if vector else 0,
-        )
-        return None
+            logger.warning(
+                "AI vector dim mismatch: expected %d, got %d",
+                settings.VECTOR_DIM,
+                len(vector) if vector else 0,
+            )
+            return None
+        except Exception as e:
+            logger.error("Error communicating with AI Engine for embed_text: %s", e)
+            return None
 
     async def reload_recommendation_model(self) -> dict:
         """
