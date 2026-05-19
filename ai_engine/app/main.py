@@ -1,4 +1,8 @@
 import logging
+import warnings
+# Suppress LightFM OpenMP warning
+warnings.filterwarnings("ignore", category=UserWarning, module="lightfm")
+
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 import logging

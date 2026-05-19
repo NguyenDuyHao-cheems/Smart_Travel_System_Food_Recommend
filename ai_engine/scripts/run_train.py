@@ -2,6 +2,10 @@ import os
 import sys
 import pickle
 import logging
+import warnings
+# Suppress LightFM OpenMP warning
+warnings.filterwarnings("ignore", category=UserWarning, module="lightfm")
+
 import requests
 import pandas as pd
 from lightfm import LightFM
