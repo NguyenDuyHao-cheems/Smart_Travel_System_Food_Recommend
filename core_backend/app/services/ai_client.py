@@ -52,23 +52,50 @@ class AIServiceClient:
         if not text.strip():
             return None
 
-        response = await self._client.post(
-            "/api/v1/nlp/embed",
-            json={"text": text},
-        )
+        try:
+            response = await self._client.post(
+                "/api/v1/nlp/embed",
+                json={"text": text},
+            )
+            response.raise_for_status()
+            data = response.json()
+            vector = data.get("vector")
+
+            if vector and len(vector) == settings.VECTOR_DIM:
+                return vector
+
+            logger.warning(
+                "AI vector dim mismatch: expected %d, got %d",
+                settings.VECTOR_DIM,
+                len(vector) if vector else 0,
+            )
+            return None
+        except Exception as e:
+            logger.error("Error communicating with AI Engine for embed_text: %s", e)
+            return None
+
+    async def reload_recommendation_model(self) -> dict:
+        """
+        Gửi yêu cầu reload mô hình LightFM sang AI Engine.
+        """
+        response = await self._client.post("/api/v1/admin/recommendations/reload")
         response.raise_for_status()
-        data = response.json()
-        vector = data.get("vector")
+        return response.json()
 
-        if vector and len(vector) == settings.VECTOR_DIM:
-            return vector
-
-        logger.warning(
-            "AI vector dim mismatch: expected %d, got %d",
-            settings.VECTOR_DIM,
-            len(vector) if vector else 0,
-        )
-        return None
+    async def get_lightfm_recommendations(self, user_id: str, limit: int = 10) -> List[str]:
+        """
+        Lấy danh sách Restaurant IDs từ AI Engine dựa trên mô hình LightFM.
+        """
+        try:
+            response = await self._client.get(
+                "/api/v1/restaurants/recommendations",
+                params={"user_id": str(user_id), "limit": limit}
+            )
+            response.raise_for_status()
+            return response.json()
+        except Exception as e:
+            logger.error("Error communicating with AI Engine recommendations: %s", e)
+            return []
 
 
 # ---------------------------------------------------------------------------

@@ -1,4 +1,8 @@
 import logging
+import warnings
+# Suppress LightFM OpenMP warning
+warnings.filterwarnings("ignore", category=UserWarning, module="lightfm")
+
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 import logging
@@ -20,6 +24,11 @@ async def lifespan(app: FastAPI):
         # Preload the Ranking models (LightFM + LambdaMART)
         get_ranking_service()
         logger.info("Ranking models loaded successfully.")
+        
+        # Preload the LightFM recommendations model
+        from app.ranking.lightfm.recommendation_service import recommendation_service as lf_rec_service
+        lf_rec_service.load_model()
+        logger.info("LightFM Recommendations model loaded successfully.")
     except Exception as e:
         logger.error(f"Error loading AI models during startup: {e}")
     yield

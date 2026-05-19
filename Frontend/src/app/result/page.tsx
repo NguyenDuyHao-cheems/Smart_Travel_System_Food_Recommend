@@ -129,6 +129,7 @@ function HeroResultCard({ item, sessionId, searchMode, onAddCollection, isModalO
     // [FIX-CONFLICT]: Ẩn ID nhà hàng vào sessionStorage thay vì để Base64 trên URL
     if (typeof window !== 'undefined') {
       sessionStorage.setItem('current_res_id', item.id);
+      sessionStorage.setItem('came_from_search', 'true');
     }
     const slug = generateSlug(item.name) || 'restaurant';
     router.push(`/restaurant/${slug}`);
@@ -318,6 +319,7 @@ function SmallResultCard({ item, index, sessionId, searchMode, onAddCollection, 
     // [FIX-CONFLICT]: Ẩn ID nhà hàng vào sessionStorage thay vì để Base64 trên URL
     if (typeof window !== 'undefined') {
       sessionStorage.setItem('current_res_id', item.id);
+      sessionStorage.setItem('came_from_search', 'true');
     }
     const slug = generateSlug(item.name) || 'restaurant';
     router.push(`/restaurant/${slug}`);
@@ -648,7 +650,7 @@ function ResultPageContent() {
 
     try {
       setSearchLoadingMsg("Đang xác định vị trí của bạn...");
-      
+
       const gps = await getOptimizedLocation();
       if (!gps) {
         setApiError("Không thể xác định vị trí thực tế của bạn. Vui lòng kiểm tra quyền truy cập GPS để tiếp tục.");
@@ -722,7 +724,7 @@ function ResultPageContent() {
       seen.add(item.name);
       return !duplicate;
     });
-    
+
     // Cắt lấy đúng 16 món để hiển thị (1 hero + 15 small)
     return unique.slice(0, 16);
   }, [results, distanceFilterEnabled, distanceRadius]);

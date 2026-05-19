@@ -61,7 +61,18 @@ function HomeContent() {
   const [recommendations, setRecommendations] = useState<RecommendResult[]>(() => {
     if (typeof window !== "undefined") {
       try {
-        const cached = sessionStorage.getItem("home_recommendations");
+        const userId = localStorage.getItem("user_id") || "guest";
+        const cacheKey = `home_recommendations_${userId}`;
+
+        // Detect page reload and clear cache immediately
+        const navEntries = performance.getEntriesByType("navigation");
+        const isReload = navEntries.length > 0 && (navEntries[0] as PerformanceNavigationTiming).type === "reload";
+        if (isReload) {
+          sessionStorage.removeItem(cacheKey);
+          return [];
+        }
+
+        const cached = sessionStorage.getItem(cacheKey);
         if (cached) return JSON.parse(cached);
       } catch (err) {}
     }
@@ -70,7 +81,14 @@ function HomeContent() {
   const [isLoadingRecs, setIsLoadingRecs] = useState(() => {
     if (typeof window !== "undefined") {
       try {
-        if (sessionStorage.getItem("home_recommendations")) return false;
+        const userId = localStorage.getItem("user_id") || "guest";
+        const cacheKey = `home_recommendations_${userId}`;
+
+        const navEntries = performance.getEntriesByType("navigation");
+        const isReload = navEntries.length > 0 && (navEntries[0] as PerformanceNavigationTiming).type === "reload";
+        if (isReload) return true;
+
+        if (sessionStorage.getItem(cacheKey)) return false;
       } catch (err) {}
     }
     return true;
@@ -81,24 +99,27 @@ function HomeContent() {
     async function fetchRecommendations() {
       if (!coords) return;
 
-      // Check cache first
+      const userId = localStorage.getItem("user_id") || "guest";
+      const cacheKey = `home_recommendations_${userId}`;
+
+      // Check user-specific cache first
       try {
-        const cachedRecs = sessionStorage.getItem("home_recommendations");
+        const cachedRecs = sessionStorage.getItem(cacheKey);
         if (cachedRecs) {
           setRecommendations(JSON.parse(cachedRecs));
           setIsLoadingRecs(false);
-          return;
         }
       } catch (err) {
         console.error("Lỗi khi đọc cache:", err);
       }
 
       try {
-        setIsLoadingRecs(true);
+        if (!sessionStorage.getItem(cacheKey)) {
+          setIsLoadingRecs(true);
+        }
         const token = localStorage.getItem("access_token");
-        const userId = localStorage.getItem("user_id");
 
-        const url = new URL(`${BACKEND_URL}/api/v1/recommendations/home`);
+        const url = new URL(`${BACKEND_URL}/api/v1/restaurants/recommendations`);
         url.searchParams.append("lat", coords.lat.toString());
         url.searchParams.append("lng", coords.lng.toString());
         url.searchParams.append("limit", "6");
@@ -112,10 +133,13 @@ function HomeContent() {
 
         if (res.ok) {
           const data = await res.json();
-          if (data.results && Array.isArray(data.results)) {
+          // Endpoint /api/v1/restaurants/recommendations returns an array directly
+          const resultsArray = Array.isArray(data) ? data : (data.results || []);
+          
+          if (resultsArray && resultsArray.length > 0) {
             // Filter out exact duplicates by name
             const seen = new Set();
-            const uniqueResults = data.results.filter((item: RecommendResult) => {
+            const uniqueResults = resultsArray.filter((item: RecommendResult) => {
               if (!item.name) return true;
               const duplicate = seen.has(item.name);
               seen.add(item.name);
@@ -124,9 +148,9 @@ function HomeContent() {
             const finalRecs = uniqueResults.slice(0, 6);
             setRecommendations(finalRecs);
 
-            // Save to cache
+            // Save to user-specific cache
             try {
-              sessionStorage.setItem("home_recommendations", JSON.stringify(finalRecs));
+              sessionStorage.setItem(cacheKey, JSON.stringify(finalRecs));
             } catch (err) {
               console.error("Lỗi khi lưu cache:", err);
             }

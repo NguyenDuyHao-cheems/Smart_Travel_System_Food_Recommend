@@ -171,7 +171,7 @@ class RestaurantService:
                 action_type="REVIEW_RESTAURANT",
                 user_id=str(current_user.id) if current_user.id else None,
                 res_id=str(review.res_id) if review.res_id else None,
-                metadata={"rating": review.rating}
+                metadata={"rating": review.rating, "text": review.text, "review_id": str(review.id)}
             )
             
             # Increment reviews_count in user's profile_stats if initialized
@@ -211,6 +211,21 @@ class RestaurantService:
             raise HTTPException(status_code=403, detail="Bạn không có quyền xóa bình luận này.")
 
         RestaurantRepository.delete_review(db, review_id)
+
+        # Log interaction (DELETE_COMMENT)
+        try:
+            from app.domains.users.repository import UserInteractionRepository
+            interaction_repo = UserInteractionRepository(db)
+            interaction_repo.create_interaction(
+                action_type="DELETE_COMMENT",
+                user_id=str(current_user.id),
+                res_id=str(review.res_id) if review.res_id else None,
+                metadata={"rating": review.rating, "text": review.text, "review_id": str(review.id)}
+            )
+        except Exception as e:
+            import logging
+            logger = logging.getLogger("uvicorn.error")
+            logger.error(f"Failed to log delete review interaction: {e}")
         
         # Decrement reviews_count in user's profile_stats if initialized
         try:

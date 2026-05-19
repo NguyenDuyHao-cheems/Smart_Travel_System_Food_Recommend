@@ -17,7 +17,13 @@ class Settings:
 
     # LightFM collaborative filtering model
     LIGHTFM_MODEL_PATH: str = os.getenv(
-        "LIGHTFM_MODEL_PATH", "app/ranking/lightfm/models/lightfm_artifacts.pkl"
+        "LIGHTFM_MODEL_PATH", "models/lightfm_model.pkl"
+    )
+    LIGHTFM_DATASET_PATH: str = os.getenv(
+        "LIGHTFM_DATASET_PATH", "models/lightfm_dataset.pkl"
+    )
+    LIGHTFM_USER_HISTORY_PATH: str = os.getenv(
+        "LIGHTFM_USER_HISTORY_PATH", "models/lightfm_user_history.pkl"
     )
 
     # Gemini API settings for NLP parsing

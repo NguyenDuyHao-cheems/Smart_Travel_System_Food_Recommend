@@ -3,6 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { toast } from "sonner";
 import {
   Compass,
   Heart,
@@ -239,7 +240,10 @@ export function Sidebar({
                 {username ? "Thành viên" : "Khách"}
               </p>
             </div>
-            <button className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-brand-muted dark:hover:bg-brand/10 text-[#9A8A7A] hover:text-brand transition-colors cursor-pointer flex-shrink-0">
+            <button 
+              onClick={() => toast.info("Tính năng này sẽ sớm ra mắt")}
+              className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-brand-muted dark:hover:bg-brand/10 text-[#9A8A7A] hover:text-brand transition-colors cursor-pointer flex-shrink-0"
+            >
               <MoreVertical className="w-4 h-4" />
             </button>
           </>

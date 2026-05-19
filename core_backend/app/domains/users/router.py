@@ -320,14 +320,24 @@ def get_current_user_profile(
         title = ""
         icon_type = ""
         
+        if "DELETE_REVIEW" in action or "VIEW_REVIEW_DETAIL" in action:
+            continue
+
         if "LIKE" in action:
             title = f'Đã yêu thích nhà hàng: "{res_name}"'
             icon_type = "heart"
 
-        elif "REVIEW" in action:
+        elif "REVIEW_RESTAURANT" in action:
             rating = metadata.get("rating") or "5 sao"
-            title = f'Đánh giá "{rating}" cho nhà hàng "{res_name}"'
+            comment_text = metadata.get("text") or metadata.get("comment")
+            if comment_text:
+                title = f'Đánh giá "{rating}" kèm bình luận: "{comment_text}" cho nhà hàng "{res_name}"'
+            else:
+                title = f'Đánh giá "{rating}" cho nhà hàng "{res_name}"'
             icon_type = "star"
+        elif "DELETE_COMMENT" in action:
+            title = f'Xóa bình luận tại nhà hàng "{res_name}"'
+            icon_type = "trash"
         elif ("VIEW" in action or "VISIT" in action) and "_DURATION" not in action:
             title = f'Ghé thăm nhà hàng "{res_name}"'
             icon_type = "visit"
@@ -354,7 +364,8 @@ def get_current_user_profile(
                 created_at=inter.created_at,
                 res_id=str(inter.res_id) if inter.res_id else None,
                 res_name=res_name,
-                collection_name=metadata.get("collection_name") or (coll_name if "SAVE" in action or "COLLECT" in action or "BOOKMARK" in action else None)
+                collection_name=metadata.get("collection_name") or (coll_name if "SAVE" in action or "COLLECT" in action or "BOOKMARK" in action else None),
+                review_id=metadata.get("review_id")
             )
         )
 
@@ -421,6 +432,7 @@ def get_current_user_profile(
             from sqlalchemy.orm.attributes import flag_modified
             flag_modified(current_user, "profile_stats")
             db.commit()
+
 
     return UserProfileResponse(
         id=str(current_user.id),

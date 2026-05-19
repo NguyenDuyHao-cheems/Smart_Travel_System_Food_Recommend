@@ -33,9 +33,13 @@ def test_process_search_query_ai_unavailable(client):
 
 
 class MockRestaurantModel:
-    def __init__(self, id):
-        self.id = id
-        self.name = f"Mock {id}"
+    def __init__(self, id_str):
+        import uuid
+        try:
+            self.id = uuid.UUID(int=int(id_str))
+        except ValueError:
+            self.id = uuid.uuid4()
+        self.name = f"Mock {id_str}"
         self.lat = 10.87
         self.lng = 106.80
         self.price_range = "50000"

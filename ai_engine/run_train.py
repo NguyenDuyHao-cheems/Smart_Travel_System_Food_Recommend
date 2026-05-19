@@ -1,6 +1,10 @@
 import logging
+import warnings
+# Suppress LightFM OpenMP warning
+warnings.filterwarnings("ignore", category=UserWarning, module="lightfm")
+
 import argparse
-from app.ranking.lightfm.train import train_lightfm_model
+from scripts.run_train import train_lightfm_model
 # Sau này nếu Bảo có thêm LambdaMART train thì import vào đây luôn
 # from app.ranking.lambdamart_train import train_lambdamart_model
 
