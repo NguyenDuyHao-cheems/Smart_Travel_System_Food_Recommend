@@ -25,6 +25,8 @@ class FeatureService:
             dist_m = self._haversine_meters(
                 user_lat, user_lng, float(r.lat or 0), float(r.lng or 0)
             )
+            # Gắn ngược lại vào candidate để recommendation_service dùng cho distance decay
+            setattr(r, "distance_m", dist_m)
 
             # 2. % ngân sách (0–100) — price_range là String trong DB
             try:

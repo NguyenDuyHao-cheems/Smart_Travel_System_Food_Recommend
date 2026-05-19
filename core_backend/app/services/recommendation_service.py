@@ -152,6 +152,9 @@ async def recommend(
     except Exception as exc:
         logger.warning("Ranking rerank failed, keeping cosine order: %s", exc)
 
+    # ── Giải pháp F: Adaptive Distance Decay (Density-Aware) ────────────────
+    safe_candidates = _apply_distance_decay(safe_candidates)
+
     if (search_mode or "").lower() == "emotion":
         safe_candidates = _apply_sentiment_search_boost(safe_candidates)
 
@@ -161,6 +164,63 @@ async def recommend(
         "allergen_flagged_count": flagged_count,
         "fallback_applied": False,
     }
+
+
+def _apply_distance_decay(candidates):
+    """
+    Giải pháp F: Adaptive Distance Decay với Density-Aware Scaling.
+
+    Điều chỉnh ranking_score của mỗi quán bằng exponential decay theo khoảng cách:
+        final_score = ranking_score × exp(-dist_km / decay_scale)
+
+    decay_scale được chọn tự động dựa trên mật độ quán trong bán kính 2km:
+        - Vùng đông (≥ 10 quán gần):  decay_scale = 2.0  → phạt mạnh quán xa
+        - Vùng trung bình (≥ 5 quán): decay_scale = 4.0  → phạt vừa phải
+        - Vùng thưa (< 5 quán):       decay_scale = 8.0  → tha cho quán xa
+
+    Không bao giờ loại bỏ kết quả (không có hard filter),
+    chỉ điều chỉnh thứ tự sắp xếp.
+    """
+    if not candidates:
+        return candidates
+
+    NEARBY_RADIUS_M = 2_000  # 2km
+
+    # Đếm số quán trong bán kính 2km để xác định mật độ vùng
+    nearby_count = sum(
+        1 for c in candidates
+        if getattr(c, "distance_m", None) is not None
+        and c.distance_m <= NEARBY_RADIUS_M
+    )
+
+    # Chọn decay_scale theo mật độ
+    if nearby_count >= 10:
+        decay_scale = 2.0   # Khu vực đông: phạt mạnh quán xa
+    elif nearby_count >= 5:
+        decay_scale = 4.0   # Khu vực trung bình
+    else:
+        decay_scale = 8.0   # Khu vực thưa: tha cho quán xa để tránh 0 kết quả
+
+    logger.info(
+        "Distance decay: nearby_count=%d, decay_scale=%.1f",
+        nearby_count, decay_scale,
+    )
+
+    # Áp dụng decay lên ranking_score (chỉ khi có ranking_score)
+    for c in candidates:
+        dist_km = (getattr(c, "distance_m", 0) or 0) / 1000.0
+        score = getattr(c, "ranking_score", None)
+        if score is not None:
+            c.ranking_score = score * math.exp(-dist_km / decay_scale)
+
+    # Sắp xếp lại: quán có ranking_score cao nhất lên đầu
+    # Quán không có ranking_score (fallback cosine) xuống cuối
+    candidates.sort(
+        key=lambda c: getattr(c, "ranking_score", None) or 0.0,
+        reverse=True,
+    )
+
+    return candidates
 
 
 def _apply_sentiment_search_boost(candidates):
