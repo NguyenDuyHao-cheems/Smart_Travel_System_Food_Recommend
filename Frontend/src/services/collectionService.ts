@@ -158,6 +158,16 @@ export const collectionService = {
   createCollection: async (userId: string, name: string, description: string = ""): Promise<Collection | null> => {
     if (typeof window === "undefined" || !name.trim()) return null;
 
+    const data = localStorage.getItem(COLLECTIONS_KEY);
+    const allColls: Record<string, Collection[]> = data ? JSON.parse(data) : {};
+    if (!allColls[userId]) allColls[userId] = [];
+
+    // Check if name already exists locally (case-insensitive)
+    if (allColls[userId].some(c => c.name.toLowerCase() === name.toLowerCase())) {
+      console.warn("Collection with this name already exists locally");
+      return null;
+    }
+
     // 1. Instantly create in localStorage
     const newCollId = "temp-" + Date.now().toString();
     const newColl: Collection = {
@@ -168,9 +178,6 @@ export const collectionService = {
       items: []
     };
 
-    const data = localStorage.getItem(COLLECTIONS_KEY);
-    const allColls: Record<string, Collection[]> = data ? JSON.parse(data) : {};
-    if (!allColls[userId]) allColls[userId] = [];
     allColls[userId].push(newColl);
     localStorage.setItem(COLLECTIONS_KEY, JSON.stringify(allColls));
 
@@ -196,6 +203,17 @@ export const collectionService = {
       }
       if (!res.ok) {
         console.error("Failed to create collection in DB, status:", res.status, await res.text());
+        
+        // Rollback: remove the temp collection since creation failed
+        const currentData = localStorage.getItem(COLLECTIONS_KEY);
+        if (currentData) {
+          const parsed = JSON.parse(currentData) as Record<string, Collection[]>;
+          if (parsed[userId]) {
+            parsed[userId] = parsed[userId].filter(c => c.id !== newCollId);
+            localStorage.setItem(COLLECTIONS_KEY, JSON.stringify(parsed));
+          }
+        }
+        return null; // Return null so UI knows it failed
       }
       if (res.ok) {
         const savedColl = await res.json();

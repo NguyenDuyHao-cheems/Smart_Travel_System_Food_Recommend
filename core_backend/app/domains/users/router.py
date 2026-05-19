@@ -531,6 +531,15 @@ def create_collection(
     current_user: UserAccount = Depends(get_current_user),
 ):
     try:
+        # Check if a collection with this name already exists for the current user
+        existing_coll = db.query(UserCollection).filter_by(
+            user_id=str(current_user.id),
+            name=payload.name
+        ).first()
+        
+        if existing_coll:
+            raise HTTPException(status_code=400, detail="Bộ sưu tập với tên này đã tồn tại.")
+
         coll = UserCollection(
             user_id=str(current_user.id),
             name=payload.name,
@@ -548,6 +557,8 @@ def create_collection(
             "updated_at": coll.updated_at,
             "items": []
         }
+    except HTTPException:
+        raise
     except Exception as exc:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Failed to create collection: {exc}")

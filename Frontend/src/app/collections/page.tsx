@@ -76,14 +76,23 @@ export default function CollectionsPage() {
     }
   }, [searchParams, collections]);
 
+  const [isCreating, setIsCreating] = useState(false);
+
   const handleCreateCollection = async () => {
-    if (!userId || !newCollectionName.trim()) return;
-    const newColl = await collectionService.createCollection(userId, newCollectionName.trim(), "");
-    if (newColl) {
-      setCollections([...collections, newColl]);
-      setNewCollectionName("");
-      setIsCreateModalOpen(false);
-      toast.success("Tạo bộ sưu tập thành công");
+    if (!userId || !newCollectionName.trim() || isCreating) return;
+    setIsCreating(true);
+    try {
+      const newColl = await collectionService.createCollection(userId, newCollectionName.trim(), "");
+      if (newColl) {
+        setCollections([...collections, newColl]);
+        setNewCollectionName("");
+        setIsCreateModalOpen(false);
+        toast.success("Tạo bộ sưu tập thành công");
+      } else {
+        toast.error("Tên bộ sưu tập đã tồn tại hoặc có lỗi xảy ra.");
+      }
+    } finally {
+      setIsCreating(false);
     }
   };
 
@@ -294,10 +303,10 @@ export default function CollectionsPage() {
             </button>
             <button
               onClick={handleCreateCollection}
-              disabled={!newCollectionName.trim()}
+              disabled={!newCollectionName.trim() || isCreating}
               className="px-5 py-2 text-sm font-semibold bg-brand hover:bg-brand-hover disabled:bg-brand/50 disabled:cursor-not-allowed text-white rounded-xl transition-colors cursor-pointer"
             >
-              Tạo mới
+              {isCreating ? "Đang tạo..." : "Tạo mới"}
             </button>
           </DialogFooter>
         </DialogContent>
