@@ -106,6 +106,11 @@ export default function ProfilePage() {
   const [activeBadge, setActiveBadge] = useState<string | null>(null);
   const [isBadgeModalOpen, setIsBadgeModalOpen] = useState(false);
 
+  // Dynamic User Profile Statistics
+  const [favoritesCount, setFavoritesCount] = useState<number>(0);
+  const [reviewsCount, setReviewsCount] = useState<number>(0);
+  const [discoveriesCount, setDiscoveriesCount] = useState<number>(0);
+  const [streakCount, setStreakCount] = useState<number>(0);
   const handleActivityClick = (activity: RecentActivity) => {
     if (activity.icon_type === "heart" && activity.res_name) {
       router.push(`/favorites?highlight=${encodeURIComponent(activity.res_name)}`);
@@ -192,6 +197,18 @@ export default function ProfilePage() {
           }
           if (data.active_dates) {
             setActiveDates(data.active_dates);
+          }
+          if (data.favorites_count !== undefined) {
+            setFavoritesCount(data.favorites_count);
+          }
+          if (data.reviews_count !== undefined) {
+            setReviewsCount(data.reviews_count);
+          }
+          if (data.discoveries_count !== undefined) {
+            setDiscoveriesCount(data.discoveries_count);
+          }
+          if (data.streak_count !== undefined) {
+            setStreakCount(data.streak_count);
           }
         } else if (res.status === 401) {
           window.dispatchEvent(new Event("auth-session-expired"));
@@ -309,10 +326,10 @@ export default function ProfilePage() {
             {/* Stats Row */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
               {[
-                { label: "Khám phá", value: "24", icon: MapPin, color: "text-blue-500", bg: "bg-blue-50 dark:bg-blue-500/10" },
-                { label: "Yêu thích", value: "128", icon: Heart, color: "text-red-500", bg: "bg-red-50 dark:bg-red-500/10" },
-                { label: "Đánh giá", value: "12", icon: MessageSquare, color: "text-emerald-500", bg: "bg-emerald-50 dark:bg-emerald-500/10" },
-                { label: "Streak", value: "5", icon: Flame, color: "text-brand dark:text-[#E8735A]", bg: "bg-brand-muted dark:bg-brand/10" },
+                { label: "Khám phá", value: discoveriesCount, icon: MapPin, color: "text-blue-500", bg: "bg-blue-50 dark:bg-blue-500/10" },
+                { label: "Yêu thích", value: favoritesCount, icon: Heart, color: "text-red-500", bg: "bg-red-50 dark:bg-red-500/10" },
+                { label: "Đánh giá", value: reviewsCount, icon: MessageSquare, color: "text-emerald-500", bg: "bg-emerald-50 dark:bg-emerald-500/10" },
+                { label: "Streak", value: streakCount, icon: Flame, color: "text-brand dark:text-[#E8735A]", bg: "bg-brand-muted dark:bg-brand/10" },
               ].map((stat, idx) => (
                 <div key={idx} className="bg-white dark:bg-[#3D312A] p-6 rounded-[32px] border border-gray-100 dark:border-[#3D312A] shadow-sm flex flex-col items-center text-center">
                   <div className={`w-12 h-12 ${stat.bg} rounded-2xl flex items-center justify-center ${stat.color} mb-3`}>

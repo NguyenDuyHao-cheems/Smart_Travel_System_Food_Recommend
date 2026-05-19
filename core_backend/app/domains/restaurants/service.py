@@ -163,7 +163,7 @@ class RestaurantService:
                 anonymous_number=None
             )
 
-        # Tích hợp tracking tương tác (Interaction Tracking)
+        # Tích hợp tracking tương tác (Interaction Tracking) và cập nhật profile_stats
         try:
             from app.domains.users.repository import UserInteractionRepository
             interaction_repo = UserInteractionRepository(db)
@@ -173,10 +173,19 @@ class RestaurantService:
                 res_id=str(review.res_id) if review.res_id else None,
                 metadata={"rating": review.rating, "text": review.text, "review_id": str(review.id)}
             )
+            
+            # Increment reviews_count in user's profile_stats if initialized
+            if current_user.profile_stats:
+                stats = dict(current_user.profile_stats)
+                stats["reviews_count"] = stats.get("reviews_count", 0) + 1
+                current_user.profile_stats = dict(stats)
+                from sqlalchemy.orm.attributes import flag_modified
+                flag_modified(current_user, "profile_stats")
+                db.commit()
         except Exception as e:
             import logging
             logger = logging.getLogger("uvicorn.error")
-            logger.error(f"Failed to log review interaction: {e}")
+            logger.error(f"Failed to log review interaction/update stats: {e}")
 
         display_name = f"Người ẩn danh số {review.anonymous_number}" if review.is_anonymous else reviewer_name
 
@@ -203,6 +212,7 @@ class RestaurantService:
 
         RestaurantRepository.delete_review(db, review_id)
 
+        # Log interaction (DELETE_COMMENT)
         try:
             from app.domains.users.repository import UserInteractionRepository
             interaction_repo = UserInteractionRepository(db)
@@ -216,3 +226,17 @@ class RestaurantService:
             import logging
             logger = logging.getLogger("uvicorn.error")
             logger.error(f"Failed to log delete review interaction: {e}")
+        
+        # Decrement reviews_count in user's profile_stats if initialized
+        try:
+            if current_user.profile_stats:
+                stats = dict(current_user.profile_stats)
+                stats["reviews_count"] = max(0, stats.get("reviews_count", 0) - 1)
+                current_user.profile_stats = dict(stats)
+                from sqlalchemy.orm.attributes import flag_modified
+                flag_modified(current_user, "profile_stats")
+                db.commit()
+        except Exception as e:
+            import logging
+            logger = logging.getLogger("uvicorn.error")
+            logger.error(f"Failed to decrement review count in stats: {e}")

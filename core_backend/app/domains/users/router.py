@@ -1,12 +1,15 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
-from .models import UserAccount
+from .models import UserAccount, UserFavorite, UserCollection, UserCollectionItem
 from .schemas import (
     OnboardingRequest, OnboardingResponse, SignUpRequest, SignInRequest, 
     GoogleAuthRequest, AuthResponse, UserUpdateRequest,
     UserInteractionRequest, UserInteractionResponse, UserProfileResponse,
-    BadgeProgress, CulinaryVibe, RecentActivityResponse
+    BadgeProgress, CulinaryVibe, RecentActivityResponse,
+    FavoriteCreateRequest, FavoriteResponse, CollectionCreateRequest,
+    CollectionUpdateRequest, CollectionItemCreateRequest, CollectionItemResponse,
+    CollectionResponse
 )
 from .service import OnboardingService, AuthService, UserInteractionService
 from .repository import UserOnboardingRepository, UserAccountRepository, UserInteractionRepository
@@ -66,6 +69,90 @@ async def google_auth(
         return await service.google_auth(payload)
     except PermissionError as exc:
         raise HTTPException(status_code=401, detail=str(exc))
+
+
+def initialize_profile_stats(db: Session, user: UserAccount) -> dict:
+    from app.domains.users.models import UserInteraction, UserFavorite
+    from sqlalchemy import func
+    from datetime import timezone as _timezone, timedelta as _timedelta, datetime
+    from sqlalchemy.orm.attributes import flag_modified
+    
+    vn_tz = _timezone(_timedelta(hours=7))
+    
+    # 1. Calculate active dates from UserInteraction table
+    active_dates_query = db.query(UserInteraction.created_at).filter(
+        UserInteraction.user_id == str(user.id)
+    ).all()
+    active_dates_set = set()
+    for row in active_dates_query:
+        if row[0]:
+            dt = row[0]
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=_timezone.utc)
+            local_dt = dt.astimezone(vn_tz)
+            active_dates_set.add(local_dt.strftime("%Y-%m-%d"))
+    active_dates = sorted(list(active_dates_set))
+
+    # 2. Calculate unique discoveries (res_ids visited)
+    discoveries_query = db.query(UserInteraction.res_id).filter(
+        UserInteraction.user_id == str(user.id),
+        UserInteraction.res_id.isnot(None)
+    ).distinct().all()
+    discovered_res_ids = [str(r[0]) for r in discoveries_query if r[0]]
+    discoveries_count = len(discovered_res_ids)
+
+    # 3. Calculate reviews count
+    reviews_count = db.query(UserInteraction).filter(
+        UserInteraction.user_id == str(user.id),
+        UserInteraction.action_type.like("%REVIEW%")
+    ).count()
+
+    # 4. Calculate favorites count
+    favorites_count = db.query(UserFavorite).filter(UserFavorite.user_id == str(user.id)).count()
+
+    # 5. Calculate current streak from active_dates
+    active_dates_parsed = []
+    for date_str in active_dates:
+        try:
+            active_dates_parsed.append(datetime.strptime(date_str, "%Y-%m-%d").date())
+        except ValueError:
+            pass
+
+    streak_count = 0
+    if active_dates_parsed:
+        today_date = datetime.now(vn_tz).date()
+        yesterday_date = today_date - _timedelta(days=1)
+        active_set = set(active_dates_parsed)
+        
+        start_date = None
+        if today_date in active_set:
+            start_date = today_date
+        elif yesterday_date in active_set:
+            start_date = yesterday_date
+            
+        if start_date:
+            streak_count = 1
+            current_check = start_date - _timedelta(days=1)
+            while current_check in active_set:
+                streak_count += 1
+                current_check -= _timedelta(days=1)
+
+    last_active = active_dates[-1] if active_dates else None
+
+    stats = {
+        "discoveries_count": discoveries_count,
+        "favorites_count": favorites_count,
+        "reviews_count": reviews_count,
+        "streak_count": streak_count,
+        "last_active_date": last_active,
+        "discovered_res_ids": discovered_res_ids,
+        "active_dates": active_dates,
+        "unlocked_badges": []
+    }
+    user.profile_stats = stats
+    flag_modified(user, "profile_stats")
+    db.commit()
+    return stats
 
 
 @router.get("/me", response_model=UserProfileResponse)
@@ -162,7 +249,6 @@ def get_current_user_profile(
     # Sắp xếp gu nổi bật nhất lên đầu
     vibes_list.sort(key=lambda x: x.percent, reverse=True)
 
-    # Giới hạn tiến trình không vượt quá target cho Huy hiệu
     badges_data = {
         "🍜": BadgeProgress(unlocked=pho_count >= 20, progress=min(pho_count, 20), target=20),
         "🌶️": BadgeProgress(unlocked=cay_count >= 20, progress=min(cay_count, 20), target=20),
@@ -172,6 +258,14 @@ def get_current_user_profile(
         "☕": BadgeProgress(unlocked=night_count >= 20, progress=min(night_count, 20), target=20),
         "🧘": BadgeProgress(unlocked=is_vegetarian, progress=1 if is_vegetarian else 0, target=1)
     }
+
+    if current_user.profile_stats:
+        unlocked_list = current_user.profile_stats.get("unlocked_badges", [])
+        for badgeIcon, info in badges_data.items():
+            if badgeIcon in unlocked_list:
+                info.unlocked = True
+                info.progress = info.target
+
 
     # 5. Truy vấn Hoạt động gần đây (trong vòng 3 ngày qua, tối đa 15 hoạt động)
     from app.domains.users.models import UserInteraction
@@ -276,20 +370,69 @@ def get_current_user_profile(
         )
 
     # 6. Fetch active dates and convert from UTC to local Vietnam timezone (+07:00)
-    from datetime import timezone as _timezone, timedelta as _timedelta
+    from datetime import timezone as _timezone, timedelta as _timedelta, datetime
     vn_tz = _timezone(_timedelta(hours=7))
-    active_dates_query = db.query(UserInteraction.created_at).filter(
-        UserInteraction.user_id == str(current_user.id)
-    ).all()
-    active_dates_set = set()
-    for row in active_dates_query:
-        if row[0]:
-            dt = row[0]
-            if dt.tzinfo is None:
-                dt = dt.replace(tzinfo=_timezone.utc)
-            local_dt = dt.astimezone(vn_tz)
-            active_dates_set.add(local_dt.strftime("%Y-%m-%d"))
-    active_dates = sorted(list(active_dates_set))
+    today_str = datetime.now(vn_tz).strftime("%Y-%m-%d")
+    yesterday_str = (datetime.now(vn_tz) - _timedelta(days=1)).strftime("%Y-%m-%d")
+
+    # Dynamic Stats Calculation and Persistent Caching (Lazy-Initialization strategy)
+    from app.domains.users.models import UserFavorite
+    favorites_count = db.query(UserFavorite).filter(UserFavorite.user_id == str(current_user.id)).count()
+
+    stats = current_user.profile_stats
+    if stats is None:
+        stats = initialize_profile_stats(db, current_user)
+        # Sync unlocked badges right after initialization
+        stats["unlocked_badges"] = [badgeIcon for badgeIcon, info in badges_data.items() if info.unlocked]
+        current_user.profile_stats = dict(stats)
+        from sqlalchemy.orm.attributes import flag_modified
+        flag_modified(current_user, "profile_stats")
+        db.commit()
+        
+        discoveries_count = stats["discoveries_count"]
+        reviews_count = stats["reviews_count"]
+        streak_count = stats["streak_count"]
+        active_dates = stats["active_dates"]
+    else:
+        # --- CACHED READ WITH AUTOMATIC STREAK DECAY ON VIEW ---
+        discoveries_count = stats.get("discoveries_count", 0)
+        reviews_count = stats.get("reviews_count", 0)
+        streak_count = stats.get("streak_count", 0)
+        last_active_date = stats.get("last_active_date")
+        discovered_res_ids = stats.get("discovered_res_ids", [])
+        active_dates = stats.get("active_dates", [])
+        unlocked_badges = stats.get("unlocked_badges", [])
+
+        # Streak Decay & Day Transition Logic:
+        # If last active date is not today, check if they active today (viewing profile counts as active today!)
+        if last_active_date != today_str:
+            if last_active_date == yesterday_str:
+                streak_count += 1
+            else:
+                streak_count = 1  # Streak broken, starts today
+            
+            last_active_date = today_str
+            if today_str not in active_dates:
+                active_dates.append(today_str)
+                active_dates.sort()
+
+            # Update database
+            stats["streak_count"] = streak_count
+            stats["last_active_date"] = last_active_date
+            stats["active_dates"] = active_dates
+            
+            # Sync unlocked badges
+            current_unlocked = [badgeIcon for badgeIcon, info in badges_data.items() if info.unlocked]
+            for b in current_unlocked:
+                if b not in unlocked_badges:
+                    unlocked_badges.append(b)
+            stats["unlocked_badges"] = unlocked_badges
+
+            current_user.profile_stats = dict(stats)
+            from sqlalchemy.orm.attributes import flag_modified
+            flag_modified(current_user, "profile_stats")
+            db.commit()
+
 
     return UserProfileResponse(
         id=str(current_user.id),
@@ -301,6 +444,10 @@ def get_current_user_profile(
         culinary_vibes=vibes_list,
         recent_activities=recent_activities,
         active_dates=active_dates,
+        discoveries_count=discoveries_count,
+        favorites_count=favorites_count,
+        reviews_count=reviews_count,
+        streak_count=streak_count,
     )
 
 
@@ -422,11 +569,400 @@ def get_user_allergies(
 def log_user_interaction(
     request: Request,
     payload: UserInteractionRequest,
+    db: Session = Depends(get_db),
     service: UserInteractionService = Depends(get_interaction_service),
     current_user: UserAccount | None = Depends(get_optional_current_user),
 ):
     try:
         user_id = str(current_user.id) if current_user else None
-        return service.log_interaction(payload=payload, user_id=user_id)
+        res = service.log_interaction(payload=payload, user_id=user_id)
+        
+        # Incremental Updates for profile_stats (Active dates, Streaks, and Discoveries)
+        if current_user:
+            db_user = db.query(UserAccount).filter(UserAccount.id == current_user.id).first()
+            if db_user:
+                stats = db_user.profile_stats
+                if stats is None:
+                    stats = initialize_profile_stats(db, db_user)
+                
+                stats = dict(stats)
+                updated = False
+                
+                # 1. Update Active date & Streak
+                from datetime import timezone as _timezone, timedelta as _timedelta, datetime
+                vn_tz = _timezone(_timedelta(hours=7))
+                today_str = datetime.now(vn_tz).strftime("%Y-%m-%d")
+                yesterday_str = (datetime.now(vn_tz) - _timedelta(days=1)).strftime("%Y-%m-%d")
+                
+                last_active_date = stats.get("last_active_date")
+                if last_active_date != today_str:
+                    streak_count = stats.get("streak_count", 0)
+                    active_dates = stats.get("active_dates", [])
+                    
+                    if last_active_date == yesterday_str:
+                        streak_count += 1
+                    else:
+                        streak_count = 1
+                        
+                    stats["streak_count"] = streak_count
+                    stats["last_active_date"] = today_str
+                    if today_str not in active_dates:
+                        active_dates.append(today_str)
+                        active_dates.sort()
+                    stats["active_dates"] = active_dates
+                    updated = True
+                
+                # 2. Update Discoveries (if they viewed a restaurant details)
+                if payload.res_id and "VIEW" in payload.action_type.upper():
+                    discovered_res_ids = stats.get("discovered_res_ids", [])
+                    if payload.res_id not in discovered_res_ids:
+                        discovered_res_ids.append(payload.res_id)
+                        stats["discovered_res_ids"] = discovered_res_ids
+                        stats["discoveries_count"] = len(discovered_res_ids)
+                        updated = True
+                
+                if updated:
+                    db_user.profile_stats = dict(stats)
+                    from sqlalchemy.orm.attributes import flag_modified
+                    flag_modified(db_user, "profile_stats")
+                    db.commit()
+                    
+        return res
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed to log interaction: {exc}")
+
+
+# ── Favorites & Collections Endpoints ─────────────────────────────────────────
+from app.domains.ranking.models import RestaurantModel
+import shortuuid
+
+def _decode_id(obfuscated_id: str) -> str:
+    if not obfuscated_id:
+        return obfuscated_id
+    try:
+        if len(obfuscated_id) < 36:
+            return str(shortuuid.decode(obfuscated_id))
+    except Exception:
+        pass
+    return obfuscated_id
+
+@router.post("/favorites", response_model=FavoriteResponse)
+def add_favorite(
+    payload: FavoriteCreateRequest,
+    db: Session = Depends(get_db),
+    current_user: UserAccount = Depends(get_current_user),
+):
+    try:
+        decoded_res_id = _decode_id(payload.res_id)
+        # Check if already exists
+        existing = db.query(UserFavorite).filter(
+            UserFavorite.user_id == str(current_user.id),
+            UserFavorite.res_id == decoded_res_id
+        ).first()
+        
+        if existing:
+            return existing
+            
+        fav = UserFavorite(
+            user_id=str(current_user.id),
+            res_id=decoded_res_id
+        )
+        db.add(fav)
+        db.commit()
+        db.refresh(fav)
+        return fav
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to add favorite: {exc}")
+
+
+@router.get("/favorites")
+def get_favorites(
+    db: Session = Depends(get_db),
+    current_user: UserAccount = Depends(get_current_user),
+):
+    try:
+        favs = db.query(UserFavorite).filter(UserFavorite.user_id == str(current_user.id)).all()
+        results = []
+        for fav in favs:
+            res = db.query(RestaurantModel).filter(RestaurantModel.id == fav.res_id).first()
+            if res:
+                results.append({
+                    "id": shortuuid.encode(res.id),
+                    "name": res.name,
+                    "match": "100%",
+                    "dist": "",
+                    "distance_km": 0.0,
+                    "price": res.price_range or "0",
+                    "rating": str(res.rating_avg or 0.0),
+                    "reason": "Món ăn đã được thêm vào mục yêu thích của bạn.",
+                    "img": res.image_url or "",
+                    "total_reviews": res.total_reviews or 0,
+                    "google_maps_url": res.google_maps_url or "",
+                    "tags": [tag.name for tag in res.tags] if res.tags else [],
+                })
+        return results
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to get favorites: {exc}")
+
+
+@router.delete("/favorites/{res_id}")
+def remove_favorite(
+    res_id: str,
+    db: Session = Depends(get_db),
+    current_user: UserAccount = Depends(get_current_user),
+):
+    try:
+        decoded_res_id = _decode_id(res_id)
+        fav = db.query(UserFavorite).filter(
+            UserFavorite.user_id == str(current_user.id),
+            UserFavorite.res_id == decoded_res_id
+        ).first()
+        
+        if not fav:
+            raise HTTPException(status_code=404, detail="Favorite not found")
+            
+        db.delete(fav)
+        db.commit()
+        return {"status": "success", "message": "Removed from favorites"}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to remove favorite: {exc}")
+
+
+@router.post("/collections", response_model=CollectionResponse)
+def create_collection(
+    payload: CollectionCreateRequest,
+    db: Session = Depends(get_db),
+    current_user: UserAccount = Depends(get_current_user),
+):
+    try:
+        coll = UserCollection(
+            user_id=str(current_user.id),
+            name=payload.name,
+            description=payload.description
+        )
+        db.add(coll)
+        db.commit()
+        db.refresh(coll)
+        return {
+            "id": coll.id,
+            "user_id": coll.user_id,
+            "name": coll.name,
+            "description": coll.description,
+            "created_at": coll.created_at,
+            "updated_at": coll.updated_at,
+            "items": []
+        }
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to create collection: {exc}")
+
+
+@router.get("/collections")
+def list_collections(
+    db: Session = Depends(get_db),
+    current_user: UserAccount = Depends(get_current_user),
+):
+    try:
+        colls = db.query(UserCollection).filter(UserCollection.user_id == str(current_user.id)).all()
+        results = []
+        for coll in colls:
+            items = db.query(UserCollectionItem).filter(UserCollectionItem.collection_id == coll.id).all()
+            formatted_items = []
+            for item in items:
+                res = db.query(RestaurantModel).filter(RestaurantModel.id == item.res_id).first()
+                if res:
+                    formatted_items.append({
+                        "id": shortuuid.encode(res.id),
+                        "name": res.name,
+                        "match": "100%",
+                        "dist": "",
+                        "distance_km": 0.0,
+                        "price": res.price_range or "0",
+                        "rating": str(res.rating_avg or 0.0),
+                        "reason": item.note or "Được lưu trong bộ sưu tập.",
+                        "img": res.image_url or "",
+                        "total_reviews": res.total_reviews or 0,
+                        "google_maps_url": res.google_maps_url or "",
+                        "tags": [tag.name for tag in res.tags] if res.tags else [],
+                    })
+            results.append({
+                "id": coll.id,
+                "user_id": coll.user_id,
+                "name": coll.name,
+                "description": coll.description,
+                "created_at": coll.created_at,
+                "updated_at": coll.updated_at,
+                "items": formatted_items
+            })
+        return results
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to list collections: {exc}")
+
+
+@router.put("/collections/{collection_id}", response_model=CollectionResponse)
+def update_collection(
+    collection_id: str,
+    payload: CollectionUpdateRequest,
+    db: Session = Depends(get_db),
+    current_user: UserAccount = Depends(get_current_user),
+):
+    try:
+        coll = db.query(UserCollection).filter(
+            UserCollection.id == collection_id,
+            UserCollection.user_id == str(current_user.id)
+        ).first()
+        
+        if not coll:
+            raise HTTPException(status_code=404, detail="Collection not found")
+            
+        coll.name = payload.name
+        coll.description = payload.description
+        db.commit()
+        db.refresh(coll)
+        
+        # Get items for returning full response
+        items = db.query(UserCollectionItem).filter(UserCollectionItem.collection_id == coll.id).all()
+        formatted_items = []
+        for item in items:
+            res = db.query(RestaurantModel).filter(RestaurantModel.id == item.res_id).first()
+            if res:
+                formatted_items.append({
+                    "id": shortuuid.encode(res.id),
+                    "name": res.name,
+                    "match": "100%",
+                    "dist": "",
+                    "distance_km": 0.0,
+                    "price": res.price_range or "0",
+                    "rating": str(res.rating_avg or 0.0),
+                    "reason": item.note or "Được lưu trong bộ sưu tập.",
+                    "img": res.image_url or "",
+                    "total_reviews": res.total_reviews or 0,
+                    "google_maps_url": res.google_maps_url or "",
+                    "tags": [tag.name for tag in res.tags] if res.tags else [],
+                })
+                
+        return {
+            "id": coll.id,
+            "user_id": coll.user_id,
+            "name": coll.name,
+            "description": coll.description,
+            "created_at": coll.created_at,
+            "updated_at": coll.updated_at,
+            "items": formatted_items
+        }
+    except HTTPException:
+        raise
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to update collection: {exc}")
+
+
+@router.delete("/collections/{collection_id}")
+def delete_collection(
+    collection_id: str,
+    db: Session = Depends(get_db),
+    current_user: UserAccount = Depends(get_current_user),
+):
+    try:
+        coll = db.query(UserCollection).filter(
+            UserCollection.id == collection_id,
+            UserCollection.user_id == str(current_user.id)
+        ).first()
+        
+        if not coll:
+            raise HTTPException(status_code=404, detail="Collection not found")
+            
+        # Cascades to user_collection_items due to ForeignKey constraint
+        db.delete(coll)
+        db.commit()
+        return {"status": "success", "message": "Collection deleted"}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to delete collection: {exc}")
+
+
+@router.post("/collections/{collection_id}/items")
+def add_item_to_collection(
+    collection_id: str,
+    payload: CollectionItemCreateRequest,
+    db: Session = Depends(get_db),
+    current_user: UserAccount = Depends(get_current_user),
+):
+    try:
+        coll = db.query(UserCollection).filter(
+            UserCollection.id == collection_id,
+            UserCollection.user_id == str(current_user.id)
+        ).first()
+        
+        if not coll:
+            raise HTTPException(status_code=404, detail="Collection not found")
+            
+        decoded_res_id = _decode_id(payload.res_id)
+        # Check if item already exists in collection
+        existing = db.query(UserCollectionItem).filter(
+            UserCollectionItem.collection_id == collection_id,
+            UserCollectionItem.user_id == str(current_user.id),
+            UserCollectionItem.res_id == decoded_res_id
+        ).first()
+        
+        if existing:
+            return {"status": "success", "message": "Item already in collection"}
+            
+        item = UserCollectionItem(
+            collection_id=collection_id,
+            user_id=str(current_user.id),
+            res_id=decoded_res_id,
+            dish_id=payload.dish_id,
+            item_type=payload.item_type or "restaurant",
+            note=payload.note
+        )
+        db.add(item)
+        db.commit()
+        return {"status": "success", "message": "Item added to collection"}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to add item to collection: {exc}")
+
+
+@router.delete("/collections/{collection_id}/items/{res_id}")
+def remove_item_from_collection(
+    collection_id: str,
+    res_id: str,
+    db: Session = Depends(get_db),
+    current_user: UserAccount = Depends(get_current_user),
+):
+    try:
+        coll = db.query(UserCollection).filter(
+            UserCollection.id == collection_id,
+            UserCollection.user_id == str(current_user.id)
+        ).first()
+        
+        if not coll:
+            raise HTTPException(status_code=404, detail="Collection not found")
+            
+        decoded_res_id = _decode_id(res_id)
+        item = db.query(UserCollectionItem).filter(
+            UserCollectionItem.collection_id == collection_id,
+            UserCollectionItem.user_id == str(current_user.id),
+            UserCollectionItem.res_id == decoded_res_id
+        ).first()
+        
+        if not item:
+            raise HTTPException(status_code=404, detail="Item not found in collection")
+            
+        db.delete(item)
+        db.commit()
+        return {"status": "success", "message": "Item removed from collection"}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to remove item from collection: {exc}")

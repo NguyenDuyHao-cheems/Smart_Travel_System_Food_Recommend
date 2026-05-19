@@ -69,6 +69,13 @@ export function FoodCard({ item, userId, onRemove, showRemove, showAddCollection
   };
 
   const handleCardClick = () => {
+    // Guard: nếu item.id bị thiếu thì không navigate
+    if (!item.id || item.id === "undefined" || item.id === "null") {
+      console.warn("[FoodCard] item.id is missing, cannot navigate:", item);
+      toast.error("Không thể mở chi tiết nhà hàng này. Vui lòng thử lại sau.");
+      return;
+    }
+
     interactionService.logInteraction({
       res_id: item.id,
       action_type: "VIEW_RESTAURANT",

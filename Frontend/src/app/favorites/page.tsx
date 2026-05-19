@@ -26,6 +26,11 @@ export default function FavoritesPage() {
     }
     setUserId(id);
     setFavorites(favoriteService.getFavorites(id));
+    
+    // Sync with DB in the background
+    favoriteService.fetchAndSyncFavorites(id).then(dbFavs => {
+      setFavorites(dbFavs);
+    });
   }, [router]);
 
   useEffect(() => {

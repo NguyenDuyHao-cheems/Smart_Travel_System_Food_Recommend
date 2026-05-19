@@ -38,7 +38,23 @@ export default function CollectionsPage() {
     }
     setUserId(id);
     setCollections(collectionService.getCollections(id));
+
+    // Sync collections with DB in the background
+    collectionService.fetchAndSyncCollections(id).then(dbColls => {
+      setCollections(dbColls);
+    });
   }, [router]);
+
+  // Sync selectedCollection khi collections state cập nhật (sau khi DB sync hoàn thành)
+  // Fix: đảm bảo items trong selectedCollection luôn có đúng shortuuid ID từ DB
+  useEffect(() => {
+    if (selectedCollection) {
+      const updated = collections.find(c => c.id === selectedCollection.id || c.name === selectedCollection.name);
+      if (updated) {
+        setSelectedCollection(updated);
+      }
+    }
+  }, [collections]);
 
   useEffect(() => {
     const collectionParam = searchParams.get("collection");
@@ -60,9 +76,9 @@ export default function CollectionsPage() {
     }
   }, [searchParams, collections]);
 
-  const handleCreateCollection = () => {
+  const handleCreateCollection = async () => {
     if (!userId || !newCollectionName.trim()) return;
-    const newColl = collectionService.createCollection(userId, newCollectionName.trim(), "");
+    const newColl = await collectionService.createCollection(userId, newCollectionName.trim(), "");
     if (newColl) {
       setCollections([...collections, newColl]);
       setNewCollectionName("");

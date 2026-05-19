@@ -13,7 +13,6 @@ export function LocationInitializer() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-
     // 1. Load previously cached coordinates on mount to prevent empty UI on refresh
     try {
       const cachedStr = localStorage.getItem('user_cached_gps');

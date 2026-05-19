@@ -78,6 +78,7 @@ class UserAccount(Base):
     password_hash = Column(String, nullable=False)
     preferences_vector = Column(Vector(settings.VECTOR_DIM), nullable=True)
     allergies = Column(JSON, nullable=True)
+    profile_stats = Column(JSON, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc),
                         onupdate=lambda: datetime.now(timezone.utc))
@@ -94,4 +95,47 @@ class UserInteraction(Base):
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     metadata_ = Column("metadata", JSON, nullable=True)
     search_session_id = Column(String, nullable=True, index=True)
+
+
+class UserFavorite(Base):
+    """
+    Stores restaurant bookmarks (favorites) by users.
+    """
+    __tablename__ = "user_favorites"
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
+    res_id = Column(String, ForeignKey("restaurants.id"), nullable=False, index=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+
+class UserCollection(Base):
+    """
+    Groups items into user-defined collections.
+    """
+    __tablename__ = "user_collections"
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
+    name = Column(String, nullable=False)
+    description = Column(String, nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc),
+                         onupdate=lambda: datetime.now(timezone.utc))
+
+
+class UserCollectionItem(Base):
+    """
+    Stores individual items contained within a UserCollection.
+    """
+    __tablename__ = "user_collection_items"
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    collection_id = Column(String, ForeignKey("user_collections.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
+    res_id = Column(String, ForeignKey("restaurants.id"), nullable=True, index=True)
+    dish_id = Column(String, nullable=True, index=True)
+    item_type = Column(String, nullable=True)
+    note = Column(String, nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 

@@ -36,8 +36,8 @@ export function AddToCollectionModal({ isOpen, onClose, item, onSuccess }: AddTo
   if (!item || !userId) return null;
 
   // [FIX-CONFLICT]: Bổ sung hàm handleAddToCollection (bị mất) để xử lý việc chọn bộ sưu tập có sẵn và gọi callback onSuccess
-  const handleAddToCollection = (collectionId: string) => {
-    collectionService.addItemToCollection(userId, collectionId, item);
+  const handleAddToCollection = async (collectionId: string) => {
+    await collectionService.addItemToCollection(userId, collectionId, item);
     toast.success("Đã thêm vào bộ sưu tập");
     
     const coll = collections.find(c => c.id === collectionId);
@@ -53,11 +53,11 @@ export function AddToCollectionModal({ isOpen, onClose, item, onSuccess }: AddTo
     onClose();
   };
 
-  const handleCreateAndAdd = () => {
+  const handleCreateAndAdd = async () => {
     const collName = newCollectionName.trim();
-    const newColl = collectionService.createCollection(userId, collName);
+    const newColl = await collectionService.createCollection(userId, collName);
     if (newColl) {
-      collectionService.addItemToCollection(userId, newColl.id, item);
+      await collectionService.addItemToCollection(userId, newColl.id, item);
       toast.success("Đã tạo và thêm vào bộ sưu tập");
       
       interactionService.logInteraction({
