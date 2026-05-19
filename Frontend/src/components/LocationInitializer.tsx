@@ -13,6 +13,19 @@ export function LocationInitializer() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
+
+    // 1. Load previously cached coordinates on mount to prevent empty UI on refresh
+    try {
+      const cachedStr = localStorage.getItem('user_cached_gps');
+      if (cachedStr) {
+        const cachedCoords = JSON.parse(cachedStr);
+        if (cachedCoords && typeof cachedCoords.lat === 'number' && typeof cachedCoords.lng === 'number') {
+          dispatch(setLocationFromBackground(cachedCoords));
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to parse cached GPS coordinates:', e);
+    }
     
     const isFetched = sessionStorage.getItem('gps_fetched');
     if (isFetched === 'true') {
@@ -32,12 +45,12 @@ export function LocationInitializer() {
 
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          dispatch(
-            setLocationFromBackground({
-              lat: position.coords.latitude,
-              lng: position.coords.longitude,
-            })
-          );
+          const coords = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+          };
+          dispatch(setLocationFromBackground(coords));
+          localStorage.setItem('user_cached_gps', JSON.stringify(coords));
           sessionStorage.setItem('gps_fetched', 'true');
         },
         (error) => {

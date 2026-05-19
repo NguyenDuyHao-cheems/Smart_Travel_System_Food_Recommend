@@ -154,6 +154,7 @@ class RecentActivityResponse(BaseModel):
     res_id: Optional[str] = None
     res_name: Optional[str] = None
     collection_name: Optional[str] = None
+    review_id: Optional[str] = None
 
 
 class UserProfileResponse(BaseModel):

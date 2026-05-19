@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -13,6 +13,7 @@ import {
   FolderOpen,
   Settings,
   Sparkles,
+  AlertTriangle,
 } from "lucide-react";
 import { ThemeToggle } from "./ThemeToggle";
 import { UserDropdown } from "./UserDropdown";
@@ -33,7 +34,33 @@ interface AppShellProps {
 
 export function AppShell({ children, healthStatus = "loading" }: AppShellProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [showAuthExpiredModal, setShowAuthExpiredModal] = useState(false);
   const pathname = usePathname();
+  const router = useRouter();
+
+  useEffect(() => {
+    const handleAuthExpired = () => {
+      // Clear localStorage immediately
+      localStorage.removeItem("access_token");
+      localStorage.removeItem("username");
+      localStorage.removeItem("user_avatar");
+      localStorage.removeItem("user_id");
+      localStorage.removeItem("login_method");
+      setShowAuthExpiredModal(true);
+    };
+    window.addEventListener("auth-session-expired", handleAuthExpired);
+    return () => window.removeEventListener("auth-session-expired", handleAuthExpired);
+  }, []);
+
+  const handleOk = () => {
+    setShowAuthExpiredModal(false);
+    window.location.href = "/";
+  };
+
+  const handleLoginAgain = () => {
+    setShowAuthExpiredModal(false);
+    router.push("/auth");
+  };
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#2A2420]">
@@ -202,6 +229,59 @@ export function AppShell({ children, healthStatus = "loading" }: AppShellProps) 
 
       {/* ── Page content ── */}
       <main className="relative z-10">{children}</main>
+
+      {/* ── Authentication Expired Modal ── */}
+      <AnimatePresence>
+        {showAuthExpiredModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              className="w-full max-w-md bg-[#FDFBF7] dark:bg-[#2A2420] border-2 border-[#3D312A] dark:border-[#E6DFD5]/10 rounded-3xl p-6 shadow-2xl flex flex-col items-center text-center relative overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+            >
+              {/* Pattern backdrop overlay */}
+              <div
+                className="absolute inset-0 pointer-events-none opacity-[0.04] dark:opacity-[0.02]"
+                style={{
+                  backgroundImage: "url('/images/food-pattern.png')",
+                  backgroundSize: "200px",
+                }}
+              />
+              
+              <div className="relative z-10 flex flex-col items-center">
+                {/* Pulsing warning circle */}
+                <div className="w-20 h-20 bg-amber-500/10 dark:bg-amber-500/5 rounded-full flex items-center justify-center mb-4 border border-amber-500/20 animate-pulse">
+                  <AlertTriangle className="w-10 h-10 text-amber-500 dark:text-amber-400" />
+                </div>
+
+                <h3 className="text-2xl font-black text-[#3D312A] dark:text-[#E6DFD5] mb-2 uppercase tracking-wide">
+                  Phiên Hết Hạn
+                </h3>
+                
+                <p className="text-[#3D312A]/80 dark:text-[#C8BFB0]/80 text-sm leading-relaxed mb-6 max-w-sm">
+                  Phiên đăng nhập của bạn đã hết hạn hoặc không hợp lệ. Vui lòng đăng nhập lại để sử dụng đầy đủ các tính năng cá nhân hóa!
+                </p>
+
+                <div className="flex flex-col sm:flex-row gap-3 w-full justify-center">
+                  <button
+                    onClick={handleOk}
+                    className="order-2 sm:order-1 px-6 py-3 border-2 border-[#3D312A] dark:border-[#E6DFD5]/25 rounded-2xl text-sm font-bold text-[#3D312A] dark:text-[#E6DFD5] hover:bg-[#3D312A]/10 dark:hover:bg-[#E6DFD5]/10 active:scale-95 transition-all uppercase tracking-wider cursor-pointer"
+                  >
+                    Quay lại trang chủ
+                  </button>
+                  <button
+                    onClick={handleLoginAgain}
+                    className="order-1 sm:order-2 px-6 py-3 bg-[#E8735A] hover:bg-[#D65F47] text-white rounded-2xl text-sm font-black active:scale-95 transition-all shadow-[0_4px_14px_rgba(232,115,90,0.4)] uppercase tracking-wider cursor-pointer"
+                  >
+                    Đăng nhập lại
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
