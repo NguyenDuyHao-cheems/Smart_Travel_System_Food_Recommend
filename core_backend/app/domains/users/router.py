@@ -382,8 +382,8 @@ def get_current_user_profile(
     stats = current_user.profile_stats
     if stats is None:
         stats = initialize_profile_stats(db, current_user)
-        # Sync unlocked badges right after initialization
-        stats["unlocked_badges"] = [badgeIcon for badgeIcon, info in badges_data.items() if info.unlocked]
+        # Sync unlocked badges right after initialization (exclude zen master "🧘" from database persistence)
+        stats["unlocked_badges"] = [badgeIcon for badgeIcon, info in badges_data.items() if info.unlocked and badgeIcon != "🧘"]
         current_user.profile_stats = dict(stats)
         from sqlalchemy.orm.attributes import flag_modified
         flag_modified(current_user, "profile_stats")
@@ -421,8 +421,8 @@ def get_current_user_profile(
             stats["last_active_date"] = last_active_date
             stats["active_dates"] = active_dates
             
-            # Sync unlocked badges
-            current_unlocked = [badgeIcon for badgeIcon, info in badges_data.items() if info.unlocked]
+            # Sync unlocked badges (exclude zen master "🧘" from database persistence)
+            current_unlocked = [badgeIcon for badgeIcon, info in badges_data.items() if info.unlocked and badgeIcon != "🧘"]
             for b in current_unlocked:
                 if b not in unlocked_badges:
                     unlocked_badges.append(b)
