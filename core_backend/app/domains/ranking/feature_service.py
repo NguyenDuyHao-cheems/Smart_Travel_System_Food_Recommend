@@ -5,10 +5,22 @@ Tất cả features đều là int để tránh floating-point precision issues
 và đảm bảo tính nhất quán với schema CandidateWithFeatures.
 """
 
+import re
+
 import numpy as np
 from typing import List
 
 from app.services.review_sentiment import normalize_restaurant_sentiment
+
+
+def _extract_max_price(price_range) -> float:
+    if not price_range:
+        return 0.0
+
+    price_text = str(price_range)
+    max_price_text = price_text.split("-")[-1] if "-" in price_text else price_text
+    digits = re.sub(r"\D", "", max_price_text)
+    return float(digits) if digits else 0.0
 
 
 class FeatureService:
@@ -29,16 +41,7 @@ class FeatureService:
             setattr(r, "distance_m", dist_m)
 
             # 2. % ngân sách (0–100) — price_range là String trong DB
-            try:
-                raw_price_str = str(getattr(r, "price_range", "") or "")
-                if "-" in raw_price_str:
-                    raw_price = float(raw_price_str.split("-")[1].strip())
-                elif raw_price_str:
-                    raw_price = float(raw_price_str.strip())
-                else:
-                    raw_price = 0.0
-            except (ValueError, TypeError, IndexError):
-                raw_price = 0.0
+            raw_price = _extract_max_price(getattr(r, "price_range", "") or "")
             
             if budget <= 0:
                 price_norm = 0

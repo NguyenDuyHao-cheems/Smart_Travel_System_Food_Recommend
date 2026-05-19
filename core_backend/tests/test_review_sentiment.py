@@ -1,6 +1,6 @@
 from types import SimpleNamespace
 
-from app.domains.ranking.feature_service import FeatureService
+from app.domains.ranking.feature_service import FeatureService, _extract_max_price
 from app.services.recommendation_service import _apply_sentiment_search_boost
 from app.services.review_sentiment import (
     aggregate_restaurant_sentiment,
@@ -94,6 +94,38 @@ def test_feature_service_scales_sentiment_to_minus_100_100():
     )
 
     assert features[0]["sentiment_score"] == 75
+
+
+def test_extract_max_price_handles_vietnamese_currency_ranges():
+    assert _extract_max_price("14,000\u0111 - 59,000\u0111") == 59000.0
+    assert _extract_max_price("8,000\u0111 - 224,000\u0111") == 224000.0
+    assert _extract_max_price("50000") == 50000.0
+    assert _extract_max_price("") == 0.0
+
+
+def test_feature_service_normalizes_vietnamese_currency_price_range():
+    candidate = SimpleNamespace(
+        id="res-1",
+        lat=10.0,
+        lng=106.0,
+        price_range="14,000\u0111 - 59,000\u0111",
+        rating_avg=4.5,
+        sentiment_score=0.75,
+        total_reviews=20,
+        distance=0.2,
+        is_open_now=True,
+        tag_match=False,
+        name="Quan ngon",
+    )
+
+    features = FeatureService().build_integer_features(
+        [candidate],
+        user_lat=10.0,
+        user_lng=106.0,
+        budget=100_000,
+    )
+
+    assert features[0]["price_normalized"] == 59
 
 
 def test_emotion_search_sentiment_boost_prefers_better_review_sentiment_when_semantic_is_close():
