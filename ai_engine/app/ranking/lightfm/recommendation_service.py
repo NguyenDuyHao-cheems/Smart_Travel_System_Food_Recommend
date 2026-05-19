@@ -17,6 +17,9 @@ class LightFMRecommendationService:
         from app.core.config import settings
         self.model_path = os.path.abspath(settings.LIGHTFM_MODEL_PATH)
         self.dataset_path = os.path.abspath(settings.LIGHTFM_DATASET_PATH)
+        self.user_history_path = os.path.abspath(settings.LIGHTFM_USER_HISTORY_PATH)
+        
+        self.user_history = {}
 
     def load_model(self):
         """Loads model and dataset mapping from the models directory."""
@@ -30,6 +33,7 @@ class LightFMRecommendationService:
             self.user_map = {}
             self.item_map = {}
             self.inverse_item_map = {}
+            self.user_history = {}
             return
 
         try:
@@ -37,6 +41,12 @@ class LightFMRecommendationService:
                 self.model = pickle.load(f)
             with open(self.dataset_path, "rb") as f:
                 self.dataset = pickle.load(f)
+                
+            if os.path.exists(self.user_history_path):
+                with open(self.user_history_path, "rb") as f:
+                    self.user_history = pickle.load(f)
+            else:
+                self.user_history = {}
                 
             # Extract mappings
             user_id_map, _, item_id_map, _ = self.dataset.mapping()
@@ -53,6 +63,7 @@ class LightFMRecommendationService:
             self.user_map = {}
             self.item_map = {}
             self.inverse_item_map = {}
+            self.user_history = {}
 
     def get_recommendations(self, user_id: str, limit: int = 10) -> List[str]:
         """
@@ -72,9 +83,15 @@ class LightFMRecommendationService:
             # Get internal LightFM user index
             user_idx = self.user_map[user_str]
             
-            # Predict scores for all items
-            # In LightFM, predictions are done for a user index and an array of all item indices
-            item_indices = list(self.item_map.values())
+            # Predict scores for all items, EXCLUDING items the user has already interacted with
+            seen_items = self.user_history.get(user_str, set())
+            
+            # Filter item indices: only keep indices of restaurants the user HAS NOT seen
+            item_indices = [idx for res_id, idx in self.item_map.items() if res_id not in seen_items]
+            
+            if not item_indices:
+                logger.info(f"User {user_id} has seen all items. Returning empty list to trigger fallback.")
+                return []
             
             # Predict scores using trained model
             scores = self.model.predict(

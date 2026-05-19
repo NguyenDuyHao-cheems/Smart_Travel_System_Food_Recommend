@@ -82,6 +82,7 @@ export function FoodCard({ item, userId, onRemove, showRemove, showAddCollection
     
     if (typeof window !== 'undefined') {
       sessionStorage.setItem('came_from_search', 'false');
+      sessionStorage.setItem('current_res_id', item.id);
     }
     router.push(`/restaurant/${item.id}`);
   };

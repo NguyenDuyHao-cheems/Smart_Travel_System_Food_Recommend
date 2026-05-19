@@ -119,7 +119,7 @@ function HomeContent() {
         }
         const token = localStorage.getItem("access_token");
 
-        const url = new URL(`${BACKEND_URL}/api/v1/recommendations/home`);
+        const url = new URL(`${BACKEND_URL}/api/v1/restaurants/recommendations`);
         url.searchParams.append("lat", coords.lat.toString());
         url.searchParams.append("lng", coords.lng.toString());
         url.searchParams.append("limit", "6");
@@ -133,10 +133,13 @@ function HomeContent() {
 
         if (res.ok) {
           const data = await res.json();
-          if (data.results && Array.isArray(data.results)) {
+          // Endpoint /api/v1/restaurants/recommendations returns an array directly
+          const resultsArray = Array.isArray(data) ? data : (data.results || []);
+          
+          if (resultsArray && resultsArray.length > 0) {
             // Filter out exact duplicates by name
             const seen = new Set();
-            const uniqueResults = data.results.filter((item: RecommendResult) => {
+            const uniqueResults = resultsArray.filter((item: RecommendResult) => {
               if (!item.name) return true;
               const duplicate = seen.has(item.name);
               seen.add(item.name);

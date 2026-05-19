@@ -34,11 +34,15 @@ def extract_weight(row):
     if action_type == "REVIEW_RESTAURANT":
         try:
             rating = float(metadata.get("rating", 5.0))
+            if rating < 3.0:
+                return -1.0
             return rating
         except Exception:
             return 5.0
-    elif action_type == "SAVE_RESTAURANT":
+    elif action_type in ("SAVE_RESTAURANT", "LIKE_RESTAURANT"):
         return 5.0
+    elif action_type == "REMOVE_RESTAURANT":
+        return -1.0
     elif action_type == "VIEW_RESTAURANT":
         return 1.0
     else:
@@ -74,8 +78,14 @@ def train_lightfm_model():
         df_inter['res_id'] = df_inter['res_id'].astype(str)
         df_res['id'] = df_res['id'].astype(str)
         
-        # Process weights
+        # Process weights and filter out negative interactions
         df_inter['weight'] = df_inter.apply(extract_weight, axis=1)
+        
+        # Lọc bỏ các tương tác tiêu cực (ví dụ: rating < 3.0)
+        df_inter = df_inter[df_inter['weight'] > 0]
+        
+        # Build user history to filter out seen items during prediction
+        user_history = df_inter.groupby('user_id')['res_id'].apply(set).to_dict()
         
         # Build list of all items (database restaurants + any interacted items not in DB)
         all_restaurant_ids = df_res['id'].unique()
@@ -95,19 +105,21 @@ def train_lightfm_model():
             [(x['user_id'], x['res_id'], x['weight']) for _, x in df_inter.iterrows()]
         )
 
-        # Train model using Logistic loss (highly stable on Windows)
+        # Train model using Logistic loss (highly stable and tuned for personalization)
         logger.info("Training LightFM model with Logistic loss...")
         model = LightFM(
             loss='logistic', 
-            no_components=30, 
-            learning_rate=0.05,
+            no_components=15, 
+            learning_rate=0.03,
+            item_alpha=1e-3,
+            user_alpha=1e-4,
             random_state=42
         )
         
         model.fit(
             interactions,
             sample_weight=weights,
-            epochs=30
+            epochs=100
         )
         logger.info("Model training completed successfully.")
 
@@ -117,15 +129,19 @@ def train_lightfm_model():
         
         model_path = os.path.join(models_dir, "lightfm_model.pkl")
         dataset_path = os.path.join(models_dir, "lightfm_dataset.pkl")
+        user_history_path = os.path.join(models_dir, "lightfm_user_history.pkl")
 
-        # Save model and dataset mapping
+        # Save model, dataset mapping, and user history
         with open(model_path, "wb") as f:
             pickle.dump(model, f)
         with open(dataset_path, "wb") as f:
             pickle.dump(dataset, f)
+        with open(user_history_path, "wb") as f:
+            pickle.dump(user_history, f)
             
         logger.info(f"Successfully saved trained model to: {model_path}")
         logger.info(f"Successfully saved dataset mapping to: {dataset_path}")
+        logger.info(f"Successfully saved user history to: {user_history_path}")
 
         # Trigger Hot-Reload API
         try:
