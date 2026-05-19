@@ -26,12 +26,12 @@ def test_get_home_recs_no_user_uses_popularity():
         DummyRestaurantModel(id="3", lat=10.87, lng=106.80, rating_avg=4.7, total_reviews=10),
     ]
     
-    # Mock db.query().filter().order_by().limit().all()
+    # Mock db.query().filter().order_by().limit().all() (Self-returning pattern)
     mock_query = db.query.return_value
-    mock_filter = mock_query.filter.return_value
-    mock_order_by = mock_filter.order_by.return_value
-    mock_limit = mock_order_by.limit.return_value
-    mock_limit.all.return_value = candidates
+    mock_query.filter.return_value = mock_query
+    mock_query.order_by.return_value = mock_query
+    mock_query.limit.return_value = mock_query
+    mock_query.all.return_value = candidates
 
     # Call under test
     results = RecommendationService.get_home_recommendations(
@@ -58,11 +58,12 @@ def test_get_home_recs_has_vector_uses_cosine():
         DummyRestaurantModel(id="2", lat=10.875, lng=106.805)
     ]
     
-    # Mock db.query().order_by().limit().all()
+    # Mock db.query().order_by().limit().all() (Self-returning pattern)
     mock_query = db.query.return_value
-    mock_order_by = mock_query.order_by.return_value
-    mock_limit = mock_order_by.limit.return_value
-    mock_limit.all.return_value = candidates
+    mock_query.filter.return_value = mock_query
+    mock_query.order_by.return_value = mock_query
+    mock_query.limit.return_value = mock_query
+    mock_query.all.return_value = candidates
 
     results = RecommendationService.get_home_recommendations(
         user=user,
@@ -85,10 +86,10 @@ def test_get_home_recs_filters_50km_radius():
     ]
     
     mock_query = db.query.return_value
-    mock_filter = mock_query.filter.return_value
-    mock_order_by = mock_filter.order_by.return_value
-    mock_limit = mock_order_by.limit.return_value
-    mock_limit.all.return_value = candidates
+    mock_query.filter.return_value = mock_query
+    mock_query.order_by.return_value = mock_query
+    mock_query.limit.return_value = mock_query
+    mock_query.all.return_value = candidates
 
     results = RecommendationService.get_home_recommendations(
         user=None,
@@ -112,10 +113,10 @@ def test_get_home_recs_formats_price_and_reviews():
     ]
     
     mock_query = db.query.return_value
-    mock_filter = mock_query.filter.return_value
-    mock_order_by = mock_filter.order_by.return_value
-    mock_limit = mock_order_by.limit.return_value
-    mock_limit.all.return_value = candidates
+    mock_query.filter.return_value = mock_query
+    mock_query.order_by.return_value = mock_query
+    mock_query.limit.return_value = mock_query
+    mock_query.all.return_value = candidates
 
     results = RecommendationService.get_home_recommendations(
         user=None,
