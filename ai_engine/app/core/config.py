@@ -22,6 +22,9 @@ class Settings:
     LIGHTFM_DATASET_PATH: str = os.getenv(
         "LIGHTFM_DATASET_PATH", "models/lightfm_dataset.pkl"
     )
+    LIGHTFM_USER_HISTORY_PATH: str = os.getenv(
+        "LIGHTFM_USER_HISTORY_PATH", "models/lightfm_user_history.pkl"
+    )
 
     # Gemini API settings for NLP parsing
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")

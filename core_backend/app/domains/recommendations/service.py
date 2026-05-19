@@ -11,14 +11,35 @@ class RecommendationService:
     def get_home_recommendations(user: UserAccount | None, lat: float, lng: float, limit: int, db: Session) -> list[RecommendResult]:
         has_vector = user and user.preferences_vector is not None
         
+        # Bounding Box filtering (roughly 50km radius)
+        # 1 degree of latitude is ~111km, so 50km is ~0.45 degrees
+        lat_range = 0.45
+        lng_range = 0.45
+        
+        base_query = db.query(RestaurantModel).filter(
+            RestaurantModel.lat.between(lat - lat_range, lat + lat_range),
+            RestaurantModel.lng.between(lng - lng_range, lng + lng_range)
+        )
+        
         if has_vector:
-            # Query top 50 quán gần nhất bằng Cosine Similarity
+            # Query top 50 quán gần nhất bằng Cosine Similarity trong bán kính 50km
             # <-> operator is cosine distance, smaller is better
-            raw_candidates = db.query(RestaurantModel).order_by(
+            raw_candidates = base_query.order_by(
                 RestaurantModel.embedding_vector.cosine_distance(user.preferences_vector)
             ).limit(50).all()
         else:
-            # Nếu không có vector, lấy top rating
+            # Nếu không có vector, lấy top rating trong bán kính 50km
+            raw_candidates = base_query.filter(
+                RestaurantModel.rating_avg.isnot(None),
+                RestaurantModel.total_reviews > 5
+            ).order_by(
+                desc(RestaurantModel.rating_avg),
+                desc(RestaurantModel.total_reviews)
+            ).limit(50).all()
+
+        is_global_fallback = False
+        if not raw_candidates:
+            is_global_fallback = True
             raw_candidates = db.query(RestaurantModel).filter(
                 RestaurantModel.rating_avg.isnot(None),
                 RestaurantModel.total_reviews > 5
@@ -37,7 +58,7 @@ class RecommendationService:
             a = math.sin(dp / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
             dist_km = R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
             
-            if dist_km > 50:
+            if dist_km > 50 and not is_global_fallback:
                 continue
 
             # Format price
@@ -135,13 +156,28 @@ class RecommendationService:
             
         # 3. Xử lý Cold Start / Fallback nếu danh sách rỗng (hoặc gặp lỗi)
         if is_fallback or not raw_candidates:
+            # Bounding Box filtering (roughly 50km radius)
+            lat_range = 0.45
+            lng_range = 0.45
+            
             raw_candidates = db.query(RestaurantModel).filter(
+                RestaurantModel.lat.between(lat - lat_range, lat + lat_range),
+                RestaurantModel.lng.between(lng - lng_range, lng + lng_range),
                 RestaurantModel.rating_avg.isnot(None),
                 RestaurantModel.total_reviews > 5
             ).order_by(
                 desc(RestaurantModel.rating_avg),
                 desc(RestaurantModel.total_reviews)
             ).limit(limit).all()
+            
+            if not raw_candidates:
+                raw_candidates = db.query(RestaurantModel).filter(
+                    RestaurantModel.rating_avg.isnot(None),
+                    RestaurantModel.total_reviews > 5
+                ).order_by(
+                    desc(RestaurantModel.rating_avg),
+                    desc(RestaurantModel.total_reviews)
+                ).limit(limit).all()
             
         # 4. Định dạng dữ liệu thành RecommendResult cho UI Frontend
         results = []

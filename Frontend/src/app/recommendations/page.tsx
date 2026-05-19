@@ -52,7 +52,7 @@ export default function RecommendationsPage() {
           return;
         }
 
-        const url = new URL(`${BACKEND_URL}/api/v1/recommendations/home`);
+        const url = new URL(`${BACKEND_URL}/api/v1/restaurants/recommendations`);
         url.searchParams.append("lat", gps.lat.toString());
         url.searchParams.append("lng", gps.lng.toString());
         url.searchParams.append("limit", "16");
@@ -67,9 +67,12 @@ export default function RecommendationsPage() {
 
         if (res.ok) {
           const data = await res.json();
-          if (data.results && Array.isArray(data.results)) {
+          // Endpoint /api/v1/restaurants/recommendations returns an array directly
+          const resultsArray = Array.isArray(data) ? data : (data.results || []);
+          
+          if (resultsArray && resultsArray.length > 0) {
             const seen = new Set();
-            const uniqueResults = data.results.filter((item: RecommendResult) => {
+            const uniqueResults = resultsArray.filter((item: RecommendResult) => {
               if (!item.name) return true;
               const duplicate = seen.has(item.name);
               seen.add(item.name);
