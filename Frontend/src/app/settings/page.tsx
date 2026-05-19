@@ -22,7 +22,10 @@ import {
   ShieldCheck,
   ChevronRight,
   ArrowRight,
-  Settings
+  Settings,
+  Plus,
+  Pencil,
+  X
 } from "lucide-react";
 import { AppShell } from "../../components/AppShell";
 
@@ -33,14 +36,17 @@ export default function SettingsPage() {
   const [mounted, setMounted] = useState(false);
   const [username, setUsername] = useState<string | null>(null);
   const [avatar, setAvatar] = useState<string | null>(null);
+  const [accountEmail, setAccountEmail] = useState<string | null>(null);
 
   useEffect(() => {
     setMounted(true);
     // 1. Get initial data from localStorage
     const storedUsername = localStorage.getItem("username");
     const storedAvatar = localStorage.getItem("user_avatar");
+    const storedEmail = localStorage.getItem("user_email");
     setUsername(storedUsername);
     setAvatar(storedAvatar);
+    setAccountEmail(storedEmail);
 
     // 2. Refresh from backend to ensure data is consistent
     const fetchProfile = async () => {
@@ -49,8 +55,23 @@ export default function SettingsPage() {
         if (!token) return;
 
         const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
-        // Here we could fetch the full profile if we had a /me GET endpoint
-        // For now we rely on the PATCH to save and localStorage to cache
+        const res = await fetch(`${API_BASE}/api/v1/users/me`, {
+          headers: {
+            "Authorization": `Bearer ${token}`
+          }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setAccountEmail(data.username);
+          setUsername(data.full_name || data.username);
+          setAvatar(data.avatar_url);
+          
+          localStorage.setItem("username", data.full_name || data.username);
+          localStorage.setItem("user_email", data.username);
+          if (data.avatar_url) {
+            localStorage.setItem("user_avatar", data.avatar_url);
+          }
+        }
       } catch (err) {
         console.error("Profile refresh failed:", err);
       }
@@ -185,6 +206,7 @@ export default function SettingsPage() {
                 {activeTab === "account" && (
                   <AccountSettings
                     username={username}
+                    accountEmail={accountEmail}
                     avatar={avatar}
                     onAvatarChange={(newAvatar) => handleUpdateProfile({ avatar_url: newAvatar })}
                     onNameChange={(newName) => handleUpdateProfile({ full_name: newName })}
@@ -212,8 +234,65 @@ export default function SettingsPage() {
   );
 }
 
+const resizeBase64Image = (base64Str: string, maxDim: number = 800): Promise<string> => {
+  return new Promise((resolve) => {
+    if (!base64Str || !base64Str.startsWith("data:image")) {
+      resolve(base64Str);
+      return;
+    }
+    const img = new Image();
+    img.src = base64Str;
+    img.onload = () => {
+      const width = img.naturalWidth;
+      const height = img.naturalHeight;
+      if (Math.max(width, height) <= maxDim) {
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL("image/jpeg", 0.82));
+          return;
+        }
+        resolve(base64Str);
+        return;
+      }
+      
+      const canvas = document.createElement("canvas");
+      let w = width;
+      let h = height;
+      if (width > height) {
+        if (width > maxDim) {
+          h = Math.round((height * maxDim) / width);
+          w = maxDim;
+        }
+      } else {
+        if (height > maxDim) {
+          w = Math.round((width * maxDim) / height);
+          h = maxDim;
+        }
+      }
+      
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        resolve(base64Str);
+        return;
+      }
+      ctx.drawImage(img, 0, 0, w, h);
+      resolve(canvas.toDataURL("image/jpeg", 0.82));
+    };
+    img.onerror = () => {
+      resolve(base64Str);
+    };
+  });
+};
+
 function AccountSettings({ 
   username, 
+  accountEmail,
   avatar, 
   onAvatarChange,
   onNameChange,
@@ -221,6 +300,7 @@ function AccountSettings({
   onDeleteAccount
 }: { 
   username: string | null, 
+  accountEmail: string | null,
   avatar: string | null,
   onAvatarChange: (newAvatar: string) => Promise<boolean> | any,
   onNameChange: (newName: string) => Promise<boolean> | any,
@@ -228,6 +308,13 @@ function AccountSettings({
   onDeleteAccount: () => Promise<boolean>
 }) {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const userId = typeof window !== 'undefined' ? localStorage.getItem("user_id") || "guest" : "guest";
+  const historyKey = `user_avatar_history_${userId}`;
+  const originalAvatarKey = `original_user_avatar_${userId}`;
+  const cropParamsKey = `user_avatar_crop_params_${userId}`;
+  const lastCroppedAvatarKey = `last_cropped_avatar_${userId}`;
+
   const [tempName, setTempName] = React.useState(username || "");
   const loginMethod = typeof window !== 'undefined' ? localStorage.getItem("login_method") : null;
   const isGoogleUser = loginMethod === "google";
@@ -236,6 +323,37 @@ function AccountSettings({
   const [showPasswordModal, setShowPasswordModal] = React.useState(false);
   const [showDeleteModal, setShowDeleteModal] = React.useState(false);
   const [passwords, setPasswords] = React.useState({ old: "", new: "", confirm: "" });
+
+  // Circular Crop & Edit Image State
+  const [showCropModal, setShowCropModal] = React.useState(false);
+  const [imageSrc, setImageSrc] = React.useState<string | null>(null);
+  const [tempOriginalImage, setTempOriginalImage] = React.useState<string | null>(null);
+  const [zoom, setZoom] = React.useState(1);
+  const [minZoom, setMinZoom] = React.useState(1);
+  const [rotation, setRotation] = React.useState(0);
+  const [offset, setOffset] = React.useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = React.useState(false);
+  const [dragStart, setDragStart] = React.useState({ x: 0, y: 0 });
+
+  const [showHistoryModal, setShowHistoryModal] = React.useState(false);
+  const [avatarHistory, setAvatarHistory] = React.useState<any[]>([]);
+
+  React.useEffect(() => {
+    if (typeof window !== "undefined") {
+      const historyJson = localStorage.getItem(historyKey);
+      if (historyJson) {
+        try {
+          setAvatarHistory(JSON.parse(historyJson));
+        } catch (e) {
+          console.error(e);
+        }
+      } else {
+        setAvatarHistory([]); // Reset history if key doesn't exist for this user!
+      }
+    }
+  }, [showHistoryModal, avatar, historyKey]);
+
+  const isEmail = accountEmail?.includes("@") || username?.includes("@") || loginMethod === "google";
 
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -272,14 +390,289 @@ function AccountSettings({
       const reader = new FileReader();
       reader.onloadend = async () => {
         const base64String = reader.result as string;
-        const success = await onAvatarChange(base64String);
-        if (success !== false) {
-          // localStorage is updated inside handleUpdateProfile, but we can keep it here for safety or just rely on it.
-          // Since handleUpdateProfile handles it, we don't strictly need it, but we can do it to be safe.
-          // We won't do it blindly before success.
+        try {
+          const optimizedBase64 = await resizeBase64Image(base64String, 800);
+          setImageSrc(optimizedBase64);
+          setTempOriginalImage(optimizedBase64);
+        } catch (e) {
+          console.error("Lỗi tối ưu dung lượng ảnh:", e);
+          setImageSrc(base64String);
+          setTempOriginalImage(base64String);
         }
+        setZoom(1);
+        setRotation(0);
+        setOffset({ x: 0, y: 0 });
+        setShowCropModal(true);
+        // Clear input value so selecting the same file triggers onChange next time!
+        event.target.value = "";
       };
       reader.readAsDataURL(file);
+    }
+  };
+
+  const constrainOffset = (x: number, y: number, currentZoom: number) => {
+    const img = document.querySelector('img[alt="Cắt ảnh"]') as HTMLImageElement;
+    if (!img) return { x: 0, y: 0 };
+
+    const imgWidth = img.naturalWidth;
+    const imgHeight = img.naturalHeight;
+    if (!imgWidth || !imgHeight) return { x: 0, y: 0 };
+
+    const maxDim = Math.max(imgWidth, imgHeight);
+    const viewportSize = 360;
+    const cropCircleSize = 280;
+    const borderGap = (viewportSize - cropCircleSize) / 2; // 40px
+
+    const renderedWidth = (imgWidth / maxDim) * viewportSize;
+    const renderedHeight = (imgHeight / maxDim) * viewportSize;
+
+    const scaledWidth = renderedWidth * currentZoom;
+    const scaledHeight = renderedHeight * currentZoom;
+
+    const maxOffsetX = Math.max(0, (scaledWidth / 2) - (viewportSize / 2 - borderGap));
+    const minOffsetX = -maxOffsetX;
+
+    const maxOffsetY = Math.max(0, (scaledHeight / 2) - (viewportSize / 2 - borderGap));
+    const minOffsetY = -maxOffsetY;
+
+    return {
+      x: Math.max(minOffsetX, Math.min(maxOffsetX, x)),
+      y: Math.max(minOffsetY, Math.min(maxOffsetY, y))
+    };
+  };
+
+  React.useEffect(() => {
+    if (showCropModal && imageSrc) {
+      const timer = setTimeout(() => {
+        setOffset(prev => constrainOffset(prev.x, prev.y, zoom));
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [zoom, showCropModal, imageSrc]);
+
+  React.useEffect(() => {
+    if (showCropModal && imageSrc) {
+      const img = new Image();
+      img.src = imageSrc;
+      img.onload = () => {
+        const imgWidth = img.naturalWidth;
+        const imgHeight = img.naturalHeight;
+        if (imgWidth && imgHeight) {
+          const maxDim = Math.max(imgWidth, imgHeight);
+          const viewportSize = 360;
+          const cropCircleSize = 280;
+          
+          const renderedWidth = (imgWidth / maxDim) * viewportSize;
+          const renderedHeight = (imgHeight / maxDim) * viewportSize;
+          
+          const calculatedMinZoom = Math.max(cropCircleSize / renderedWidth, cropCircleSize / renderedHeight);
+          setMinZoom(calculatedMinZoom);
+          setZoom(prev => Math.max(calculatedMinZoom, prev));
+        }
+      };
+    }
+  }, [imageSrc, showCropModal]);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    setIsDragging(true);
+    setDragStart({ x: e.clientX - offset.x, y: e.clientY - offset.y });
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging) return;
+    const rawX = e.clientX - dragStart.x;
+    const rawY = e.clientY - dragStart.y;
+    setOffset(constrainOffset(rawX, rawY, zoom));
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  const handleMouseLeave = () => {
+    setIsDragging(false);
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length === 1) {
+      setIsDragging(true);
+      setDragStart({
+        x: e.touches[0].clientX - offset.x,
+        y: e.touches[0].clientY - offset.y
+      });
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isDragging || e.touches.length !== 1) return;
+    const rawX = e.touches[0].clientX - dragStart.x;
+    const rawY = e.touches[0].clientY - dragStart.y;
+    setOffset(constrainOffset(rawX, rawY, zoom));
+  };
+
+  const handleTouchEnd = () => {
+    setIsDragging(false);
+  };
+
+  const handleCropSave = () => {
+    if (!imageSrc) return;
+
+    const img = new Image();
+    img.src = imageSrc;
+    img.onload = async () => {
+      const canvas = document.createElement("canvas");
+      const size = 300; // standard avatar export size
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+
+      // Fill with solid white background to prevent black borders when exporting to JPEG
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, size, size);
+
+      const viewportSize = 360; // size of the screen viewport container
+      const cropCircleSize = 280; // size of the screen crop circle
+      const scaleFactor = size / cropCircleSize; // 300 / 280 = 1.0714
+
+      // Translate origin to center of canvas
+      ctx.translate(size / 2, size / 2);
+      
+      // Apply drag offset (unscaled by zoom)
+      ctx.translate(offset.x * scaleFactor, offset.y * scaleFactor);
+      
+      // Apply rotation
+      ctx.rotate((rotation * Math.PI) / 180);
+      
+      // Apply zoom scale
+      ctx.scale(zoom, zoom);
+      
+      const imgWidth = img.width;
+      const imgHeight = img.height;
+      const maxDimension = Math.max(imgWidth, imgHeight);
+      
+      // Scale drawn size based on the viewportSize to scaleFactor ratio
+      const drawWidth = (imgWidth / maxDimension) * viewportSize * scaleFactor;
+      const drawHeight = (imgHeight / maxDimension) * viewportSize * scaleFactor;
+
+      ctx.drawImage(
+        img,
+        -drawWidth / 2,
+        -drawHeight / 2,
+        drawWidth,
+        drawHeight
+      );
+
+      const croppedBase64 = canvas.toDataURL("image/jpeg", 0.85);
+      const success = await onAvatarChange(croppedBase64);
+      if (success !== false) {
+        try {
+          if (tempOriginalImage) {
+            localStorage.setItem(originalAvatarKey, tempOriginalImage);
+          }
+          localStorage.setItem(cropParamsKey, JSON.stringify({ zoom, rotation, offset }));
+          localStorage.setItem(lastCroppedAvatarKey, croppedBase64);
+
+          // Save to history
+          const originalToStore = tempOriginalImage || imageSrc;
+          if (originalToStore) {
+            const historyJson = localStorage.getItem(historyKey);
+            let history = historyJson ? JSON.parse(historyJson) : [];
+            history = history.filter((item: any) => item.original !== originalToStore);
+            history.unshift({
+              original: originalToStore,
+              cropped: croppedBase64,
+              params: { zoom, rotation, offset },
+              timestamp: Date.now()
+            });
+            if (history.length > 5) {
+              history = history.slice(0, 5);
+            }
+            
+            try {
+              localStorage.setItem(historyKey, JSON.stringify(history));
+            } catch (historyErr) {
+              console.warn("Lịch sử đầy, tiến hành dọn dẹp dung lượng...");
+              // Remove old items one by one and retry
+              while (history.length > 1) {
+                history.pop();
+                try {
+                  localStorage.setItem(historyKey, JSON.stringify(history));
+                  break;
+                } catch (_) {}
+              }
+            }
+          }
+        } catch (err) {
+          console.error("Lỗi lưu trữ cục bộ:", err);
+          try {
+            localStorage.removeItem(historyKey);
+            if (tempOriginalImage) {
+              localStorage.setItem(originalAvatarKey, tempOriginalImage);
+            }
+          } catch (_) {
+            console.error("Không thể ghi vào localStorage ngay cả khi đã dọn dẹp!");
+          }
+        }
+
+        toast.success("Đã cập nhật ảnh đại diện thành công!");
+        setShowCropModal(false);
+        setImageSrc(null);
+      }
+    };
+  };
+
+  const handleWheel = (e: React.WheelEvent) => {
+    const zoomStep = 0.05;
+    const nextZoom = e.deltaY < 0 
+      ? Math.min(minZoom * 4, zoom + zoomStep) 
+      : Math.max(minZoom, zoom - zoomStep);
+    setZoom(nextZoom);
+  };
+
+  const handleImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    const img = e.currentTarget;
+    const imgWidth = img.naturalWidth;
+    const imgHeight = img.naturalHeight;
+    
+    if (imgWidth && imgHeight) {
+      const maxDim = Math.max(imgWidth, imgHeight);
+      const viewportSize = 360;
+      const cropCircleSize = 280;
+      
+      const renderedWidth = (imgWidth / maxDim) * viewportSize;
+      const renderedHeight = (imgHeight / maxDim) * viewportSize;
+      
+      const calculatedMinZoom = Math.max(cropCircleSize / renderedWidth, cropCircleSize / renderedHeight);
+      setMinZoom(calculatedMinZoom);
+      
+      // Determine if we are editing the CURRENT avatar
+      const lastCropped = localStorage.getItem(lastCroppedAvatarKey);
+      const isSameAvatar = lastCropped && (lastCropped === avatar);
+      const currentStoredOriginal = isSameAvatar ? localStorage.getItem(originalAvatarKey) : null;
+      const isEditingCurrent = tempOriginalImage && currentStoredOriginal && (tempOriginalImage === currentStoredOriginal);
+      
+      if (isEditingCurrent) {
+        const storedParams = localStorage.getItem(cropParamsKey);
+        if (storedParams) {
+          try {
+            const params = JSON.parse(storedParams);
+            const targetZoom = Math.max(calculatedMinZoom, params.zoom ?? calculatedMinZoom);
+            setZoom(targetZoom);
+            setRotation(params.rotation ?? 0);
+            setOffset(params.offset ?? { x: 0, y: 0 });
+            return;
+          } catch (err) {
+            // fallback
+          }
+        }
+      }
+      
+      // For any new file uploads or history gallery items:
+      // ALWAYS reset to calculatedMinZoom, rotation 0, and offset 0 to guarantee NO black borders!
+      setZoom(calculatedMinZoom);
+      setRotation(0);
+      setOffset({ x: 0, y: 0 });
     }
   };
 
@@ -302,6 +695,122 @@ function AccountSettings({
         accept="image/*"
         className="hidden"
       />
+
+      {/* Circular Crop & Edit Image Modal */}
+      <AnimatePresence>
+        {showCropModal && imageSrc && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => {
+                setShowCropModal(false);
+                setImageSrc(null);
+              }}
+              className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-[480px] bg-white dark:bg-[#2A2420] rounded-[32px] p-8 shadow-2xl border border-gray-100 dark:border-[#3D312A] z-10"
+            >
+              <h3 className="text-xl font-black text-gray-900 dark:text-[#E6DFD5] mb-2 uppercase tracking-tight">Chỉnh sửa ảnh đại diện</h3>
+              <p className="text-sm text-gray-500 dark:text-[#9A8A7A] mb-6">Phóng to, xoay hoặc kéo ảnh để căn giữa vùng cắt hình tròn.</p>
+
+              {/* Crop Canvas/Viewport area */}
+              <div className="flex justify-center mb-6">
+                <div 
+                  className="relative w-[360px] h-[360px] bg-neutral-900 rounded-[28px] overflow-hidden cursor-grab active:cursor-grabbing border border-gray-100 dark:border-[#4D3D32] flex items-center justify-center select-none"
+                  onMouseDown={handleMouseDown}
+                  onMouseMove={handleMouseMove}
+                  onMouseUp={handleMouseUp}
+                  onMouseLeave={handleMouseLeave}
+                  onTouchStart={handleTouchStart}
+                  onTouchMove={handleTouchMove}
+                  onTouchEnd={handleTouchEnd}
+                  onWheel={handleWheel}
+                >
+                  <img
+                    src={imageSrc}
+                    alt="Cắt ảnh"
+                    draggable={false}
+                    onLoad={handleImageLoad}
+                    style={{
+                      transform: `translate(${offset.x}px, ${offset.y}px) rotate(${rotation}deg) scale(${zoom})`,
+                      transition: isDragging ? 'none' : 'transform 0.1s ease-out'
+                    }}
+                    className="max-w-full max-h-full object-contain pointer-events-none select-none"
+                  />
+                  {/* Dark mask overlay with a circle highlight cutout */}
+                  <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+                    <div className="w-[280px] h-[280px] rounded-full border-2 border-dashed border-white shadow-[0_0_0_9999px_rgba(0,0,0,0.65)]" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Controls */}
+              <div className="space-y-5 mb-8">
+                {/* Zoom */}
+                <div className="space-y-2">
+                  <div className="flex justify-between text-xs font-bold text-gray-500 dark:text-[#9A8A7A] uppercase tracking-wider">
+                    <span>Thu phóng</span>
+                    <span>{zoom.toFixed(1)}x</span>
+                  </div>
+                  <input 
+                    type="range"
+                    min={minZoom}
+                    max={minZoom * 4}
+                    step="0.01"
+                    value={zoom}
+                    onChange={(e) => setZoom(parseFloat(e.target.value))}
+                    className="w-full h-1.5 bg-gray-100 dark:bg-[#4D3D32] rounded-lg appearance-none cursor-pointer accent-brand"
+                  />
+                </div>
+
+                {/* Rotation */}
+                <div className="space-y-2">
+                  <div className="flex justify-between text-xs font-bold text-gray-500 dark:text-[#9A8A7A] uppercase tracking-wider">
+                    <span>Xoay ảnh</span>
+                    <span>{rotation}°</span>
+                  </div>
+                  <input 
+                    type="range"
+                    min="0"
+                    max="360"
+                    step="1"
+                    value={rotation}
+                    onChange={(e) => setRotation(parseInt(e.target.value))}
+                    className="w-full h-1.5 bg-gray-100 dark:bg-[#4D3D32] rounded-lg appearance-none cursor-pointer accent-brand"
+                  />
+                </div>
+              </div>
+
+              {/* Buttons */}
+              <div className="flex gap-3">
+                <button 
+                  type="button"
+                  onClick={() => {
+                    setShowCropModal(false);
+                    setImageSrc(null);
+                  }}
+                  className="flex-1 py-3.5 text-gray-500 dark:text-[#9A8A7A] text-sm font-bold rounded-2xl hover:bg-gray-50 dark:hover:bg-[#3D312A] transition-colors cursor-pointer"
+                >
+                  Hủy
+                </button>
+                <button 
+                  type="button"
+                  onClick={handleCropSave}
+                  className="flex-1 py-3.5 bg-brand text-white text-sm font-bold rounded-2xl hover:bg-brand-hover transition-all shadow-lg shadow-brand/20 dark:shadow-none cursor-pointer"
+                >
+                  Xác nhận cắt
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Change Password Modal */}
       <AnimatePresence>
@@ -422,6 +931,132 @@ function AccountSettings({
         )}
       </AnimatePresence>
 
+      {/* Avatar History Gallery Modal */}
+      <AnimatePresence>
+        {showHistoryModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowHistoryModal(false)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-lg bg-white dark:bg-[#2A2420] text-[#3D312A] dark:text-[#E6DFD5] rounded-[32px] p-8 shadow-2xl border border-gray-100 dark:border-[#3D312A] z-10 overflow-hidden"
+            >
+              {/* Modal Header */}
+              <div className="flex items-center justify-between pb-4 border-b border-gray-100 dark:border-[#3D312A] mb-6">
+                <div className="w-9" />
+                <h3 className="text-lg font-black text-[#3D312A] dark:text-[#E6DFD5] uppercase tracking-tight text-center">Chọn ảnh đại diện</h3>
+                <button 
+                  onClick={() => setShowHistoryModal(false)}
+                  className="w-9 h-9 rounded-full bg-[#FDFBF7] dark:bg-[#3D312A] hover:bg-[#F4EAD5] dark:hover:bg-gray-700 flex items-center justify-center text-[#7A6A5A] dark:text-[#C8BFB0] border border-[#E6DFD5] dark:border-[#4D3D32] transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Upload Action Row */}
+              <div className="flex gap-3 mb-6">
+                <button 
+                  onClick={() => {
+                    setShowHistoryModal(false);
+                    fileInputRef.current?.click();
+                  }}
+                  className="flex-1 py-3.5 bg-brand hover:bg-brand-hover text-white font-bold text-sm rounded-2xl flex items-center justify-center gap-2 shadow-sm hover:shadow-md transition-all cursor-pointer"
+                >
+                  <Plus className="w-5 h-5" />
+                  Tải ảnh lên
+                </button>
+                {avatar && (
+                  <button 
+                    onClick={() => {
+                      setShowHistoryModal(false);
+                      const lastCropped = localStorage.getItem(lastCroppedAvatarKey);
+                      const isSameAvatar = lastCropped && (lastCropped === avatar);
+                      
+                      const storedOriginal = isSameAvatar ? localStorage.getItem(originalAvatarKey) : null;
+                      const storedParams = isSameAvatar ? localStorage.getItem(cropParamsKey) : null;
+                      
+                      setImageSrc(storedOriginal || avatar);
+                      setTempOriginalImage(storedOriginal || avatar);
+                      
+                      if (storedParams) {
+                        try {
+                          const params = JSON.parse(storedParams);
+                          setZoom(params.zoom ?? 1);
+                          setRotation(params.rotation ?? 0);
+                          setOffset(params.offset ?? { x: 0, y: 0 });
+                        } catch (e) {
+                          setZoom(1);
+                          setRotation(0);
+                          setOffset({ x: 0, y: 0 });
+                        }
+                      } else {
+                        setZoom(1);
+                        setRotation(0);
+                        setOffset({ x: 0, y: 0 });
+                      }
+                      
+                      setShowCropModal(true);
+                    }}
+                    className="w-12 h-12 bg-[#FDFBF7] dark:bg-[#3D312A] hover:bg-[#F4EAD5] dark:hover:bg-gray-700 rounded-2xl flex items-center justify-center text-[#7A6A5A] dark:text-[#C8BFB0] border border-[#E6DFD5] dark:border-[#4D3D32] transition-colors cursor-pointer"
+                  >
+                    <Pencil className="w-5 h-5" />
+                  </button>
+                )}
+              </div>
+
+              {/* Suggested Photos Section */}
+              <div className="mb-6">
+                <h4 className="text-[13px] font-bold text-gray-400 dark:text-[#9A8A7A] uppercase tracking-wider block mb-3 pl-1">Ảnh đã tải lên</h4>
+                {avatarHistory.length > 0 ? (
+                  <div className="flex gap-3 overflow-x-auto pb-3 scrollbar-none">
+                    {avatarHistory.map((item: any, idx: number) => (
+                      <div 
+                        key={idx}
+                        onClick={() => {
+                          setImageSrc(item.original);
+                          setTempOriginalImage(item.original);
+                          setZoom(item.params?.zoom ?? 1);
+                          setRotation(item.params?.rotation ?? 0);
+                          setOffset(item.params?.offset ?? { x: 0, y: 0 });
+                          setShowHistoryModal(false);
+                          setShowCropModal(true);
+                        }}
+                        className="w-24 h-24 flex-shrink-0 rounded-2xl overflow-hidden bg-gray-50 dark:bg-[#3D312A] border border-[#E6DFD5] dark:border-[#4D3D32] hover:border-brand dark:hover:border-brand cursor-pointer hover:opacity-85 relative transition-all"
+                      >
+                        <img 
+                          src={item.cropped} 
+                          alt={`Lịch sử ${idx}`} 
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-10 bg-[#FDFBF7] dark:bg-[#3D312A]/30 rounded-2xl border border-dashed border-[#E6DFD5] dark:border-[#4D3D32]">
+                    <p className="text-sm text-[#7A6A5A] dark:text-[#9A8A7A]">Bạn chưa đăng bức ảnh đại diện nào trước đây.</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Footer Xem Thêm Button */}
+              <button 
+                onClick={() => setShowHistoryModal(false)}
+                className="w-full py-3.5 bg-[#FDFBF7] dark:bg-[#3D312A] hover:bg-[#F4EAD5] dark:hover:bg-gray-700 text-[#7A6A5A] dark:text-[#C8BFB0] text-sm font-bold rounded-2xl border border-[#E6DFD5] dark:border-[#4D3D32] transition-colors cursor-pointer"
+              >
+                Xem thêm
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* Profile Info Card */}
       <div className="bg-white dark:bg-[#3D312A] rounded-[32px] p-8 shadow-sm border border-gray-100 dark:border-[#3D312A] relative overflow-hidden">
         <div className="flex justify-between items-start mb-8">
@@ -433,39 +1068,79 @@ function AccountSettings({
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
           {/* Avatar Column */}
-          <div className="flex flex-col items-center md:items-start">
-            <label className="text-[13px] font-bold text-gray-400 uppercase tracking-wider mb-4">Ảnh đại diện</label>
-            <div className="relative group">
-              <div 
-                onClick={() => fileInputRef.current?.click()}
-                className="w-32 h-32 rounded-full border-4 border-gray-50 dark:border-[#3D312A] bg-gray-100 dark:bg-[#3D312A] overflow-hidden relative cursor-pointer"
-              >
-                {avatar ? (
-                  <img src={avatar} alt="Profile" className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-brand-muted text-brand dark:text-[#E8735A]">
-                    <User className="w-12 h-12" />
+          <div className="flex flex-col items-center md:items-start w-full">
+            <div className="flex flex-col items-center w-fit">
+              <label className="text-[13px] font-bold text-gray-400 uppercase tracking-wider mb-4">Ảnh đại diện</label>
+              <div className="relative group">
+                <div 
+                  onClick={() => setShowHistoryModal(true)}
+                  className="w-32 h-32 rounded-full border-4 border-gray-50 dark:border-[#3D312A] bg-gray-100 dark:bg-[#3D312A] overflow-hidden relative cursor-pointer"
+                >
+                  {avatar ? (
+                    <img src={avatar} alt="Profile" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-brand-muted text-brand dark:text-[#E8735A]">
+                      <User className="w-12 h-12" />
+                    </div>
+                  )}
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <Camera className="text-white w-8 h-8" />
                   </div>
-                )}
-                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                  <Camera className="text-white w-8 h-8" />
+                </div>
+                <button 
+                  onClick={() => setShowHistoryModal(true)}
+                  className="absolute bottom-0 right-0 w-9 h-9 bg-brand text-white rounded-full flex items-center justify-center shadow-lg border-4 border-white dark:border-[#3D312A] hover:bg-brand-hover transition-colors cursor-pointer"
+                >
+                  <Upload className="w-4 h-4" />
+                </button>
+              </div>
+              <div className="mt-4 text-center">
+                <p className="text-[11px] text-gray-400 mb-2">JPG, PNG tối đa 5MB</p>
+                <div className="flex gap-2 justify-center flex-wrap">
+                  <button 
+                    onClick={() => setShowHistoryModal(true)}
+                    className="px-4 py-2 bg-gray-50 dark:bg-[#3D312A] text-gray-700 dark:text-[#C8BFB0] text-xs font-bold rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer border border-gray-100 dark:border-[#4D3D32]"
+                  >
+                    Thay đổi ảnh
+                  </button>
+                  {avatar && (
+                    <button 
+                      onClick={() => {
+                        const lastCropped = localStorage.getItem(lastCroppedAvatarKey);
+                        const isSameAvatar = lastCropped && (lastCropped === avatar);
+                        
+                        const storedOriginal = isSameAvatar ? localStorage.getItem(originalAvatarKey) : null;
+                        const storedParams = isSameAvatar ? localStorage.getItem(cropParamsKey) : null;
+                        
+                        setImageSrc(storedOriginal || avatar);
+                        setTempOriginalImage(storedOriginal || avatar);
+                        
+                        if (storedParams) {
+                          try {
+                            const params = JSON.parse(storedParams);
+                            setZoom(params.zoom ?? 1);
+                            setRotation(params.rotation ?? 0);
+                            setOffset(params.offset ?? { x: 0, y: 0 });
+                          } catch (e) {
+                            setZoom(1);
+                            setRotation(0);
+                            setOffset({ x: 0, y: 0 });
+                          }
+                        } else {
+                          setZoom(1);
+                          setRotation(0);
+                          setOffset({ x: 0, y: 0 });
+                        }
+                        
+                        setShowCropModal(true);
+                      }}
+                      className="px-4 py-2 bg-brand/10 text-brand dark:text-[#E8735A] text-xs font-bold rounded-xl hover:bg-brand/20 transition-colors cursor-pointer border border-brand/25"
+                    >
+                      Chỉnh sửa
+                    </button>
+                  )}
                 </div>
               </div>
-              <button 
-                onClick={() => fileInputRef.current?.click()}
-                className="absolute bottom-0 right-0 w-9 h-9 bg-brand text-white rounded-full flex items-center justify-center shadow-lg border-4 border-white dark:border-[#3D312A] hover:bg-brand-hover transition-colors cursor-pointer"
-              >
-                <Upload className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="mt-4 text-center md:text-left">
-              <p className="text-[11px] text-gray-400 mb-2">JPG, PNG tối đa 5MB</p>
-              <button 
-                onClick={() => fileInputRef.current?.click()}
-                className="px-4 py-2 bg-gray-50 dark:bg-[#3D312A] text-gray-700 dark:text-[#C8BFB0] text-xs font-bold rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer border border-gray-100 dark:border-[#4D3D32]"
-              >
-                Thay đổi ảnh
-              </button>
             </div>
           </div>
 
@@ -490,11 +1165,13 @@ function AccountSettings({
               </div>
             </div>
             <div>
-              <label className="text-[13px] font-bold text-gray-400 uppercase tracking-wider block mb-2">Email</label>
+              <label className="text-[13px] font-bold text-gray-400 uppercase tracking-wider block mb-2">
+                {isEmail ? "Email" : "User Name"}
+              </label>
               <div className="relative">
                 <input 
-                  type="email" 
-                  defaultValue={username || ""}
+                  type={isEmail ? "email" : "text"} 
+                  value={accountEmail || ""}
                   disabled
                   className="w-full bg-gray-100/50 dark:bg-[#3D312A]/50 border border-gray-100 dark:border-[#4D3D32] rounded-2xl px-5 py-3.5 text-sm font-medium text-gray-400 cursor-not-allowed"
                 />

@@ -88,6 +88,7 @@ function AuthPageContent() {
       localStorage.setItem("access_token", data.access_token);
       localStorage.setItem("user_id", data.user_id);
       localStorage.setItem("username", data.full_name || data.username || username);
+      localStorage.setItem("user_email", data.username || username);
       localStorage.setItem("login_method", "local");
       if (data.avatar_url) {
         localStorage.setItem("user_avatar", data.avatar_url);
@@ -127,6 +128,7 @@ function AuthPageContent() {
         localStorage.setItem("access_token", data.access_token);
         localStorage.setItem("user_id", data.user_id);
         localStorage.setItem("username", data.full_name || data.username);
+        localStorage.setItem("user_email", data.username);
         localStorage.setItem("login_method", "google");
         if (data.avatar_url) {
           localStorage.setItem("user_avatar", data.avatar_url);
