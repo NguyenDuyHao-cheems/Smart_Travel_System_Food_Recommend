@@ -139,6 +139,7 @@ class UserAccountRepository:
         user_id: str, 
         full_name: Optional[str] = None, 
         avatar_url: Optional[str] = None,
+        cover_url: Optional[str] = None,
         password_hash: Optional[str] = None
     ) -> Optional[UserAccount]:
         user = self.get_by_id(user_id)
@@ -149,6 +150,8 @@ class UserAccountRepository:
             user.full_name = full_name
         if avatar_url is not None:
             user.avatar_url = avatar_url
+        if cover_url is not None:
+            user.cover_url = cover_url
         if password_hash is not None:
             user.password_hash = password_hash
             

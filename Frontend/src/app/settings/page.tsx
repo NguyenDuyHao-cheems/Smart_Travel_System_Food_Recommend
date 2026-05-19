@@ -25,17 +25,20 @@ import {
   Settings,
   Plus,
   Pencil,
-  X
+  X,
+  Sparkles,
+  Heart
 } from "lucide-react";
 import { AppShell } from "../../components/AppShell";
 
-type TabType = "account" | "appearance" | "notifications" | "privacy" | "location" | "connections";
+type TabType = "account" | "personalization" | "appearance" | "notifications" | "privacy" | "location" | "connections";
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<TabType>("account");
   const [mounted, setMounted] = useState(false);
   const [username, setUsername] = useState<string | null>(null);
   const [avatar, setAvatar] = useState<string | null>(null);
+  const [cover, setCover] = useState<string | null>(null);
   const [accountEmail, setAccountEmail] = useState<string | null>(null);
 
   useEffect(() => {
@@ -44,9 +47,12 @@ export default function SettingsPage() {
     const storedUsername = localStorage.getItem("username");
     const storedAvatar = localStorage.getItem("user_avatar");
     const storedEmail = localStorage.getItem("user_email");
+    const storedUserId = localStorage.getItem("user_id") || "";
+    const storedCover = localStorage.getItem(`user_cover_${storedUserId}`);
     setUsername(storedUsername);
     setAvatar(storedAvatar);
     setAccountEmail(storedEmail);
+    setCover(storedCover);
 
     // 2. Refresh from backend to ensure data is consistent
     const fetchProfile = async () => {
@@ -65,11 +71,16 @@ export default function SettingsPage() {
           setAccountEmail(data.username);
           setUsername(data.full_name || data.username);
           setAvatar(data.avatar_url);
+          setCover(data.cover_url);
           
           localStorage.setItem("username", data.full_name || data.username);
           localStorage.setItem("user_email", data.username);
           if (data.avatar_url) {
             localStorage.setItem("user_avatar", data.avatar_url);
+          }
+          if (data.cover_url) {
+            const userId = localStorage.getItem("user_id") || "";
+            localStorage.setItem(`user_cover_${userId}`, data.cover_url);
           }
         }
       } catch (err) {
@@ -79,7 +90,7 @@ export default function SettingsPage() {
     fetchProfile();
   }, []);
 
-  const handleUpdateProfile = async (updates: { full_name?: string, avatar_url?: string, password?: string }) => {
+  const handleUpdateProfile = async (updates: { full_name?: string, avatar_url?: string, cover_url?: string, password?: string }) => {
     try {
       const token = localStorage.getItem("access_token");
       if (!token || token === "undefined" || token === "null") {
@@ -120,6 +131,11 @@ export default function SettingsPage() {
       if (updates.avatar_url) {
         setAvatar(updates.avatar_url);
         localStorage.setItem("user_avatar", updates.avatar_url);
+      }
+      if (updates.cover_url) {
+        setCover(updates.cover_url);
+        const userId = localStorage.getItem("user_id") || "";
+        localStorage.setItem(`user_cover_${userId}`, updates.cover_url);
       }
 
       // Sync other components
@@ -163,6 +179,7 @@ export default function SettingsPage() {
 
   const tabs = [
     { id: "account", label: "Tài khoản", icon: User },
+    { id: "personalization", label: "Cá nhân hóa", icon: Sparkles },
     { id: "appearance", label: "Giao diện", icon: Palette },
     { id: "privacy", label: "Quyền riêng tư", icon: Shield },
   ];
@@ -208,15 +225,18 @@ export default function SettingsPage() {
                     username={username}
                     accountEmail={accountEmail}
                     avatar={avatar}
+                    cover={cover}
                     onAvatarChange={(newAvatar) => handleUpdateProfile({ avatar_url: newAvatar })}
+                    onCoverChange={(newCover) => handleUpdateProfile({ cover_url: newCover })}
                     onNameChange={(newName) => handleUpdateProfile({ full_name: newName })}
                     onPasswordChange={(newPass) => handleUpdateProfile({ password: newPass })}
                     onDeleteAccount={handleDeleteAccount}
                   />
                 )}
+                {activeTab === "personalization" && <PersonalizationSettings />}
                 {activeTab === "appearance" && <AppearanceSettings />}
                 {activeTab === "privacy" && <PrivacySettings />}
-                {!["account", "appearance", "privacy"].includes(activeTab) && (
+                {!["account", "personalization", "appearance", "privacy"].includes(activeTab) && (
                   <div className="bg-[#FDFBF7] dark:bg-[#2A2420]/80 rounded-[32px] p-12 text-center shadow-sm border border-[#E6DFD5] dark:border-[#3D312A]">
                     <div className="w-16 h-16 bg-brand-muted dark:bg-brand/10 rounded-full flex items-center justify-center mx-auto mb-4 text-brand dark:text-[#E8735A]">
                       <Settings className="w-8 h-8" />
@@ -294,7 +314,9 @@ function AccountSettings({
   username, 
   accountEmail,
   avatar, 
+  cover,
   onAvatarChange,
+  onCoverChange,
   onNameChange,
   onPasswordChange,
   onDeleteAccount
@@ -302,12 +324,15 @@ function AccountSettings({
   username: string | null, 
   accountEmail: string | null,
   avatar: string | null,
+  cover: string | null,
   onAvatarChange: (newAvatar: string) => Promise<boolean> | any,
+  onCoverChange: (newCover: string) => Promise<boolean> | any,
   onNameChange: (newName: string) => Promise<boolean> | any,
   onPasswordChange: (newPass: string) => Promise<boolean>,
   onDeleteAccount: () => Promise<boolean>
 }) {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const coverFileInputRef = React.useRef<HTMLInputElement>(null);
 
   const userId = typeof window !== 'undefined' ? localStorage.getItem("user_id") || "guest" : "guest";
   const historyKey = `user_avatar_history_${userId}`;
@@ -334,6 +359,16 @@ function AccountSettings({
   const [offset, setOffset] = React.useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = React.useState(false);
   const [dragStart, setDragStart] = React.useState({ x: 0, y: 0 });
+
+  // Rectangular 3:1 Cover Crop State
+  const [showCoverCropModal, setShowCoverCropModal] = React.useState(false);
+  const [coverImageSrc, setCoverImageSrc] = React.useState<string | null>(null);
+  const [coverZoom, setCoverZoom] = React.useState(1);
+  const [coverMinZoom, setCoverMinZoom] = React.useState(1);
+  const [coverRotation, setCoverRotation] = React.useState(0);
+  const [coverOffset, setCoverOffset] = React.useState({ x: 0, y: 0 });
+  const [isCoverDragging, setIsCoverDragging] = React.useState(false);
+  const [coverDragStart, setCoverDragStart] = React.useState({ x: 0, y: 0 });
 
   const [showHistoryModal, setShowHistoryModal] = React.useState(false);
   const [avatarHistory, setAvatarHistory] = React.useState<any[]>([]);
@@ -404,6 +439,34 @@ function AccountSettings({
         setOffset({ x: 0, y: 0 });
         setShowCropModal(true);
         // Clear input value so selecting the same file triggers onChange next time!
+        event.target.value = "";
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleCoverFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error("File quá lớn! Vui lòng chọn ảnh dưới 5MB.");
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const base64String = reader.result as string;
+        try {
+          const optimizedBase64 = await resizeBase64Image(base64String, 1200);
+          setCoverImageSrc(optimizedBase64);
+        } catch (e) {
+          console.error("Lỗi tối ưu dung lượng ảnh:", e);
+          setCoverImageSrc(base64String);
+        }
+        setCoverZoom(1);
+        setCoverRotation(0);
+        setCoverOffset({ x: 0, y: 0 });
+        setShowCoverCropModal(true);
         event.target.value = "";
       };
       reader.readAsDataURL(file);
@@ -512,6 +575,202 @@ function AccountSettings({
 
   const handleTouchEnd = () => {
     setIsDragging(false);
+  };
+
+  const constrainCoverOffset = (x: number, y: number, currentZoom: number) => {
+    const img = document.querySelector('img[alt="Cắt ảnh bìa"]') as HTMLImageElement;
+    if (!img) return { x: 0, y: 0 };
+
+    const imgWidth = img.naturalWidth;
+    const imgHeight = img.naturalHeight;
+    if (!imgWidth || !imgHeight) return { x: 0, y: 0 };
+
+    const maxDim = Math.max(imgWidth, imgHeight);
+    const viewportSize = 360;
+    const cropWidth = 330;
+    const cropHeight = 110;
+    const borderGapX = (viewportSize - cropWidth) / 2; // 15px
+    const borderGapY = (viewportSize - cropHeight) / 2; // 125px
+
+    const renderedWidth = (imgWidth / maxDim) * viewportSize;
+    const renderedHeight = (imgHeight / maxDim) * viewportSize;
+
+    const scaledWidth = renderedWidth * currentZoom;
+    const scaledHeight = renderedHeight * currentZoom;
+
+    const maxOffsetX = Math.max(0, (scaledWidth / 2) - (viewportSize / 2 - borderGapX));
+    const minOffsetX = -maxOffsetX;
+
+    const maxOffsetY = Math.max(0, (scaledHeight / 2) - (viewportSize / 2 - borderGapY));
+    const minOffsetY = -maxOffsetY;
+
+    return {
+      x: Math.max(minOffsetX, Math.min(maxOffsetX, x)),
+      y: Math.max(minOffsetY, Math.min(maxOffsetY, y))
+    };
+  };
+
+  React.useEffect(() => {
+    if (showCoverCropModal && coverImageSrc) {
+      const timer = setTimeout(() => {
+        setCoverOffset(prev => constrainCoverOffset(prev.x, prev.y, coverZoom));
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [coverZoom, showCoverCropModal, coverImageSrc]);
+
+  React.useEffect(() => {
+    if (showCoverCropModal && coverImageSrc) {
+      const img = new Image();
+      img.src = coverImageSrc;
+      img.onload = () => {
+        const imgWidth = img.naturalWidth;
+        const imgHeight = img.naturalHeight;
+        if (imgWidth && imgHeight) {
+          const maxDim = Math.max(imgWidth, imgHeight);
+          const viewportSize = 360;
+          const cropWidth = 330;
+          const cropHeight = 110;
+          
+          const renderedWidth = (imgWidth / maxDim) * viewportSize;
+          const renderedHeight = (imgHeight / maxDim) * viewportSize;
+          
+          const calculatedMinZoom = Math.max(cropWidth / renderedWidth, cropHeight / renderedHeight);
+          setCoverMinZoom(calculatedMinZoom);
+          setCoverZoom(prev => Math.max(calculatedMinZoom, prev));
+        }
+      };
+    }
+  }, [coverImageSrc, showCoverCropModal]);
+
+  const handleCoverMouseDown = (e: React.MouseEvent) => {
+    setIsCoverDragging(true);
+    setCoverDragStart({ x: e.clientX - coverOffset.x, y: e.clientY - coverOffset.y });
+  };
+
+  const handleCoverMouseMove = (e: React.MouseEvent) => {
+    if (!isCoverDragging) return;
+    const rawX = e.clientX - coverDragStart.x;
+    const rawY = e.clientY - coverDragStart.y;
+    setCoverOffset(constrainCoverOffset(rawX, rawY, coverZoom));
+  };
+
+  const handleCoverMouseUp = () => {
+    setIsCoverDragging(false);
+  };
+
+  const handleCoverMouseLeave = () => {
+    setIsCoverDragging(false);
+  };
+
+  const handleCoverTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length === 1) {
+      setIsCoverDragging(true);
+      setCoverDragStart({
+        x: e.touches[0].clientX - coverOffset.x,
+        y: e.touches[0].clientY - coverOffset.y
+      });
+    }
+  };
+
+  const handleCoverTouchMove = (e: React.TouchEvent) => {
+    if (!isCoverDragging || e.touches.length !== 1) return;
+    const rawX = e.touches[0].clientX - coverDragStart.x;
+    const rawY = e.touches[0].clientY - coverDragStart.y;
+    setCoverOffset(constrainCoverOffset(rawX, rawY, coverZoom));
+  };
+
+  const handleCoverTouchEnd = () => {
+    setIsCoverDragging(false);
+  };
+
+  const handleCoverWheel = (e: React.WheelEvent) => {
+    const zoomStep = 0.05;
+    const nextZoom = e.deltaY < 0 
+      ? Math.min(coverMinZoom * 4, coverZoom + zoomStep) 
+      : Math.max(coverMinZoom, coverZoom - zoomStep);
+    setCoverZoom(nextZoom);
+  };
+
+  const handleCoverImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    const img = e.currentTarget;
+    const imgWidth = img.naturalWidth;
+    const imgHeight = img.naturalHeight;
+    
+    if (imgWidth && imgHeight) {
+      const maxDim = Math.max(imgWidth, imgHeight);
+      const viewportSize = 360;
+      const cropWidth = 330;
+      const cropHeight = 110;
+      
+      const renderedWidth = (imgWidth / maxDim) * viewportSize;
+      const renderedHeight = (imgHeight / maxDim) * viewportSize;
+      
+      const calculatedMinZoom = Math.max(cropWidth / renderedWidth, cropHeight / renderedHeight);
+      setCoverMinZoom(calculatedMinZoom);
+      setCoverZoom(calculatedMinZoom);
+      setCoverRotation(0);
+      setCoverOffset({ x: 0, y: 0 });
+    }
+  };
+
+  const handleCoverCropSave = () => {
+    if (!coverImageSrc) return;
+
+    const img = new Image();
+    img.src = coverImageSrc;
+    img.onload = async () => {
+      const canvas = document.createElement("canvas");
+      const targetWidth = 900;
+      const targetHeight = 300;
+      canvas.width = targetWidth;
+      canvas.height = targetHeight;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+
+      // Fill with solid white background to prevent black borders when exporting to JPEG
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, targetWidth, targetHeight);
+
+      const viewportSize = 360; // size of the screen viewport container
+      const cropWidth = 330; // size of the screen crop rectangle width
+      const scaleFactor = targetWidth / cropWidth; // 900 / 330 = 2.7272
+
+      // Translate origin to center of canvas
+      ctx.translate(targetWidth / 2, targetHeight / 2);
+      
+      // Apply drag offset
+      ctx.translate(coverOffset.x * scaleFactor, coverOffset.y * scaleFactor);
+      
+      // Apply rotation
+      ctx.rotate((coverRotation * Math.PI) / 180);
+      
+      // Apply zoom scale
+      ctx.scale(coverZoom, coverZoom);
+      
+      const imgWidth = img.width;
+      const imgHeight = img.height;
+      const maxDimension = Math.max(imgWidth, imgHeight);
+      
+      const drawWidth = (imgWidth / maxDimension) * viewportSize * scaleFactor;
+      const drawHeight = (imgHeight / maxDimension) * viewportSize * scaleFactor;
+
+      ctx.drawImage(
+        img,
+        -drawWidth / 2,
+        -drawHeight / 2,
+        drawWidth,
+        drawHeight
+      );
+
+      const croppedBase64 = canvas.toDataURL("image/jpeg", 0.85);
+      const success = await onCoverChange(croppedBase64);
+      if (success !== false) {
+        toast.success("Đã cập nhật ảnh bìa thành công!");
+        setShowCoverCropModal(false);
+        setCoverImageSrc(null);
+      }
+    };
   };
 
   const handleCropSave = () => {
@@ -695,6 +954,131 @@ function AccountSettings({
         accept="image/*"
         className="hidden"
       />
+
+      {/* Hidden Cover File Input */}
+      <input 
+        type="file" 
+        ref={coverFileInputRef}
+        onChange={handleCoverFileChange}
+        accept="image/*"
+        className="hidden"
+      />
+
+      {/* Rectangular 3:1 Cover Crop & Edit Modal */}
+      <AnimatePresence>
+        {showCoverCropModal && coverImageSrc && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => {
+                setShowCoverCropModal(false);
+                setCoverImageSrc(null);
+              }}
+              className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-[480px] bg-white dark:bg-[#2A2420] rounded-[32px] p-8 shadow-2xl border border-gray-100 dark:border-[#3D312A] z-10"
+            >
+              <h3 className="text-xl font-black text-gray-900 dark:text-[#E6DFD5] mb-2 uppercase tracking-tight text-left">Chỉnh sửa ảnh bìa</h3>
+              <p className="text-sm text-gray-500 dark:text-[#9A8A7A] mb-6 text-left">Phóng to, xoay hoặc kéo ảnh để căn giữa vùng cắt chữ nhật (tỷ lệ 3:1).</p>
+
+              {/* Crop Viewport area */}
+              <div className="flex justify-center mb-6">
+                <div 
+                  className="relative w-[360px] h-[360px] bg-neutral-900 rounded-[28px] overflow-hidden cursor-grab active:cursor-grabbing border border-gray-100 dark:border-[#4D3D32] flex items-center justify-center select-none"
+                  onMouseDown={handleCoverMouseDown}
+                  onMouseMove={handleCoverMouseMove}
+                  onMouseUp={handleCoverMouseUp}
+                  onMouseLeave={handleCoverMouseLeave}
+                  onTouchStart={handleCoverTouchStart}
+                  onTouchMove={handleCoverTouchMove}
+                  onTouchEnd={handleCoverTouchEnd}
+                  onWheel={handleCoverWheel}
+                >
+                  <img
+                    src={coverImageSrc}
+                    alt="Cắt ảnh bìa"
+                    draggable={false}
+                    onLoad={handleCoverImageLoad}
+                    style={{
+                      transform: `translate(${coverOffset.x}px, ${coverOffset.y}px) rotate(${coverRotation}deg) scale(${coverZoom})`,
+                      transition: isCoverDragging ? 'none' : 'transform 0.1s ease-out'
+                    }}
+                    className="max-w-full max-h-full object-contain pointer-events-none select-none"
+                  />
+                  {/* Rectangular mask overlay with a 3:1 cutout */}
+                  <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+                    <div className="w-[330px] h-[110px] border-2 border-dashed border-white shadow-[0_0_0_9999px_rgba(0,0,0,0.65)]" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Controls */}
+              <div className="space-y-5 mb-8">
+                {/* Zoom */}
+                <div className="space-y-2">
+                  <div className="flex justify-between text-xs font-bold text-gray-500 dark:text-[#9A8A7A] uppercase tracking-wider">
+                    <span>Thu phóng</span>
+                    <span>{coverZoom.toFixed(1)}x</span>
+                  </div>
+                  <input 
+                    type="range"
+                    min={coverMinZoom}
+                    max={coverMinZoom * 4}
+                    step="0.01"
+                    value={coverZoom}
+                    onChange={(e) => setCoverZoom(parseFloat(e.target.value))}
+                    className="w-full h-1.5 bg-gray-100 dark:bg-[#4D3D32] rounded-lg appearance-none cursor-pointer accent-brand"
+                  />
+                </div>
+
+                {/* Rotation */}
+                <div className="space-y-2">
+                  <div className="flex justify-between text-xs font-bold text-gray-500 dark:text-[#9A8A7A] uppercase tracking-wider">
+                    <span>Xoay ảnh</span>
+                    <span>{coverRotation}°</span>
+                  </div>
+                  <input 
+                    type="range"
+                    min="0"
+                    max="360"
+                    step="1"
+                    value={coverRotation}
+                    onChange={(e) => setCoverRotation(parseInt(e.target.value))}
+                    className="w-full h-1.5 bg-gray-100 dark:bg-[#4D3D32] rounded-lg appearance-none cursor-pointer accent-brand"
+                  />
+                </div>
+              </div>
+
+              {/* Buttons */}
+              <div className="flex gap-3">
+                <button 
+                  type="button"
+                  onClick={() => {
+                    setShowCoverCropModal(false);
+                    setCoverImageSrc(null);
+                  }}
+                  className="flex-1 py-3.5 text-gray-500 dark:text-[#9A8A7A] text-sm font-bold rounded-2xl hover:bg-gray-50 dark:hover:bg-[#3D312A] transition-colors cursor-pointer"
+                >
+                  Hủy
+                </button>
+                <button 
+                  type="button"
+                  onClick={handleCoverCropSave}
+                  className="flex-1 py-3.5 bg-brand text-white text-sm font-bold rounded-2xl hover:bg-brand-hover transition-all shadow-lg shadow-brand/20 dark:shadow-none cursor-pointer"
+                >
+                  Xác nhận cắt
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Circular Crop & Edit Image Modal */}
       <AnimatePresence>
@@ -1066,6 +1450,33 @@ function AccountSettings({
           </div>
         </div>
 
+        {/* Cover Photo Section */}
+        <div className="mb-8">
+          <label className="text-[13px] font-bold text-gray-400 uppercase tracking-wider block mb-3 pl-1">Ảnh bìa</label>
+          <div className="relative group rounded-3xl overflow-hidden border border-gray-100 dark:border-[#4D3D32] bg-gray-50 dark:bg-[#2A2420] h-36 flex items-center justify-center">
+            {cover ? (
+              <img src={cover} alt="Cover" className="w-full h-full object-cover" />
+            ) : (
+              <div className="absolute inset-0 bg-gradient-to-r from-brand via-pink-500 to-red-500 opacity-90 flex items-center justify-center">
+                <div className="text-white text-xs font-bold uppercase tracking-wider opacity-60">Chưa có ảnh bìa</div>
+              </div>
+            )}
+            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+              <button 
+                type="button"
+                onClick={() => coverFileInputRef.current?.click()}
+                className="px-4 py-2 bg-white/20 hover:bg-white/35 backdrop-blur-md text-white font-bold text-xs rounded-xl flex items-center gap-2 border border-white/20 transition-all cursor-pointer"
+              >
+                <Camera className="w-4 h-4" />
+                Thay đổi ảnh bìa
+              </button>
+            </div>
+          </div>
+          <div className="mt-2 pl-1">
+            <p className="text-[11px] text-gray-400">JPG, PNG tối đa 5MB. Tỷ lệ chuẩn 3:1.</p>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
           {/* Avatar Column */}
           <div className="flex flex-col items-center md:items-start w-full">
@@ -1337,6 +1748,419 @@ function PrivacySettings() {
             </div>
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+interface PersonalizationData {
+  favorite_dishes: string[];
+  spicy_level: string;
+  dietary_restrictions: string[];
+  allergies: string[];
+  budget: string;
+  location: string;
+  age: number | '';
+}
+
+const DIETARY_OPTS = [
+  { id: 'vegan', label: 'Thuần chay' },
+  { id: 'vegetarian', label: 'Ăn chay' },
+  { id: 'halal', label: 'Halal' }
+];
+
+const ALLERGY_OPTS = [
+  { id: 'milk', label: 'Sữa' },
+  { id: 'egg', label: 'Trứng' },
+  { id: 'gluten', label: 'Gluten' },
+  { id: 'seafood', label: 'Hải sản' },
+  { id: 'fish', label: 'Cá' },
+  { id: 'peanut', label: 'Đậu phộng' },
+  { id: 'soy', label: 'Đậu nành' }
+];
+
+const SPICY_OPTIONS = [
+  { id: 'none', label: '0% Cay' },
+  { id: 'mild', label: '25% Cay' },
+  { id: 'medium', label: '50% Cay' },
+  { id: 'hot', label: '75% Cay' },
+  { id: 'extra_hot', label: 'MAX LEVEL' },
+];
+
+const BUDGET_OPTIONS = [
+  { id: 'low', label: 'Bình dân', desc: 'Dưới 50k - Học sinh/Sinh viên' },
+  { id: 'medium', label: 'Tầm trung', desc: '50k - 200k - Ăn ngon, view ổn' },
+  { id: 'high', label: 'Cao cấp', desc: 'Trên 200k - Sang trọng, Fine dining' },
+];
+
+function PersonalizationSettings() {
+  const [formData, setFormData] = useState<PersonalizationData>({
+    favorite_dishes: [],
+    spicy_level: '',
+    dietary_restrictions: [],
+    allergies: [],
+    budget: '',
+    location: '',
+    age: '',
+  });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [newDish, setNewDish] = useState("");
+
+  useEffect(() => {
+    const fetchPrefs = async () => {
+      try {
+        const userId = localStorage.getItem("user_id");
+        const token = localStorage.getItem("access_token");
+        if (!userId || !token) return;
+
+        const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
+        const res = await fetch(`${API_BASE}/api/v1/users/${userId}/onboarding`, {
+          headers: {
+            "Authorization": `Bearer ${token}`
+          }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          
+          const normalizeString = (str: string) => str.normalize("NFC").toLowerCase().trim();
+          const titleCase = (str: string) => {
+            return str
+              .toLowerCase()
+              .split(' ')
+              .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+              .join(' ');
+          };
+
+          const mappedDietary = (data.dietary_restrictions || []).map(
+            (label: string) => DIETARY_OPTS.find(o => normalizeString(o.label) === normalizeString(label))?.id || label
+          );
+          if (data.is_vegetarian && !mappedDietary.includes('vegetarian') && !mappedDietary.includes('vegan')) {
+            mappedDietary.push('vegetarian');
+          }
+          const mappedAllergies = (data.allergies || []).map(
+            (label: string) => ALLERGY_OPTS.find(o => normalizeString(o.label) === normalizeString(label))?.id || label
+          );
+
+          const rawFavs = data.favorite_dishes || [];
+          const normalizedFavs = rawFavs.map((dish: string) => titleCase(dish));
+
+          setFormData({
+            favorite_dishes: normalizedFavs,
+            spicy_level: data.spicy_level || '',
+            dietary_restrictions: mappedDietary,
+            allergies: mappedAllergies,
+            budget: data.budget || '',
+            location: data.location || '',
+            age: data.age || '',
+          });
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchPrefs();
+  }, []);
+
+  const toggleDietary = (id: string) => {
+    setFormData(prev => {
+      const current = prev.dietary_restrictions;
+      if (current.includes(id)) {
+        return { ...prev, dietary_restrictions: current.filter(item => item !== id) };
+      } else {
+        return { ...prev, dietary_restrictions: [...current, id] };
+      }
+    });
+  };
+
+  const toggleAllergy = (id: string) => {
+    setFormData(prev => {
+      const current = prev.allergies;
+      if (current.includes(id)) {
+        return { ...prev, allergies: current.filter(item => item !== id) };
+      } else {
+        return { ...prev, allergies: [...current, id] };
+      }
+    });
+  };
+
+  const handleAddDish = () => {
+    if (newDish.trim()) {
+      if (formData.favorite_dishes.includes(newDish.trim())) {
+        toast.info("Món ăn này đã có trong danh sách!");
+        return;
+      }
+      setFormData(prev => ({
+        ...prev,
+        favorite_dishes: [...prev.favorite_dishes, newDish.trim()]
+      }));
+      setNewDish("");
+    }
+  };
+
+  const handleRemoveDish = (dish: string) => {
+    setFormData(prev => ({
+      ...prev,
+      favorite_dishes: prev.favorite_dishes.filter(d => d !== dish)
+    }));
+  };
+
+  const handleSave = async () => {
+    if (formData.favorite_dishes.length < 3) {
+      toast.error("Vui lòng chọn hoặc tự nhập ít nhất 3 món ăn yêu thích!");
+      return;
+    }
+    if (!formData.spicy_level) {
+      toast.error("Vui lòng chọn mức độ cay!");
+      return;
+    }
+    if (!formData.budget) {
+      toast.error("Vui lòng chọn ngân sách!");
+      return;
+    }
+    if (!formData.location) {
+      toast.error("Vui lòng điền khu vực sinh sống!");
+      return;
+    }
+    if (!formData.age || formData.age < 13 || formData.age > 120) {
+      toast.error("Độ tuổi chưa hợp lệ (13 - 120)!");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const userId = localStorage.getItem("user_id");
+      const token = localStorage.getItem("access_token");
+      if (!userId || !token) return;
+
+      const payload = {
+        ...formData,
+        dietary_restrictions: formData.dietary_restrictions.map(
+          id => DIETARY_OPTS.find(o => o.id === id)?.label || id
+        ),
+        allergies: formData.allergies.map(
+          id => ALLERGY_OPTS.find(o => o.id === id)?.label || id
+        ),
+        is_vegetarian: formData.dietary_restrictions.includes('vegan') || formData.dietary_restrictions.includes('vegetarian'),
+      };
+
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
+      const res = await fetch(`${API_BASE}/api/v1/users/${userId}/onboarding`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
+      });
+      if (res.ok) {
+        toast.success("Cập nhật sở thích khẩu vị AI thành công!");
+      } else {
+        toast.error("Cập nhật thất bại!");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Có lỗi xảy ra khi lưu!");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const SUGGESTED_DISHES = ["Cơm Tấm", "Phở", "Bún Bò Huế", "Bánh Mì", "Hủ Tiếu", "Mì Quảng", "Pizza", "Sushi", "Gà Rán", "Trà Sữa"];
+
+  return (
+    <div className="bg-white dark:bg-[#3D312A] rounded-[32px] p-8 shadow-sm border border-gray-100 dark:border-[#3D312A] space-y-6">
+      <div>
+        <h2 className="text-lg font-bold text-gray-900 dark:text-[#E6DFD5] mb-1">Cá nhân hóa AI</h2>
+        <p className="text-sm text-gray-500 dark:text-[#9A8A7A]">Thiết lập sở thích ăn uống để AI gợi ý chuẩn vị nhất cho bạn.</p>
+      </div>
+
+      <div className="space-y-6">
+        {/* Favorite Dishes */}
+        <div>
+          <label className="text-[13px] font-bold text-gray-400 uppercase tracking-wider block mb-2">Món ăn yêu thích (Chọn hoặc tự nhập ít nhất 3 món)</label>
+          <div className="flex gap-2 mb-3">
+            <input 
+              type="text" 
+              value={newDish}
+              onChange={(e) => setNewDish(e.target.value)}
+              placeholder="Nhập tên món ăn ví dụ: Bún chả..."
+              className="flex-1 bg-gray-50 dark:bg-[#2A2420]/50 border border-gray-100 dark:border-[#4D3D32] rounded-2xl px-5 py-3 text-sm font-medium text-gray-900 dark:text-[#E6DFD5] focus:ring-4 focus:ring-brand/10 dark:focus:ring-[#E8735A]/10 focus:border-brand dark:focus:border-[#E8735A] outline-none transition-all"
+              onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddDish())}
+            />
+            <button 
+              onClick={handleAddDish}
+              className="px-6 py-2 bg-brand hover:bg-brand-hover text-white text-sm font-bold rounded-2xl transition-all shadow-md active:scale-95 cursor-pointer shrink-0"
+            >
+              Thêm
+            </button>
+          </div>
+
+          {/* Selected tag display */}
+          <div className="flex flex-wrap gap-2 mb-3">
+            {formData.favorite_dishes.map((dish, idx) => (
+              <span 
+                key={idx} 
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-brand/5 dark:bg-[#E8735A]/15 text-brand dark:text-[#E8735A] border border-brand/20 dark:border-[#E8735A]/30 shadow-sm dark:shadow-[0_0_12px_rgba(232,115,90,0.2)]"
+              >
+                {dish}
+                <button onClick={() => handleRemoveDish(dish)} className="hover:text-brand-hover cursor-pointer ml-1 font-bold">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </span>
+            ))}
+          </div>
+
+          {/* Suggested tags */}
+          <div className="space-y-1.5">
+            <p className="text-[11px] text-gray-400">Gợi ý phổ biến:</p>
+            <div className="flex flex-wrap gap-1.5">
+              {SUGGESTED_DISHES.map((dish, idx) => {
+                const isSelected = formData.favorite_dishes.includes(dish);
+                return (
+                  <button
+                    key={idx}
+                    disabled={isSelected}
+                    onClick={() => {
+                      setFormData(prev => ({ ...prev, favorite_dishes: [...prev.favorite_dishes, dish] }));
+                    }}
+                    className={`px-3 py-1 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                      isSelected 
+                        ? "bg-gray-150 dark:bg-[#4D3D32] text-gray-400 border-gray-200 dark:border-[#4D3D32] cursor-not-allowed" 
+                        : "bg-[#FDFBF7] dark:bg-[#2A2420]/80 text-[#7A6A5A] dark:text-[#E6DFD5] border-[#E6DFD5] dark:border-[#4D3D32] hover:border-brand dark:hover:border-[#E8735A] hover:text-brand dark:hover:text-[#E8735A]"
+                    }`}
+                  >
+                    + {dish}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Spicy Preference */}
+        <div>
+          <label className="text-[13px] font-bold text-gray-400 uppercase tracking-wider block mb-2">Độ cay ưu tiên</label>
+          <div className="flex flex-wrap gap-2">
+            {SPICY_OPTIONS.map((opt) => (
+              <button
+                key={opt.id}
+                onClick={() => setFormData(prev => ({ ...prev, spicy_level: opt.id }))}
+                className={`px-4 py-2.5 rounded-2xl text-xs font-bold border transition-all cursor-pointer ${
+                  formData.spicy_level === opt.id
+                    ? "bg-red-600 text-white border-red-650 shadow-md shadow-red-500/20 dark:bg-red-500 dark:border-red-500 dark:shadow-[0_0_15px_rgba(239,68,68,0.55)]"
+                    : "bg-[#FDFBF7] dark:bg-[#2A2420]/80 text-[#7A6A5A] dark:text-[#E6DFD5] border-[#E6DFD5] dark:border-[#4D3D32] hover:border-red-500 hover:text-red-500 dark:hover:border-red-500 dark:hover:text-red-400"
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Budget Preference */}
+        <div>
+          <label className="text-[13px] font-bold text-gray-400 uppercase tracking-wider block mb-2">Mức giá trung bình</label>
+          <div className="flex flex-col gap-2">
+            {BUDGET_OPTIONS.map((opt) => (
+              <button
+                key={opt.id}
+                onClick={() => setFormData(prev => ({ ...prev, budget: opt.id }))}
+                className={`w-full p-4 rounded-2xl text-left border transition-all cursor-pointer ${
+                  formData.budget === opt.id
+                    ? "bg-brand/5 border-brand text-brand dark:bg-[#E8735A]/15 dark:border-[#E8735A]/60 dark:text-[#E8735A] dark:shadow-[0_0_15px_rgba(232,115,90,0.35)]"
+                    : "bg-[#FDFBF7] dark:bg-[#2A2420]/80 text-[#7A6A5A] dark:text-[#E6DFD5] border-[#E6DFD5] dark:border-[#4D3D32] hover:bg-[#F4EAD5] hover:dark:bg-[#3D312A] hover:border-brand dark:hover:border-[#E8735A]"
+                }`}
+              >
+                <div className="font-bold text-sm">{opt.label}</div>
+                <div className="text-xs text-gray-400 mt-1">{opt.desc}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Dietary Restrictions */}
+        <div>
+          <label className="text-[13px] font-bold text-gray-400 uppercase tracking-wider block mb-2">Chế độ ăn kiêng</label>
+          <div className="flex flex-wrap gap-2">
+            {DIETARY_OPTS.map((opt) => {
+              const isSelected = formData.dietary_restrictions.includes(opt.id);
+              return (
+                <button
+                  key={opt.id}
+                  onClick={() => toggleDietary(opt.id)}
+                  className={`px-4 py-2.5 rounded-2xl text-xs font-bold border transition-all cursor-pointer ${
+                    isSelected
+                      ? "bg-emerald-50 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500 dark:border-emerald-400 shadow-md shadow-emerald-500/20 dark:shadow-[0_0_15px_rgba(52,211,153,0.55)]"
+                      : "bg-[#FDFBF7] dark:bg-[#2A2420]/80 text-[#7A6A5A] dark:text-[#E6DFD5] border-[#E6DFD5] dark:border-[#4D3D32] hover:bg-[#F4EAD5] hover:dark:bg-[#3D312A] hover:border-emerald-500 hover:text-emerald-500 dark:hover:border-emerald-500 dark:hover:text-emerald-400"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Allergies */}
+        <div>
+          <label className="text-[13px] font-bold text-gray-400 uppercase tracking-wider block mb-2">Dị ứng thực phẩm</label>
+          <div className="flex flex-wrap gap-2">
+            {ALLERGY_OPTS.map((opt) => {
+              const isSelected = formData.allergies.includes(opt.id);
+              return (
+                <button
+                  key={opt.id}
+                  onClick={() => toggleAllergy(opt.id)}
+                  className={`px-4 py-2.5 rounded-2xl text-xs font-bold border transition-all cursor-pointer ${
+                    isSelected
+                      ? "bg-red-50 dark:bg-red-500/20 text-red-700 dark:text-red-300 border-red-500 dark:border-red-400 shadow-md shadow-red-500/20 dark:shadow-[0_0_15px_rgba(239,68,68,0.55)]"
+                      : "bg-[#FDFBF7] dark:bg-[#2A2420]/80 text-[#7A6A5A] dark:text-[#E6DFD5] border-[#E6DFD5] dark:border-[#4D3D32] hover:bg-[#F4EAD5] hover:dark:bg-[#3D312A] hover:border-red-500 hover:text-red-500 dark:hover:border-red-500 dark:hover:text-red-400"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Location & Age */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="text-[13px] font-bold text-gray-400 uppercase tracking-wider block mb-2">Khu vực sinh sống</label>
+            <input 
+              type="text" 
+              value={formData.location}
+              onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
+              placeholder="Ví dụ: Quận 1, TP. HCM..."
+              className="w-full bg-gray-50 dark:bg-[#2A2420]/50 border border-gray-100 dark:border-[#4D3D32] rounded-2xl px-5 py-3.5 text-sm font-medium text-gray-900 dark:text-[#E6DFD5] focus:ring-4 focus:ring-brand/10 dark:focus:ring-[#E8735A]/10 focus:border-brand dark:focus:border-[#E8735A] outline-none transition-all"
+            />
+          </div>
+          <div>
+            <label className="text-[13px] font-bold text-gray-400 uppercase tracking-wider block mb-2">Độ tuổi</label>
+            <input 
+              type="number" 
+              value={formData.age}
+              onChange={(e) => setFormData(prev => ({ ...prev, age: e.target.value ? parseInt(e.target.value) : '' }))}
+              placeholder="Nhập tuổi..."
+              className="w-full bg-gray-50 dark:bg-[#2A2420]/50 border border-gray-100 dark:border-[#4D3D32] rounded-2xl px-5 py-3.5 text-sm font-medium text-gray-900 dark:text-[#E6DFD5] focus:ring-4 focus:ring-brand/10 dark:focus:ring-[#E8735A]/10 focus:border-brand dark:focus:border-[#E8735A] outline-none transition-all"
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="pt-4 border-t border-gray-100 dark:border-[#3D312A] flex justify-end">
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="px-6 py-3 bg-brand hover:bg-brand-hover disabled:opacity-50 text-white text-sm font-bold rounded-2xl transition-all shadow-md active:scale-95 cursor-pointer flex items-center gap-2"
+        >
+          <Sparkles className="w-4 h-4" />
+          {saving ? "Đang đồng bộ..." : "Cập nhật sở thích AI"}
+        </button>
       </div>
     </div>
   );

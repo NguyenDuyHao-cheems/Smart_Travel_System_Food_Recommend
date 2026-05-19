@@ -15,7 +15,8 @@ import {
   UtensilsCrossed,
   Award,
   Calendar,
-  Trash2
+  Trash2,
+  Sparkles
 } from "lucide-react";
 import { AppShell } from "../../components/AppShell";
 import { useRouter } from "next/navigation";
@@ -95,6 +96,7 @@ export default function ProfilePage() {
   const router = useRouter();
   const [username, setUsername] = useState<string | null>(null);
   const [avatar, setAvatar] = useState<string | null>(null);
+  const [cover, setCover] = useState<string | null>(null);
   const [joinDate, setJoinDate] = useState<string>("");
   const [mounted, setMounted] = useState(false);
   const [badges, setBadges] = useState<Record<string, { unlocked: boolean; progress: number; target: number }>>({});
@@ -111,6 +113,16 @@ export default function ProfilePage() {
   const [reviewsCount, setReviewsCount] = useState<number>(0);
   const [discoveriesCount, setDiscoveriesCount] = useState<number>(0);
   const [streakCount, setStreakCount] = useState<number>(0);
+
+  const [personalization, setPersonalization] = useState<{
+    favorite_dishes: string[];
+    spicy_level: string;
+    dietary_restrictions: string[];
+    allergies: string[];
+    budget: string;
+    location: string;
+    age: number | '';
+  } | null>(null);
   const handleActivityClick = (activity: RecentActivity) => {
     if (activity.icon_type === "heart" && activity.res_name) {
       router.push(`/favorites?highlight=${encodeURIComponent(activity.res_name)}`);
@@ -145,6 +157,8 @@ export default function ProfilePage() {
     setMounted(true);
     setUsername(localStorage.getItem("username"));
     setAvatar(localStorage.getItem("user_avatar"));
+    const userId = localStorage.getItem("user_id") || "";
+    setCover(localStorage.getItem(`user_cover_${userId}`));
     
     // Load active badge from localStorage on mount
     const savedBadge = localStorage.getItem("active_badge");
@@ -175,6 +189,11 @@ export default function ProfilePage() {
             const month = date.getMonth() + 1;
             const year = date.getFullYear();
             setJoinDate(`ngày ${day} tháng ${month}, ${year}`);
+          }
+          if (data.cover_url) {
+            setCover(data.cover_url);
+            const userId = localStorage.getItem("user_id") || "";
+            localStorage.setItem(`user_cover_${userId}`, data.cover_url);
           }
           if (data.badges) {
             setBadges(data.badges);
@@ -210,6 +229,20 @@ export default function ProfilePage() {
           if (data.streak_count !== undefined) {
             setStreakCount(data.streak_count);
           }
+
+          // Fetch onboarding personalization preferences
+          const userId = localStorage.getItem("user_id") || "";
+          if (userId) {
+            const onboardingRes = await fetch(`${API_BASE}/api/v1/users/${userId}/onboarding`, {
+              headers: {
+                "Authorization": `Bearer ${token}`
+              }
+            });
+            if (onboardingRes.ok) {
+              const obData = await onboardingRes.json();
+              setPersonalization(obData);
+            }
+          }
         } else if (res.status === 401) {
           window.dispatchEvent(new Event("auth-session-expired"));
         }
@@ -230,8 +263,14 @@ export default function ProfilePage() {
             {/* Profile Header Card */}
             <div className="bg-white dark:bg-[#3D312A] rounded-[40px] shadow-sm border border-gray-100 dark:border-[#3D312A] overflow-hidden mb-8">
               {/* Cover Image Placeholder */}
-              <div className="h-48 bg-gradient-to-r from-brand via-pink-500 to-red-500 relative">
-                <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
+              <div className="h-48 relative overflow-hidden bg-[#3D312A]">
+                {cover ? (
+                  <img src={cover} alt="Cover" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="absolute inset-0 bg-gradient-to-r from-brand via-pink-500 to-red-500 opacity-90">
+                    <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
+                  </div>
+                )}
               </div>
               
               <div className="px-8 pb-8 relative">
@@ -307,7 +346,7 @@ export default function ProfilePage() {
                   
                   <div className="flex gap-3">
                     <button 
-                      onClick={() => router.push("/onboarding?edit=true")}
+                      onClick={() => router.push("/settings")}
                       className="px-6 py-2.5 bg-brand text-white text-sm font-bold rounded-2xl hover:bg-brand-hover transition-all shadow-md shadow-brand/20 dark:shadow-none active:scale-95 cursor-pointer"
                     >
                       Chỉnh sửa hồ sơ
@@ -432,6 +471,94 @@ export default function ProfilePage() {
                     })()}
                   </div>
                 </div>
+
+                {/* Onboarding Preferences Card */}
+                {personalization && (
+                  <div className="bg-white dark:bg-[#3D312A] rounded-[32px] p-8 shadow-sm border border-gray-100 dark:border-[#3D312A] space-y-5">
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-[#E6DFD5] flex items-center gap-2">
+                      <Sparkles className="w-5 h-5 text-brand dark:text-[#E8735A]" />
+                      Khẩu vị & Dinh dưỡng AI
+                    </h3>
+                    
+                    {/* Favorite Dishes */}
+                    {personalization.favorite_dishes && personalization.favorite_dishes.length > 0 && (
+                      <div>
+                        <span className="text-[11px] font-black text-gray-400 dark:text-[#9A8A7A] uppercase tracking-wider block mb-2">Món ăn yêu thích</span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {personalization.favorite_dishes.map((dish, i) => (
+                            <span key={i} className="px-2.5 py-1 bg-brand/5 border border-brand/20 dark:border-brand/10 text-brand dark:text-[#E8735A] text-xs font-bold rounded-xl">
+                              {dish}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Dietary Restrictions */}
+                    {personalization.dietary_restrictions && personalization.dietary_restrictions.length > 0 && (
+                       <div>
+                         <span className="text-[11px] font-black text-gray-400 dark:text-[#9A8A7A] uppercase tracking-wider block mb-2">Chế độ ăn kiêng</span>
+                         <div className="flex flex-wrap gap-1.5">
+                           {personalization.dietary_restrictions.map((diet, i) => (
+                             <span key={i} className="px-2.5 py-1 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-100 dark:border-emerald-500/20 text-emerald-600 dark:text-emerald-300 text-xs font-bold rounded-xl shadow-sm dark:shadow-[0_0_8px_rgba(52,211,153,0.15)]">
+                               {diet}
+                             </span>
+                           ))}
+                         </div>
+                       </div>
+                     )}
+ 
+                     {/* Allergies */}
+                     {personalization.allergies && personalization.allergies.length > 0 && (
+                       <div>
+                         <span className="text-[11px] font-black text-gray-400 dark:text-[#9A8A7A] uppercase tracking-wider block mb-2">Dị ứng của bạn</span>
+                         <div className="flex flex-wrap gap-1.5">
+                           {personalization.allergies.map((allergy, i) => (
+                             <span key={i} className="px-2.5 py-1 bg-red-50 dark:bg-red-500/10 border border-red-100 dark:border-red-500/20 text-red-600 dark:text-red-300 text-xs font-bold rounded-xl shadow-sm dark:shadow-[0_0_8px_rgba(239,68,68,0.15)]">
+                               ⚠️ {allergy}
+                             </span>
+                           ))}
+                         </div>
+                       </div>
+                     )}
+
+                    {/* Budget & Spicy & Age */}
+                    <div className="grid grid-cols-2 gap-3 pt-2 border-t border-gray-50 dark:border-gray-800">
+                      <div>
+                        <span className="text-[10px] font-bold text-gray-400 dark:text-[#9A8A7A] uppercase tracking-wider block">Ưu tiên cay</span>
+                        <span className="text-xs font-bold text-gray-800 dark:text-[#E6DFD5] block mt-0.5">
+                          {personalization.spicy_level === 'none' && '🌶️ Không cay'}
+                          {personalization.spicy_level === 'mild' && '🌶️ Cay ít (25%)'}
+                          {personalization.spicy_level === 'medium' && '🌶️ Cay vừa (50%)'}
+                          {personalization.spicy_level === 'hot' && '🌶️ Cay nồng (75%)'}
+                          {personalization.spicy_level === 'extra_hot' && '🌶️ Siêu cay'}
+                          {!personalization.spicy_level && 'Chưa cập nhật'}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] font-bold text-gray-400 dark:text-[#9A8A7A] uppercase tracking-wider block">Ngân sách</span>
+                        <span className="text-xs font-bold text-gray-800 dark:text-[#E6DFD5] block mt-0.5">
+                          {personalization.budget === 'low' && '💵 Bình dân'}
+                          {personalization.budget === 'medium' && '💵 Tầm trung'}
+                          {personalization.budget === 'high' && '💵 Cao cấp'}
+                          {!personalization.budget && 'Chưa cập nhật'}
+                        </span>
+                      </div>
+                      <div className="mt-2">
+                        <span className="text-[10px] font-bold text-gray-400 dark:text-[#9A8A7A] uppercase tracking-wider block">Khu vực</span>
+                        <span className="text-xs font-bold text-gray-800 dark:text-[#E6DFD5] truncate block mt-0.5">
+                          📍 {personalization.location || 'Chưa cập nhật'}
+                        </span>
+                      </div>
+                      <div className="mt-2">
+                        <span className="text-[10px] font-bold text-gray-400 dark:text-[#9A8A7A] uppercase tracking-wider block">Độ tuổi</span>
+                        <span className="text-xs font-bold text-gray-800 dark:text-[#E6DFD5] block mt-0.5">
+                          {personalization.age ? `🎂 ${personalization.age} tuổi` : 'Chưa cập nhật'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Right Column: Activity */}
