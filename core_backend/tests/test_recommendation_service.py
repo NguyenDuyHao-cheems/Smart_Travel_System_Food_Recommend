@@ -54,6 +54,73 @@ async def test_recommend_few_candidates_skips_rerank():
         assert result["results"] == candidates
 
 @pytest.mark.asyncio
+async def test_recommend_basic_mode_blends_saved_user_preferences():
+    db = MagicMock()
+    query_vector = [1.0, 1.0]
+    user_vector = [0.0, 0.0]
+    with patch("app.services.recommendation_service.get_user_allergies", return_value=[]), \
+         patch("app.services.recommendation_service.get_user_preferences_vector", return_value=user_vector), \
+         patch("app.services.recommendation_service.RetrievalService") as mock_retrieval_cls:
+
+        mock_retrieval = MagicMock()
+        mock_retrieval.get_candidates.return_value = []
+        mock_retrieval_cls.return_value = mock_retrieval
+
+        await recommend("mi cay", "user-1", db, query_vector=query_vector)
+
+        assert mock_retrieval.get_candidates.call_args.kwargs["query_vector"] == [0.85, 0.85]
+
+@pytest.mark.asyncio
+async def test_recommend_emotion_mode_ignores_saved_user_preferences_for_retrieval():
+    db = MagicMock()
+    query_vector = [1.0, 1.0]
+    user_vector = [0.0, 0.0]
+    with patch("app.services.recommendation_service.get_user_allergies", return_value=[]), \
+         patch("app.services.recommendation_service.get_user_preferences_vector", return_value=user_vector) as mock_preferences, \
+         patch("app.services.recommendation_service.RetrievalService") as mock_retrieval_cls:
+
+        mock_retrieval = MagicMock()
+        mock_retrieval.get_candidates.return_value = []
+        mock_retrieval_cls.return_value = mock_retrieval
+
+        await recommend(
+            "mi cay",
+            "user-1",
+            db,
+            query_vector=query_vector,
+            search_mode="emotion",
+        )
+
+        mock_preferences.assert_not_called()
+        assert mock_retrieval.get_candidates.call_args.kwargs["query_vector"] == query_vector
+
+@pytest.mark.asyncio
+async def test_recommend_few_candidates_emotion_mode_applies_sentiment_before_skip():
+    db = MagicMock()
+    candidates = [
+        DummyCandidate(id="negative", distance=0.12, rating_avg=4.0, total_reviews=80, sentiment_score=-0.8),
+        DummyCandidate(id="positive", distance=0.14, rating_avg=4.0, total_reviews=80, sentiment_score=0.9),
+    ]
+    with patch("app.services.recommendation_service.get_user_allergies", return_value=[]), \
+         patch("app.services.recommendation_service.get_user_preferences_vector", return_value=None), \
+         patch("app.services.recommendation_service.RetrievalService") as mock_retrieval_cls, \
+         patch("app.services.recommendation_service.annotate_allergy", return_value=(candidates, 0)):
+
+        mock_retrieval = MagicMock()
+        mock_retrieval.get_candidates.return_value = candidates
+        mock_retrieval_cls.return_value = mock_retrieval
+
+        result = await recommend(
+            "mi cay",
+            "user-1",
+            db,
+            query_vector=[0.1] * 768,
+            search_mode="emotion",
+        )
+
+        assert [c.id for c in result["results"]] == ["positive", "negative"]
+
+@pytest.mark.asyncio
 async def test_recommend_happy_path_with_rerank():
     db = MagicMock()
     # 4 candidates (enough to trigger LambdaMART rerank)
@@ -111,6 +178,59 @@ async def test_recommend_happy_path_with_rerank():
         assert results[2].ranking_score == 0.75
         assert results[3].id == "2"
         assert results[3].ranking_score == 0.65
+
+@pytest.mark.asyncio
+async def test_recommend_emotion_mode_pre_ranks_before_lambdamart_without_post_override():
+    db = MagicMock()
+    candidates = [
+        DummyCandidate(id="1", distance=0.12, rating_avg=4.0, total_reviews=80, sentiment_score=-0.8),
+        DummyCandidate(id="2", distance=0.14, rating_avg=4.0, total_reviews=80, sentiment_score=0.9),
+        DummyCandidate(id="3", distance=0.20, rating_avg=4.0, total_reviews=20, sentiment_score=0.3),
+    ]
+    featured = [
+        {"res_id": "2", "similarity_score": 86},
+        {"res_id": "3", "similarity_score": 80},
+        {"res_id": "1", "similarity_score": 88},
+    ]
+
+    class MockResponse:
+        def __init__(self, status_code, json_data):
+            self.status_code = status_code
+            self._json_data = json_data
+        def json(self):
+            return self._json_data
+
+    with patch("app.services.recommendation_service.get_user_allergies", return_value=[]), \
+         patch("app.services.recommendation_service.get_user_preferences_vector", return_value=None), \
+         patch("app.services.recommendation_service.RetrievalService") as mock_retrieval_cls, \
+         patch("app.services.recommendation_service.annotate_allergy", return_value=(candidates, 0)), \
+         patch("app.services.recommendation_service.FeatureService") as mock_feature_cls, \
+         patch("httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post:
+
+        mock_retrieval = MagicMock()
+        mock_retrieval.get_candidates.return_value = candidates
+        mock_retrieval_cls.return_value = mock_retrieval
+
+        mock_feature = MagicMock()
+        mock_feature.build_integer_features.return_value = featured
+        mock_feature_cls.return_value = mock_feature
+
+        mock_post.return_value = MockResponse(
+            status_code=200,
+            json_data={"ranked_ids": ["1", "2", "3"], "scores": [0.95, 0.85, 0.75]},
+        )
+
+        result = await recommend(
+            "mi cay",
+            "user-1",
+            db,
+            query_vector=[0.1] * 768,
+            search_mode="emotion",
+        )
+
+        feature_candidates = mock_feature.build_integer_features.call_args.args[0]
+        assert [c.id for c in feature_candidates] == ["2", "3", "1"]
+        assert [c.id for c in result["results"]] == ["1", "2", "3"]
 
 @pytest.mark.asyncio
 async def test_recommend_ai_engine_down_falls_back_gracefully():

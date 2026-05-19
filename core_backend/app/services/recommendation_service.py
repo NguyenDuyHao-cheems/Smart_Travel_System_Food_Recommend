@@ -39,9 +39,16 @@ async def recommend(
       3. Trả về danh sách res_id đã sắp xếp.
     """
     user_allergies = get_user_allergies(db, user_id) if user_id else []
-    user_vector = get_user_preferences_vector(db, user_id) if user_id else None
+    is_emotion_search = (search_mode or "").lower() == "emotion"
+    user_vector = (
+        None
+        if is_emotion_search
+        else get_user_preferences_vector(db, user_id) if user_id else None
+    )
 
     # Kết hợp vector: ưu tiên query hiện tại (85%) để tránh bị lệch quá nhiều do sở thích user (15%)
+    # Emotion search keeps the current query vector untouched so the user's
+    # saved preferences do not outweigh the immediate emotional intent.
     final_vector = query_vector
     if query_vector and user_vector and len(query_vector) == len(user_vector):
         final_vector = [(0.85 * q) + (0.15 * u) for q, u in zip(query_vector, user_vector)]
@@ -78,6 +85,8 @@ async def recommend(
     removed = [] # Legacy compatibility
 
     # Không còn block 'if not safe_candidates' vì ta không còn loại bỏ quán nào
+    if is_emotion_search:
+        safe_candidates = _apply_sentiment_search_boost(safe_candidates)
 
     # --- BƯỚC MỚI: Gọi AI Engine để rerank ---
     COSINE_THRESHOLD = 0.80  # distance <= 0.80 tương đương sim >= 20%
@@ -155,9 +164,6 @@ async def recommend(
     # ── Giải pháp F: Adaptive Distance Decay (Density-Aware) ────────────────
     safe_candidates = _apply_distance_decay(safe_candidates)
 
-    if (search_mode or "").lower() == "emotion":
-        safe_candidates = _apply_sentiment_search_boost(safe_candidates)
-
     return {
         "results": safe_candidates,
         "filtered_out_count": len(removed),
@@ -225,10 +231,10 @@ def _apply_distance_decay(candidates):
 
 def _apply_sentiment_search_boost(candidates):
     """
-    Review-based sentiment mode.
+    Review-based sentiment pre-ranking for emotion search mode.
 
-    Semantic relevance remains the largest signal, but candidates with strong
-    positive review sentiment and enough review volume move up.
+    This runs before LambdaMART so sentiment can shape candidate ordering and
+    selection without overriding the final learned rerank step.
     """
     for c in candidates:
         if hasattr(c, "distance") and c.distance is not None:
