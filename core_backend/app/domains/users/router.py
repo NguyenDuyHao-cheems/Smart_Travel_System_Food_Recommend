@@ -439,6 +439,7 @@ def get_current_user_profile(
         username=current_user.username,
         full_name=current_user.full_name,
         avatar_url=current_user.avatar_url,
+        cover_url=current_user.cover_url,
         created_at=current_user.created_at,
         badges=badges_data,
         culinary_vibes=vibes_list,

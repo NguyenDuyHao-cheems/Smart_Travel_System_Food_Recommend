@@ -195,8 +195,12 @@ function HeroResultCard({ item, sessionId, searchMode, onAddCollection, isModalO
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-brand-muted dark:bg-brand/20 text-brand-hover dark:text-[#E6DFD5]">
               <Sparkles className="w-3.5 h-3.5" /> AI TOP PICK
             </span>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-brand-muted dark:bg-brand/15 text-brand-hover dark:text-[#E6DFD5]">
-              🤖 {item.match} Match
+            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap ${
+              (!isNaN(parseInt(item.match)) && parseInt(item.match) >= 90)
+                ? 'bg-green-500 text-white'
+                : 'bg-brand-muted dark:bg-brand/15 text-brand-hover dark:text-[#E6DFD5]'
+            }`}>
+              🤖 {/^\d+%?$/.test(item.match) ? `${item.match} Match` : item.match}
             </span>
             {item.allergen_warning && item.allergen_warning.length > 0 && (
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-500/30">
@@ -420,8 +424,8 @@ function SmallResultCard({ item, index, sessionId, searchMode, onAddCollection, 
         </div>
 
         <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between">
-          <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold ${matchColor} text-white`}>
-            🤖 {item.match} Match
+          <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold ${matchColor} text-white whitespace-nowrap`}>
+            🤖 {/^\d+%?$/.test(item.match) ? `${item.match} Match` : item.match}
           </span>
           {item.allergen_warning && item.allergen_warning.length > 0 && (
             <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-500 text-white shadow-sm border border-amber-600">
@@ -429,8 +433,8 @@ function SmallResultCard({ item, index, sessionId, searchMode, onAddCollection, 
             </span>
           )}
           {item.dist && (
-            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-semibold bg-white/90 dark:bg-[#2A2420]/80 text-brand-hover dark:text-[#E6DFD5] backdrop-blur-sm">
-              📍 {item.dist} {item.total_reviews !== undefined && item.total_reviews > 0 && `(${item.total_reviews})`}
+            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-semibold bg-white/90 dark:bg-[#2A2420]/80 text-brand-hover dark:text-[#E6DFD5] backdrop-blur-sm whitespace-nowrap">
+              📍 {item.dist}
             </span>
           )}
         </div>
@@ -736,176 +740,180 @@ function ResultPageContent() {
     <AppShell>
       {isSearching && <SearchLoadingOverlay message={searchLoadingMsg} />}
 
-      <div className="px-4 md:px-8 py-4 border-b border-[#E6DFD5]/60 dark:border-[#3D312A]/60 bg-[#FDFBF7]/80 dark:bg-[#2A2420]/80 backdrop-blur-sm flex flex-wrap items-center gap-x-4 gap-y-3">
-        <BudgetSelector
-          value={budget}
-          onChange={(newBudget) => {
-            setBudget(newBudget);
-            handleSearch(inputValue, newBudget);
-          }}
-        />
-        <DistanceFilter
-          enabled={distanceFilterEnabled}
-          onToggle={setDistanceFilterEnabled}
-          radius={distanceRadius}
-          onRadiusChange={setDistanceRadius}
-          totalCount={results.length}
-          filteredCount={displayResults.length}
-        />
+      <div className="border-b border-[#E6DFD5]/60 dark:border-[#3D312A]/60 bg-[#FDFBF7]/80 dark:bg-[#2A2420]/80 backdrop-blur-sm">
+        <div className="max-w-7xl mx-auto px-4 md:px-8 py-4 flex flex-wrap items-center gap-x-4 gap-y-3">
+          <BudgetSelector
+            value={budget}
+            onChange={(newBudget) => {
+              setBudget(newBudget);
+              handleSearch(inputValue, newBudget);
+            }}
+          />
+          <DistanceFilter
+            enabled={distanceFilterEnabled}
+            onToggle={setDistanceFilterEnabled}
+            radius={distanceRadius}
+            onRadiusChange={setDistanceRadius}
+            totalCount={results.length}
+            filteredCount={displayResults.length}
+          />
+        </div>
       </div>
 
-      <AnimatePresence mode="wait">
-        {(!mounted || isLoading) ? (
-          <LoadingState
-            searchQuery={searchQuery}
-            locError={null}
-            getLocation={() => { }}
-          />
-        ) : (
-          <motion.div
-            key="results"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.3 }}
-          >
+      <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 md:py-12 w-full">
+        <AnimatePresence mode="wait">
+          {(!mounted || isLoading) ? (
+            <LoadingState
+              searchQuery={searchQuery}
+              locError={null}
+              getLocation={() => { }}
+            />
+          ) : (
             <motion.div
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mb-10 max-w-4xl mx-auto"
+              key="results"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.3 }}
             >
-              {fallbackApplied && (
-                <div className="mb-6 flex items-start gap-3 p-4 rounded-xl bg-yellow-50 dark:bg-yellow-500/10 border border-yellow-200 dark:border-yellow-500/20">
-                  <Info className="w-5 h-5 text-yellow-600 dark:text-yellow-500 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-sm text-yellow-800 dark:text-yellow-200 leading-relaxed mb-2">
-                      <strong>AI đã mở rộng phạm vi tìm kiếm:</strong> {fallbackReason || 'Không tìm thấy kết quả chính xác theo yêu cầu khắt khe, chúng tôi đã mở rộng phạm vi và ngân sách để gợi ý cho bạn!'}
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      {appliedBudget != null && (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-yellow-100 dark:bg-yellow-500/20 text-yellow-700 dark:text-yellow-300">
-                          💰 Ngân sách: {appliedBudget.toLocaleString('vi-VN')}đ
-                        </span>
-                      )}
+              <motion.div
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mb-10 max-w-4xl mx-auto"
+              >
+                {fallbackApplied && (
+                  <div className="mb-6 flex items-start gap-3 p-4 rounded-xl bg-yellow-50 dark:bg-yellow-500/10 border border-yellow-200 dark:border-yellow-500/20">
+                    <Info className="w-5 h-5 text-yellow-600 dark:text-yellow-500 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm text-yellow-800 dark:text-yellow-200 leading-relaxed mb-2">
+                        <strong>AI đã mở rộng phạm vi tìm kiếm:</strong> {fallbackReason || 'Không tìm thấy kết quả chính xác theo yêu cầu khắt khe, chúng tôi đã mở rộng phạm vi và ngân sách để gợi ý cho bạn!'}
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {appliedBudget != null && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-yellow-100 dark:bg-yellow-500/20 text-yellow-700 dark:text-yellow-300">
+                            💰 Ngân sách: {appliedBudget.toLocaleString('vi-VN')}đ
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
-              {allergenFlaggedCount > 0 && (
-                <div className="mb-6 flex items-start gap-3 p-4 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 shadow-sm">
-                  <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-500 flex-shrink-0 mt-0.5" />
-                  <p className="text-sm text-amber-900 dark:text-amber-200 leading-relaxed">
-                    <strong>Lưu ý Dị ứng:</strong> Có {allergenFlaggedCount} quán ăn có chứa thành phần gây dị ứng cho bạn. AI đã đánh dấu rõ <strong>"⚠️ Cảnh báo"</strong> trên từng quán để bạn dễ dàng nhận biết.
-                  </p>
-                </div>
-              )}
-
-              {!isLoggedIn && showGuestNotice && (
-                <div className="mb-6 px-5 py-3 rounded-full bg-[#F0F7FF] dark:bg-blue-500/5 border border-[#E1EFFE] dark:border-blue-500/20 flex items-center gap-3 relative shadow-sm">
-                  <Sparkles className="w-5 h-5 text-blue-500 flex-shrink-0" />
-                  <p className="text-[13px] md:text-sm text-gray-600 dark:text-blue-200 pr-10 whitespace-nowrap">
-                    Bạn đang tìm kiếm với tư cách khách.{" "}
-                    <button
-                      onClick={() => router.push('/auth')}
-                      className="font-bold text-blue-600 dark:text-blue-400 underline hover:text-blue-700 transition-colors"
-                    >
-                      Đăng nhập ngay
-                    </button>
-                    {" "}để AI đề xuất món ăn chính xác theo khẩu vị và chế độ ăn của riêng bạn!
-                  </p>
-                  <button
-                    onClick={() => setShowGuestNotice(false)}
-                    className="absolute right-5 p-1 text-gray-400 hover:text-gray-600 dark:hover:text-blue-300 transition-colors"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              )}
-
-              <div className="flex flex-col gap-3 mb-5">
-                <div className="flex justify-between items-center px-1">
-                  <button onClick={() => router.push('/')} className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-brand transition-colors">
-                    <Home className="w-4 h-4" /> Quay lại trang chủ
-                  </button>
-                </div>
-                <div className="relative group flex">
-                  <SearchBar
-                    query={inputValue}
-                    setQuery={setInputValue}
-                    searchMode={searchMode}
-                    setSearchMode={setSearchMode}
-                    onSearch={() => handleSearch()}
-                    compact={true}
-                  />
-                </div>
-              </div>
-            </motion.div>
-
-            {apiError ? (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="p-10 border border-red-200 dark:border-red-500/20 bg-red-50 dark:bg-red-950/10 rounded-3xl text-center"
-              >
-                <div className="w-16 h-16 bg-red-100 dark:bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <Brain className="w-8 h-8 text-red-500" />
-                </div>
-                <h2 className="text-xl font-bold text-red-600 dark:text-red-400 mb-2">
-                  Lỗi kết nối
-                </h2>
-                <p className="text-red-500 dark:text-red-300/60 max-w-sm mx-auto mb-6">{apiError}</p>
-                <button
-                  onClick={() => window.location.reload()}
-                  className="px-6 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-full transition-all font-medium shadow-md"
-                >
-                  Thử kết nối lại
-                </button>
-              </motion.div>
-            ) : results.length === 0 ? (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="py-20 text-center bg-white dark:bg-[#3D312A] rounded-3xl border border-gray-100 dark:border-[#4D3D32] shadow-sm"
-              >
-                <div className="w-20 h-20 bg-gray-50 dark:bg-[#2A2420] rounded-full flex items-center justify-center mx-auto mb-6">
-                  <Search className="w-10 h-10 text-gray-400 dark:text-[#7A6A5A]" />
-                </div>
-                <h2 className="text-2xl font-bold text-gray-800 dark:text-[#E6DFD5] mb-3">
-                  Không tìm thấy món nào!
-                </h2>
-                <p className="text-gray-500 dark:text-[#9A8A7A] max-w-md mx-auto mb-8 leading-relaxed">
-                  Rất tiếc, AI không tìm thấy kết quả nào phù hợp với yêu cầu hiện tại. Thử thay đổi từ khóa hoặc mở rộng ngân sách xem sao nhé?
-                </p>
-                <button
-                  onClick={() => {
-                    setInputValue('');
-                    setSearchQuery('');
-                    document.querySelector('input')?.focus();
-                  }}
-                  className="px-6 py-2.5 bg-brand-muted dark:bg-brand/10 hover:bg-brand-muted dark:hover:bg-brand/20 text-brand-hover dark:text-[#E6DFD5] rounded-full transition-all font-semibold"
-                >
-                  Thử tìm từ khóa khác
-                </button>
-              </motion.div>
-            ) : (
-              <>
-                {/* Hero Card #1 */}
-                {heroItem && <HeroResultCard item={heroItem} sessionId={sessionIdFromUrl} searchMode={searchMode} onAddCollection={setCollectionModalItem} isModalOpen={!!collectionModalItem} />}
-
-                {/* Small Cards Grid #2+ */}
-                {gridItems.length > 0 && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                    {gridItems.map((item, idx) => (
-                      <SmallResultCard key={item.id || idx} item={item} index={idx} sessionId={sessionIdFromUrl} searchMode={searchMode} onAddCollection={setCollectionModalItem} isModalOpen={!!collectionModalItem} />
-                    ))}
+                )}
+                {allergenFlaggedCount > 0 && (
+                  <div className="mb-6 flex items-start gap-3 p-4 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 shadow-sm">
+                    <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-500 flex-shrink-0 mt-0.5" />
+                    <p className="text-sm text-amber-900 dark:text-amber-200 leading-relaxed">
+                      <strong>Lưu ý Dị ứng:</strong> Có {allergenFlaggedCount} quán ăn có chứa thành phần gây dị ứng cho bạn. AI đã đánh dấu rõ <strong>"⚠️ Cảnh báo"</strong> trên từng quán để bạn dễ dàng nhận biết.
+                    </p>
                   </div>
                 )}
 
-                <FeatureBar />
-              </>
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
+                {!isLoggedIn && showGuestNotice && (
+                  <div className="mb-6 px-5 py-3 rounded-full bg-[#F0F7FF] dark:bg-blue-500/5 border border-[#E1EFFE] dark:border-blue-500/20 flex items-center gap-3 relative shadow-sm">
+                    <Sparkles className="w-5 h-5 text-blue-500 flex-shrink-0" />
+                    <p className="text-[13px] md:text-sm text-gray-600 dark:text-blue-200 pr-10 whitespace-nowrap">
+                      Bạn đang tìm kiếm với tư cách khách.{" "}
+                      <button
+                        onClick={() => router.push('/auth')}
+                        className="font-bold text-blue-600 dark:text-blue-400 underline hover:text-blue-700 transition-colors"
+                      >
+                        Đăng nhập ngay
+                      </button>
+                      {" "}để AI đề xuất món ăn chính xác theo khẩu vị và chế độ ăn của riêng bạn!
+                    </p>
+                    <button
+                      onClick={() => setShowGuestNotice(false)}
+                      className="absolute right-5 p-1 text-gray-400 hover:text-gray-600 dark:hover:text-blue-300 transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
+
+                <div className="flex flex-col gap-3 mb-5">
+                  <div className="flex justify-between items-center px-1">
+                    <button onClick={() => router.push('/')} className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-brand transition-colors">
+                      <Home className="w-4 h-4" /> Quay lại trang chủ
+                    </button>
+                  </div>
+                  <div className="relative group flex">
+                    <SearchBar
+                      query={inputValue}
+                      setQuery={setInputValue}
+                      searchMode={searchMode}
+                      setSearchMode={setSearchMode}
+                      onSearch={() => handleSearch()}
+                      compact={true}
+                    />
+                  </div>
+                </div>
+              </motion.div>
+
+              {apiError ? (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="p-10 border border-red-200 dark:border-red-500/20 bg-red-50 dark:bg-red-950/10 rounded-3xl text-center"
+                >
+                  <div className="w-16 h-16 bg-red-100 dark:bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <Brain className="w-8 h-8 text-red-500" />
+                  </div>
+                  <h2 className="text-xl font-bold text-red-600 dark:text-red-400 mb-2">
+                    Lỗi kết nối
+                  </h2>
+                  <p className="text-red-500 dark:text-red-300/60 max-w-sm mx-auto mb-6">{apiError}</p>
+                  <button
+                    onClick={() => window.location.reload()}
+                    className="px-6 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-full transition-all font-medium shadow-md"
+                  >
+                    Thử kết nối lại
+                  </button>
+                </motion.div>
+              ) : results.length === 0 ? (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="py-20 text-center bg-white dark:bg-[#3D312A] rounded-3xl border border-gray-100 dark:border-[#4D3D32] shadow-sm"
+                >
+                  <div className="w-20 h-20 bg-gray-50 dark:bg-[#2A2420] rounded-full flex items-center justify-center mx-auto mb-6">
+                    <Search className="w-10 h-10 text-gray-400 dark:text-[#7A6A5A]" />
+                  </div>
+                  <h2 className="text-2xl font-bold text-gray-800 dark:text-[#E6DFD5] mb-3">
+                    Không tìm thấy món nào!
+                  </h2>
+                  <p className="text-gray-500 dark:text-[#9A8A7A] max-w-md mx-auto mb-8 leading-relaxed">
+                    Rất tiếc, AI không tìm thấy kết quả nào phù hợp với yêu cầu hiện tại. Thử thay đổi từ khóa hoặc mở rộng ngân sách xem sao nhé?
+                  </p>
+                  <button
+                    onClick={() => {
+                      setInputValue('');
+                      setSearchQuery('');
+                      document.querySelector('input')?.focus();
+                    }}
+                    className="px-6 py-2.5 bg-brand-muted dark:bg-brand/10 hover:bg-brand-muted dark:hover:bg-brand/20 text-brand-hover dark:text-[#E6DFD5] rounded-full transition-all font-semibold"
+                  >
+                    Thử tìm từ khóa khác
+                  </button>
+                </motion.div>
+              ) : (
+                <>
+                  {/* Hero Card #1 */}
+                  {heroItem && <HeroResultCard item={heroItem} sessionId={sessionIdFromUrl} searchMode={searchMode} onAddCollection={setCollectionModalItem} isModalOpen={!!collectionModalItem} />}
+
+                  {/* Small Cards Grid #2+ */}
+                  {gridItems.length > 0 && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                      {gridItems.map((item, idx) => (
+                        <SmallResultCard key={item.id || idx} item={item} index={idx} sessionId={sessionIdFromUrl} searchMode={searchMode} onAddCollection={setCollectionModalItem} isModalOpen={!!collectionModalItem} />
+                      ))}
+                    </div>
+                  )}
+
+                  <FeatureBar />
+                </>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
       <AddToCollectionModal
         isOpen={!!collectionModalItem}
         onClose={() => setCollectionModalItem(null)}

@@ -16,6 +16,7 @@ def update_schema():
     queries = [
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS full_name VARCHAR;",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url VARCHAR;",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS cover_url VARCHAR;",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_stats JSON;"
     ]
     

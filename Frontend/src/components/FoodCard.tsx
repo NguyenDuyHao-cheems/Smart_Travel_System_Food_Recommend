@@ -161,13 +161,13 @@ export function FoodCard({ item, userId, onRemove, showRemove, showAddCollection
         {/* Badges bottom */}
         <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between pointer-events-none">
           {item.match && (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-brand text-white">
-              ⭐ {item.match} Match
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-brand text-white whitespace-nowrap">
+              ⭐ {/^\d+%?$/.test(item.match) ? `${item.match} Match` : item.match}
             </span>
           )}
           {item.dist && (
-            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-semibold bg-white/90 dark:bg-[#2A2420]/80 text-gray-600 dark:text-[#C8BFB0] backdrop-blur-sm">
-              <MapPin className="w-3 h-3" /> {item.dist} {item.total_reviews !== undefined && item.total_reviews > 0 && `(${item.total_reviews})`}
+            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-semibold bg-white/90 dark:bg-[#2A2420]/80 text-gray-600 dark:text-[#C8BFB0] backdrop-blur-sm whitespace-nowrap">
+              <MapPin className="w-3 h-3" /> {item.dist}
             </span>
           )}
         </div>

@@ -75,6 +75,7 @@ class UserAccount(Base):
     username = Column(String, unique=True, nullable=False, index=True)
     full_name = Column(String, nullable=True)
     avatar_url = Column(String, nullable=True)
+    cover_url = Column(String, nullable=True)
     password_hash = Column(String, nullable=False)
     preferences_vector = Column(Vector(settings.VECTOR_DIM), nullable=True)
     allergies = Column(JSON, nullable=True)

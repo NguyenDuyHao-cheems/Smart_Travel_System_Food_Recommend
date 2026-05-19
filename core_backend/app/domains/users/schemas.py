@@ -109,6 +109,7 @@ class AuthResponse(BaseModel):
     username: str
     full_name: Optional[str] = None
     avatar_url: Optional[str] = None
+    cover_url: Optional[str] = None
     access_token: str
     token_type: str = "bearer"
 
@@ -116,6 +117,7 @@ class AuthResponse(BaseModel):
 class UserUpdateRequest(BaseModel):
     full_name: Optional[str] = None
     avatar_url: Optional[str] = None
+    cover_url: Optional[str] = None
     password: Optional[str] = None
 
 
@@ -162,6 +164,7 @@ class UserProfileResponse(BaseModel):
     username: str
     full_name: Optional[str] = None
     avatar_url: Optional[str] = None
+    cover_url: Optional[str] = None
     created_at: datetime
     badges: Dict[str, BadgeProgress]
     culinary_vibes: List[CulinaryVibe]

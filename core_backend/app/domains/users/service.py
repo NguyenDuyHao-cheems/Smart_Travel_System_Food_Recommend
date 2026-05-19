@@ -170,6 +170,7 @@ class AuthService:
             username=user.username,
             full_name=user.full_name,
             avatar_url=user.avatar_url,
+            cover_url=user.cover_url,
             access_token=access_token,
             token_type="bearer",
         )
@@ -191,6 +192,7 @@ class AuthService:
             username=user.username,
             full_name=user.full_name,
             avatar_url=user.avatar_url,
+            cover_url=user.cover_url,
             access_token=access_token,
             token_type="bearer",
         )
@@ -247,6 +249,7 @@ class AuthService:
             username=user.username,
             full_name=user.full_name,
             avatar_url=user.avatar_url,
+            cover_url=user.cover_url,
             access_token=access_token,
             token_type="bearer",
         )
@@ -260,6 +263,7 @@ class AuthService:
             user_id=user_id,
             full_name=payload.full_name,
             avatar_url=payload.avatar_url,
+            cover_url=payload.cover_url,
             password_hash=password_hash
         )
         
@@ -272,6 +276,7 @@ class AuthService:
             username=user.username,
             full_name=user.full_name,
             avatar_url=user.avatar_url,
+            cover_url=user.cover_url,
             access_token="", # Optional: generate new token if needed
             token_type="bearer"
         )
