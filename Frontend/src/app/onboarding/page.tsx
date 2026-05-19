@@ -525,11 +525,11 @@ function FavoriteDishes({ selected, onChange }: { selected: string[], onChange: 
             DotColor = "bg-amber-500";
             badgeTheme = 'amber';
           } else if (idx === 2) {
-            themeClasses = "border-rose-500/20 dark:border-rose-500/35 text-rose-600 dark:text-rose-450 bg-rose-500/[0.02] hover:border-rose-500/40 dark:hover:border-rose-500/60";
+            themeClasses = "border-rose-500/20 dark:border-rose-500/35 text-rose-600 dark:text-rose-400 bg-rose-500/[0.02] hover:border-rose-500/40 dark:hover:border-rose-500/60";
             DotColor = "bg-rose-500";
             badgeTheme = 'rose';
           } else {
-            themeClasses = "border-emerald-500/20 dark:border-emerald-500/35 text-emerald-600 dark:text-emerald-450 bg-emerald-500/[0.02] hover:border-emerald-500/40 dark:hover:border-emerald-500/60";
+            themeClasses = "border-emerald-500/20 dark:border-emerald-500/35 text-emerald-600 dark:text-emerald-400 bg-emerald-500/[0.02] hover:border-emerald-500/40 dark:hover:border-emerald-500/60";
             DotColor = "bg-emerald-500";
             badgeTheme = 'emerald';
           }
@@ -630,8 +630,8 @@ function SpicyLevelPicker({ selected, onChange }: { selected: SpicyLevel, onChan
                 key={opt.id}
                 onClick={() => onChange(opt.id)}
                 className={`px-5 py-3 rounded-2xl font-bold text-xs uppercase tracking-wider transition-all duration-300 border cursor-pointer ${isActive
-                  ? 'border-red-650 bg-red-600 text-white shadow-md shadow-red-500/20 dark:border-red-500 dark:bg-red-500 dark:text-white dark:shadow-[0_0_15px_rgba(239,68,68,0.55)]'
-                  : 'border-[#E6DFD5] dark:border-[#4D3D32] bg-white dark:bg-[#2A2420]/50 text-[#7A6A5A] dark:text-[#E6DFD5] hover:border-red-500 dark:hover:border-red-500 hover:text-red-650 dark:hover:text-red-450'
+                  ? 'border-red-600 bg-red-600 text-white shadow-md shadow-red-500/20 dark:border-red-500 dark:bg-red-500 dark:text-white dark:shadow-[0_0_15px_rgba(239,68,68,0.55)]'
+                  : 'border-[#E6DFD5] dark:border-[#4D3D32] bg-white dark:bg-[#2A2420]/50 text-[#7A6A5A] dark:text-[#E6DFD5] hover:border-red-500 dark:hover:border-red-500 hover:text-red-600 dark:hover:text-red-400'
                   }`}
               >
                 {opt.label}

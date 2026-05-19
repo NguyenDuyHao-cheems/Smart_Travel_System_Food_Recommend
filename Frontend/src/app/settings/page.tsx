@@ -2116,7 +2116,7 @@ function PersonalizationSettings() {
                   onClick={() => toggleAllergy(opt.id)}
                   className={`px-4 py-2.5 rounded-2xl text-xs font-bold border transition-all cursor-pointer ${
                     isSelected
-                      ? "bg-red-50 dark:bg-red-500/20 text-red-750 dark:text-red-300 border-red-500 dark:border-red-400 shadow-md shadow-red-500/20 dark:shadow-[0_0_15px_rgba(239,68,68,0.55)]"
+                      ? "bg-red-50 dark:bg-red-500/20 text-red-700 dark:text-red-300 border-red-500 dark:border-red-400 shadow-md shadow-red-500/20 dark:shadow-[0_0_15px_rgba(239,68,68,0.55)]"
                       : "bg-[#FDFBF7] dark:bg-[#2A2420]/80 text-[#7A6A5A] dark:text-[#E6DFD5] border-[#E6DFD5] dark:border-[#4D3D32] hover:bg-[#F4EAD5] hover:dark:bg-[#3D312A] hover:border-red-500 hover:text-red-500 dark:hover:border-red-500 dark:hover:text-red-400"
                   }`}
                 >
