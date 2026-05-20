@@ -2,7 +2,7 @@
  * Service to handle location-related helper calls, e.g., Reverse Geocoding.
  */
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
 
 export async function getAddressFromCoords(lat: number, lng: number): Promise<string> {
   try {

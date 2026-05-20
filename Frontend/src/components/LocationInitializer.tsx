@@ -25,7 +25,10 @@ export function LocationInitializer() {
       const cachedAddr = localStorage.getItem('user_cached_address');
       if (cachedStr && cachedAddr) {
         const cachedCoords = JSON.parse(cachedStr);
+        // If the cached address is just a coordinates fallback string (e.g. "10.8809, 106.8082"), force refetch
+        const isCoordsFallback = /^-?\d+\.\d+,\s*-?\d+\.\d+$/.test(cachedAddr);
         if (
+          !isCoordsFallback &&
           cachedCoords.lat === coords.lat && 
           cachedCoords.lng === coords.lng && 
           currentAddress === cachedAddr
