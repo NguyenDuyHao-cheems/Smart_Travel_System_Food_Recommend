@@ -144,6 +144,9 @@ export function LocationModal({ isOpen, onClose }: LocationModalProps) {
                 <span>Lng: {coords.lng.toFixed(6)}</span>
               </p>
             )}
+            <p className="text-[10px] text-gray-400/80 dark:text-[#9A8A7A]/60 mt-1.5">
+              Dữ liệu bản đồ & địa chỉ © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer" className="underline hover:text-brand dark:hover:text-[#E8735A]">OpenStreetMap contributors</a>
+            </p>
             
             {/* Status indicator */}
             <div className="mt-3 flex items-center gap-1.5 text-xs">
