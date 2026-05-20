@@ -99,7 +99,7 @@ export function LocationModal({ isOpen, onClose }: LocationModalProps) {
     if (typeof window !== 'undefined') {
       localStorage.setItem('user_cached_gps', JSON.stringify({ lat, lng }));
     }
-    toast.success('Đã lưu vị trí thủ công thành công!');
+    toast.success('Đã cập nhật vị trí thủ công thành công!');
     onClose();
   };
 
@@ -236,7 +236,7 @@ export function LocationModal({ isOpen, onClose }: LocationModalProps) {
                 type="submit"
                 className="flex-1 py-3 rounded-full bg-[#3D312A] dark:bg-white text-white dark:text-[#2A2420] hover:bg-[#4D3D32] dark:hover:bg-[#E6DFD5] text-sm font-bold shadow-md transition-all cursor-pointer"
               >
-                Lưu vị trí
+                Cập nhật thủ công
               </button>
             </div>
           </form>
