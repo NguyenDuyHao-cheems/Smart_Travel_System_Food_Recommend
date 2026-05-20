@@ -25,6 +25,7 @@ export const locationSlice = createSlice({
   reducers: {
     setLocation: (state, action: PayloadAction<Coordinates>) => {
       state.coords = action.payload;
+      state.address = null; // Clear address so that it triggers a refetch of the address
       state.status = 'success';
       state.isManualUpdated = true;
     },
@@ -38,6 +39,7 @@ export const locationSlice = createSlice({
       // Background shouldn't override manual searches if already exist
       if (!state.isManualUpdated) {
         state.coords = action.payload;
+        state.address = null; // Clear address so that it triggers a refetch
         state.status = 'success';
       }
     }

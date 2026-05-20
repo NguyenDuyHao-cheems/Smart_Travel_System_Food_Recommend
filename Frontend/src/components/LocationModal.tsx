@@ -56,6 +56,7 @@ export function LocationModal({ isOpen, onClose }: LocationModalProps) {
         dispatch(setLocation(newCoords));
         if (typeof window !== 'undefined') {
           localStorage.setItem('user_cached_gps', JSON.stringify(newCoords));
+          localStorage.removeItem('user_cached_address');
         }
         setInputLat(newCoords.lat.toString());
         setInputLng(newCoords.lng.toString());
@@ -98,6 +99,7 @@ export function LocationModal({ isOpen, onClose }: LocationModalProps) {
     dispatch(setLocation({ lat, lng }));
     if (typeof window !== 'undefined') {
       localStorage.setItem('user_cached_gps', JSON.stringify({ lat, lng }));
+      localStorage.removeItem('user_cached_address');
     }
     toast.success('Đã cập nhật vị trí thủ công thành công!');
     onClose();
