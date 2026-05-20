@@ -89,7 +89,9 @@ export function Header({ onLogoClick }: { onLogoClick?: () => void }) {
         </div>
       </motion.header>
 
-      <LocationModal isOpen={isLocationModalOpen} onClose={() => setIsLocationModalOpen(false)} />
+      {isLocationModalOpen && (
+        <LocationModal isOpen={isLocationModalOpen} onClose={() => setIsLocationModalOpen(false)} />
+      )}
     </>
   );
 }
