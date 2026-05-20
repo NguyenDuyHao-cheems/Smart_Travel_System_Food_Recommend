@@ -6,6 +6,7 @@ import { X, MapPin, Navigation, RefreshCw, CheckCircle, AlertTriangle } from 'lu
 import { RootState } from '../store';
 import { setLocation, setLocationStatus } from '../store/slices/locationSlice';
 import { toast } from 'sonner';
+import { useGeolocation } from '../hooks/useGeolocation';
 
 interface LocationModalProps {
   isOpen: boolean;
@@ -20,9 +21,13 @@ export function LocationModal({ isOpen, onClose }: LocationModalProps) {
 
   const [inputLat, setInputLat] = useState('');
   const [inputLng, setInputLng] = useState('');
-  const [isUpdatingGPS, setIsUpdatingGPS] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const lastUpdateRef = useRef<number>(0);
+  const gpsSuccessHandledRef = useRef<boolean>(true);
+  const gpsErrorHandledRef = useRef<boolean>(true);
+
+  const { location: gpsLocation, error: gpsError, isLoading: gpsLoading, getLocation } = useGeolocation();
+  const isUpdatingGPS = gpsLoading;
 
   // Sync inputs with redux store coordinates when modal opens or coordinates change
   useEffect(() => {
@@ -31,6 +36,36 @@ export function LocationModal({ isOpen, onClose }: LocationModalProps) {
       setInputLng(coords.lng.toString());
     }
   }, [coords, isOpen]);
+
+  // Handle GPS location success callback
+  useEffect(() => {
+    if (gpsLocation && !gpsSuccessHandledRef.current) {
+      gpsSuccessHandledRef.current = true;
+      dispatch(setLocation(gpsLocation));
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('user_cached_gps', JSON.stringify(gpsLocation));
+        localStorage.removeItem('user_cached_address');
+      }
+      setInputLat(gpsLocation.lat.toString());
+      setInputLng(gpsLocation.lng.toString());
+      toast.success('Định vị GPS thành công!');
+      
+      // Auto close modal after 800ms so user has time to read the success toast
+      const timer = setTimeout(() => {
+        onClose();
+      }, 800);
+      return () => clearTimeout(timer);
+    }
+  }, [gpsLocation, dispatch, onClose]);
+
+  // Handle GPS location error callback
+  useEffect(() => {
+    if (gpsError && !gpsErrorHandledRef.current) {
+      gpsErrorHandledRef.current = true;
+      setErrorMsg(gpsError);
+      dispatch(setLocationStatus('error'));
+    }
+  }, [gpsError, dispatch]);
 
   if (!isOpen) return null;
 
@@ -44,42 +79,11 @@ export function LocationModal({ isOpen, onClose }: LocationModalProps) {
     }
     lastUpdateRef.current = now;
     
-    setIsUpdatingGPS(true);
     setErrorMsg(null);
     dispatch(setLocationStatus('loading'));
-
-    if (!navigator.geolocation) {
-      setErrorMsg('Trình duyệt của bạn không hỗ trợ định vị GPS.');
-      dispatch(setLocationStatus('error'));
-      setIsUpdatingGPS(false);
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const newCoords = {
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
-        };
-        dispatch(setLocation(newCoords));
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('user_cached_gps', JSON.stringify(newCoords));
-          localStorage.removeItem('user_cached_address');
-        }
-        setInputLat(newCoords.lat.toString());
-        setInputLng(newCoords.lng.toString());
-        setIsUpdatingGPS(false);
-        toast.success('Định vị GPS thành công!');
-      },
-      (err) => {
-        console.warn('GPS query failed:', err.message);
-        setErrorMsg('Không thể truy cập GPS. Hãy kiểm tra quyền truy cập của trình duyệt.');
-        dispatch(setLocationStatus('error'));
-        setIsUpdatingGPS(false);
-        toast.error('Lấy GPS thất bại.');
-      },
-      { timeout: 8000, enableHighAccuracy: true }
-    );
+    gpsSuccessHandledRef.current = false;
+    gpsErrorHandledRef.current = false;
+    getLocation();
   };
 
   const handleSaveManual = (e: React.FormEvent) => {

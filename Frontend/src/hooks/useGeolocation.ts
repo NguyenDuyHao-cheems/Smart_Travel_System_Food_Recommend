@@ -19,7 +19,7 @@ export function useGeolocation() {
   });
 
   const getLocation = useCallback(() => {
-    setState((prev) => ({ ...prev, isLoading: true, error: null }));
+    setState({ location: null, isLoading: true, error: null });
 
     if (!navigator.geolocation) {
       setState({

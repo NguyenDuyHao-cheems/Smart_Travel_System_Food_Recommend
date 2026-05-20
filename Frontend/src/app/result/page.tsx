@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, Suspense, useMemo } from 'react';
+import React, { useState, useEffect, Suspense, useMemo, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -30,6 +30,8 @@ import { AddToCollectionModal } from '../../components/AddToCollectionModal';
 import { toast } from 'sonner';
 import { interactionService } from '../../services/interactionService';
 import { useOptimizedLocation } from '../../hooks/useOptimizedLocation';
+import { useSelector } from 'react-redux';
+import { RootState } from '../../store';
 
 export interface AllergenDishWarning {
   dish_name: string;
@@ -508,6 +510,9 @@ function ResultPageContent() {
     sessionIdFromUrl = sessionStorage.getItem('current_search_session_id') || '';
   }
 
+  const coords = useSelector((state: RootState) => state.location.coords);
+  const lastSearchCoordsRef = useRef<{ lat: number; lng: number } | null>(null);
+
   // Check for cache instantly to avoid flicker
   const [mounted, setMounted] = useState(false);
 
@@ -642,6 +647,36 @@ function ResultPageContent() {
 
     loadSession();
   }, [sessionIdFromUrl, setInputValue]);
+
+  // Sync coords ref when coords are initially fetched/loaded
+  useEffect(() => {
+    if (coords && !lastSearchCoordsRef.current) {
+      lastSearchCoordsRef.current = coords;
+    }
+  }, [coords]);
+
+  // Listen for manual/auto location updates to refresh search results
+  useEffect(() => {
+    if (!coords) return;
+
+    // If ref is not initialized, set it and do not trigger search
+    if (!lastSearchCoordsRef.current) {
+      lastSearchCoordsRef.current = coords;
+      return;
+    }
+
+    // Check if coordinates have actually changed
+    const coordsChanged =
+      coords.lat !== lastSearchCoordsRef.current.lat ||
+      coords.lng !== lastSearchCoordsRef.current.lng;
+
+    if (coordsChanged && searchQuery) {
+      // Update ref to prevent multiple triggers for the same coordinates
+      lastSearchCoordsRef.current = coords;
+      // Re-run the search with the new coordinates
+      handleSearch(searchQuery);
+    }
+  }, [coords, searchQuery]);
 
   const handleSearch = async (overrideQuery?: string, overrideBudget?: BudgetOption) => {
     const finalQuery = (overrideQuery ?? inputValue).trim();
