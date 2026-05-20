@@ -14,9 +14,13 @@ import {
   Settings,
   Sparkles,
   AlertTriangle,
+  MapPin,
 } from "lucide-react";
 import { ThemeToggle } from "./ThemeToggle";
 import { UserDropdown } from "./UserDropdown";
+import { useSelector } from "react-redux";
+import { RootState } from "../store";
+import { LocationModal } from "./LocationModal";
 
 const NAV_ITEMS = [
   { icon: Compass, label: "Khám phá", href: "/" },
@@ -35,8 +39,12 @@ interface AppShellProps {
 export function AppShell({ children, healthStatus = "loading" }: AppShellProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [showAuthExpiredModal, setShowAuthExpiredModal] = useState(false);
+  const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
+
+  const address = useSelector((state: RootState) => state.location.address);
+  const status = useSelector((state: RootState) => state.location.status);
 
   useEffect(() => {
     const handleAuthExpired = () => {
@@ -112,8 +120,28 @@ export function AppShell({ children, healthStatus = "loading" }: AppShellProps) 
             </span>
           </Link>
 
-          {/* Right: Health dot + Theme + User */}
+          {/* Right: Health dot + Location + Theme + User */}
           <div className="flex items-center gap-3">
+            {/* Location Indicator Widget */}
+            <button
+              onClick={() => setIsLocationModalOpen(true)}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-full border-2 border-[#3D312A]/20 dark:border-[#E6DFD5]/10 hover:bg-[#3D312A]/5 dark:hover:bg-[#E6DFD5]/5 hover:border-[#3D312A]/40 dark:hover:border-[#E6DFD5]/20 transition-all text-xs font-semibold cursor-pointer max-w-[120px] sm:max-w-[180px] md:max-w-[280px]"
+              title="Nhấp để thay đổi vị trí của bạn"
+            >
+              <MapPin
+                className={`w-3.5 h-3.5 flex-shrink-0 ${
+                  status === 'success'
+                    ? 'text-brand dark:text-[#E8735A]'
+                    : status === 'loading'
+                    ? 'text-brand dark:text-[#E8735A] animate-pulse'
+                    : 'text-red-500'
+                }`}
+              />
+              <span className="text-[#3D312A]/70 dark:text-[#E6DFD5]/80 truncate">
+                {address || (status === 'loading' ? 'Đang tìm...' : 'Chưa định vị')}
+              </span>
+            </button>
+
             {healthStatus !== "loading" && (
               <div
                 className={`w-2 h-2 rounded-full ${
@@ -282,6 +310,7 @@ export function AppShell({ children, healthStatus = "loading" }: AppShellProps) 
           </div>
         )}
       </AnimatePresence>
+      <LocationModal isOpen={isLocationModalOpen} onClose={() => setIsLocationModalOpen(false)} />
     </div>
   );
 }
