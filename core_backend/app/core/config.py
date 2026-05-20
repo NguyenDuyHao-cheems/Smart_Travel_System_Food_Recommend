@@ -5,6 +5,8 @@ load_dotenv()
 
 class Settings:
     AI_ENGINE_BASE_URL: str = os.getenv("AI_ENGINE_BASE_URL", "http://localhost:8001")
+    ENABLE_GRPC: bool = os.getenv("ENABLE_GRPC", "true").lower() in ("true", "1", "yes")
+    AI_ENGINE_GRPC_TARGET: str = os.getenv("AI_ENGINE_GRPC_TARGET", "localhost:50051")
     DATABASE_URL: str = os.getenv("DATABASE_URL", "")
     SECRET_KEY: str = os.environ["SECRET_KEY"]
     ALGORITHM: str = os.getenv("ALGORITHM", "HS256")

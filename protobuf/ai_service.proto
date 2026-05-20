@@ -1,0 +1,85 @@
+syntax = "proto3";
+
+package ai;
+
+service AIService {
+  // Check health of AI Engine
+  rpc CheckHealth (HealthCheckRequest) returns (HealthCheckResponse);
+  
+  // NLP: Intent extraction and vectorization from user query
+  rpc ExtractIntentAndVectorize (ExtractIntentRequest) returns (ExtractIntentResponse);
+  
+  // NLP: Direct embedding generation from text
+  rpc EmbedText (EmbedTextRequest) returns (EmbedTextResponse);
+  
+  // Admin: Reload Collaborative Filtering model
+  rpc ReloadRecommendationModel (ReloadRequest) returns (ReloadResponse);
+  
+  // Recommendations: Get LightFM collaborative recommendations
+  rpc GetLightFMRecommendations (GetRecommendationsRequest) returns (GetRecommendationsResponse);
+  
+  // Ranking: Rerank candidates using LambdaMART
+  rpc RankCandidates (RankRequest) returns (RankResponse);
+}
+
+message HealthCheckRequest {}
+
+message HealthCheckResponse {
+  string status = 1;
+  bool ai_engine = 2;
+  bool model_loaded = 3;
+}
+
+message ExtractIntentRequest {
+  string text = 1;
+}
+
+message ExtractIntentResponse {
+  repeated float vector = 1;
+  string cleaned_query = 2;
+}
+
+message EmbedTextRequest {
+  string text = 1;
+}
+
+message EmbedTextResponse {
+  repeated float vector = 1;
+}
+
+message ReloadRequest {}
+
+message ReloadResponse {
+  string message = 1;
+}
+
+message GetRecommendationsRequest {
+  string user_id = 1;
+  int32 limit = 2;
+}
+
+message GetRecommendationsResponse {
+  repeated string restaurant_ids = 1;
+}
+
+message CandidateWithFeatures {
+  string res_id = 1;
+  int32 rating = 2;
+  int32 sentiment_score = 3;
+  int32 distance_m = 4;
+  int32 price_normalized = 5;
+  int32 review_count = 6;
+  int32 similarity_score = 7;
+  int32 is_open = 8;
+}
+
+message RankRequest {
+  string user_id = 1;
+  repeated CandidateWithFeatures candidates = 2;
+  int32 top_k = 3;
+}
+
+message RankResponse {
+  repeated string ranked_ids = 1;
+  repeated float scores = 2;
+}

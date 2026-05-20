@@ -5,6 +5,8 @@ load_dotenv()
 
 class Settings:
     AI_SERVICE_PORT: int = int(os.getenv("AI_SERVICE_PORT", 8001))
+    AI_GRPC_PORT: int = int(os.getenv("AI_GRPC_PORT", 50051))
+    AI_GRPC_HOST: str = os.getenv("AI_GRPC_HOST", "0.0.0.0")
     EMBEDDING_MODEL_NAME: str = os.getenv("EMBEDDING_MODEL_NAME", "bkai-foundation-models/vietnamese-bi-encoder")
     HF_TOKEN: str = os.getenv("HF_TOKEN", "")
     VECTOR_DIM: int = int(os.getenv("VECTOR_DIM", 768))

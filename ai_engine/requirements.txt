@@ -13,6 +13,10 @@ httpx>=0.24.0
 pandas>=2.0.0
 sqlalchemy>=2.0.0
 psycopg2-binary>=2.9.0
+grpcio>=1.50.0
+grpcio-tools>=1.50.0
+grpcio-reflection>=1.50.0
+
 
 # Testing
 pytest>=7.0.0

@@ -123,41 +123,33 @@ async def recommend(
     )
     
     try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
-            payload = {
-                "user_id": user_id or "anonymous",
-                "candidates": featured,
-                "top_k": len(featured),
-            }
-            resp = await client.post(
-                f"{settings.AI_ENGINE_BASE_URL}/api/v1/ml/rank",
-                json=payload,
-            )
-            if resp.status_code == 200:
-                data = resp.json()
-                ranked_ids = data.get("ranked_ids", [])
-                scores = data.get("scores", [])
+        from app.services.ai_client import get_ai_client
+        data = await get_ai_client().rank_candidates(
+            user_id=user_id or "anonymous",
+            candidates=featured,
+            top_k=len(featured),
+        )
+        ranked_ids = data.get("ranked_ids", [])
+        scores = data.get("scores", [])
+        
+        id_to_candidate = {str(c.id): c for c in top_candidates}
+        reranked = []
+        for i, rid in enumerate(ranked_ids):
+            if rid in id_to_candidate:
+                c = id_to_candidate[rid]
+                c.ranking_score = scores[i] if i < len(scores) else None
+                reranked.append(c)
+        
+        # Xử lý các ứng viên bị miss (nếu có)
+        for c in top_candidates:
+            if str(c.id) not in {str(r.id) for r in reranked}:
+                c.ranking_score = None
+                reranked.append(c)
                 
-                id_to_candidate = {str(c.id): c for c in top_candidates}
-                reranked = []
-                for i, rid in enumerate(ranked_ids):
-                    if rid in id_to_candidate:
-                        c = id_to_candidate[rid]
-                        c.ranking_score = scores[i] if i < len(scores) else None
-                        reranked.append(c)
-                
-                # Xử lý các ứng viên bị miss (nếu có)
-                for c in top_candidates:
-                    if str(c.id) not in {str(r.id) for r in reranked}:
-                        c.ranking_score = None
-                        reranked.append(c)
-                        
-                # Merge an toàn vào danh sách ban đầu
-                reranked_ids = {str(c.id) for c in reranked}
-                remaining_candidates = [c for c in safe_candidates if str(c.id) not in reranked_ids]
-                safe_candidates = reranked + remaining_candidates
-            else:
-                logger.warning("Ranking API returned %s: %s", resp.status_code, resp.text)
+        # Merge an toàn vào danh sách ban đầu
+        reranked_ids = {str(c.id) for c in reranked}
+        remaining_candidates = [c for c in safe_candidates if str(c.id) not in reranked_ids]
+        safe_candidates = reranked + remaining_candidates
     except Exception as exc:
         logger.warning("Ranking rerank failed, keeping cosine order: %s", exc)
 
