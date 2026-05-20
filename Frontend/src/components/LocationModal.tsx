@@ -53,8 +53,10 @@ export function LocationModal({ isOpen, onClose }: LocationModalProps) {
           lat: position.coords.latitude,
           lng: position.coords.longitude,
         };
-        // Background sets coords and changes status to success
         dispatch(setLocation(newCoords));
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('user_cached_gps', JSON.stringify(newCoords));
+        }
         setInputLat(newCoords.lat.toString());
         setInputLng(newCoords.lng.toString());
         setIsUpdatingGPS(false);
@@ -94,6 +96,9 @@ export function LocationModal({ isOpen, onClose }: LocationModalProps) {
     }
 
     dispatch(setLocation({ lat, lng }));
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('user_cached_gps', JSON.stringify({ lat, lng }));
+    }
     toast.success('Đã lưu vị trí thủ công thành công!');
     onClose();
   };

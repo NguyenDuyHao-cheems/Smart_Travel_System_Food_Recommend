@@ -96,8 +96,12 @@ export function LocationInitializer() {
             attemptRef.current += 1;
             setTimeout(fetchLocationWithBackoff, delay);
           } else {
-            dispatch(setLocationStatus('error'));
-            sessionStorage.setItem('gps_fetched', 'false'); // Mark as attempted but failed
+            // Fallback to default location of seeded restaurants (Thu Duc, HCMC)
+            const fallbackCoords = { lat: 10.880, lng: 106.808 };
+            dispatch(setLocationFromBackground(fallbackCoords));
+            dispatch(setLocationStatus('success'));
+            localStorage.setItem('user_cached_gps', JSON.stringify(fallbackCoords));
+            sessionStorage.setItem('gps_fetched', 'true');
           }
         },
         { timeout: 5000, enableHighAccuracy: true }
