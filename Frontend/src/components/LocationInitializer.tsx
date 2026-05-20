@@ -40,10 +40,15 @@ export function LocationInitializer() {
       // Ignore cache check errors
     }
 
-    getAddressFromCoords(coords.lat, coords.lng).then((addr) => {
-      dispatch(setLocationAddress(addr));
-      localStorage.setItem('user_cached_address', addr);
-    });
+    // Debounce the API call by 1000ms (1 second) to prevent spamming
+    const timer = setTimeout(() => {
+      getAddressFromCoords(coords.lat, coords.lng).then((addr) => {
+        dispatch(setLocationAddress(addr));
+        localStorage.setItem('user_cached_address', addr);
+      });
+    }, 1000);
+
+    return () => clearTimeout(timer);
   }, [coords?.lat, coords?.lng, dispatch, currentAddress]);
 
   useEffect(() => {

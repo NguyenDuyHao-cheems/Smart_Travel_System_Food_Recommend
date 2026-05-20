@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { X, MapPin, Navigation, RefreshCw, CheckCircle, AlertTriangle } from 'lucide-react';
 import { RootState } from '../store';
@@ -22,6 +22,7 @@ export function LocationModal({ isOpen, onClose }: LocationModalProps) {
   const [inputLng, setInputLng] = useState('');
   const [isUpdatingGPS, setIsUpdatingGPS] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const lastUpdateRef = useRef<number>(0);
 
   // Sync inputs with redux store coordinates when modal opens or coordinates change
   useEffect(() => {
@@ -35,6 +36,13 @@ export function LocationModal({ isOpen, onClose }: LocationModalProps) {
 
   const handleUpdateGPS = () => {
     if (typeof window === 'undefined') return;
+    
+    const now = Date.now();
+    if (now - lastUpdateRef.current < 2000) {
+      toast.warning('Vui lòng đợi 2 giây giữa các lần cập nhật vị trí.');
+      return;
+    }
+    lastUpdateRef.current = now;
     
     setIsUpdatingGPS(true);
     setErrorMsg(null);
@@ -77,6 +85,13 @@ export function LocationModal({ isOpen, onClose }: LocationModalProps) {
   const handleSaveManual = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
+
+    const now = Date.now();
+    if (now - lastUpdateRef.current < 2000) {
+      toast.warning('Vui lòng đợi 2 giây giữa các lần cập nhật vị trí.');
+      return;
+    }
+    lastUpdateRef.current = now;
 
     const lat = parseFloat(inputLat);
     const lng = parseFloat(inputLng);
