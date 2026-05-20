@@ -65,8 +65,13 @@ export function useOptimizedLocation() {
         return fallbackCoords;
       }
       
-      // Nếu hoàn toàn chưa có địa chỉ nào lưu trước đó, trả về null để báo lỗi đỏ
-      return null;
+      // Nếu hoàn toàn chưa có địa chỉ nào lưu trước đó, trả về tọa độ mặc định (Thủ Đức, HCM)
+      const defaultCoords = { lat: 10.880, lng: 106.808 };
+      dispatch(setLocation(defaultCoords));
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('user_cached_gps', JSON.stringify(defaultCoords));
+      }
+      return defaultCoords;
     }
   }, [dispatch, reduxCoords]);
 

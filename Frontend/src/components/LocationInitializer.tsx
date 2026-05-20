@@ -1,15 +1,55 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { useDispatch } from 'react-redux';
-import { setLocationFromBackground, setLocationStatus } from '../store/slices/locationSlice';
+import { useDispatch, useSelector } from 'react-redux';
+import { setLocationFromBackground, setLocationStatus, setLocationAddress } from '../store/slices/locationSlice';
+import { RootState } from '../store';
+import { getAddressFromCoords } from '../services/locationService';
 
 const RETRY_DELAYS = [2000, 4000, 8000]; // 2s, 4s, 8s
 
 export function LocationInitializer() {
   const dispatch = useDispatch();
+  const coords = useSelector((state: RootState) => state.location.coords);
+  const currentAddress = useSelector((state: RootState) => state.location.address);
   const attemptRef = useRef(0);
   const isFetchingRef = useRef(false);
+
+  // Sync address when coordinates change
+  useEffect(() => {
+    if (!coords) return;
+    
+    // Check if the current address matches the cached coordinates to avoid redundant API calls
+    try {
+      const cachedStr = localStorage.getItem('user_cached_gps');
+      const cachedAddr = localStorage.getItem('user_cached_address');
+      if (cachedStr && cachedAddr) {
+        const cachedCoords = JSON.parse(cachedStr);
+        // If the cached address is just a coordinates fallback string (e.g. "10.8809, 106.8082"), force refetch
+        const isCoordsFallback = /^-?\d+\.\d+,\s*-?\d+\.\d+$/.test(cachedAddr);
+        if (
+          !isCoordsFallback &&
+          cachedCoords.lat === coords.lat && 
+          cachedCoords.lng === coords.lng && 
+          currentAddress === cachedAddr
+        ) {
+          return; // Match found, skip fetch
+        }
+      }
+    } catch (e) {
+      // Ignore cache check errors
+    }
+
+    // Debounce the API call by 1000ms (1 second) to prevent spamming
+    const timer = setTimeout(() => {
+      getAddressFromCoords(coords.lat, coords.lng).then((addr) => {
+        dispatch(setLocationAddress(addr));
+        localStorage.setItem('user_cached_address', addr);
+      });
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [coords?.lat, coords?.lng, dispatch, currentAddress]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -20,6 +60,10 @@ export function LocationInitializer() {
         const cachedCoords = JSON.parse(cachedStr);
         if (cachedCoords && typeof cachedCoords.lat === 'number' && typeof cachedCoords.lng === 'number') {
           dispatch(setLocationFromBackground(cachedCoords));
+          const cachedAddr = localStorage.getItem('user_cached_address');
+          if (cachedAddr) {
+            dispatch(setLocationAddress(cachedAddr));
+          }
         }
       }
     } catch (e) {
@@ -44,12 +88,12 @@ export function LocationInitializer() {
 
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          const coords = {
+          const newCoords = {
             lat: position.coords.latitude,
             lng: position.coords.longitude,
           };
-          dispatch(setLocationFromBackground(coords));
-          localStorage.setItem('user_cached_gps', JSON.stringify(coords));
+          dispatch(setLocationFromBackground(newCoords));
+          localStorage.setItem('user_cached_gps', JSON.stringify(newCoords));
           sessionStorage.setItem('gps_fetched', 'true');
         },
         (error) => {
@@ -60,8 +104,12 @@ export function LocationInitializer() {
             attemptRef.current += 1;
             setTimeout(fetchLocationWithBackoff, delay);
           } else {
-            dispatch(setLocationStatus('error'));
-            sessionStorage.setItem('gps_fetched', 'false'); // Mark as attempted but failed
+            // Fallback to default location of seeded restaurants (Thu Duc, HCMC)
+            const fallbackCoords = { lat: 10.880, lng: 106.808 };
+            dispatch(setLocationFromBackground(fallbackCoords));
+            dispatch(setLocationStatus('success'));
+            localStorage.setItem('user_cached_gps', JSON.stringify(fallbackCoords));
+            sessionStorage.setItem('gps_fetched', 'true');
           }
         },
         { timeout: 5000, enableHighAccuracy: true }

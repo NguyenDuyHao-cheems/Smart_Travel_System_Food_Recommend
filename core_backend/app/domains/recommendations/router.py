@@ -1,6 +1,8 @@
 from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
+import requests
+from cachetools import TTLCache
 
 from app.core.dependencies import get_db, get_optional_current_user, get_current_user
 from app.domains.users.models import UserAccount
@@ -10,6 +12,51 @@ from .service import RecommendationService
 from app.services.ai_client import get_ai_client
 
 router = APIRouter()
+
+# In-memory cache for geocoded addresses (up to 1000 entries, TTL 24 hours)
+location_cache = TTLCache(maxsize=1000, ttl=86400)
+
+@router.get("/location/reverse")
+def reverse_geocode(
+    lat: float = Query(..., description="Latitude"),
+    lng: float = Query(..., description="Longitude")
+):
+    """
+    Dịch tọa độ thành địa chỉ chi tiết sử dụng OpenStreetMap Nominatim API (Backend proxy).
+    Tuân thủ chính sách Nominatim:
+    - Gửi Header User-Agent của ứng dụng.
+    - Sử dụng bộ nhớ đệm cache (cachetools TTLCache) để giảm thiểu số lượng cuộc gọi trùng lặp (tối đa 1req/s).
+    """
+    # Làm tròn tọa độ tới 5 chữ số thập phân (~1.1m sai số) để tăng tỉ lệ trúng cache
+    cache_key = (round(lat, 5), round(lng, 5))
+    if cache_key in location_cache:
+        return {"address": location_cache[cache_key]}
+
+    try:
+        url = "https://nominatim.openstreetmap.org/reverse"
+        params = {
+            "lat": lat,
+            "lon": lng,
+            "format": "jsonv2",
+            "accept-language": "vi"
+        }
+        headers = {
+            "User-Agent": "WanderbiteFoodRecommendationSystem/1.0 (contact@wanderbite.com)"
+        }
+        response = requests.get(url, params=params, headers=headers, timeout=10)
+        if response.status_code == 200:
+            data = response.json()
+            address = data.get("display_name")
+            if address:
+                location_cache[cache_key] = address
+                return {"address": address}
+        
+        fallback = f"{lat:.5f}, {lng:.5f}"
+        return {"address": fallback}
+    except Exception as e:
+        fallback = f"{lat:.5f}, {lng:.5f}"
+        return {"address": fallback}
+
 
 @router.get("/recommendations/home", response_model=HomeRecommendationResponse)
 def get_home_recommendations(
