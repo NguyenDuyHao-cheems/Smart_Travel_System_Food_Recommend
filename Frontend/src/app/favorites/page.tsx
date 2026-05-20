@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { Suspense, useEffect, useState } from "react";
 import { PageLayout } from "../../components/PageLayout";
 import { FoodCard } from "../../components/FoodCard";
 import { favoriteService } from "../../services/favoriteService";
@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import { useRouter, useSearchParams } from "next/navigation";
 import { interactionService } from "../../services/interactionService";
 
-export default function FavoritesPage() {
+function FavoritesPageInner() {
   const [favorites, setFavorites] = useState<RecommendResult[]>([]);
   const [userId, setUserId] = useState<string | null>(null);
   const [highlightedName, setHighlightedName] = useState<string | null>(null);
@@ -103,5 +103,13 @@ export default function FavoritesPage() {
         </div>
       )}
     </PageLayout>
+  );
+}
+
+export default function FavoritesPage() {
+  return (
+    <Suspense>
+      <FavoritesPageInner />
+    </Suspense>
   );
 }

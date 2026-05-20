@@ -40,6 +40,8 @@ class RecommendResult(BaseModel):
     match: str
     dist: str           # display string, e.g. "1.2 km"
     distance_km: float = 0.0  # numeric value for client-side filtering
+    lat: Optional[float] = None
+    lng: Optional[float] = None
     price: str
     rating: str
     reason: str

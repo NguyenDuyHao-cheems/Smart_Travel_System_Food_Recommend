@@ -227,10 +227,11 @@ class SearchService:
         return RecommendResult(
             id=shortuuid.encode(model.id),
             name=model.name or "Không rõ tên",
-
             match=match_str,
             dist=f"{dist_km:.1f} km",
             distance_km=round(dist_km, 2),
+            lat=float(model.lat) if model.lat is not None else None,
+            lng=float(model.lng) if model.lng is not None else None,
             price=price_display,
             rating=rating_display,
             reason=SearchService._generate_dynamic_reason(model, dist_km, request_tags),

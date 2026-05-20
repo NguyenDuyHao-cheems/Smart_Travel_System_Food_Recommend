@@ -18,12 +18,16 @@ import {
   Trash2,
   MessageSquarePlus,
   Send,
-  Eye
+  Eye,
+  Route
 } from 'lucide-react';
 import Image from 'next/image';
 import { interactionService } from '../../../services/interactionService';
 import { AppShell } from '../../../components/AppShell';
 import { toast } from 'sonner';
+import { useDispatch, useSelector } from 'react-redux';
+import { RootState } from '../../../store';
+import { addItem, removeItem } from '../../../store/slices/itinerarySlice';
 
 interface Dish {
   id: string;
@@ -67,6 +71,7 @@ export default function RestaurantDetailPage() {
   const params = useParams();
   const searchParams = useSearchParams();
   const router = useRouter();
+
   const [activeRestaurantId, setActiveRestaurantId] = useState<string | null>(null);
   const sessionId = searchParams.get('session_id');
 
@@ -76,6 +81,36 @@ export default function RestaurantDetailPage() {
   const [isMapModalOpen, setIsMapModalOpen] = useState(false);
   const [userAllergies, setUserAllergies] = useState<string[]>([]);
   const [isAllergenSectionOpen, setIsAllergenSectionOpen] = useState(true);
+
+  const dispatch = useDispatch();
+  const itineraryItems = useSelector((state: RootState) => state.itinerary.items);
+  const isInItinerary = restaurant ? itineraryItems.some(i => i.id === restaurant.id) : false;
+
+  const toggleItinerary = () => {
+    if (!restaurant) return;
+    if (isInItinerary) {
+      dispatch(removeItem(restaurant.id));
+      toast.success('Đã xóa khỏi lộ trình');
+    } else {
+      dispatch(addItem({
+        id: restaurant.id,
+        name: restaurant.name,
+        lat: restaurant.lat,
+        lng: restaurant.lng,
+        address: restaurant.address,
+        img: restaurant.image_url,
+        rating: restaurant.rating_avg ? String(restaurant.rating_avg) : undefined,
+        price: restaurant.price_range || undefined,
+        google_maps_url: restaurant.google_maps_url
+      }));
+      toast.success('Đã thêm vào lộ trình', {
+        action: {
+          label: 'Xem',
+          onClick: () => router.push('/itinerary')
+        }
+      });
+    }
+  };
 
   // Auth & reviews state
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -394,6 +429,18 @@ export default function RestaurantDetailPage() {
                 >
                   <Navigation className="w-5 h-5" />
                   Chỉ đường ngay
+                </button>
+                <button
+                  onClick={toggleItinerary}
+                  className={`flex items-center justify-center gap-2 px-6 py-4 font-bold rounded-2xl border-2 transition-all transform hover:-translate-y-1 ${
+                    isInItinerary
+                      ? 'bg-orange-50 dark:bg-orange-950/30 border-orange-400 text-orange-600 dark:text-orange-400 shadow-xl shadow-orange-200/40'
+                      : 'bg-white dark:bg-[#3D312A] border-gray-200 dark:border-[#4D3D32] text-gray-700 dark:text-[#C8BFB0] hover:border-orange-400 hover:text-orange-600 shadow-md'
+                  }`}
+                  title={isInItinerary ? 'Xóa khỏi lộ trình' : 'Thêm vào lộ trình'}
+                >
+                  <Route className={`w-5 h-5 ${isInItinerary ? 'fill-current' : ''}`} />
+                  {isInItinerary ? 'Xóa lộ trình' : 'Lộ trình'}
                 </button>
               </div>
 
