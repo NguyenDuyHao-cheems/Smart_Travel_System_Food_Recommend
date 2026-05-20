@@ -74,6 +74,7 @@ class RetrievalService:
         query_vector: Optional[List[float]] = None,
         query_text: str = "",
         tag_name: Optional[str] = None,
+        cleaned_query: str = "",
     ):
         """
         Retrieval từ Postgres với semantic ordering (relevance-first).
@@ -173,11 +174,15 @@ class RetrievalService:
             
             # Tier 1: Exact keyword matching trên DishModel
             exact_match_res_ids = []
-            if query_text:
-                exact_dishes = self.db.query(DishModel.res_id).filter(
-                    DishModel.name.ilike(f"%{query_text}%")
-                ).limit(200).all()
-                exact_match_res_ids = [str(r[0]) for r in exact_dishes]
+            search_term = cleaned_query if cleaned_query else query_text
+            if search_term:
+                tokens = [t.strip() for t in search_term.split() if len(t.strip()) > 0]
+                if tokens:
+                    filters = [DishModel.name.ilike(f"%{t}%") for t in tokens]
+                    exact_dishes = self.db.query(DishModel.res_id).filter(
+                        and_(*filters)
+                    ).limit(200).all()
+                    exact_match_res_ids = [str(r[0]) for r in exact_dishes]
             
             # Tier 2: Vector search trên DishModel
             dish_vector_res_ids = []

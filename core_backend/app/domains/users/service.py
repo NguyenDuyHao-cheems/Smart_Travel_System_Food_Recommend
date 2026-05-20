@@ -1,6 +1,10 @@
 import logging
 import math
+import httpx
+import uuid
+import shortuuid
 from typing import List, Optional
+
 
 from app.core.config import settings
 from app.core.security import hash_password, verify_password, create_access_token
@@ -13,9 +17,13 @@ from .schemas import (
     MockRestaurant,
     SignInRequest,
     SignUpRequest,
-    AuthResponse
+    GoogleAuthRequest,
+    AuthResponse,
+    UserUpdateRequest,
+    UserInteractionRequest,
+    UserInteractionResponse
 )
-from .repository import UserOnboardingRepository, UserAccountRepository
+from .repository import UserOnboardingRepository, UserAccountRepository, UserInteractionRepository
 
 logger = logging.getLogger(__name__)
 # TODO: mock code 
@@ -111,11 +119,6 @@ class OnboardingService:
         text = build_onboarding_text(
             favorite_dishes=payload.favorite_dishes,
             spicy_level=payload.spicy_level,
-            dietary_restrictions=payload.dietary_restrictions,
-            is_vegetarian=payload.is_vegetarian,
-            allergies=payload.allergies,
-            budget=payload.budget,
-            location=payload.location,
         )
         return await embed_text(text)
 
@@ -130,11 +133,6 @@ class OnboardingService:
         text = build_onboarding_text(
             favorite_dishes=payload.favorite_dishes,
             spicy_level=payload.spicy_level,
-            dietary_restrictions=payload.dietary_restrictions,
-            is_vegetarian=payload.is_vegetarian,
-            allergies=payload.allergies,
-            budget=payload.budget,
-            location=payload.location,
         )
 
         dim = settings.VECTOR_DIM  # 768
@@ -170,6 +168,9 @@ class AuthService:
             message="Sign up successful",
             user_id=str(user.id),
             username=user.username,
+            full_name=user.full_name,
+            avatar_url=user.avatar_url,
+            cover_url=user.cover_url,
             access_token=access_token,
             token_type="bearer",
         )
@@ -189,6 +190,136 @@ class AuthService:
             message="Sign in successful",
             user_id=str(user.id),
             username=user.username,
+            full_name=user.full_name,
+            avatar_url=user.avatar_url,
+            cover_url=user.cover_url,
             access_token=access_token,
             token_type="bearer",
         )
+
+    async def google_auth(self, payload: GoogleAuthRequest) -> AuthResponse:
+        # 1. Verify Google token
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(
+                "https://www.googleapis.com/oauth2/v3/userinfo",
+                headers={"Authorization": f"Bearer {payload.access_token}"}
+            )
+            if resp.status_code != 200:
+                raise PermissionError("Invalid Google token.")
+            
+            user_info = resp.json()
+            email = user_info.get("email")
+            name = user_info.get("name")
+            picture = user_info.get("picture")  # Google profile picture URL
+            if not email:
+                raise PermissionError("Email not found in Google profile.")
+
+        # 2. Check if user exists (use email as username)
+        user = self._repo.get_by_username(email)
+        
+        # 3. Create user if not exists
+        if not user:
+            # For Google users, we use a random string as password_hash
+            # since they won't use traditional sign-in
+            user = self._repo.create_user(
+                username=email,
+                password_hash=hash_password(str(uuid.uuid4()))
+            )
+            # Save Google info to DB
+            user = self._repo.update_user(
+                user_id=user.id,
+                full_name=name,
+                avatar_url=picture
+            )
+            message = "Sign up with Google successful"
+        else:
+            message = "Sign in with Google successful"
+
+        # 4. Generate JWT
+        access_token = create_access_token(
+            data={
+                "sub": str(user.id),
+                "username": user.username,
+            }
+        )
+
+        return AuthResponse(
+            message=message,
+            user_id=str(user.id),
+            username=user.username,
+            full_name=user.full_name,
+            avatar_url=user.avatar_url,
+            cover_url=user.cover_url,
+            access_token=access_token,
+            token_type="bearer",
+        )
+
+    def update_user(self, user_id: str, payload: UserUpdateRequest) -> AuthResponse:
+        password_hash = None
+        if payload.password:
+            password_hash = hash_password(payload.password)
+            
+        user = self._repo.update_user(
+            user_id=user_id,
+            full_name=payload.full_name,
+            avatar_url=payload.avatar_url,
+            cover_url=payload.cover_url,
+            password_hash=password_hash
+        )
+        
+        if not user:
+            raise ValueError("User not found.")
+            
+        return AuthResponse(
+            message="User updated successfully",
+            user_id=str(user.id),
+            username=user.username,
+            full_name=user.full_name,
+            avatar_url=user.avatar_url,
+            cover_url=user.cover_url,
+            access_token="", # Optional: generate new token if needed
+            token_type="bearer"
+        )
+
+    def delete_account(self, user_id: str) -> bool:
+        return self._repo.delete_user(user_id)
+
+
+class UserInteractionService:
+    def __init__(self, repository: UserInteractionRepository) -> None:
+        self._repo = repository
+
+    def log_interaction(
+        self, payload: UserInteractionRequest, user_id: Optional[str] = None
+    ) -> UserInteractionResponse:
+        # Decode search_session_id if it's a short ID
+        decoded_session_id = payload.search_session_id
+        if decoded_session_id and len(decoded_session_id) < 36:
+            try:
+                decoded_session_id = str(shortuuid.decode(decoded_session_id))
+            except Exception:
+                pass
+
+        # Decode res_id if it's a short ID
+        decoded_res_id = payload.res_id
+        if decoded_res_id and len(decoded_res_id) < 36:
+            try:
+                decoded_res_id = str(shortuuid.decode(decoded_res_id))
+            except Exception:
+                pass
+
+        interaction = self._repo.create_interaction(
+            action_type=payload.action_type,
+            anonymous_id=payload.anonymous_id,
+            user_id=user_id,
+            res_id=decoded_res_id,
+            duration_sec=payload.duration_sec,
+            metadata=payload.metadata,
+            search_session_id=decoded_session_id,
+        )
+
+
+        return UserInteractionResponse(
+            interaction_id=str(interaction.id)
+        )
+

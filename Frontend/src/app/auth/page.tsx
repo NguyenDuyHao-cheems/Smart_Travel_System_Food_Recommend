@@ -1,7 +1,9 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useGoogleLogin, GoogleOAuthProvider } from "@react-oauth/google";
+import { toast } from "sonner";
 import { Roboto } from "next/font/google";
 import {
   User,
@@ -21,7 +23,7 @@ const roboto = Roboto({
   weight: ["300", "400", "500", "700", "900"],
 });
 
-export default function AuthPage() {
+function AuthPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectPath = searchParams.get("redirect") || "/";
@@ -82,10 +84,15 @@ export default function AuthPage() {
 
       const data = await res.json();
 
-      // A/B: Thành công -> Lưu token
+      // A/B: Thành công -> Lưu token và thông tin người dùng
       localStorage.setItem("access_token", data.access_token);
       localStorage.setItem("user_id", data.user_id);
-      localStorage.setItem("username", data.username || username);
+      localStorage.setItem("username", data.full_name || data.username || username);
+      localStorage.setItem("user_email", data.username || username);
+      localStorage.setItem("login_method", "local");
+      if (data.avatar_url) {
+        localStorage.setItem("user_avatar", data.avatar_url);
+      }
 
       // Chuyển hướng: Nếu là Đăng ký mới -> Ép buộc sang trang Onboarding để làm khảo sát
       if (mode === "signup") {
@@ -94,14 +101,79 @@ export default function AuthPage() {
         router.push(redirectPath);
       }
     } catch (err: any) {
-      setErrorMsg(err.message || "Có lỗi xảy ra, vui lòng thử lại.");
+      toast.error(err.message || "Có lỗi xảy ra, vui lòng thử lại.");
     } finally {
       setIsLoading(false);
     }
   };
 
+  const handleGoogleLogin = useGoogleLogin({
+    onSuccess: async (tokenResponse) => {
+      setIsLoading(true);
+      setErrorMsg("");
+      try {
+        const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
+        const res = await fetch(`${API_BASE}/api/v1/users/google_auth`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ access_token: tokenResponse.access_token }),
+        });
+
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.detail || "Đăng nhập Google thất bại.");
+        }
+
+        const data = await res.json();
+        localStorage.setItem("access_token", data.access_token);
+        localStorage.setItem("user_id", data.user_id);
+        localStorage.setItem("username", data.full_name || data.username);
+        localStorage.setItem("user_email", data.username);
+        localStorage.setItem("login_method", "google");
+        if (data.avatar_url) {
+          localStorage.setItem("user_avatar", data.avatar_url);
+        }
+
+        // Check if user is new (Sign up)
+        if (data.message.includes("Sign up")) {
+          router.push("/onboarding");
+        } else {
+          router.push(redirectPath);
+        }
+      } catch (err: any) {
+        toast.error(err.message || "Có lỗi xảy ra khi đăng nhập Google.");
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    onError: () => {
+      showShopeeError();
+    },
+    onNonOAuthError: (error) => {
+      console.log("Non-OAuth Error:", error);
+      showShopeeError();
+    },
+  });
+
+  const showShopeeError = () => {
+    setErrorMsg("Đăng nhập Google không thành công. Vui lòng thử lại.");
+    toast.custom((t) => (
+      <div className="bg-black/70 backdrop-blur-md text-white px-5 py-4 rounded-2xl shadow-2xl flex items-center gap-4 border border-white/10 animate-in fade-in slide-in-from-top-4 duration-300">
+        <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center flex-shrink-0">
+          <span className="text-white text-xl font-black">!</span>
+        </div>
+        <p className="text-[15px] font-bold leading-tight">
+          Đăng nhập không thành công với Google
+        </p>
+      </div>
+    ), {
+      duration: 3000,
+      position: 'top-center'
+    });
+  };
+
   return (
-    <div className={`min-h-screen flex items-center justify-center bg-[#F7F8FA] dark:bg-[#0A0D14] p-4 sm:p-8 ${roboto.className}`}>
+    <div className={`min-h-screen flex items-center justify-center bg-[#F7F8FA] dark:bg-[#2A2420] p-4 sm:p-8 ${roboto.className}`}>
       {/* Outer wrapper: flex to separate the two cards with a gap */}
       <div className="w-full max-w-[1200px] flex items-center gap-6 lg:gap-8">
 
@@ -119,19 +191,19 @@ export default function AuthPage() {
           <div className="absolute inset-0 bg-gradient-to-r from-black/80 to-transparent" />
 
           <div className="relative z-10 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-400 to-orange-500 flex items-center justify-center shadow-lg shadow-orange-500/30">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand to-brand flex items-center justify-center shadow-lg shadow-brand/30">
               <span className="text-white text-xl">🍜</span>
             </div>
             <span className="text-2xl font-bold tracking-tight">Wanderbite</span>
           </div>
 
           <div className="relative z-10 max-w-md">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-orange-500/30 bg-orange-500/10 text-orange-400 text-sm font-medium mb-6 backdrop-blur-md">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-brand/30 bg-brand/10 text-brand dark:text-[#E8735A] text-sm font-medium mb-6 backdrop-blur-md">
               <Sparkles className="w-4 h-4" />
               AI-Powered Food Discovery
             </div>
             <h1 className="text-5xl font-bold leading-[1.15] mb-6">
-              Discover your perfect culinary vibe <span className="text-orange-500">powered by AI.</span>
+              Discover your perfect culinary vibe <span className="text-brand dark:text-[#E8735A]">powered by AI.</span>
             </h1>
             <p className="text-gray-300 text-lg leading-relaxed">
               Smart recommendations, real-time locations, and flavors that match your mood.
@@ -140,22 +212,22 @@ export default function AuthPage() {
 
           <div className="relative z-10 flex gap-8">
             <div>
-              <div className="w-10 h-10 rounded-full border border-orange-500/30 flex items-center justify-center mb-3 bg-black/40 backdrop-blur-md">
-                <Sparkles className="w-5 h-5 text-orange-500" />
+              <div className="w-10 h-10 rounded-full border border-brand/30 flex items-center justify-center mb-3 bg-black/40 backdrop-blur-md">
+                <Sparkles className="w-5 h-5 text-brand dark:text-[#E8735A]" />
               </div>
               <h3 className="font-semibold text-sm mb-1">AI Recommendations</h3>
               <p className="text-xs text-gray-400">Personalized just for you</p>
             </div>
             <div>
-              <div className="w-10 h-10 rounded-full border border-orange-500/30 flex items-center justify-center mb-3 bg-black/40 backdrop-blur-md">
-                <MapPin className="w-5 h-5 text-orange-500" />
+              <div className="w-10 h-10 rounded-full border border-brand/30 flex items-center justify-center mb-3 bg-black/40 backdrop-blur-md">
+                <MapPin className="w-5 h-5 text-brand dark:text-[#E8735A]" />
               </div>
               <h3 className="font-semibold text-sm mb-1">Nearby & Live</h3>
               <p className="text-xs text-gray-400">Real-time GPS results</p>
             </div>
             <div>
-              <div className="w-10 h-10 rounded-full border border-orange-500/30 flex items-center justify-center mb-3 bg-black/40 backdrop-blur-md">
-                <Heart className="w-5 h-5 text-orange-500" />
+              <div className="w-10 h-10 rounded-full border border-brand/30 flex items-center justify-center mb-3 bg-black/40 backdrop-blur-md">
+                <Heart className="w-5 h-5 text-brand dark:text-[#E8735A]" />
               </div>
               <h3 className="font-semibold text-sm mb-1">Vibes & Moods</h3>
               <p className="text-xs text-gray-400">Match your every mood</p>
@@ -164,7 +236,7 @@ export default function AuthPage() {
         </div>
 
         {/* RIGHT SIDE (Thẻ form: bỏ fix height để tự động co giãn theo nội dung) */}
-        <div className="w-full lg:flex-1 p-8 sm:p-12 flex flex-col relative bg-white dark:bg-[#121622] rounded-[2rem] shadow-xl border border-gray-100 dark:border-gray-800">
+        <div className="w-full lg:flex-1 p-8 sm:p-12 flex flex-col relative bg-white dark:bg-[#2A2420] rounded-[2rem] shadow-xl border border-gray-100 dark:border-[#3D312A]">
 
           <div className="absolute top-6 right-8 flex items-center gap-4 z-20">
             <ThemeToggle />
@@ -172,22 +244,22 @@ export default function AuthPage() {
 
           <div className="flex-1 flex flex-col justify-center max-w-[360px] mx-auto w-full mt-8">
             <div className="text-center mb-8">
-              <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+              <h2 className="text-3xl font-bold text-gray-900 dark:text-[#E6DFD5] mb-2">
                 {mode === "signin" ? "Welcome back !" : "Join Wanderbite"}
               </h2>
-              <p className="text-gray-500 dark:text-gray-400 text-[15px]">
+              <p className="text-gray-500 dark:text-[#9A8A7A] text-[15px]">
                 {mode === "signin"
                   ? "Sign in to continue your culinary journey."
                   : "Create an account to start exploring."}
               </p>
             </div>
 
-            <div className="flex p-1.5 bg-gray-100 dark:bg-gray-800/50 rounded-xl mb-8">
+            <div className="flex p-1.5 bg-gray-100 dark:bg-[#3D312A] rounded-xl mb-8">
               <button
                 type="button"
                 onClick={() => { setMode("signin"); setErrorMsg(""); }}
                 className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition-all ${mode === "signin"
-                  ? "bg-white dark:bg-[#1F2433] text-orange-600 shadow-sm"
+                  ? "bg-white dark:bg-[#3D312A] text-brand-hover shadow-sm"
                   : "text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
                   }`}
               >
@@ -198,7 +270,7 @@ export default function AuthPage() {
                 type="button"
                 onClick={() => { setMode("signup"); setErrorMsg(""); }}
                 className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition-all ${mode === "signup"
-                  ? "bg-white dark:bg-[#1F2433] text-orange-600 shadow-sm"
+                  ? "bg-white dark:bg-[#3D312A] text-brand-hover shadow-sm"
                   : "text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
                   }`}
               >
@@ -216,7 +288,7 @@ export default function AuthPage() {
               )}
 
               <div className="flex flex-col gap-2">
-                <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                <label className="text-sm font-semibold text-gray-700 dark:text-[#C8BFB0]">
                   Username
                 </label>
                 <div className="relative">
@@ -226,13 +298,13 @@ export default function AuthPage() {
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     placeholder="Enter your username"
-                    className="w-full bg-white dark:bg-[#1A1F2B] border border-gray-200 dark:border-gray-700 rounded-xl py-3 pl-11 pr-4 text-[15px] text-gray-900 dark:text-white placeholder:text-gray-400 outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all"
+                    className="w-full bg-white dark:bg-[#3D312A] border border-gray-200 dark:border-[#4D3D32] rounded-xl py-3 pl-11 pr-4 text-[15px] text-gray-900 dark:text-[#E6DFD5] placeholder:text-gray-400 outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition-all"
                   />
                 </div>
               </div>
 
               <div className="flex flex-col gap-2">
-                <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                <label className="text-sm font-semibold text-gray-700 dark:text-[#C8BFB0]">
                   Password
                 </label>
                 <div className="relative">
@@ -242,7 +314,7 @@ export default function AuthPage() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Enter your password"
-                    className="w-full bg-white dark:bg-[#1A1F2B] border border-gray-200 dark:border-gray-700 rounded-xl py-3 pl-11 pr-11 text-[15px] text-gray-900 dark:text-white placeholder:text-gray-400 outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all"
+                    className="w-full bg-white dark:bg-[#3D312A] border border-gray-200 dark:border-[#4D3D32] rounded-xl py-3 pl-11 pr-11 text-[15px] text-gray-900 dark:text-[#E6DFD5] placeholder:text-gray-400 outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition-all"
                   />
                   <button
                     type="button"
@@ -257,10 +329,10 @@ export default function AuthPage() {
               {mode === "signin" && (
                 <div className="flex items-center justify-between mt-1">
                   <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" className="w-4 h-4 rounded text-orange-500 border-gray-300 focus:ring-orange-500" />
-                    <span className="text-[13px] font-medium text-gray-600 dark:text-gray-400">Remember me</span>
+                    <input type="checkbox" className="w-4 h-4 rounded text-brand dark:text-[#E8735A] border-gray-300 focus:ring-brand" />
+                    <span className="text-[13px] font-medium text-gray-600 dark:text-[#9A8A7A]">Remember me</span>
                   </label>
-                  <a href="#" className="text-[13px] font-semibold text-cyan-600 dark:text-cyan-400 hover:underline">
+                  <a href="#" className="text-[13px] font-semibold text-brand-hover dark:text-[#E6DFD5] hover:underline">
                     Forgot password?
                   </a>
                 </div>
@@ -269,7 +341,7 @@ export default function AuthPage() {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-xl py-3.5 mt-2 font-semibold shadow-md shadow-orange-500/20 transition-all active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer"
+                className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-brand to-brand-hover hover:from-brand-hover hover:to-brand-hover text-white rounded-xl py-3.5 mt-2 font-semibold shadow-md shadow-brand/20 transition-all active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer"
               >
                 {isLoading ? (
                   <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -283,29 +355,40 @@ export default function AuthPage() {
             </form>
 
             <div className="mt-8 relative flex items-center justify-center">
-              <div className="absolute inset-x-0 h-px bg-gray-200 dark:bg-gray-800" />
-              <span className="relative bg-white dark:bg-[#121622] px-4 text-[11px] font-bold text-gray-400 uppercase tracking-widest">
+              <div className="absolute inset-x-0 h-px bg-gray-200 dark:bg-[#3D312A]" />
+              <span className="relative bg-white dark:bg-[#2A2420] px-4 text-[11px] font-bold text-gray-400 uppercase tracking-widest">
                 OR
               </span>
             </div>
 
             <div className="mt-8 flex flex-col gap-3">
-              <button className="flex items-center justify-center gap-3 w-full py-3 bg-white dark:bg-[#1A1F2B] border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-[#1F2433] rounded-xl text-[14px] font-semibold text-gray-700 dark:text-gray-300 transition-colors cursor-pointer">
-                <svg className="w-5 h-5" viewBox="0 0 24 24">
-                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
-                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
-                </svg>
-                Continue with Google
+              <button 
+                type="button"
+                onClick={() => handleGoogleLogin()}
+                disabled={isLoading}
+                className="flex items-center justify-center gap-3 w-full py-3 bg-white dark:bg-[#3D312A] border border-gray-200 dark:border-[#4D3D32] hover:bg-gray-50 dark:hover:bg-[#3D312A] active:scale-[0.98] rounded-xl text-[14px] font-semibold text-gray-700 dark:text-[#C8BFB0] transition-all cursor-pointer disabled:opacity-70"
+              >
+                {isLoading ? (
+                   <div className="w-5 h-5 border-2 border-brand/30 border-t-brand rounded-full animate-spin" />
+                ) : (
+                  <>
+                    <svg className="w-5 h-5" viewBox="0 0 24 24">
+                      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+                      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+                    </svg>
+                    Continue with Google
+                  </>
+                )}
               </button>
             </div>
 
-            <p className="mt-8 text-center text-[14px] text-gray-500 dark:text-gray-400">
+            <p className="mt-8 text-center text-[14px] text-gray-500 dark:text-[#9A8A7A]">
               {mode === "signin" ? "Don't have an account?" : "Already have an account?"}{" "}
               <button
                 onClick={() => { setMode(mode === "signin" ? "signup" : "signin"); setErrorMsg(""); }}
-                className="font-bold text-cyan-600 dark:text-cyan-400 hover:underline cursor-pointer"
+                className="font-bold text-brand-hover dark:text-[#E6DFD5] hover:underline cursor-pointer"
               >
                 {mode === "signin" ? "Sign up" : "Sign in"}
               </button>
@@ -315,5 +398,17 @@ export default function AuthPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function AuthPage() {
+  const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "dummy-id";
+
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#F7F8FA] dark:bg-[#2A2420]" />}>
+      <GoogleOAuthProvider clientId={clientId}>
+        <AuthPageContent />
+      </GoogleOAuthProvider>
+    </Suspense>
   );
 }

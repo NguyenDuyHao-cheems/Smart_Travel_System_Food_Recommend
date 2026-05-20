@@ -1,36 +1,53 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from .schemas import SearchRequest, AIResponseData, SearchRecommendRequest, SearchRecommendResponse
+
+from .schemas import (
+    SearchRequest,
+    AIResponseData,
+    SearchRecommendRequest,
+    SessionCreateResponse,
+    SessionDataResponse,
+)
 from .service import SearchService
 from app.services.ai_client import AIServiceClient, get_ai_client
 from app.core.dependencies import get_db
 
 router = APIRouter()
 
+
 def get_search_service_dep(ai_client: AIServiceClient = Depends(get_ai_client)) -> SearchService:
     return SearchService(ai_client=ai_client)
+
 
 @router.post("/search/process", response_model=AIResponseData)
 async def process_search_query(
     request: SearchRequest,
-    search_service: SearchService = Depends(get_search_service_dep)
+    search_service: SearchService = Depends(get_search_service_dep),
 ):
-    """
-    Receives a raw text query from the client, forwards it to the ai_engine
-    to extract intents/embeddings, and then uses that data to perform a search 
-    in PostgreSQL using pgvector (implementation pending).
-    """
+    """Vectorize a raw text query via ai_engine (utility endpoint)."""
     return await search_service.process_search_query(request.query)
 
-@router.post("/search/recommend", response_model=SearchRecommendResponse)
+
+@router.post("/search/recommend", response_model=SessionCreateResponse)
 async def recommend_food_with_gps(
     request: SearchRecommendRequest,
     search_service: SearchService = Depends(get_search_service_dep),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """
-    Receives a food requirement and user GPS location (lat, lng),
-    then returns the recommended food places near that location.
+    Nhận query + GPS, chạy AI pipeline, lưu session vào DB.
+    Trả về: { session_id, results, fallback_applied, ... }
     """
     return await search_service.process_recommend_query(request, db)
 
+
+@router.get("/search/sessions/{session_id}", response_model=SessionDataResponse)
+def get_search_session(
+    session_id: str,
+    db: Session = Depends(get_db),
+):
+    """
+    Lấy kết quả tìm kiếm đã lưu theo session_id.
+    Không chạy lại AI — chỉ đọc từ database.
+    """
+    return SearchService.get_session(session_id, db)

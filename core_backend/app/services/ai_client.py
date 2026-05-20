@@ -6,7 +6,7 @@ from app.domains.search.schemas import AIResponseData
 
 logger = logging.getLogger(__name__)
 
-_TIMEOUT = 10.0
+_TIMEOUT = 60.0
 
 
 async def embed_text(text: str) -> Optional[List[float]]:
@@ -31,12 +31,8 @@ class AIServiceClient:
 
     async def check_health(self) -> bool:
         """Trả về True nếu AI Engine đang hoạt động."""
-        try:
-            response = await self._client.get("/api/health")
-            return response.status_code == 200
-        except Exception as exc:
-            logger.error("AI engine health check failed: %s", exc)
-            return False
+        response = await self._client.get("/api/health")
+        return response.status_code == 200
 
     async def extract_intent_and_vectorize(self, query: str) -> Optional[AIResponseData]:
         """
@@ -45,16 +41,12 @@ class AIServiceClient:
         if not query.strip():
             return None
 
-        try:
-            response = await self._client.post(
-                "/api/v1/nlp/extract-intent",
-                json={"text": query},
-            )
-            response.raise_for_status()
-            return AIResponseData(**response.json())
-        except Exception as exc:
-            logger.error("AI engine unreachable for extraction: %s", exc)
-            return None
+        response = await self._client.post(
+            "/api/v1/nlp/extract-intent",
+            json={"text": query},
+        )
+        response.raise_for_status()
+        return AIResponseData(**response.json())
 
     async def embed_text(self, text: str) -> Optional[List[float]]:
         if not text.strip():
@@ -78,9 +70,32 @@ class AIServiceClient:
                 len(vector) if vector else 0,
             )
             return None
-        except Exception as exc:
-            logger.error("AI engine unreachable for embedding: %s", exc)
+        except Exception as e:
+            logger.error("Error communicating with AI Engine for embed_text: %s", e)
             return None
+
+    async def reload_recommendation_model(self) -> dict:
+        """
+        Gửi yêu cầu reload mô hình LightFM sang AI Engine.
+        """
+        response = await self._client.post("/api/v1/admin/recommendations/reload")
+        response.raise_for_status()
+        return response.json()
+
+    async def get_lightfm_recommendations(self, user_id: str, limit: int = 10) -> List[str]:
+        """
+        Lấy danh sách Restaurant IDs từ AI Engine dựa trên mô hình LightFM.
+        """
+        try:
+            response = await self._client.get(
+                "/api/v1/restaurants/recommendations",
+                params={"user_id": str(user_id), "limit": limit}
+            )
+            response.raise_for_status()
+            return response.json()
+        except Exception as e:
+            logger.error("Error communicating with AI Engine recommendations: %s", e)
+            return []
 
 
 # ---------------------------------------------------------------------------

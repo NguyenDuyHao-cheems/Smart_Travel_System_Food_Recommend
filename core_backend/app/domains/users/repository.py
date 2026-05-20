@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
-from .models import UserOnboarding, UserAccount
+from .models import UserOnboarding, UserAccount, UserInteraction
 from typing import Optional, List
 
 
@@ -133,5 +133,67 @@ class UserAccountRepository:
         self._db.commit()
         self._db.refresh(user)
         return user
+
+    def update_user(
+        self, 
+        user_id: str, 
+        full_name: Optional[str] = None, 
+        avatar_url: Optional[str] = None,
+        cover_url: Optional[str] = None,
+        password_hash: Optional[str] = None
+    ) -> Optional[UserAccount]:
+        user = self.get_by_id(user_id)
+        if not user:
+            return None
+        
+        if full_name is not None:
+            user.full_name = full_name
+        if avatar_url is not None:
+            user.avatar_url = avatar_url
+        if cover_url is not None:
+            user.cover_url = cover_url
+        if password_hash is not None:
+            user.password_hash = password_hash
+            
+        self._db.commit()
+        self._db.refresh(user)
+        return user
+
+    def delete_user(self, user_id: str) -> bool:
+        user = self.get_by_id(user_id)
+        if not user:
+            return False
+        
+        self._db.delete(user)
+        self._db.commit()
+        return True
+
+class UserInteractionRepository:
+    def __init__(self, db: Session) -> None:
+        self._db = db
+
+    def create_interaction(
+        self,
+        action_type: str,
+        anonymous_id: Optional[str] = None,
+        user_id: Optional[str] = None,
+        res_id: Optional[str] = None,
+        duration_sec: Optional[int] = None,
+        metadata: Optional[dict] = None,
+        search_session_id: Optional[str] = None,
+    ) -> UserInteraction:
+        interaction = UserInteraction(
+            anonymous_id=anonymous_id,
+            user_id=user_id,
+            res_id=res_id,
+            action_type=action_type,
+            duration_sec=duration_sec,
+            metadata_=metadata,
+            search_session_id=search_session_id,
+        )
+        self._db.add(interaction)
+        self._db.commit()
+        self._db.refresh(interaction)
+        return interaction
 
 

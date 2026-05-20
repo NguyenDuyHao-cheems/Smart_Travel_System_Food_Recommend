@@ -60,3 +60,33 @@ async def rank_candidates(
             "Ranking pipeline failed for %d candidates", len(payload.candidates)
         )
         raise HTTPException(status_code=500, detail="Ranking service error.")
+
+
+# ---------------------------------------------------------------------------
+# LightFM Recommendation Endpoints
+# ---------------------------------------------------------------------------
+from fastapi import Query
+from typing import List
+from app.ranking.lightfm.recommendation_service import recommendation_service as lf_rec_service
+
+@router.post("/admin/recommendations/reload")
+def reload_recommendations():
+    """Reload the LightFM model and mapping files from disk."""
+    try:
+        lf_rec_service.load_model()
+        return {"message": "Model đã được nạp lại thành công!"}
+    except Exception as e:
+        logger.error(f"Error reloading LightFM model: {e}")
+        raise HTTPException(status_code=500, detail=f"Error reloading model: {str(e)}")
+
+@router.get("/restaurants/recommendations", response_model=List[str])
+def get_lightfm_recommendations(
+    user_id: str = Query(..., description="The ID of the user"),
+    limit: int = Query(10, description="The maximum number of recommendations to return")
+) -> List[str]:
+    """Get the LightFM collaborative filtering recommendations (restaurant IDs) for a user."""
+    try:
+        return lf_rec_service.get_recommendations(user_id, limit=limit)
+    except Exception as e:
+        logger.error(f"Error getting LightFM recommendations for user {user_id}: {e}")
+        raise HTTPException(status_code=500, detail="Error retrieving recommendations.")

@@ -5,10 +5,11 @@ import { motion } from 'framer-motion';
 import { Sparkles } from 'lucide-react';
 
 const AI_STATUS_MESSAGES = [
-  'Đang phân tích sở thích ẩm thực...',
-  'Tìm kiếm quán ăn gần bạn...',
-  'AI đang lọc kết quả tốt nhất...',
-  'Sắp xếp theo độ phù hợp...',
+  "Đang khởi tạo hệ thống phân tích toàn diện...",
+  "Đang quét dữ liệu ẩm thực trên toàn khu vực...",
+  "Đang phân tích thói quen và sở thích của bạn...",
+  "Đang tối ưu hóa danh sách gợi ý tốt nhất...",
+  "Sẵn sàng hiển thị kết quả cho bạn!",
 ];
 
 /* ── Skeleton Card ── */
@@ -18,18 +19,18 @@ function SkeletonCard({ delay = 0 }: { delay?: number }) {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay }}
-      className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl overflow-hidden shadow-sm relative"
+      className="bg-white dark:bg-[#3D312A] border border-gray-100 dark:border-[#4D3D32] rounded-2xl overflow-hidden shadow-sm relative"
     >
       {/* Shimmer overlay */}
       <div className="absolute inset-0 -translate-x-full animate-[shimmer_2s_infinite] bg-gradient-to-r from-transparent via-gray-200/50 dark:via-gray-600/20 to-transparent z-10 pointer-events-none" />
-      <div className="h-[180px] bg-gray-200 dark:bg-gray-700" />
+      <div className="h-[180px] bg-gray-200 dark:bg-[#4D3D32]" />
       <div className="p-4 space-y-3">
-        <div className="h-5 w-3/4 rounded-full bg-gray-200 dark:bg-gray-700" />
-        <div className="h-3 w-1/2 rounded-full bg-gray-200 dark:bg-gray-700" />
-        <div className="h-3 w-full rounded-full bg-gray-200 dark:bg-gray-700" />
+        <div className="h-5 w-3/4 rounded-full bg-gray-200 dark:bg-[#4D3D32]" />
+        <div className="h-3 w-1/2 rounded-full bg-gray-200 dark:bg-[#4D3D32]" />
+        <div className="h-3 w-full rounded-full bg-gray-200 dark:bg-[#4D3D32]" />
         <div className="flex gap-2">
-          <div className="h-6 w-14 rounded-full bg-gray-200 dark:bg-gray-700" />
-          <div className="h-6 w-14 rounded-full bg-gray-200 dark:bg-gray-700" />
+          <div className="h-6 w-14 rounded-full bg-gray-200 dark:bg-[#4D3D32]" />
+          <div className="h-6 w-14 rounded-full bg-gray-200 dark:bg-[#4D3D32]" />
         </div>
       </div>
     </motion.div>
@@ -42,27 +43,27 @@ function HeroSkeleton() {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-3xl overflow-hidden shadow-sm relative mb-8"
+      className="bg-white dark:bg-[#3D312A] border border-gray-100 dark:border-[#4D3D32] rounded-3xl overflow-hidden shadow-sm relative mb-8"
     >
       <div className="absolute inset-0 -translate-x-full animate-[shimmer_2s_infinite] bg-gradient-to-r from-transparent via-gray-200/50 dark:via-gray-600/20 to-transparent z-10 pointer-events-none" />
       <div className="flex flex-col md:flex-row">
         <div className="flex-1 p-8 space-y-4">
-          <div className="h-8 w-48 rounded-full bg-gray-200 dark:bg-gray-700" />
-          <div className="h-6 w-1/3 rounded-full bg-gray-200 dark:bg-gray-700" />
-          <div className="h-8 w-2/3 rounded-full bg-gray-200 dark:bg-gray-700" />
-          <div className="h-4 w-1/4 rounded-full bg-gray-200 dark:bg-gray-700" />
+          <div className="h-8 w-48 rounded-full bg-gray-200 dark:bg-[#4D3D32]" />
+          <div className="h-6 w-1/3 rounded-full bg-gray-200 dark:bg-[#4D3D32]" />
+          <div className="h-8 w-2/3 rounded-full bg-gray-200 dark:bg-[#4D3D32]" />
+          <div className="h-4 w-1/4 rounded-full bg-gray-200 dark:bg-[#4D3D32]" />
           <div className="space-y-2">
-            <div className="h-4 w-full rounded-full bg-gray-200 dark:bg-gray-700" />
-            <div className="h-4 w-4/5 rounded-full bg-gray-200 dark:bg-gray-700" />
+            <div className="h-4 w-full rounded-full bg-gray-200 dark:bg-[#4D3D32]" />
+            <div className="h-4 w-4/5 rounded-full bg-gray-200 dark:bg-[#4D3D32]" />
           </div>
           <div className="flex gap-2">
-            <div className="h-7 w-16 rounded-full bg-gray-200 dark:bg-gray-700" />
-            <div className="h-7 w-16 rounded-full bg-gray-200 dark:bg-gray-700" />
-            <div className="h-7 w-24 rounded-full bg-gray-200 dark:bg-gray-700" />
+            <div className="h-7 w-16 rounded-full bg-gray-200 dark:bg-[#4D3D32]" />
+            <div className="h-7 w-16 rounded-full bg-gray-200 dark:bg-[#4D3D32]" />
+            <div className="h-7 w-24 rounded-full bg-gray-200 dark:bg-[#4D3D32]" />
           </div>
         </div>
         <div className="md:w-[380px] h-[280px] md:h-auto p-4">
-          <div className="w-full h-full rounded-2xl bg-gray-200 dark:bg-gray-700" />
+          <div className="w-full h-full rounded-2xl bg-gray-200 dark:bg-[#4D3D32]" />
         </div>
       </div>
     </motion.div>
@@ -91,7 +92,7 @@ function StatusText() {
     <motion.p
       animate={{ opacity: visible ? 1 : 0 }}
       transition={{ duration: 0.25 }}
-      className="text-sm font-medium text-orange-500 dark:text-orange-400"
+      className="text-sm font-medium text-brand dark:text-[#E8735A] dark:text-[#E6DFD5]"
     >
       {AI_STATUS_MESSAGES[msgIdx]}
     </motion.p>
@@ -112,7 +113,7 @@ export function LoadingState({ searchQuery, locError, getLocation }: LoadingStat
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0, y: -20 }}
-      transition={{ duration: 0.4 }}
+      transition={{ duration: 0.3 }}
     >
       {/* Title section */}
       <div className="flex flex-col items-center text-center mb-10">
@@ -121,18 +122,18 @@ export function LoadingState({ searchQuery, locError, getLocation }: LoadingStat
           <motion.div
             animate={{ scale: [1, 1.3, 1], opacity: [0.5, 0, 0.5] }}
             transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-            className="absolute inset-0 rounded-full border-2 border-orange-300 dark:border-orange-500/40 -m-3"
+            className="absolute inset-0 rounded-full border-2 border-brand/50 dark:border-brand/40 -m-3"
           />
-          <div className="w-14 h-14 rounded-full bg-orange-50 dark:bg-orange-500/20 flex items-center justify-center">
-            <Sparkles className="w-7 h-7 text-orange-500" />
+          <div className="w-14 h-14 rounded-full bg-brand-muted dark:bg-brand/20 flex items-center justify-center">
+            <Sparkles className="w-7 h-7 text-brand dark:text-[#E8735A]" />
           </div>
         </div>
 
-        <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-2 tracking-tight">
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-[#E6DFD5] mb-2 tracking-tight">
           Đang tìm kiếm cho bạn...
         </h1>
 
-        <p className="text-sm text-gray-500 dark:text-gray-400 mb-4 max-w-md border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2 bg-gray-50 dark:bg-gray-800">
+        <p className="text-sm text-gray-500 dark:text-[#9A8A7A] mb-4 max-w-md border border-gray-200 dark:border-[#4D3D32] rounded-xl px-4 py-2 bg-gray-50 dark:bg-[#3D312A]">
           &ldquo;{searchQuery}&rdquo;
         </p>
 
@@ -148,11 +149,11 @@ export function LoadingState({ searchQuery, locError, getLocation }: LoadingStat
         )}
 
         {/* Progress bar */}
-        <div className="mt-6 w-64 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+        <div className="mt-6 w-64 h-1.5 bg-gray-200 dark:bg-[#4D3D32] rounded-full overflow-hidden">
           <motion.div
             animate={{ x: ['-100%', '200%'] }}
-            transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
-            className="h-full w-1/2 rounded-full bg-gradient-to-r from-transparent via-orange-400 to-transparent"
+            transition={{ duration: 1, repeat: Infinity, ease: 'easeInOut' }}
+            className="h-full w-1/2 rounded-full bg-gradient-to-r from-transparent via-brand to-transparent"
           />
         </div>
       </div>
@@ -161,7 +162,7 @@ export function LoadingState({ searchQuery, locError, getLocation }: LoadingStat
       <HeroSkeleton />
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         {[0, 1, 2, 3].map(i => (
-          <SkeletonCard key={i} delay={i * 0.08} />
+          <SkeletonCard key={i} delay={i * 0.04} />
         ))}
       </div>
     </motion.div>

@@ -21,34 +21,51 @@ _GEMINI_URL_TEMPLATE = (
     "{model}:generateContent?key={key}"
 )
 
-_SYSTEM_INSTRUCTION = """Bạn là hệ thống tiền xử lý truy vấn tìm kiếm quán ăn/món ăn. Nhiệm vụ:
+# System prompt for LLM to extract specific food names from vague queries
+_SYSTEM_INSTRUCTION = """Bạn là hệ thống tiền xử lý truy vấn tìm kiếm ẩm thực. Nhiệm vụ của bạn là dịch các ngữ cảnh mơ hồ thành các món ăn cụ thể.
 
-1. Sửa lỗi chính tả tiếng Việt (ví dụ: "bún bò huê" → "bún bò Huế")
-2. Mở rộng query quá ngắn/mơ hồ thành câu rõ ý định ẩm thực
-3. Trích xuất ý định ẩm thực thực sự từ ngữ cảnh cảm xúc/hội thoại
-4. Loại bỏ thông tin nhiễu (ngân sách, địa điểm, cảm xúc) — chỉ giữ phần mô tả món ăn/quán ăn
-5. Giữ nguyên tên riêng món ăn, tên quán nếu có
+Các quy tắc BẮT BUỘC:
+1. TUYỆT ĐỐI KHÔNG giữ lại các từ chỉ cảm xúc, thời tiết, hay mô tả trừu tượng (như "buồn", "vui", "nóng", "lạnh", "thanh mát", "comfort food", "món nóng hổi", "đồ ăn").
+2. CHỈ TRẢ VỀ một danh sách các danh từ chỉ món ăn/thức uống cụ thể, phổ biến tại Việt Nam, phân cách bằng dấu phẩy.
+3. Sửa lỗi chính tả tiếng Việt.
+4. Loại bỏ thông tin nhiễu (ngân sách, địa điểm, sự kiện).
+5. Nếu người dùng đã nhập tên một món ăn cụ thể (ví dụ: phở, bún bò), hãy giữ nguyên và bổ sung thêm 1-2 biến thể phổ biến của món đó.
 
 Ví dụ:
 User: "buồn quá ăn gì"
-JSON: {"cleaned_query": "món ăn ngon phù hợp khi buồn, đồ ăn comfort food"}
+JSON: {"cleaned_query": "trà sữa, bánh ngọt, lẩu thái, kem, gà rán"}
 
 User: "bún bò huê ngon"
-JSON: {"cleaned_query": "bún bò Huế ngon"}
+JSON: {"cleaned_query": "bún bò Huế"}
 
 User: "sếp thưởng nóng kiếm chỗ nhậu tới bến"
-JSON: {"cleaned_query": "quán nhậu, quán bia, đồ nhắm, hải sản tươi"}
+JSON: {"cleaned_query": "hải sản, lẩu bò, bia tươi, heo quay, đồ nướng"}
 
 User: "phở"
-JSON: {"cleaned_query": "phở bò, phở gà, quán phở ngon"}
+JSON: {"cleaned_query": "phở bò, phở gà"}
 
 User: "đi bão xong đói bụng muốn ăn gà rán"
-JSON: {"cleaned_query": "gà rán, quán gà rán giòn"}
+JSON: {"cleaned_query": "gà rán"}
 
 User: "cafe sữa"  
-JSON: {"cleaned_query": "quán cà phê, cà phê sữa đá"}
+JSON: {"cleaned_query": "cà phê sữa đá, bạc xỉu"}
 
-Chỉ trả về JSON {"cleaned_query": "..."}, không giải thích!"""
+User: "Hôm nay trời nóng, thèm ăn món lạnh"
+JSON: {"cleaned_query": "bingsu, kem, chè thái, sinh tố, bún thịt nướng, gỏi cuốn"}
+
+User: "Hôm nay trời mưa, thèm ăn món nóng"
+JSON: {"cleaned_query": "lẩu thái, đồ nướng, phở bò, bún bò huế, cháo sườn, bánh canh"}
+
+User: "Muốn ăn món nước dùng thanh mát"
+JSON: {"cleaned_query": "bún cá, bún riêu cua, phở gà, hủ tiếu nam vang, miến gà"}
+
+User: "thèm món bùi"
+JSON: {"cleaned_query": "xôi xéo, chè xôi nước, bánh chưng, chè đậu đen, đậu hũ lướt ván"}
+
+User: "thèm món giòn"
+JSON: {"cleaned_query": "bánh xèo, nem rán, gà rán, khoai tây chiên, da heo quay"}
+
+Chỉ trả về JSON {"cleaned_query": "..."}, không giải thích thêm!"""
 
 
 async def clean_query_with_gemini(text: str) -> str:

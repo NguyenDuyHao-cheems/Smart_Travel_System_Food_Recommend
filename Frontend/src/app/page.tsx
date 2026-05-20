@@ -1,485 +1,512 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback, Suspense } from "react";
 import { useRouter } from "next/navigation";
-import {
-  // [HIDDEN] Bell,
-  // [HIDDEN] Headphones,
-  // [HIDDEN] Globe,
-  Search,
-  // [HIDDEN] Star,
-  // [HIDDEN] MapPin,
-  // [HIDDEN] Heart,
-  // [HIDDEN] Flame,
-  // [HIDDEN] Snowflake,
-  // [HIDDEN] HeartPulse,
-  // [HIDDEN] Coins,
-  // [HIDDEN] SlidersHorizontal,
-  // [HIDDEN] Brain,
-  // [HIDDEN] ShieldCheck,
-  Sparkles,
-  User,
-  // [HIDDEN] ChevronRight,
-} from "lucide-react";
-import { Playfair_Display, Roboto } from "next/font/google";
-// [HIDDEN] import { Sidebar } from "../components/Sidebar";
-import { ThemeToggle } from "../components/ThemeToggle";
-import { SurveyModal } from "../components/SurveyModal";
+import Link from "next/link";
+import { X, AlertTriangle, RefreshCw, Sparkles } from "lucide-react";
+import { AppShell } from "../components/AppShell";
+import { UserDropdown } from "../components/UserDropdown";
 import { BudgetSelector, type BudgetOption } from "../components/BudgetSelector";
+import { SurveyModal } from "../components/SurveyModal";
+import { SearchLoadingOverlay } from "../components/ui/SearchLoadingOverlay";
+import { SearchBar } from "../components/SearchBar";
+import { useSearchState } from "../hooks/useSearchState";
+import { historyService } from "../services/historyService";
+import { FoodCard } from "../components/FoodCard";
+import { RecommendResult } from "./result/page";
+import { useOptimizedLocation } from "../hooks/useOptimizedLocation";
+import { useSelector } from "react-redux";
+import { RootState } from "../store";
 
-const playfair = Playfair_Display({
-  subsets: ["latin", "vietnamese"],
-  weight: ["400", "600", "700"],
-});
+/* ── Types ── */
+type HealthStatus = "loading" | "ok" | "degraded" | "error";
 
-const roboto = Roboto({
-  subsets: ["latin", "vietnamese"],
-  weight: ["300", "400", "500", "700", "900"],
-});
+interface HealthData {
+  status: string;
+  backend: boolean;
+  database: boolean;
+  ai_engine: boolean;
+  message: string;
+}
 
-/* ───────── [HIDDEN] Mock Data — Uncomment khi kết nối API ───────── */
+const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
-// const vibeFilters = [
-//   { label: "Cay nóng", icon: Flame, color: "orange" },
-//   { label: "Mát lạnh", icon: Snowflake, color: "sky" },
-//   { label: "Lãng mạn", icon: HeartPulse, color: "pink" },
-//   { label: "Giá sinh viên", icon: Coins, color: "amber" },
-// ];
+/* ── Trending chips ── */
+const TRENDING = [
+  { id: 1, title: "Top Quán Nướng", emoji: "🥩", query: "quán nướng ngon" },
+  { id: 2, title: "Ăn Đêm", emoji: "🌃", query: "đồ ăn đêm muộn" },
+  { id: 3, title: "Đồ ăn Healthy", emoji: "🥑", query: "đồ ăn healthy ít calo" },
+  { id: 4, title: "Trà Sữa & Cà Phê", emoji: "🧋", query: "trà sữa cà phê ngon" },
+  { id: 5, title: "Bánh mì & Bún", emoji: "🍜", query: "bánh mì bún ngon" },
+  { id: 6, title: "Dimsum & Lẩu", emoji: "🥢", query: "dimsum lẩu ngon" },
+];
 
-// interface FoodItem {
-//   id: number;
-//   name: string;
-//   image: string;
-//   matchPercent: number;
-//   distance: string;
-//   rating: number;
-//   reviews: number;
-//   priceRange: string;
-//   tags: { label: string; color: string }[];
-// }
+/* ─────────────────────────────────────────────── */
 
-// const foodItems: FoodItem[] = [
-//   {
-//     id: 1,
-//     name: "Bún bò Huế",
-//     image:
-//       "https://images.unsplash.com/photo-1582878826629-29b7ad1cdc43?w=600&h=400&fit=crop",
-//     matchPercent: 98,
-//     distance: "2.5km",
-//     rating: 4.8,
-//     reviews: 256,
-//     priceRange: "30k - 50k",
-//     tags: [
-//       { label: "Cay nóng", color: "bg-red-50 text-red-500 border-red-100" },
-//       {
-//         label: "Truyền thống",
-//         color: "bg-teal-50 text-teal-600 border-teal-100",
-//       },
-//       {
-//         label: "Bữa trưa",
-//         color: "bg-green-50 text-green-600 border-green-100",
-//       },
-//     ],
-//   },
-//   {
-//     id: 2,
-//     name: "Pizza Hải sản",
-//     image:
-//       "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=600&h=400&fit=crop",
-//     matchPercent: 95,
-//     distance: "1.2km",
-//     rating: 4.6,
-//     reviews: 189,
-//     priceRange: "70k - 120k",
-//     tags: [
-//       {
-//         label: "Phô mai",
-//         color: "bg-yellow-50 text-yellow-600 border-yellow-100",
-//       },
-//       { label: "Hải sản", color: "bg-blue-50 text-blue-500 border-blue-100" },
-//       {
-//         label: "Âu - Ý",
-//         color: "bg-violet-50 text-violet-500 border-violet-100",
-//       },
-//     ],
-//   },
-//   {
-//     id: 3,
-//     name: "Trà sữa trân châu",
-//     image:
-//       "https://images.unsplash.com/photo-1525385133512-2f3bdd039054?w=600&h=400&fit=crop",
-//     matchPercent: 92,
-//     distance: "800m",
-//     rating: 4.7,
-//     reviews: 320,
-//     priceRange: "20k - 35k",
-//     tags: [
-//       { label: "Ngọt nhẹ", color: "bg-pink-50 text-pink-500 border-pink-100" },
-//       {
-//         label: "Giải nhiệt",
-//         color: "bg-cyan-50 text-cyan-600 border-cyan-100",
-//       },
-//       {
-//         label: "Đồ uống",
-//         color: "bg-indigo-50 text-indigo-500 border-indigo-100",
-//       },
-//     ],
-//   },
-//   {
-//     id: 4,
-//     name: "Cơm tấm sườn",
-//     image:
-//       "https://images.unsplash.com/photo-1512058564366-18510be2db19?w=600&h=400&fit=crop",
-//     matchPercent: 96,
-//     distance: "3.1km",
-//     rating: 4.6,
-//     reviews: 212,
-//     priceRange: "25k - 40k",
-//     tags: [
-//       {
-//         label: "Truyền thống",
-//         color: "bg-teal-50 text-teal-600 border-teal-100",
-//       },
-//       {
-//         label: "Bữa trưa",
-//         color: "bg-green-50 text-green-600 border-green-100",
-//       },
-//       {
-//         label: "No nê",
-//         color: "bg-amber-50 text-amber-600 border-amber-100",
-//       },
-//     ],
-//   },
-// ];
-
-// const features = [
-//   {
-//     icon: Brain,
-//     iconBg: "bg-orange-100 text-orange-500",
-//     title: "AI đề xuất thông minh",
-//     desc: "Cá nhân hóa theo sở thích",
-//   },
-//   {
-//     icon: MapPin,
-//     iconBg: "bg-orange-100 text-orange-500",
-//     title: "Tìm kiếm quanh bạn",
-//     desc: "Dựa trên vị trí GPS",
-//   },
-//   {
-//     icon: Heart,
-//     iconBg: "bg-pink-100 text-pink-500",
-//     title: "Đánh giá chân thực",
-//     desc: "Từ cộng đồng FoodAI",
-//   },
-//   {
-//     icon: ShieldCheck,
-//     iconBg: "bg-emerald-100 text-emerald-500",
-//     title: "An toàn & Uy tín",
-//     desc: "Kiểm duyệt chất lượng",
-//   },
-// ];
-
-/* ───────── Component ───────── */
-
-export default function Home() {
-  const [query, setQuery] = useState("");
-  const [budget, setBudget] = useState<BudgetOption>('auto');
-  const [username, setUsername] = useState<string | null>(null);
+function HomeContent() {
+  const { query, setQuery, searchMode, setSearchMode } = useSearchState("");
+  const [budget, setBudget] = useState<BudgetOption>("auto");
   const router = useRouter();
+  const { getOptimizedLocation } = useOptimizedLocation();
 
-  React.useEffect(() => {
-    const token = localStorage.getItem('access_token');
-    const storedUser = localStorage.getItem('username');
-    if (token) {
-      setUsername(storedUser || 'User');
+  const [healthStatus, setHealthStatus] = useState<HealthStatus>("loading");
+  const [healthData, setHealthData] = useState<HealthData | null>(null);
+  const [healthBannerDismissed, setHealthBannerDismissed] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchLoadingMsg, setSearchLoadingMsg] = useState("Đang phân tích sở thích của bạn...");
+  const [apiError, setApiError] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  const coords = useSelector((state: RootState) => state.location.coords);
+  const [recommendations, setRecommendations] = useState<RecommendResult[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const userId = localStorage.getItem("user_id") || "guest";
+        const cacheKey = `home_recommendations_${userId}`;
+
+        // Detect page reload and clear cache immediately
+        const navEntries = performance.getEntriesByType("navigation");
+        const isReload = navEntries.length > 0 && (navEntries[0] as PerformanceNavigationTiming).type === "reload";
+        if (isReload) {
+          sessionStorage.removeItem(cacheKey);
+          return [];
+        }
+
+        const cached = sessionStorage.getItem(cacheKey);
+        if (cached) return JSON.parse(cached);
+      } catch (err) {}
+    }
+    return [];
+  });
+  const [isLoadingRecs, setIsLoadingRecs] = useState(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const userId = localStorage.getItem("user_id") || "guest";
+        const cacheKey = `home_recommendations_${userId}`;
+
+        const navEntries = performance.getEntriesByType("navigation");
+        const isReload = navEntries.length > 0 && (navEntries[0] as PerformanceNavigationTiming).type === "reload";
+        if (isReload) return true;
+
+        if (sessionStorage.getItem(cacheKey)) return false;
+      } catch (err) {}
+    }
+    return true;
+  });
+
+  /* ── Fetch Real Recommendations ── */
+  useEffect(() => {
+    async function fetchRecommendations() {
+      if (!coords) return;
+
+      const userId = localStorage.getItem("user_id") || "guest";
+      const cacheKey = `home_recommendations_${userId}`;
+
+      // Check user-specific cache first
+      try {
+        const cachedRecs = sessionStorage.getItem(cacheKey);
+        if (cachedRecs) {
+          setRecommendations(JSON.parse(cachedRecs));
+          setIsLoadingRecs(false);
+        }
+      } catch (err) {
+        console.error("Lỗi khi đọc cache:", err);
+      }
+
+      try {
+        if (!sessionStorage.getItem(cacheKey)) {
+          setIsLoadingRecs(true);
+        }
+        const token = localStorage.getItem("access_token");
+
+        const url = new URL(`${BACKEND_URL}/api/v1/restaurants/recommendations`);
+        url.searchParams.append("lat", coords.lat.toString());
+        url.searchParams.append("lng", coords.lng.toString());
+        url.searchParams.append("limit", "6");
+
+        const res = await fetch(url.toString(), {
+          method: "GET",
+          headers: {
+            Authorization: token ? `Bearer ${token}` : "",
+          },
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          // Endpoint /api/v1/restaurants/recommendations returns an array directly
+          const resultsArray = Array.isArray(data) ? data : (data.results || []);
+          
+          if (resultsArray && resultsArray.length > 0) {
+            // Filter out exact duplicates by name
+            const seen = new Set();
+            const uniqueResults = resultsArray.filter((item: RecommendResult) => {
+              if (!item.name) return true;
+              const duplicate = seen.has(item.name);
+              seen.add(item.name);
+              return !duplicate;
+            });
+            const finalRecs = uniqueResults.slice(0, 6);
+            setRecommendations(finalRecs);
+
+            // Save to user-specific cache
+            try {
+              sessionStorage.setItem(cacheKey, JSON.stringify(finalRecs));
+            } catch (err) {
+              console.error("Lỗi khi lưu cache:", err);
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch recommendations:", err);
+      } finally {
+        setIsLoadingRecs(false);
+      }
+    }
+
+    if (mounted) {
+      fetchRecommendations();
+    }
+  }, [coords, mounted]);
+
+  /* ── Health check ── */
+  const checkHealth = useCallback(async () => {
+    setHealthStatus("loading");
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/health`, {
+        signal: AbortSignal.timeout(5000),
+      });
+      if (!res.ok) throw new Error("Non-OK response");
+      const data: HealthData = await res.json();
+      setHealthData(data);
+      setHealthStatus(data.ai_engine && data.database ? "ok" : "degraded");
+    } catch {
+      setHealthData(null);
+      setHealthStatus("error");
     }
   }, []);
 
-  const handleLogout = () => {
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('user_id');
-    localStorage.removeItem('username');
-    localStorage.removeItem('food_recsys_userid'); // Dọn dẹp cả ID ảo nếu có
-    setUsername(null);
-    router.push('/auth');
+  useEffect(() => {
+    setMounted(true);
+    checkHealth();
+    localStorage.removeItem("last_search_url");
+  }, [checkHealth]);
+
+  useEffect(() => {
+    if (healthStatus === "ok" || healthStatus === "loading") return;
+    const interval = setInterval(checkHealth, 10_000);
+    return () => clearInterval(interval);
+  }, [healthStatus, checkHealth]);
+
+  /* ── Search handler — GPS fallback, no reject ── */
+  const handleSearch = async (overrideQuery?: string) => {
+    const finalQuery = (overrideQuery ?? query).trim();
+    if (!finalQuery) return;
+
+    setIsSearching(true);
+    setApiError(null);
+
+    try {
+      setSearchLoadingMsg("Đang xác định vị trí của bạn...");
+
+      const gps = await getOptimizedLocation();
+      if (!gps) {
+        setApiError("Không thể xác định vị trí thực tế của bạn. Vui lòng kiểm tra quyền truy cập GPS để tiếp tục.");
+        setIsSearching(false);
+        return;
+      }
+
+      setSearchLoadingMsg("AI đang phân tích khẩu vị của bạn...");
+      const token = localStorage.getItem("access_token");
+      const userId = localStorage.getItem("user_id");
+
+      const res = await fetch(`${BACKEND_URL}/api/v1/search/recommend`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: token ? `Bearer ${token}` : "",
+        },
+        body: JSON.stringify({
+          query: finalQuery,
+          lat: gps.lat,
+          lng: gps.lng,
+          user_id: userId || undefined,
+          budget: budget === "auto" ? undefined : parseInt(budget, 10),
+          search_mode: searchMode,
+          top_k: 24, // Xin dư ra 24 món để sau khi frontend lọc trùng tên (deduplicate) vẫn đảm bảo đủ 16 món hiển thị
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (userId) {
+          historyService.addHistory(
+            userId,
+            finalQuery,
+            budget,
+            Array.isArray(data.results) ? data.results.length : undefined,
+            data.session_id,
+            searchMode
+          );
+        }
+        setSearchLoadingMsg("Đã có kết quả! Đang chuyển hướng...");
+        // [FIX-CONFLICT]: Ẩn session_id và mode vào sessionStorage, đẩy query q lên URL
+        if (typeof window !== 'undefined') {
+          sessionStorage.setItem('current_search_session_id', data.session_id);
+          sessionStorage.setItem('current_search_mode', searchMode);
+        }
+        router.push(`/result?q=${encodeURIComponent(finalQuery)}`);
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || "Không thể kết nối với hệ thống AI.");
+      }
+    } catch (err: any) {
+      // GeolocationPositionError doesn't serialize — use err.message safely
+      const msg = err?.message || "Lỗi kết nối AI. Vui lòng thử lại.";
+      setApiError(msg);
+      setIsSearching(false);
+    }
   };
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!query.trim()) return;
-    // Truyền budget xuống URL để result page đọc và gửi API
-    const budgetParam = budget !== 'auto' ? `&budget=${budget}` : '';
-    router.push(`/result?q=${encodeURIComponent(query)}${budgetParam}`);
-  };
+  if (!mounted) return null;
 
   return (
     <>
-    <div className={`flex min-h-screen bg-[#F7F8FA] dark:bg-gray-900 transition-colors duration-300 ${roboto.className}`}>
-      {/* ══════════════════════════════════════════════════════════
-          [HIDDEN] Sidebar — Uncomment khi các trang con hoạt động
-          ══════════════════════════════════════════════════════════ */}
-      {/* <Sidebar /> */}
-
-      {/* ── Main Content ── */}
-      {/* NOTE: Đã bỏ ml-[260px] vì sidebar đã ẩn */}
-      <div className="flex-1 flex flex-col">
-        {/* ─── Top Bar (Minimal — chỉ giữ ThemeToggle) ─── */}
-        <header className="sticky top-0 z-40 flex items-center justify-between px-8 py-4 bg-[#F7F8FA]/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-100/60 dark:border-gray-700/60 transition-colors duration-300">
-          {/* Logo */}
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-orange-400 to-orange-500 flex items-center justify-center shadow-md shadow-orange-200 dark:shadow-orange-500/20">
-              <span className="text-white text-lg">🍜</span>
-            </div>
-            <span className="text-xl font-bold text-gray-800 dark:text-white tracking-tight">
-              Wanderbite
+      <AppShell healthStatus={healthStatus}>
+        {/* ── Health Banner ── */}
+        {!healthBannerDismissed && healthStatus !== "loading" && healthStatus !== "ok" && (
+          <div
+            role="alert"
+            className={`relative z-20 flex items-center gap-3 px-5 py-3 text-sm font-medium border-b-2 ${healthStatus === "degraded"
+              ? "bg-amber-50 dark:bg-amber-900/20 border-amber-300 text-amber-900 dark:text-amber-300"
+              : "bg-red-50 dark:bg-red-900/20 border-red-300 text-red-900 dark:text-red-300"
+              }`}
+          >
+            <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+            <span className="flex-1">
+              {healthStatus === "error"
+                ? "Không thể kết nối tới máy chủ. Vui lòng đảm bảo backend đang chạy."
+                : `Hệ thống đang hoạt động một phần — ${!healthData?.ai_engine ? "AI Engine chưa sẵn sàng" : "Database chưa kết nối"
+                }.`}
             </span>
+            <button
+              onClick={checkHealth}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-bold bg-white/60 dark:bg-white/10 hover:bg-white dark:hover:bg-white/20 border border-current/20 transition-all cursor-pointer"
+            >
+              <RefreshCw className="w-3 h-3" /> Thử lại
+            </button>
+            <button
+              onClick={() => setHealthBannerDismissed(true)}
+              className="w-7 h-7 flex items-center justify-center rounded hover:bg-black/10 dark:hover:bg-white/10 cursor-pointer transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
+        {/* ── Loading overlay ── */}
+        {isSearching && <SearchLoadingOverlay message={searchLoadingMsg} />}
+
+        {/* ── Hero Section ── */}
+        <section
+          className="relative w-full overflow-hidden"
+          style={{ minHeight: "calc(100vh - 64px)" }}
+        >
+          {/* ── Floating Food Decorations ── */}
+
+          {/* Bánh canh — top-left */}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute hidden md:block"
+            style={{
+              top: "8%",
+              left: "2%",
+              width: 160,
+              animation: "float-a 6s ease-in-out infinite",
+              zIndex: 1,
+            }}
+          >
+            <img
+              src="/images/banh-canh.png"
+              alt=""
+              className="w-full h-auto drop-shadow-xl"
+              style={{ filter: "drop-shadow(0 12px 20px rgba(0,0,0,0.22))" }}
+            />
           </div>
 
-          {/* Right side — chỉ giữ ThemeToggle */}
-          <div className="flex items-center gap-4">
-            {/* ══════════════════════════════════════════════════════
-                [HIDDEN] Top Bar Buttons — Uncomment khi kết nối chức năng
-                ══════════════════════════════════════════════════════ */}
-            {/* <button className="relative w-9 h-9 rounded-full flex items-center justify-center hover:bg-gray-100 transition-colors cursor-pointer">
-              <Bell className="w-[18px] h-[18px] text-gray-500" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white" />
-            </button> */}
+          {/* Bánh tráng nướng — top-right */}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute hidden md:block"
+            style={{
+              top: "6%",
+              right: "3%",
+              width: 145,
+              animation: "float-b 7s ease-in-out 1s infinite",
+              zIndex: 1,
+            }}
+          >
+            <img
+              src="/images/banh-trang-nuong.png"
+              alt=""
+              className="w-full h-auto"
+              style={{ filter: "drop-shadow(0 12px 20px rgba(0,0,0,0.20))" }}
+            />
+          </div>
 
-            {/* <button className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 transition-colors cursor-pointer">
-              <Headphones className="w-[18px] h-[18px]" />
-              <span className="font-medium">Hỗ trợ</span>
-            </button> */}
+          {/* Cơm tấm — bottom-left */}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute hidden md:block"
+            style={{
+              bottom: "14%",
+              left: "1%",
+              width: 170,
+              animation: "float-c 8s ease-in-out 2s infinite",
+              zIndex: 1,
+            }}
+          >
+            <img
+              src="/images/com-tam.png"
+              alt=""
+              className="w-full h-auto"
+              style={{ filter: "drop-shadow(0 14px 24px rgba(0,0,0,0.22))" }}
+            />
+          </div>
 
-            {/* <button className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 transition-colors cursor-pointer">
-              <Globe className="w-[18px] h-[18px]" />
-              <span className="font-medium">Tiếng Việt</span>
-            </button> */}
+          {/* Hủ tiếu — bottom-right */}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute hidden md:block"
+            style={{
+              bottom: "12%",
+              right: "1%",
+              width: 155,
+              animation: "float-d 6.5s ease-in-out 0.5s infinite",
+              zIndex: 1,
+            }}
+          >
+            <img
+              src="/images/hu-tieu.png"
+              alt=""
+              className="w-full h-auto"
+              style={{ filter: "drop-shadow(0 12px 20px rgba(0,0,0,0.20))" }}
+            />
+          </div>
 
-            <ThemeToggle />
+          {/* Bottom fade */}
+          <div
+            className="absolute bottom-0 left-0 right-0 h-16 z-10"
+            style={{ background: "linear-gradient(to bottom, transparent, rgba(255,253,249,0.8))" }}
+          />
 
-            {username ? (
-              <div className="flex items-center gap-3 ml-2">
+          <div className="relative z-10 max-w-6xl mx-auto px-4 md:px-8 py-12 md:py-20 flex flex-col items-center gap-12 min-h-[calc(100vh-104px)]">
+            {/* API error */}
+            {apiError && (
+              <div className="w-full max-w-2xl flex items-center justify-between gap-3 px-4 py-3 rounded-sm border-2 border-brand bg-red-50 dark:bg-red-900/20 text-red-900 dark:text-red-300 text-sm font-medium">
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex items-center justify-center overflow-hidden">
-                    <User className="w-5 h-5 text-gray-400" />
-                  </div>
-                  <span className="text-sm font-semibold text-gray-700 dark:text-gray-200 hidden sm:block">
-                    {username}
-                  </span>
+                  <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+                  <span>{apiError}</span>
                 </div>
-                <div className="h-4 w-px bg-gray-200 dark:bg-gray-700 mx-1"></div>
-                <button 
-                  onClick={handleLogout}
-                  className="text-[13px] font-semibold text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400 transition-colors cursor-pointer"
-                >
-                  Đăng xuất
+                <button onClick={() => setApiError(null)} className="cursor-pointer">
+                  <X className="w-4 h-4" />
                 </button>
               </div>
-            ) : (
-              <button 
-                onClick={() => router.push('/auth')}
-                className="ml-2 px-4 py-2 rounded-xl bg-orange-50 dark:bg-orange-500/10 text-orange-600 dark:text-orange-500 text-sm font-bold hover:bg-orange-100 dark:hover:bg-orange-500/20 transition-colors cursor-pointer"
-              >
-                Đăng nhập
-              </button>
             )}
-          </div>
-        </header>
 
-        {/* ─── Page Content ─── */}
-        <main className="flex-1 px-8 py-6 overflow-y-auto flex items-center justify-center">
-          {/* ── Hero: Search Section (✅ FUNCTIONAL) ── */}
-          <section className="text-center max-w-3xl mx-auto w-full">
-            <h1 className="text-[42px] font-black text-gray-900 dark:text-white mb-8 leading-tight tracking-tight uppercase transition-colors duration-300">
-              Hôm nay bạn muốn{" "}
-              <span className="text-orange-500">
-                ăn gì ?
-              </span>
-              ✨
-            </h1>
+            {/* Hero text + search */}
+            <div className="flex flex-col items-center text-center gap-8 w-full">
+              <div>
+                <h1 className="text-[26px] sm:text-[38px] md:text-[54px] lg:text-[62px] font-black leading-none tracking-tight text-[#3D312A] dark:text-[#E6DFD5] drop-shadow-sm sm:whitespace-nowrap">
+                  HÔM NAY BẠN MUỐN{" "}
+                  <span className="text-brand dark:text-[#E8735A]">ĂN GÌ ?</span>
+                </h1>
+                <p className="text-[#3D312A]/60 dark:text-[#E6DFD5]/60 text-sm mt-3 font-semibold uppercase tracking-wider">
+                  Mô tả cảm giác bạn muốn · AI sẽ gợi ý ngay
+                </p>
+              </div>
 
-            {/* Search Bar — ✅ HOẠT ĐỘNG: Nhập query → chuyển đến /result */}
-            <form onSubmit={handleSearch} className="relative mb-6">
-              <div className="flex items-center bg-white dark:bg-gray-800 rounded-full border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md dark:hover:shadow-none hover:border-gray-300 dark:hover:border-gray-600 transition-all focus-within:shadow-md focus-within:border-orange-300 dark:focus-within:border-orange-500/50 focus-within:ring-4 focus-within:ring-orange-50 dark:focus-within:ring-orange-500/10 dark:focus-within:shadow-[0_0_20px_rgba(255,143,0,0.15)]">
-                <div className="pl-5 pr-2">
-                  <Sparkles className="w-5 h-5 text-orange-400" />
-                </div>
-                <input
-                  type="text"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Mô tả món ăn bạn muốn, ví dụ: món cay, gần đây, giá rẻ..."
-                  className="flex-1 bg-transparent border-none outline-none py-4 px-2 text-[15px] text-gray-700 dark:text-gray-200 placeholder:text-gray-400 dark:placeholder:text-gray-500 font-normal"
+              {/* Search bar */}
+              <div className="w-full max-w-3xl">
+                <SearchBar
+                  query={query}
+                  setQuery={setQuery}
+                  searchMode={searchMode}
+                  setSearchMode={setSearchMode}
+                  onSearch={() => handleSearch()}
+                  compact={false}
                 />
-                <button
-                  type="submit"
-                  className="flex items-center gap-2 bg-gradient-to-r from-orange-400 to-orange-500 text-white px-6 py-3 rounded-full font-semibold text-[14px] mr-1.5 hover:from-orange-500 hover:to-orange-600 transition-all shadow-md shadow-orange-200 dark:shadow-[0_0_20px_rgba(255,143,0,0.4)] hover:shadow-lg hover:shadow-orange-200 dark:hover:shadow-[0_0_25px_rgba(255,143,0,0.5)] active:scale-[0.97] cursor-pointer whitespace-nowrap"
-                >
-                  <Search className="w-4 h-4" />
-                  Tìm kiếm
-                </button>
-              </div>
-            </form>
-
-            {/* Budget Selector */}
-            <div className="mb-4">
-              <BudgetSelector value={budget} onChange={setBudget} />
-            </div>
-
-            {/* ══════════════════════════════════════════════════════════
-                [HIDDEN] Vibe Filters — Uncomment khi kết nối filter API
-                ══════════════════════════════════════════════════════════ */}
-            {/* <div className="flex items-center justify-center gap-3 flex-wrap">
-              <span className="text-[13px] font-semibold text-gray-400 mr-1">
-                Vibe Filters
-              </span>
-              {vibeFilters.map((filter) => (
-                <button
-                  key={filter.label}
-                  onClick={() => setActiveFilter(filter.label)}
-                  className={`flex items-center gap-1.5 px-4 py-2.5 rounded-full text-[13px] font-medium border transition-all cursor-pointer ${
-                    activeFilter === filter.label
-                      ? "bg-orange-50 text-orange-600 border-orange-200 shadow-sm shadow-orange-100"
-                      : "bg-white text-gray-500 border-gray-200 hover:bg-gray-50 hover:border-gray-300"
-                  }`}
-                >
-                  <filter.icon
-                    className={`w-4 h-4 ${
-                      activeFilter === filter.label
-                        ? "text-orange-500"
-                        : "text-gray-400"
-                    }`}
-                  />
-                  {filter.label}
-                </button>
-              ))}
-              <button className="flex items-center gap-1.5 px-4 py-2.5 rounded-full text-[13px] font-medium bg-white text-gray-500 border border-gray-200 hover:bg-gray-50 hover:border-gray-300 transition-all cursor-pointer">
-                <SlidersHorizontal className="w-4 h-4 text-gray-400" />
-                Bộ lọc
-              </button>
-            </div> */}
-
-            <p className="text-sm text-gray-400 dark:text-gray-500 mt-2">
-              Nhập mô tả món ăn bạn thích, AI sẽ gợi ý cho bạn
-            </p>
-          </section>
-
-          {/* ══════════════════════════════════════════════════════════
-              [HIDDEN] Food Recommendations — Uncomment khi có dữ liệu từ API
-              ══════════════════════════════════════════════════════════ */}
-          {/* <section className="mb-8">
-            <div className="flex items-center justify-between mb-5">
-              <div className="flex items-center gap-2">
-                <Star className="w-5 h-5 text-amber-400 fill-amber-400" />
-                <h2 className="text-lg font-bold text-gray-800">
-                  Gợi ý dành cho bạn
-                </h2>
-              </div>
-              <button className="flex items-center gap-1 text-[13px] font-medium text-orange-500 hover:text-orange-600 transition-colors cursor-pointer">
-                Xem tất cả
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-              {foodItems.map((item) => (
-                <div
-                  key={item.id}
-                  className="bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-lg hover:border-gray-200 transition-all duration-300 cursor-pointer group"
-                >
-                  <div className="relative h-[190px] overflow-hidden">
-                    <img
-                      src={item.image}
-                      alt={item.name}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
-
-                    <div className="absolute top-3 left-3 flex items-center gap-1 px-2.5 py-1 rounded-full bg-orange-500 text-white text-[11px] font-bold shadow-md">
-                      <Sparkles className="w-3 h-3" />
-                      AI Match: {item.matchPercent}%
-                    </div>
-
-                    <div className="absolute top-3 right-12 flex items-center gap-0.5 px-2 py-1 rounded-full bg-white/90 backdrop-blur-sm text-[11px] font-semibold text-gray-600 shadow-sm">
-                      <MapPin className="w-3 h-3 text-orange-400" />
-                      {item.distance}
-                    </div>
-
-                    <button className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center shadow-sm hover:bg-white hover:scale-110 transition-all cursor-pointer">
-                      <Heart className="w-4 h-4 text-gray-400 hover:text-red-400 transition-colors" />
-                    </button>
-                  </div>
-
-                  <div className="p-4">
-                    <h3 className="text-[15px] font-bold text-gray-800 mb-2 group-hover:text-orange-600 transition-colors">
-                      {item.name}
-                    </h3>
-
-                    <div className="flex items-center gap-1.5 text-[13px] text-gray-500 mb-3">
-                      <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
-                      <span className="font-semibold text-gray-700">
-                        {item.rating}
-                      </span>
-                      <span className="text-gray-400">({item.reviews})</span>
-                      <span className="text-gray-300 mx-0.5">•</span>
-                      <span className="font-medium">{item.priceRange}</span>
-                    </div>
-
-                    <div className="flex flex-wrap gap-1.5">
-                      {item.tags.map((tag) => (
-                        <span
-                          key={tag.label}
-                          className={`px-2.5 py-1 rounded-full text-[11px] font-medium border ${tag.color}`}
-                        >
-                          {tag.label}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
+                <div className="mt-4 flex justify-center">
+                  <BudgetSelector value={budget} onChange={setBudget} />
                 </div>
-              ))}
-            </div>
-          </section> */}
+              </div>
 
-          {/* ══════════════════════════════════════════════════════════
-              [HIDDEN] Feature Bar — Uncomment khi hoàn thiện các tính năng
-              ══════════════════════════════════════════════════════════ */}
-          {/* <section className="bg-white rounded-2xl border border-gray-100 shadow-sm px-6 py-5 mb-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {features.map((feat) => (
-                <div
-                  key={feat.title}
-                  className="flex items-center gap-3"
-                >
-                  <div
-                    className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${feat.iconBg}`}
+              {/* Trending chips */}
+              <div className="flex flex-wrap justify-center gap-2.5 max-w-2xl">
+                {TRENDING.map((t) => (
+                  <button
+                    key={t.id}
+                    onClick={() => {
+                      setQuery(t.query);
+                      handleSearch(t.query);
+                    }}
+                    className="px-4 py-2 text-xs font-bold uppercase tracking-[1.5px] border-2 border-[#3D312A]/20 bg-white/80 dark:bg-[#2A2420]/80 hover:bg-brand hover:text-white hover:border-brand transition-all rounded-full shadow-sm cursor-pointer text-[#3D312A] dark:text-[#E6DFD5]"
                   >
-                    <feat.icon className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <p className="text-[13px] font-semibold text-gray-700">
-                      {feat.title}
-                    </p>
-                    <p className="text-[11px] text-gray-400">{feat.desc}</p>
-                  </div>
-                </div>
-              ))}
+                    {t.emoji} {t.title}
+                  </button>
+                ))}
+              </div>
             </div>
-          </section> */}
-        </main>
 
-        {/* ══════════════════════════════════════════════════════════
-            [HIDDEN] Footer — Uncomment khi hoàn thiện
-            ══════════════════════════════════════════════════════════ */}
-        {/* <footer className="px-8 py-4 text-center text-[12px] text-gray-400 border-t border-gray-100">
-          © 2026 FoodAI. All rights reserved.
-        </footer> */}
-      </div>
-    </div>
+            {/* ── Recommendations Grid ── */}
+            <div className="w-full mt-4 relative z-20 border-t border-[#3D312A]/10 pt-10">
+              <div className="flex items-center justify-between mb-8 px-2">
+                <h2 className="text-2xl font-black text-[#3D312A] dark:text-[#E6DFD5] tracking-tight flex items-center gap-2">
+                  <Sparkles className="w-6 h-6 text-brand dark:text-[#E8735A]" /> GỢI Ý CHO BẠN
+                </h2>
+                <Link
+                  href="/recommendations"
+                  className="text-xs font-black text-brand dark:text-[#E8735A] hover:opacity-80 tracking-widest uppercase border-b-2 border-brand pb-0.5 transition-all"
+                >
+                  Xem thêm
+                </Link>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {isLoadingRecs && recommendations.length === 0 ? (
+                  Array.from({ length: 6 }).map((_, i) => (
+                    <div key={i} className="animate-pulse bg-gray-200 dark:bg-[#4D3D32] h-[320px] rounded-2xl w-full"></div>
+                  ))
+                ) : recommendations.length > 0 ? (
+                  recommendations.map((item) => (
+                    <FoodCard
+                      key={item.id}
+                      item={item}
+                      userId={
+                        typeof window !== "undefined"
+                          ? localStorage.getItem("user_id") || "guest"
+                          : "guest"
+                      }
+                    />
+                  ))
+                ) : (
+                  <div className="col-span-full text-center text-gray-500 py-10">
+                    Chưa có gợi ý nào, hãy thử tìm kiếm!
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </section>
+      </AppShell>
 
-    {/* Pop-up khảo sát — hiện lần đầu tiên user vào trang */}
-    <SurveyModal />
-  </>
-);
+      <SurveyModal />
+    </>
+  );
 }
 
+export default function Home() {
+  return (
+    <Suspense fallback={null}>
+      <HomeContent />
+    </Suspense>
+  );
+}

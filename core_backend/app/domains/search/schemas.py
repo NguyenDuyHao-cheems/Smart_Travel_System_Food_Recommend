@@ -1,5 +1,7 @@
 from pydantic import BaseModel, Field
-from typing import List, Optional
+from typing import List, Optional, Union
+from uuid import UUID
+from datetime import datetime
 
 class SearchRequest(BaseModel):
     """
@@ -17,6 +19,16 @@ class SearchRecommendRequest(BaseModel):
     user_id: Optional[str] = Field(None, description="Optional user ID for personalized filtering")
     budget: Optional[int] = Field(None, ge=0, description="Optional explicit budget in VND from user. Takes priority over AI-extracted budget.")
     tag_name: Optional[str] = Field(None, description="Optional tag name for explicit filtering (e.g., 'gà', 'phở')")
+    search_mode: Optional[str] = Field(
+        "basic",
+        description="Loại tìm kiếm (basic hoặc emotion). emotion kết hợp cảm xúc query và tín hiệu review sentiment.",
+    )
+    top_k: Optional[int] = Field(24, description="Số lượng kết quả tối đa cần trả về")
+
+class AllergenDishWarning(BaseModel):
+    """Thông tin chi tiết món ăn gây dị ứng trong 1 quán."""
+    dish_name: str
+    matched_allergens: List[str]
 
 class RecommendResult(BaseModel):
     """
@@ -32,6 +44,24 @@ class RecommendResult(BaseModel):
     rating: str
     reason: str
     img: str
+    total_reviews: Optional[int] = 0
+    google_maps_url: Optional[str] = None
+    allergen_warning: Optional[List[AllergenDishWarning]] = None
+    sentiment_score: Optional[float] = Field(
+        None,
+        ge=-1.0,
+        le=1.0,
+        description="Điểm sentiment tổng hợp từ review, chuẩn hóa -1..1.",
+    )
+    sentiment_label: Optional[str] = Field(
+        None,
+        description="Nhãn sentiment tổng hợp: positive, neutral hoặc negative.",
+    )
+    sentiment_review_count: Optional[int] = Field(
+        0,
+        ge=0,
+        description="Số review đã được dùng/đại diện cho sentiment của nhà hàng.",
+    )
 
 class SearchRecommendResponse(BaseModel):
     """
@@ -55,7 +85,11 @@ class SearchRecommendResponse(BaseModel):
     )
     filtered_out_count: Optional[int] = Field(
         None,
-        description="Số lượng quán bị loại do dị ứng."
+        description="Số lượng quán bị loại (Legacy, hiện bằng 0)."
+    )
+    allergen_flagged_count: Optional[int] = Field(
+        0,
+        description="Số lượng quán có món gây dị ứng."
     )
     warning: Optional[str] = Field(
         None,
@@ -74,3 +108,27 @@ class AIResponseData(BaseModel):
     """
     vector: List[float] = Field(..., description="The generated embedded vector representation of the text")
     cleaned_query: str = Field(..., description="Query đã được Gemini làm sạch")
+
+class SessionCreateResponse(BaseModel):
+    """Response trả về khi tạo session tìm kiếm mới."""
+    session_id: Union[str, UUID]
+    results: List[RecommendResult]
+    fallback_applied: bool = False
+    fallback_reason: Optional[str] = None
+    applied_budget: Optional[int] = None
+    filtered_out_count: Optional[int] = None
+    allergen_flagged_count: Optional[int] = 0
+    warning: Optional[str] = None
+
+class SessionDataResponse(BaseModel):
+    """Response trả về khi truy vấn session đã lưu."""
+    session_id: Union[str, UUID]
+    query: str
+    results: List[RecommendResult]
+    fallback_applied: bool = False
+    fallback_reason: Optional[str] = None
+    applied_budget: Optional[int] = None
+    filtered_out_count: Optional[int] = None
+    allergen_flagged_count: Optional[int] = 0
+    warning: Optional[str] = None
+    created_at: Optional[datetime] = None

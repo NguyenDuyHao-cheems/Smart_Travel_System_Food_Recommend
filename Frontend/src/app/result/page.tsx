@@ -10,38 +10,46 @@ import {
   Bookmark,
   Brain,
   ShieldCheck,
-  ExternalLink,
   Search,
   AlertTriangle,
   Info,
   Home,
+  X,
 } from 'lucide-react';
-import { Roboto } from 'next/font/google';
-import { useGeolocation } from '../../hooks/useGeolocation';
-import { Header } from '../../components/ui/Header';
+import { AppShell } from '../../components/AppShell';
 import { LoadingState } from '../../components/ui/LoadingState';
 import { BudgetSelector, type BudgetOption } from '../../components/BudgetSelector';
 import { DistanceFilter } from '../../components/DistanceFilter';
+import { SearchLoadingOverlay } from '../../components/ui/SearchLoadingOverlay';
+import { SearchBar } from '../../components/SearchBar';
+import { useSearchState, SearchMode } from '../../hooks/useSearchState';
+import { favoriteService } from '../../services/favoriteService';
+import { collectionService } from '../../services/collectionService';
+import { historyService } from '../../services/historyService';
+import { AddToCollectionModal } from '../../components/AddToCollectionModal';
+import { toast } from 'sonner';
+import { interactionService } from '../../services/interactionService';
+import { useOptimizedLocation } from '../../hooks/useOptimizedLocation';
 
-const roboto = Roboto({
-  subsets: ['latin', 'vietnamese'],
-  weight: ['300', '400', '500', '700', '900'],
-});
-
-/* ─────────────────────────────────────────────────────────────
-   Tag helpers — derive tags from AI reason text
-   ───────────────────────────────────────────────────────────── */
+export interface AllergenDishWarning {
+  dish_name: string;
+  matched_allergens: string[];
+}
 export interface RecommendResult {
-  id: string | number;
+  id: string;
   name: string;
   match: string;
   dist: string;
+  distance_km?: number;
   price: string;
   rating: string;
   reason: string;
   img: string;
+  total_reviews?: number;
   tags?: string[];
   restaurantName?: string;
+  google_maps_url?: string;
+  allergen_warning?: AllergenDishWarning[];
 }
 
 interface VibeTag {
@@ -59,27 +67,32 @@ const VIBE_TAGS: VibeTag[] = [
   { label: 'Comfort Food', emoji: '💕', bgLight: 'bg-pink-50', bgDark: 'dark:bg-pink-500/10', text: 'text-pink-500', border: 'border-pink-100 dark:border-pink-500/20' },
   { label: 'Seafood', emoji: '🧀', bgLight: 'bg-yellow-50', bgDark: 'dark:bg-yellow-500/10', text: 'text-yellow-600 dark:text-yellow-400', border: 'border-yellow-100 dark:border-yellow-500/20' },
   { label: 'Sweet', emoji: '💕', bgLight: 'bg-pink-50', bgDark: 'dark:bg-pink-500/10', text: 'text-pink-500', border: 'border-pink-100 dark:border-pink-500/20' },
-  { label: 'Popular', emoji: '⭐', bgLight: 'bg-amber-50', bgDark: 'dark:bg-amber-500/10', text: 'text-amber-600 dark:text-amber-400', border: 'border-amber-100 dark:border-amber-500/20' },
+  { label: 'Popular', emoji: '⭐', bgLight: 'bg-amber-50', bgDark: 'dark:bg-brand/10', text: 'text-amber-600 dark:text-amber-400', border: 'border-amber-100 dark:border-amber-500/20' },
   { label: 'Cheap', emoji: '💰', bgLight: 'bg-green-50', bgDark: 'dark:bg-green-500/10', text: 'text-green-600 dark:text-green-400', border: 'border-green-100 dark:border-green-500/20' },
-  { label: 'Classic', emoji: '🏛️', bgLight: 'bg-teal-50', bgDark: 'dark:bg-teal-500/10', text: 'text-teal-600 dark:text-teal-400', border: 'border-teal-100 dark:border-teal-500/20' },
+  { label: 'Classic', emoji: '🏛️', bgLight: 'bg-brand-muted', bgDark: 'dark:bg-brand/10', text: 'text-brand-hover dark:text-[#E6DFD5]', border: 'border-teal-100 dark:border-brand/20' },
   { label: 'Trendy', emoji: '🔥', bgLight: 'bg-violet-50', bgDark: 'dark:bg-violet-500/10', text: 'text-violet-500 dark:text-violet-400', border: 'border-violet-100 dark:border-violet-500/20' },
-  { label: 'Local', emoji: '📍', bgLight: 'bg-orange-50', bgDark: 'dark:bg-orange-500/10', text: 'text-orange-500', border: 'border-orange-100 dark:border-orange-500/20' },
+  { label: 'Local', emoji: '📍', bgLight: 'bg-brand-muted', bgDark: 'dark:bg-brand/10', text: 'text-brand dark:text-[#E8735A]', border: 'border-brand-muted dark:border-brand/20' },
+];
+
+const DEFAULT_TAG_STYLES = [
+  { emoji: '🏷️', bgLight: 'bg-gray-50', bgDark: 'dark:bg-gray-500/10', text: 'text-gray-600 dark:text-[#9A8A7A]', border: 'border-gray-200 dark:border-gray-500/20' },
+  { emoji: '✨', bgLight: 'bg-brand-muted', bgDark: 'dark:bg-brand/10', text: 'text-brand-hover dark:text-[#E6DFD5]', border: 'border-indigo-100 dark:border-indigo-500/20' },
+  { emoji: '🌿', bgLight: 'bg-emerald-50', bgDark: 'dark:bg-emerald-500/10', text: 'text-emerald-600 dark:text-emerald-400', border: 'border-emerald-100 dark:border-emerald-500/20' }
 ];
 
 function getTagsForItem(item: RecommendResult, index: number): VibeTag[] {
-  // If API returns tags, use them; otherwise pick 2-3 based on index
-  if (item.tags && Array.isArray(item.tags)) {
-    return item.tags.map((t: string) => VIBE_TAGS.find(v => v.label.toLowerCase() === t.toLowerCase()) || VIBE_TAGS[0]);
+  if (item.tags && Array.isArray(item.tags) && item.tags.length > 0) {
+    return item.tags.map((t: string, i: number) => {
+      const found = VIBE_TAGS.find(v => v.label.toLowerCase() === t.toLowerCase());
+      if (found) return found;
+      const defaultStyle = DEFAULT_TAG_STYLES[i % DEFAULT_TAG_STYLES.length];
+      return {
+        label: t,
+        ...defaultStyle
+      };
+    });
   }
-  // Fallback: deterministic selection based on index
-  const sets = [
-    [VIBE_TAGS[0], VIBE_TAGS[1], VIBE_TAGS[2]], // Spicy, AC, Comfort Food
-    [VIBE_TAGS[1], VIBE_TAGS[3], VIBE_TAGS[5]], // AC, Seafood, Popular
-    [VIBE_TAGS[1], VIBE_TAGS[4], VIBE_TAGS[7]], // AC, Sweet, Classic
-    [VIBE_TAGS[6], VIBE_TAGS[9], VIBE_TAGS[7]], // Cheap, Local, Classic
-    [VIBE_TAGS[0], VIBE_TAGS[1], VIBE_TAGS[8]], // Spicy, AC, Trendy
-  ];
-  return sets[index % sets.length];
+  return [];
 }
 
 function getMatchColor(match: string): string {
@@ -87,65 +100,147 @@ function getMatchColor(match: string): string {
   if (num >= 95) return 'bg-green-500';
   if (num >= 90) return 'bg-green-500/90';
   if (num >= 85) return 'bg-yellow-500';
-  return 'bg-orange-500';
+  return 'bg-brand';
 }
 
 /* ─────────────────────────────────────────────────────────────
    Hero Result Card (#1 — AI TOP PICK)
    ───────────────────────────────────────────────────────────── */
-function HeroResultCard({ item }: { item: RecommendResult }) {
+function HeroResultCard({ item, sessionId, searchMode, onAddCollection, isModalOpen }: { item: RecommendResult; sessionId?: string; searchMode?: SearchMode; onAddCollection: (item: RecommendResult) => void; isModalOpen: boolean }) {
+  const router = useRouter();
+  const generateSlug = (name: string) => {
+    return name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+  };
+
+  const handleNavigate = () => {
+    const params = new URLSearchParams();
+    if (sessionId) params.set('session_id', sessionId);
+    if (searchMode) params.set('mode', searchMode);
+    const qs = params.toString();
+
+    // Log interaction before navigating
+    interactionService.logInteraction({
+      res_id: item.id,
+      action_type: "CLICK_SEARCH_RESULT",
+      search_session_id: sessionId || undefined,
+      metadata: { source: "hero_card" }
+    });
+
+    // [FIX-CONFLICT]: Ẩn ID nhà hàng vào sessionStorage thay vì để Base64 trên URL
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('current_res_id', item.id);
+      sessionStorage.setItem('came_from_search', 'true');
+    }
+    const slug = generateSlug(item.name) || 'restaurant';
+    router.push(`/restaurant/${slug}`);
+  };
+
+  const [isFav, setIsFav] = useState(false);
+  const [isInColl, setIsInColl] = useState(false);
+  const userId = typeof window !== 'undefined' ? localStorage.getItem('user_id') : null;
+
+  useEffect(() => {
+    if (userId) {
+      setIsFav(favoriteService.isFavorite(userId, item.name));
+      setIsInColl(collectionService.isInAnyCollection(userId, item.name));
+    }
+  }, [userId, item.name]);
+
+  useEffect(() => {
+    if (userId && !isModalOpen) {
+      setIsInColl(collectionService.isInAnyCollection(userId, item.name));
+    }
+  }, [isModalOpen, userId, item.name]);
+
+  const toggleFav = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!userId) {
+      toast.error('Vui lòng đăng nhập để lưu yêu thích');
+      return;
+    }
+    if (isFav) {
+      favoriteService.removeFavorite(userId, item.name);
+      setIsFav(false);
+      toast.success('Đã xóa khỏi yêu thích');
+
+      interactionService.logInteraction({
+        res_id: item.id,
+        action_type: "REMOVE_RESTAURANT",
+        metadata: { restaurant_name: item.name, source_type: "favorite" }
+      });
+    } else {
+      favoriteService.addFavorite(userId, item);
+      setIsFav(true);
+      toast.success('Đã thêm vào yêu thích');
+
+      interactionService.logInteraction({
+        res_id: item.id,
+        action_type: "LIKE_RESTAURANT",
+        metadata: { restaurant_name: item.name }
+      });
+    }
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
-      className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700 shadow-sm dark:shadow-none overflow-hidden hover:shadow-lg dark:hover:border-gray-600 transition-all duration-300 mb-8"
+      transition={{ duration: 0.3 }}
+      className="bg-white dark:bg-[#3D312A] rounded-3xl border border-gray-100 dark:border-[#4D3D32] shadow-sm dark:shadow-none overflow-hidden hover:shadow-lg dark:hover:border-gray-600 transition-all duration-300 mb-8"
     >
-      {/* TOP PICK Badge */}
-      <div className="px-6 pt-5">
-        <span className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-bold bg-orange-500 text-white shadow-md shadow-orange-200 dark:shadow-orange-500/30">
-          ⭐ AI TOP PICK - {item.match} Match
-        </span>
-      </div>
-
-      <div className="flex flex-col md:flex-row">
+      <div className="flex flex-col md:flex-row min-h-[340px]">
         {/* Left: Info */}
-        <div className="flex-1 p-6 md:p-8">
-          {/* Rank */}
-          <div className="flex items-center gap-2 mb-3">
-            <span className="text-amber-400 text-lg">👍</span>
-            <span className="text-sm font-semibold text-gray-500 dark:text-gray-400">#1</span>
+        <div className="flex-1 p-8 md:p-10 flex flex-col justify-center">
+          <div className="flex items-center gap-2 mb-4">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-brand-muted dark:bg-brand/20 text-brand-hover dark:text-[#E6DFD5]">
+              <Sparkles className="w-3.5 h-3.5" /> AI TOP PICK
+            </span>
+            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap ${
+              (!isNaN(parseInt(item.match)) && parseInt(item.match) >= 90)
+                ? 'bg-green-500 text-white'
+                : 'bg-brand-muted dark:bg-brand/15 text-brand-hover dark:text-[#E6DFD5]'
+            }`}>
+              🤖 {/^\d+%?$/.test(item.match) ? `${item.match} Match` : item.match}
+            </span>
+            {item.allergen_warning && item.allergen_warning.length > 0 && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-500/30">
+                <AlertTriangle className="w-3.5 h-3.5" /> {item.allergen_warning.length} món cần lưu ý
+              </span>
+            )}
           </div>
 
-          {/* Food Name */}
-          <h2 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-1 tracking-tight">
+          <h2
+            onClick={handleNavigate}
+            className="text-2xl md:text-4xl font-bold text-gray-900 dark:text-[#E6DFD5] mb-2 leading-tight cursor-pointer hover:text-brand transition-colors"
+          >
             {item.name}
           </h2>
 
-          {/* Restaurant Name */}
           {item.restaurantName && (
-            <p className="text-base font-semibold text-orange-500 mb-4">
+            <p className="text-base font-semibold text-brand dark:text-[#E8735A] mb-4 cursor-pointer hover:text-brand-hover transition-colors" onClick={handleNavigate}>
               {item.restaurantName}
             </p>
           )}
 
-          {/* Distance Badge */}
           {item.dist && (
-            <div className="mb-5">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-teal-50 dark:bg-teal-500/15 text-teal-600 dark:text-teal-400 border border-teal-200 dark:border-teal-500/30">
+            <div className="mb-5 flex items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-brand-muted dark:bg-brand/15 text-brand-hover dark:text-[#E6DFD5] border border-brand/30 dark:border-brand/30">
                 <MapPin className="w-3.5 h-3.5" /> {item.dist}
               </span>
+              {item.total_reviews !== undefined && item.total_reviews > 0 && (
+                <span className="text-xs text-gray-400 dark:text-[#7A6A5A] font-medium">
+                  ({item.total_reviews} đánh giá)
+                </span>
+              )}
             </div>
           )}
 
-          {/* AI Description */}
           {item.reason && (
-            <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed mb-6 max-w-md">
+            <p className="text-sm text-gray-500 dark:text-[#9A8A7A] leading-relaxed mb-6 max-w-md">
               {item.reason}
             </p>
           )}
 
-          {/* Tags */}
           <div className="flex flex-wrap gap-2">
             {getTagsForItem(item, 0).map(tag => (
               <span key={tag.label} className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium ${tag.bgLight} ${tag.bgDark} ${tag.text} border ${tag.border}`}>
@@ -157,20 +252,39 @@ function HeroResultCard({ item }: { item: RecommendResult }) {
 
         {/* Right: Image */}
         <div className="md:w-[380px] h-[280px] md:h-auto relative p-4">
-          <div className="w-full h-full rounded-2xl overflow-hidden relative">
+          <div
+            onClick={handleNavigate}
+            className="w-full h-full rounded-2xl overflow-hidden relative cursor-pointer"
+          >
             <img
               src={item.img}
               alt={item.name}
               className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
             />
           </div>
-          {/* Bookmark & Heart */}
           <div className="absolute top-6 right-6 flex gap-2">
-            <button className="w-10 h-10 rounded-full bg-white/90 dark:bg-gray-900/80 border border-gray-200 dark:border-gray-700 flex items-center justify-center hover:scale-110 transition-all cursor-pointer shadow-sm">
-              <Bookmark className="w-5 h-5 text-gray-400 dark:text-gray-500" />
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                // [FIX-CONFLICT]: Ngăn không cho mở Modal nếu món ăn đã có trong bộ sưu tập (tránh thêm trùng lặp), hiển thị toast với icon Bookmark
+                if (isInColl) {
+                  toast.info("Món ăn này đã có trong bộ sưu tập của bạn.", {
+                    icon: <Bookmark className="w-4 h-4" />
+                  });
+                  return;
+                }
+                onAddCollection(item);
+              }}
+              className={`w-10 h-10 rounded-full bg-white/90 dark:bg-[#2A2420]/80 border border-gray-200 dark:border-[#4D3D32] flex items-center justify-center hover:scale-110 transition-all cursor-pointer shadow-sm ${isInColl ? 'hover:bg-yellow-50' : 'hover:bg-brand-muted'}`}
+              title={isInColl ? "Đã có trong bộ sưu tập" : "Thêm vào bộ sưu tập"}
+            >
+              <Bookmark className={`w-5 h-5 ${isInColl ? 'text-yellow-500 fill-current' : 'text-brand dark:text-[#E8735A]'}`} />
             </button>
-            <button className="w-10 h-10 rounded-full bg-white/90 dark:bg-gray-900/80 border border-gray-200 dark:border-gray-700 flex items-center justify-center hover:scale-110 transition-all cursor-pointer shadow-sm">
-              <Heart className="w-5 h-5 text-red-400" fill="currentColor" />
+            <button
+              onClick={toggleFav}
+              className="w-10 h-10 rounded-full bg-white/90 dark:bg-[#2A2420]/80 border border-gray-200 dark:border-[#4D3D32] flex items-center justify-center hover:scale-110 transition-all cursor-pointer shadow-sm"
+            >
+              <Heart className={`w-5 h-5 ${isFav ? 'text-red-500 fill-current' : 'text-gray-400'}`} />
             </button>
           </div>
         </div>
@@ -182,59 +296,161 @@ function HeroResultCard({ item }: { item: RecommendResult }) {
 /* ─────────────────────────────────────────────────────────────
    Small Result Card (#2-#5)
    ───────────────────────────────────────────────────────────── */
-function SmallResultCard({ item, index }: { item: RecommendResult; index: number }) {
+// [FIX-CONFLICT]: Tương tự HeroResultCard, bổ sung prop isModalOpen và state isInColl cho SmallResultCard
+function SmallResultCard({ item, index, sessionId, searchMode, onAddCollection, isModalOpen }: { item: RecommendResult; index: number; sessionId?: string; searchMode?: SearchMode; onAddCollection: (item: RecommendResult) => void; isModalOpen: boolean }) {
+  const router = useRouter();
   const tags = getTagsForItem(item, index);
   const matchColor = getMatchColor(item.match);
+
+  const generateSlug = (name: string) => {
+    return name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+  };
+
+  const handleNavigate = () => {
+    const params = new URLSearchParams();
+    if (sessionId) params.set('session_id', sessionId);
+    if (searchMode) params.set('mode', searchMode);
+    const qs = params.toString();
+
+    // Log interaction before navigating
+    interactionService.logInteraction({
+      res_id: item.id,
+      action_type: "CLICK_SEARCH_RESULT",
+      search_session_id: sessionId || undefined,
+      metadata: { source: "small_card", rank: index + 2 }
+    });
+
+    // [FIX-CONFLICT]: Ẩn ID nhà hàng vào sessionStorage thay vì để Base64 trên URL
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('current_res_id', item.id);
+      sessionStorage.setItem('came_from_search', 'true');
+    }
+    const slug = generateSlug(item.name) || 'restaurant';
+    router.push(`/restaurant/${slug}`);
+  };
+
+  const [isFav, setIsFav] = useState(false);
+  const [isInColl, setIsInColl] = useState(false);
+  const userId = typeof window !== 'undefined' ? localStorage.getItem('user_id') : null;
+
+  useEffect(() => {
+    if (userId) {
+      setIsFav(favoriteService.isFavorite(userId, item.name));
+      setIsInColl(collectionService.isInAnyCollection(userId, item.name));
+    }
+  }, [userId, item.name]);
+
+  useEffect(() => {
+    if (userId && !isModalOpen) {
+      setIsInColl(collectionService.isInAnyCollection(userId, item.name));
+    }
+  }, [isModalOpen, userId, item.name]);
+
+  const toggleFav = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!userId) {
+      toast.error('Vui lòng đăng nhập để lưu yêu thích');
+      return;
+    }
+    if (isFav) {
+      favoriteService.removeFavorite(userId, item.name);
+      setIsFav(false);
+      toast.success('Đã xóa khỏi yêu thích');
+
+      interactionService.logInteraction({
+        res_id: item.id,
+        action_type: "REMOVE_RESTAURANT",
+        metadata: { restaurant_name: item.name, source_type: "favorite" }
+      });
+    } else {
+      favoriteService.addFavorite(userId, item);
+      setIsFav(true);
+      toast.success('Đã thêm vào yêu thích');
+
+      interactionService.logInteraction({
+        res_id: item.id,
+        action_type: "LIKE_RESTAURANT",
+        metadata: { restaurant_name: item.name }
+      });
+    }
+  };
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.1 }}
-      className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm dark:shadow-none overflow-hidden hover:shadow-lg dark:hover:border-gray-600 transition-all duration-300 cursor-pointer group"
+      transition={{ delay: index * 0.05 }}
+      className="bg-white dark:bg-[#3D312A] rounded-2xl border border-gray-100 dark:border-[#4D3D32] shadow-sm dark:shadow-none overflow-hidden hover:shadow-lg dark:hover:border-gray-600 transition-all duration-300 cursor-pointer group"
+      onClick={handleNavigate}
     >
-      {/* Image */}
       <div className="relative h-[180px] overflow-hidden">
         <img
           src={item.img}
           alt={item.name}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent pointer-events-none" />
 
-        {/* Rank */}
         <span className="absolute top-3 left-3 inline-flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold bg-gray-700/90 text-white backdrop-blur-sm">
           {index + 2}
         </span>
 
-        {/* Heart */}
-        <button className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/90 dark:bg-gray-900/80 flex items-center justify-center hover:scale-110 transition-all cursor-pointer shadow-sm">
-          <Heart className="w-4 h-4 text-red-400" />
-        </button>
+        {/* Heart & Bookmark */}
+        <div className="absolute top-3 right-3 flex flex-col gap-2">
+          <button
+            onClick={toggleFav}
+            className="w-8 h-8 rounded-full bg-white/90 dark:bg-[#2A2420]/80 flex items-center justify-center hover:scale-110 transition-all cursor-pointer shadow-sm"
+            title="Lưu yêu thích"
+          >
+            <Heart className={`w-4 h-4 ${isFav ? 'text-red-500 fill-current' : 'text-gray-400'}`} />
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              // [FIX-CONFLICT]: Ngăn không cho mở Modal nếu món ăn đã có trong bộ sưu tập (tránh thêm trùng lặp), hiển thị toast với icon Bookmark
+              if (isInColl) {
+                toast.info("Món ăn này đã có trong bộ sưu tập của bạn.", {
+                  icon: <Bookmark className="w-4 h-4" />
+                });
+                return;
+              }
+              onAddCollection(item);
+            }}
+            className={`w-8 h-8 rounded-full bg-white/90 dark:bg-[#2A2420]/80 flex items-center justify-center hover:scale-110 transition-all cursor-pointer shadow-sm ${isInColl ? 'hover:bg-yellow-50' : 'hover:bg-brand-muted'}`}
+            title={isInColl ? "Đã có trong bộ sưu tập" : "Thêm vào bộ sưu tập"}
+          >
+            <Bookmark className={`w-4 h-4 ${isInColl ? 'text-yellow-500 fill-current' : 'text-brand dark:text-[#E8735A]'}`} />
+          </button>
+        </div>
 
-        {/* Bottom badges */}
         <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between">
-          <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold ${matchColor} text-white`}>
-            🤖 {item.match} Match
+          <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold ${matchColor} text-white whitespace-nowrap`}>
+            🤖 {/^\d+%?$/.test(item.match) ? `${item.match} Match` : item.match}
           </span>
+          {item.allergen_warning && item.allergen_warning.length > 0 && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-500 text-white shadow-sm border border-amber-600">
+              ⚠️ {item.allergen_warning.length} lưu ý
+            </span>
+          )}
           {item.dist && (
-            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-semibold bg-white/90 dark:bg-gray-900/80 text-teal-600 dark:text-teal-400 backdrop-blur-sm">
+            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-semibold bg-white/90 dark:bg-[#2A2420]/80 text-brand-hover dark:text-[#E6DFD5] backdrop-blur-sm whitespace-nowrap">
               📍 {item.dist}
             </span>
           )}
         </div>
       </div>
 
-      {/* Info */}
       <div className="p-4">
-        <h3 className="text-base font-bold text-gray-800 dark:text-white mb-0.5 group-hover:text-orange-500 transition-colors">
+        <h3 className="text-base font-bold text-gray-800 dark:text-[#E6DFD5] mb-0.5 transition-colors cursor-pointer group-hover:text-brand">
           {item.name}
         </h3>
         {item.restaurantName && (
-          <p className="text-xs font-semibold text-orange-500 mb-2">{item.restaurantName}</p>
+          <p className="text-xs font-semibold text-brand dark:text-[#E8735A] mb-2">
+            {item.restaurantName}
+          </p>
         )}
         {item.reason && (
-          <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed mb-3 line-clamp-2">
+          <p className="text-xs text-gray-500 dark:text-[#9A8A7A] leading-relaxed mb-3 line-clamp-2">
             {item.reason}
           </p>
         )}
@@ -250,12 +466,10 @@ function SmallResultCard({ item, index }: { item: RecommendResult; index: number
   );
 }
 
-/* ─────────────────────────────────────────────────────────────
-   Feature Bar (Bottom)
-   ───────────────────────────────────────────────────────────── */
+
 function FeatureBar() {
   const features = [
-    { icon: Sparkles, bg: 'bg-orange-100 dark:bg-orange-500/20', color: 'text-orange-500', title: 'AI-Powered Recommendations', desc: 'Personalized just for you' },
+    { icon: Sparkles, bg: 'bg-brand-muted dark:bg-brand/20', color: 'text-brand dark:text-[#E8735A]', title: 'AI-Powered Recommendations', desc: 'Personalized just for you' },
     { icon: MapPin, bg: 'bg-red-100 dark:bg-red-500/20', color: 'text-red-500', title: 'Near Your Location', desc: 'Real-time GPS results' },
     { icon: Heart, bg: 'bg-pink-100 dark:bg-pink-500/20', color: 'text-pink-500', title: 'Based on Your Vibes', desc: 'Mood, weather & preferences' },
     { icon: ShieldCheck, bg: 'bg-green-100 dark:bg-green-500/20', color: 'text-green-500', title: 'Safe & Trusted', desc: 'Quality restaurants only' },
@@ -266,7 +480,7 @@ function FeatureBar() {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.6 }}
-      className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm dark:shadow-none border border-gray-100 dark:border-gray-700 px-6 py-5 mt-10"
+      className="bg-white dark:bg-[#3D312A] rounded-2xl shadow-sm dark:shadow-none border border-gray-100 dark:border-[#4D3D32] px-6 py-5 mt-10"
     >
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {features.map(feat => (
@@ -275,7 +489,7 @@ function FeatureBar() {
               <feat.icon className={`w-5 h-5 ${feat.color}`} />
             </div>
             <div>
-              <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">{feat.title}</p>
+              <p className="text-sm font-semibold text-gray-700 dark:text-[#C8BFB0]">{feat.title}</p>
               <p className="text-xs text-gray-400">{feat.desc}</p>
             </div>
           </div>
@@ -285,159 +499,254 @@ function FeatureBar() {
   );
 }
 
-/* ═════════════════════════════════════════════════════════════
-   MAIN RESULT PAGE
-   ═════════════════════════════════════════════════════════════ */
 function ResultPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const queryFromUrl = searchParams.get('q') || '';
-  const budgetFromUrl = (searchParams.get('budget') || 'auto') as BudgetOption;
+  let sessionIdFromUrl = searchParams.get('session_id') || '';
+  // [FIX-CONFLICT]: Lấy session_id từ sessionStorage (nếu URL không có) vì ta đã giấu nó đi
+  if (typeof window !== 'undefined' && !sessionIdFromUrl) {
+    sessionIdFromUrl = sessionStorage.getItem('current_search_session_id') || '';
+  }
 
-  const [isLoading, setIsLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState(queryFromUrl || 'Tìm quán mì cay 7 cấp độ ở Làng Đại Học');
-  const [inputValue, setInputValue] = useState(searchQuery);
-  const [budget, setBudget] = useState<BudgetOption>(budgetFromUrl);
+  // Check for cache instantly to avoid flicker
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const [isLoading, setIsLoading] = useState(() => {
+    if (typeof window === 'undefined') return true;
+    const searchParams = new URLSearchParams(window.location.search);
+    const q = searchParams.get('q');
+    let sessionId = searchParams.get('session_id');
+    if (!sessionId) {
+      sessionId = sessionStorage.getItem('current_search_session_id');
+    }
+    const isRefresh = searchParams.get('refresh') === 'true';
+    if (sessionId && !isRefresh) {
+      if (sessionStorage.getItem(`session_data_${sessionId}`)) return false;
+    }
+    if (q && !isRefresh) {
+      return !sessionStorage.getItem(`last_results_${q}`);
+    }
+    return true;
+  });
+
+  const [searchQuery, setSearchQuery] = useState('');
+  const { query: inputValue, setQuery: setInputValue, searchMode, setSearchMode } = useSearchState("");
+  const [budget, setBudget] = useState<BudgetOption>('auto');
+  const { getOptimizedLocation } = useOptimizedLocation();
 
   const [fallbackApplied, setFallbackApplied] = useState(false);
   const [fallbackReason, setFallbackReason] = useState<string>('');
   const [appliedBudget, setAppliedBudget] = useState<number | null>(null);
 
   const [filteredCount, setFilteredCount] = useState(0);
+  const [allergenFlaggedCount, setAllergyFlaggedCount] = useState(0);
   const [allergyWarning, setAllergyWarning] = useState<string>('');
 
-  // Distance filter state (client-side, default OFF)
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  // Sync login status immediately on mount
+  useEffect(() => {
+    const token = localStorage.getItem('access_token');
+    setIsLoggedIn(!!token);
+
+    // Save current URL as the last search URL for the Back button in settings
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('last_search_url', window.location.pathname + window.location.search);
+    }
+  }, [searchParams]);
+
+  const [showGuestNotice, setShowGuestNotice] = useState(true);
+
   const [distanceFilterEnabled, setDistanceFilterEnabled] = useState(false);
   const [distanceRadius, setDistanceRadius] = useState(2);
 
-  const { location, error: locError, isLoading: loadingLocation, getLocation } = useGeolocation();
+  const [collectionModalItem, setCollectionModalItem] = useState<RecommendResult | null>(null);
 
-  // Sync URL params to state
-  useEffect(() => {
-    const q = searchParams.get('q') || '';
-    const b = (searchParams.get('budget') || 'auto') as BudgetOption;
-    if (q) {
-      setSearchQuery(q);
-      setInputValue(q);
+  const [results, setResults] = useState<RecommendResult[]>(() => {
+    if (typeof window === 'undefined') return [];
+    const searchParams = new URLSearchParams(window.location.search);
+    let sessionId = searchParams.get('session_id');
+    if (!sessionId) {
+      sessionId = sessionStorage.getItem('current_search_session_id');
     }
-    setBudget(b);
-  }, [searchParams]);
-
-  const handleSearch = () => {
-    if (inputValue.trim() !== '') {
-      router.push(`/result?q=${encodeURIComponent(inputValue)}&budget=${budget}`);
+    if (sessionId) {
+      const cached = sessionStorage.getItem(`session_data_${sessionId}`);
+      if (cached) return JSON.parse(cached).results || [];
     }
-  };
-
-  useEffect(() => {
-    getLocation();
-  }, [getLocation]);
-
-  const [results, setResults] = useState<RecommendResult[]>([]);
+    return [];
+  });
   const [apiError, setApiError] = useState<string | null>(null);
 
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchLoadingMsg, setSearchLoadingMsg] = useState("Đang phân tích sở thích của bạn...");
+
   useEffect(() => {
-    if (!location) return;
+    if (!sessionIdFromUrl) {
+      setIsLoading(false);
+      return;
+    }
 
-    const fetchRecommendations = async () => {
-      // [1] Lấy token và user_id từ localStorage
-      const token = localStorage.getItem('access_token');
-      const userId = localStorage.getItem('user_id');
-
-      if (!token) {
-        console.warn("Chưa đăng nhập, redirect về /auth");
-        router.push('/auth?redirect=/result');
+    const loadSession = async () => {
+      // [FIX-CONFLICT]: Thêm logic Cache (sessionStorage) để lấy dữ liệu có sẵn, giúp chuyển trang không bị giật/flash loading state
+      const cached = sessionStorage.getItem(`session_data_${sessionIdFromUrl}`);
+      if (cached) {
+        const data = JSON.parse(cached);
+        setSearchQuery(data.query);
+        setInputValue(data.query);
+        setResults(data.results || []);
+        setFallbackApplied(data.fallback_applied || false);
+        setFallbackReason(data.fallback_reason || '');
+        setAppliedBudget(data.applied_budget ?? null);
+        setFilteredCount(data.filtered_out_count || 0);
+        setAllergyFlaggedCount(data.allergen_flagged_count || 0);
+        setAllergyWarning(data.warning || '');
+        setIsLoading(false);
         return;
       }
 
       setIsLoading(true);
-
-      // Thêm AbortController để chống treo (timeout sau 15 giây) nếu Backend/Database bị kẹt
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000);
-
+      setApiError(null);
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
-        const res = await fetch(`${apiUrl}/api/v1/search/recommend`, {
-          method: 'POST',
-          signal: controller.signal,
-          headers: {
-            'Content-Type': 'application/json',
-            // [1] Thêm header Authorization: Bearer <token>
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({
-            query: searchQuery,
-            lat: location.lat,
-            lng: location.lng,
-            // [1] Include user_id từ localStorage vào request body
-            user_id: userId || undefined,
-            // Đã cập nhật theo yêu cầu Hào: gửi format dạng integer
-            budget: budget === 'auto' ? undefined : parseInt(budget, 10),
-          }),
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+        const res = await fetch(`${apiUrl}/api/v1/search/sessions/${sessionIdFromUrl}`, {
+          signal: AbortSignal.timeout(10000),
         });
-
         if (res.ok) {
           const data = await res.json();
-          if (data && data.results) {
-            setResults(data.results);
-            setFallbackApplied(data.fallback_applied || false);
-            setFallbackReason(data.fallback_reason || '');
-            setAppliedBudget(data.applied_budget ?? null);
-
-            setFilteredCount(data.filtered_out_count || 0);
-            setAllergyWarning(data.warning || '');
-            setApiError(null);
-          }
-        } else if (res.status === 401) {
-          // TODO: Chờ team có trang /auth thì mở ra để bắt lỗi hết hạn token
-          // router.push('/auth');
-          setApiError('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại. (TODO: Redirect to /auth)');
+          sessionStorage.setItem(`session_data_${sessionIdFromUrl}`, JSON.stringify(data));
+          setSearchQuery(data.query);
+          setInputValue(data.query);
+          setResults(data.results || []);
+          setFallbackApplied(data.fallback_applied || false);
+          setFallbackReason(data.fallback_reason || '');
+          setAppliedBudget(data.applied_budget ?? null);
+          setFilteredCount(data.filtered_out_count || 0);
+          setAllergyFlaggedCount(data.allergen_flagged_count || 0);
+          setAllergyWarning(data.warning || '');
+        } else if (res.status === 404) {
+          setApiError('Không tìm thấy phiên tìm kiếm. Link có thể đã hết hạn hoặc không tồn tại.');
         } else {
-          setApiError('Hệ thống AI đang gặp sự cố. Vui lòng thử lại sau.');
+          setApiError('Lỗi khi tải kết quả. Vui lòng thử lại.');
         }
-      } catch (error: any) {
-        if (error.name === 'AbortError') {
-          setApiError('Quá thời gian kết nối (Timeout). Backend hoặc Database đang bị treo.');
-        } else {
-          setApiError('Không thể kết nối đến máy chủ. Hãy đảm bảo Backend đã được khởi động.');
-        }
+      } catch (err) {
+        console.error("Load session error:", err);
+        setApiError('Không thể kết nối đến máy chủ.');
       } finally {
-        clearTimeout(timeoutId);
         setIsLoading(false);
       }
     };
 
-    fetchRecommendations();
-  }, [location, searchQuery, budget]); // Re-fetch khi budget thay đổi
+    loadSession();
+  }, [sessionIdFromUrl, setInputValue]);
 
-  // Client-side distance filter — no API re-fetch needed
+  const handleSearch = async (overrideQuery?: string, overrideBudget?: BudgetOption) => {
+    const finalQuery = (overrideQuery ?? inputValue).trim();
+    const finalBudget = overrideBudget ?? budget;
+
+    if (finalQuery === '') return;
+
+    setIsSearching(true);
+    setApiError(null);
+
+    try {
+      setSearchLoadingMsg("Đang xác định vị trí của bạn...");
+
+      const gps = await getOptimizedLocation();
+      if (!gps) {
+        setApiError("Không thể xác định vị trí thực tế của bạn. Vui lòng kiểm tra quyền truy cập GPS để tiếp tục.");
+        setIsSearching(false);
+        return;
+      }
+
+      setSearchLoadingMsg("AI đang phân tích khẩu vị của bạn...");
+      const token = localStorage.getItem('access_token');
+      const userId = localStorage.getItem('user_id');
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
+      const res = await fetch(`${apiUrl}/api/v1/search/recommend`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          query: finalQuery,
+          lat: gps.lat,
+          lng: gps.lng,
+          user_id: userId || undefined,
+          budget: finalBudget === 'auto' ? undefined : parseInt(finalBudget, 10),
+          search_mode: searchMode,
+          top_k: 24, // Xin dư ra 24 món để bù trừ khi lọc trùng tên
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (userId) {
+          historyService.addHistory(
+            userId,
+            finalQuery,
+            finalBudget,
+            Array.isArray(data.results) ? data.results.length : undefined,
+            data.session_id,
+            searchMode
+          );
+        }
+        setSearchLoadingMsg("Đã có kết quả mới! Đang chuẩn bị...");
+        // [FIX-CONFLICT]: Ẩn session_id và mode vào sessionStorage, đẩy query q lên URL
+        if (typeof window !== 'undefined') {
+          sessionStorage.setItem('current_search_session_id', data.session_id);
+          sessionStorage.setItem('current_search_mode', searchMode);
+        }
+        window.location.href = `/result?q=${encodeURIComponent(finalQuery)}`;
+      } else {
+        throw new Error("Không thể kết nối với hệ thống AI.");
+      }
+    } catch (err: any) {
+      const msg = err?.message || "Lỗi kết nối AI. Vui lòng thử lại.";
+      setApiError(msg);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
   const displayResults = useMemo(() => {
-    if (!distanceFilterEnabled) return results;
-    return results.filter((r) => (r.distance_km ?? 0) <= distanceRadius);
+    let filtered = results;
+    if (distanceFilterEnabled) {
+      filtered = filtered.filter((r) => (r.distance_km ?? 0) <= distanceRadius);
+    }
+
+    // [FIX-CONFLICT]: Thêm logic lọc bỏ các kết quả bị trùng lặp tên (remove duplicates by name) để hiển thị danh sách sạch hơn
+    const seen = new Set();
+    const unique = filtered.filter(item => {
+      if (!item.name) return true;
+      const duplicate = seen.has(item.name);
+      seen.add(item.name);
+      return !duplicate;
+    });
+
+    // Cắt lấy đúng 16 món để hiển thị (1 hero + 15 small)
+    return unique.slice(0, 16);
   }, [results, distanceFilterEnabled, distanceRadius]);
 
   const heroItem = displayResults[0];
-  const gridItems = displayResults.slice(1, 5);
+  const gridItems = displayResults.slice(1);
 
   return (
-    <div className={`flex min-h-screen bg-[#F7F8FA] dark:bg-gray-900 transition-colors duration-300 ${roboto.className}`}>
-      {/* ══════════════════════════════════════════════════════════
-          [HIDDEN] Sidebar — Uncomment khi các trang con hoạt động
-          ══════════════════════════════════════════════════════════ */}
-      {/* <Sidebar /> */}
+    <AppShell>
+      {isSearching && <SearchLoadingOverlay message={searchLoadingMsg} />}
 
-      {/* ── Main Content ── */}
-      <div className="flex-1 flex flex-col">
-        <Header showBack={false} />
-
-        {/* Budget + Distance filter bar */}
-        <div className="px-6 md:px-10 pt-4 pb-3 border-b border-gray-100 dark:border-gray-800 bg-[#F7F8FA] dark:bg-gray-900 flex flex-col gap-3">
+      <div className="border-b border-[#E6DFD5]/60 dark:border-[#3D312A]/60 bg-[#FDFBF7]/80 dark:bg-[#2A2420]/80 backdrop-blur-sm">
+        <div className="max-w-7xl mx-auto px-4 md:px-8 py-4 flex flex-wrap items-center gap-x-4 gap-y-3">
           <BudgetSelector
             value={budget}
             onChange={(newBudget) => {
               setBudget(newBudget);
-              router.push(`/result?q=${encodeURIComponent(inputValue)}&budget=${newBudget}`);
+              handleSearch(inputValue, newBudget);
             }}
           />
           <DistanceFilter
@@ -449,192 +758,176 @@ function ResultPageContent() {
             filteredCount={displayResults.length}
           />
         </div>
+      </div>
 
-        <main className="flex-1 px-6 md:px-10 py-8 overflow-y-auto">
-          <div className="max-w-5xl mx-auto">
-            <AnimatePresence mode="wait">
-              {isLoading ? (
-                <LoadingState
-                  searchQuery={searchQuery}
-                  locError={locError}
-                  getLocation={getLocation}
-                />
-              ) : (
+      <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 md:py-12 w-full">
+        <AnimatePresence mode="wait">
+          {(!mounted || isLoading) ? (
+            <LoadingState
+              searchQuery={searchQuery}
+              locError={null}
+              getLocation={() => { }}
+            />
+          ) : (
+            <motion.div
+              key="results"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.3 }}
+            >
+              <motion.div
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mb-10 max-w-4xl mx-auto"
+              >
+                {fallbackApplied && (
+                  <div className="mb-6 flex items-start gap-3 p-4 rounded-xl bg-yellow-50 dark:bg-yellow-500/10 border border-yellow-200 dark:border-yellow-500/20">
+                    <Info className="w-5 h-5 text-yellow-600 dark:text-yellow-500 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm text-yellow-800 dark:text-yellow-200 leading-relaxed mb-2">
+                        <strong>AI đã mở rộng phạm vi tìm kiếm:</strong> {fallbackReason || 'Không tìm thấy kết quả chính xác theo yêu cầu khắt khe, chúng tôi đã mở rộng phạm vi và ngân sách để gợi ý cho bạn!'}
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {appliedBudget != null && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-yellow-100 dark:bg-yellow-500/20 text-yellow-700 dark:text-yellow-300">
+                            💰 Ngân sách: {appliedBudget.toLocaleString('vi-VN')}đ
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {allergenFlaggedCount > 0 && (
+                  <div className="mb-6 flex items-start gap-3 p-4 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 shadow-sm">
+                    <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-500 flex-shrink-0 mt-0.5" />
+                    <p className="text-sm text-amber-900 dark:text-amber-200 leading-relaxed">
+                      <strong>Lưu ý Dị ứng:</strong> Có {allergenFlaggedCount} quán ăn có chứa thành phần gây dị ứng cho bạn. AI đã đánh dấu rõ <strong>"⚠️ Cảnh báo"</strong> trên từng quán để bạn dễ dàng nhận biết.
+                    </p>
+                  </div>
+                )}
+
+                {!isLoggedIn && showGuestNotice && (
+                  <div className="mb-6 px-5 py-3 rounded-full bg-[#F0F7FF] dark:bg-blue-500/5 border border-[#E1EFFE] dark:border-blue-500/20 flex items-center gap-3 relative shadow-sm">
+                    <Sparkles className="w-5 h-5 text-blue-500 flex-shrink-0" />
+                    <p className="text-[13px] md:text-sm text-gray-600 dark:text-blue-200 pr-10 whitespace-nowrap">
+                      Bạn đang tìm kiếm với tư cách khách.{" "}
+                      <button
+                        onClick={() => router.push('/auth')}
+                        className="font-bold text-blue-600 dark:text-blue-400 underline hover:text-blue-700 transition-colors"
+                      >
+                        Đăng nhập ngay
+                      </button>
+                      {" "}để AI đề xuất món ăn chính xác theo khẩu vị và chế độ ăn của riêng bạn!
+                    </p>
+                    <button
+                      onClick={() => setShowGuestNotice(false)}
+                      className="absolute right-5 p-1 text-gray-400 hover:text-gray-600 dark:hover:text-blue-300 transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
+
+                <div className="flex flex-col gap-3 mb-5">
+                  <div className="flex justify-between items-center px-1">
+                    <button onClick={() => router.push('/')} className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-brand transition-colors">
+                      <Home className="w-4 h-4" /> Quay lại trang chủ
+                    </button>
+                  </div>
+                  <div className="relative group flex">
+                    <SearchBar
+                      query={inputValue}
+                      setQuery={setInputValue}
+                      searchMode={searchMode}
+                      setSearchMode={setSearchMode}
+                      onSearch={() => handleSearch()}
+                      compact={true}
+                    />
+                  </div>
+                </div>
+              </motion.div>
+
+              {apiError ? (
                 <motion.div
-                  key="results"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  transition={{ duration: 0.5 }}
+                  className="p-10 border border-red-200 dark:border-red-500/20 bg-red-50 dark:bg-red-950/10 rounded-3xl text-center"
                 >
-                  {/* ─── Title Section & Search Bar ─── */}
-                  <motion.div
-                    initial={{ opacity: 0, y: -20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="mb-10 max-w-2xl mx-auto"
+                  <div className="w-16 h-16 bg-red-100 dark:bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <Brain className="w-8 h-8 text-red-500" />
+                  </div>
+                  <h2 className="text-xl font-bold text-red-600 dark:text-red-400 mb-2">
+                    Lỗi kết nối
+                  </h2>
+                  <p className="text-red-500 dark:text-red-300/60 max-w-sm mx-auto mb-6">{apiError}</p>
+                  <button
+                    onClick={() => window.location.reload()}
+                    className="px-6 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-full transition-all font-medium shadow-md"
                   >
-                    {/* [2] Hiển thị metadata: fallback_applied === true -> show banner cảnh báo kèm fallback_reason, applied_budget, applied_radius_km dạng badge */}
-                    {fallbackApplied && (
-                      <div className="mb-6 flex items-start gap-3 p-4 rounded-xl bg-yellow-50 dark:bg-yellow-500/10 border border-yellow-200 dark:border-yellow-500/20">
-                        <Info className="w-5 h-5 text-yellow-600 dark:text-yellow-500 flex-shrink-0 mt-0.5" />
-                        <div>
-                          <p className="text-sm text-yellow-800 dark:text-yellow-200 leading-relaxed mb-2">
-                            <strong>AI đã mở rộng phạm vi tìm kiếm:</strong> {fallbackReason || 'Không tìm thấy kết quả chính xác theo yêu cầu khắt khe, chúng tôi đã mở rộng phạm vi và ngân sách để gợi ý cho bạn!'}
-                          </p>
-                          <div className="flex flex-wrap gap-2">
-                            {appliedBudget != null && (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-yellow-100 dark:bg-yellow-500/20 text-yellow-700 dark:text-yellow-300">
-                                💰 Ngân sách: {appliedBudget.toLocaleString('vi-VN')}đ
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                    {/* [3] Hiển thị filtered_out_count và warning (allergy filter) nếu có */}
-                    {filteredCount > 0 && (
-                      <div className="mb-6 flex items-start gap-3 p-4 rounded-xl bg-orange-50 dark:bg-orange-500/10 border border-orange-200 dark:border-orange-500/20">
-                        <AlertTriangle className="w-5 h-5 text-orange-600 dark:text-orange-500 flex-shrink-0 mt-0.5" />
-                        <p className="text-sm text-orange-800 dark:text-orange-200 leading-relaxed">
-                          <strong>Cảnh báo Dị ứng:</strong> {allergyWarning || `Đã loại ${filteredCount} quán có thành phần gây dị ứng để đảm bảo an toàn.`}
-                        </p>
-                      </div>
-                    )}
-
-                    {/* [4] Thêm ô input tìm kiếm lại (pre-fill từ query URL param q) -> cập nhật URL param -> re-fetch. Thêm nút "Quay lại trang chủ" */}
-                    <div className="flex flex-col gap-3 mb-5">
-                      <div className="flex justify-between items-center px-1">
-                        <button onClick={() => router.push('/')} className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-orange-500 transition-colors">
-                          <Home className="w-4 h-4" /> Quay lại trang chủ
-                        </button>
-                      </div>
-                      <div className="relative group">
-                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                          <Sparkles className="h-5 w-5 text-orange-500" />
-                        </div>
-                        <input
-                          type="text"
-                          value={inputValue}
-                          onChange={(e) => setInputValue(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') handleSearch();
-                          }}
-                          className="block w-full pl-11 pr-32 py-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl leading-5 bg-transparent placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 sm:text-base transition-all shadow-sm group-hover:shadow-md dark:text-white"
-                          placeholder="Bạn muốn ăn gì hôm nay?"
-                        />
-                        <div className="absolute inset-y-2 right-2">
-                          <button
-                            onClick={handleSearch}
-                            className="flex items-center gap-2 px-5 py-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm h-full"
-                          >
-                            <Search className="w-4 h-4" />
-                            <span className="hidden sm:inline">Tìm lại</span>
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* GPS Status */}
-                    <div className="mt-5 flex justify-center text-sm">
-                      {loadingLocation && (
-                        <span className="text-orange-400 animate-pulse font-medium">Đang định vị GPS...</span>
-                      )}
-                      {locError && (
-                        <span className="text-red-400 font-medium">
-                          ⚠️ {locError}{' '}
-                          <button onClick={getLocation} className="underline hover:text-red-300 ml-1">Thử lại</button>
-                        </span>
-                      )}
-                      {location && !loadingLocation && !locError && (
-                        <span className="text-teal-500 dark:text-teal-400 flex items-center gap-1.5 font-medium">
-                          <MapPin className="w-4 h-4" /> Vị trí hiện tại: {location.lat.toFixed(4)}, {location.lng.toFixed(4)}
-                        </span>
-                      )}
-                    </div>
-                  </motion.div>
-
-                  {/* ─── Results ─── */}
-                  {apiError ? (
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      className="p-10 border border-red-200 dark:border-red-500/20 bg-red-50 dark:bg-red-950/10 rounded-3xl text-center"
-                    >
-                      <div className="w-16 h-16 bg-red-100 dark:bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
-                        <Brain className="w-8 h-8 text-red-500" />
-                      </div>
-                      <h2 className="text-xl font-bold text-red-600 dark:text-red-400 mb-2">
-                        Lỗi kết nối
-                      </h2>
-                      <p className="text-red-500 dark:text-red-300/60 max-w-sm mx-auto mb-6">{apiError}</p>
-                      <button
-                        onClick={() => window.location.reload()}
-                        className="px-6 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-full transition-all font-medium shadow-md"
-                      >
-                        Thử kết nối lại
-                      </button>
-                    </motion.div>
-                  ) : results.length === 0 ? (
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      className="py-20 text-center bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-700 shadow-sm"
-                    >
-                      <div className="w-20 h-20 bg-gray-50 dark:bg-gray-900 rounded-full flex items-center justify-center mx-auto mb-6">
-                        <Search className="w-10 h-10 text-gray-400 dark:text-gray-500" />
-                      </div>
-                      <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-3">
-                        Không tìm thấy món nào!
-                      </h2>
-                      <p className="text-gray-500 dark:text-gray-400 max-w-md mx-auto mb-8 leading-relaxed">
-                        Rất tiếc, AI không tìm thấy kết quả nào phù hợp với yêu cầu hiện tại. Thử thay đổi từ khóa hoặc mở rộng ngân sách xem sao nhé?
-                      </p>
-                      <button
-                        onClick={() => {
-                          setInputValue('');
-                          setSearchQuery('');
-                          document.querySelector('input')?.focus();
-                        }}
-                        className="px-6 py-2.5 bg-orange-50 dark:bg-orange-500/10 hover:bg-orange-100 dark:hover:bg-orange-500/20 text-orange-600 dark:text-orange-400 rounded-full transition-all font-semibold"
-                      >
-                        Thử tìm từ khóa khác
-                      </button>
-                    </motion.div>
-                  ) : (
-                    <>
-                      {/* Hero Card #1 */}
-                      {heroItem && <HeroResultCard item={heroItem} />}
-
-                      {/* Small Cards Grid #2-#5 */}
-                      {gridItems.length > 0 && (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-                          {gridItems.map((item, idx) => (
-                            <SmallResultCard key={item.id || idx} item={item} index={idx} />
-                          ))}
-                        </div>
-                      )}
-
-                      {/* Feature Bar */}
-                      <FeatureBar />
-                    </>
-                  )}
+                    Thử kết nối lại
+                  </button>
                 </motion.div>
+              ) : results.length === 0 ? (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="py-20 text-center bg-white dark:bg-[#3D312A] rounded-3xl border border-gray-100 dark:border-[#4D3D32] shadow-sm"
+                >
+                  <div className="w-20 h-20 bg-gray-50 dark:bg-[#2A2420] rounded-full flex items-center justify-center mx-auto mb-6">
+                    <Search className="w-10 h-10 text-gray-400 dark:text-[#7A6A5A]" />
+                  </div>
+                  <h2 className="text-2xl font-bold text-gray-800 dark:text-[#E6DFD5] mb-3">
+                    Không tìm thấy món nào!
+                  </h2>
+                  <p className="text-gray-500 dark:text-[#9A8A7A] max-w-md mx-auto mb-8 leading-relaxed">
+                    Rất tiếc, AI không tìm thấy kết quả nào phù hợp với yêu cầu hiện tại. Thử thay đổi từ khóa hoặc mở rộng ngân sách xem sao nhé?
+                  </p>
+                  <button
+                    onClick={() => {
+                      setInputValue('');
+                      setSearchQuery('');
+                      document.querySelector('input')?.focus();
+                    }}
+                    className="px-6 py-2.5 bg-brand-muted dark:bg-brand/10 hover:bg-brand-muted dark:hover:bg-brand/20 text-brand-hover dark:text-[#E6DFD5] rounded-full transition-all font-semibold"
+                  >
+                    Thử tìm từ khóa khác
+                  </button>
+                </motion.div>
+              ) : (
+                <>
+                  {/* Hero Card #1 */}
+                  {heroItem && <HeroResultCard item={heroItem} sessionId={sessionIdFromUrl} searchMode={searchMode} onAddCollection={setCollectionModalItem} isModalOpen={!!collectionModalItem} />}
+
+                  {/* Small Cards Grid #2+ */}
+                  {gridItems.length > 0 && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                      {gridItems.map((item, idx) => (
+                        <SmallResultCard key={item.id || idx} item={item} index={idx} sessionId={sessionIdFromUrl} searchMode={searchMode} onAddCollection={setCollectionModalItem} isModalOpen={!!collectionModalItem} />
+                      ))}
+                    </div>
+                  )}
+
+                  <FeatureBar />
+                </>
               )}
-            </AnimatePresence>
-          </div>
-        </main>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
-    </div>
+      <AddToCollectionModal
+        isOpen={!!collectionModalItem}
+        onClose={() => setCollectionModalItem(null)}
+        item={collectionModalItem}
+      />
+    </AppShell>
   );
 }
 
-/* ══════════════════════════════════════════════════════════
-    MAIN RESULT PAGE (wraps client component in Suspense)
-    ══════════════════════════════════════════════════════════ */
 export default function ResultPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-[#F7F8FA] dark:bg-gray-900 flex items-center justify-center">
-        <div className="text-gray-500 dark:text-gray-400 animate-pulse font-medium">Đang tải dữ liệu...</div>
+      <div className="min-h-screen bg-white dark:bg-[#2A2420] flex items-center justify-center">
+        <div className="text-[#9A8A7A] dark:text-[#7A6A5A] animate-pulse font-medium">Đang tải dữ liệu...</div>
       </div>
     }>
       <ResultPageContent />

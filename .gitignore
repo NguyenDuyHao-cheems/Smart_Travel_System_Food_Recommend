@@ -99,3 +99,4 @@ coverage/
 core_backend/*.sqlite
 *.pkl
 lambdamart.lgb
+tsconfig.tsbuildinfo

@@ -5,8 +5,22 @@ Tất cả features đều là int để tránh floating-point precision issues
 và đảm bảo tính nhất quán với schema CandidateWithFeatures.
 """
 
+import re
+
 import numpy as np
 from typing import List
+
+from app.services.review_sentiment import normalize_restaurant_sentiment
+
+
+def _extract_max_price(price_range) -> float:
+    if not price_range:
+        return 0.0
+
+    price_text = str(price_range)
+    max_price_text = price_text.split("-")[-1] if "-" in price_text else price_text
+    digits = re.sub(r"\D", "", max_price_text)
+    return float(digits) if digits else 0.0
 
 
 class FeatureService:
@@ -23,28 +37,22 @@ class FeatureService:
             dist_m = self._haversine_meters(
                 user_lat, user_lng, float(r.lat or 0), float(r.lng or 0)
             )
+            # Gắn ngược lại vào candidate để recommendation_service dùng cho distance decay
+            setattr(r, "distance_m", dist_m)
 
             # 2. % ngân sách (0–100) — price_range là String trong DB
-            try:
-                raw_price_str = str(getattr(r, "price_range", "") or "")
-                if "-" in raw_price_str:
-                    raw_price = float(raw_price_str.split("-")[1].strip())
-                elif raw_price_str:
-                    raw_price = float(raw_price_str.strip())
-                else:
-                    raw_price = 0.0
-            except (ValueError, TypeError, IndexError):
-                raw_price = 0.0
+            raw_price = _extract_max_price(getattr(r, "price_range", "") or "")
             
             if budget <= 0:
                 price_norm = 0
             else:
                 price_norm = int((raw_price / budget) * 100)
 
-            # 3. Rating & Sentiment: scale về 0–100
-            # sentiment_score trong DB: thang 0–10 → nhân 10 → 0–100
+            # 3. Rating & Sentiment
             rating_int = int((getattr(r, "rating_avg", 0.0) or 0.0) * 100)
-            sentiment_int = int((getattr(r, "sentiment_score", 0.0) or 0.0) * 10)
+            # New sentiment scale is -1..1. Legacy neutral=5.0 is normalized here too.
+            sentiment_unit = normalize_restaurant_sentiment(getattr(r, "sentiment_score", None))
+            sentiment_int = int(sentiment_unit * 100)
 
             # 4. Trạng thái mở cửa — dùng is_open_now (bản NEW)
             is_open_int = 1 if getattr(r, "is_open_now", False) else 0

@@ -22,8 +22,8 @@ const BUDGET_OPTIONS: { label: string; value: BudgetOption }[] = [
 
 export function BudgetSelector({ value, onChange }: BudgetSelectorProps) {
   return (
-    <div className="flex items-center justify-center gap-1.5 flex-wrap">
-      <span className="text-sm font-semibold text-gray-500 dark:text-gray-400 mr-2">
+    <div className="flex items-center justify-start gap-1 flex-wrap">
+      <span className="text-xs font-bold text-gray-500 dark:text-[#9A8A7A] mr-1 whitespace-nowrap">
         Ngân sách
       </span>
       {BUDGET_OPTIONS.map((opt) => (
@@ -31,9 +31,9 @@ export function BudgetSelector({ value, onChange }: BudgetSelectorProps) {
           key={opt.value}
           type="button"
           onClick={() => onChange(opt.value)}
-          className={`px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-all duration-200 cursor-pointer ${value === opt.value
-            ? 'bg-orange-500 text-white border-orange-500 shadow-sm shadow-orange-200 dark:shadow-orange-500/30'
-            : 'bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:border-orange-300 dark:hover:border-orange-500/50 hover:text-orange-500 dark:hover:text-orange-400'
+          className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all duration-200 cursor-pointer ${value === opt.value
+            ? 'bg-brand text-white border-brand shadow-sm shadow-brand/20 dark:shadow-brand/30'
+            : 'bg-white dark:bg-[#3D312A] text-gray-500 dark:text-[#9A8A7A] border-gray-200 dark:border-[#4D3D32] hover:border-brand/50 dark:hover:border-brand/50 hover:text-brand dark:hover:text-brand'
             }`}
         >
           {opt.label}
