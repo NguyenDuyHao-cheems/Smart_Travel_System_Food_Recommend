@@ -342,6 +342,11 @@ export default function ProfilePage() {
                       })()}
                       • Tham gia từ {joinDate || "tháng 5, 2024"}
                     </p>
+                    <p className="text-gray-500 dark:text-[#9A8A7A] font-medium flex items-center gap-2 text-sm mt-2">
+                      <span className="flex items-center gap-1 cursor-pointer hover:text-brand transition-colors"><strong className="text-gray-900 dark:text-[#E6DFD5]">12</strong> Đang theo dõi</span>
+                      <span>•</span>
+                      <span className="flex items-center gap-1 cursor-pointer hover:text-brand transition-colors"><strong className="text-gray-900 dark:text-[#E6DFD5]">108</strong> Người theo dõi</span>
+                    </p>
                   </div>
                   
                   <div className="flex gap-3">
