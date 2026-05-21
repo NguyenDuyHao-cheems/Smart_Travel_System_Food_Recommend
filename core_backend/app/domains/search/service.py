@@ -239,6 +239,7 @@ class SearchService:
             total_reviews=getattr(model, "total_reviews", 0) or 0,
             google_maps_url=getattr(model, "google_maps_url", None),
             allergen_warning=getattr(model, "allergen_warning", None),
+            is_vegetarian=getattr(model, "is_vegetarian", False) or False,
             sentiment_score=normalize_restaurant_sentiment(getattr(model, "sentiment_score", None)),
             sentiment_label=sentiment_label_for_score(getattr(model, "sentiment_score", None)),
             sentiment_review_count=getattr(model, "total_reviews", 0) or 0,

@@ -49,6 +49,7 @@ class RecommendResult(BaseModel):
     total_reviews: Optional[int] = 0
     google_maps_url: Optional[str] = None
     allergen_warning: Optional[List[AllergenDishWarning]] = None
+    is_vegetarian: Optional[bool] = False
     sentiment_score: Optional[float] = Field(
         None,
         ge=-1.0,
