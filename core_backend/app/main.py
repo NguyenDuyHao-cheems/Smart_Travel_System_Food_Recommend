@@ -14,7 +14,28 @@ UserBase.metadata.create_all(bind=engine)
 print('TABLES:', Base.metadata.tables.keys())
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="Smart Travel System - Food Recommend")
+import asyncio
+from contextlib import asynccontextmanager
+from app.domains.social.tasks import cleanup_expired_stories
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Khởi chạy background task
+    async def run_cleanup_task():
+        while True:
+            try:
+                # Chạy dọn dẹp trong thread/executor hoặc đồng bộ nếu dùng block nhỏ
+                # Do hàm cleanup gọi http block, ta dùng to_thread để ko block async event loop
+                await asyncio.to_thread(cleanup_expired_stories)
+            except Exception as e:
+                print(f"Lỗi task dọn dẹp: {e}")
+            await asyncio.sleep(3600)  # Chạy mỗi 1 giờ
+            
+    task = asyncio.create_task(run_cleanup_task())
+    yield
+    task.cancel()
+
+app = FastAPI(title="Smart Travel System - Food Recommend", lifespan=lifespan)
 
 # Configure CORS
 app.add_middleware(

@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from .models import SocialPost, SocialFollow, SocialLike, SocialNotification
+from .models import SocialPost, SocialFollow, SocialLike, SocialNotification, SocialStory
 from app.domains.users.models import UserAccount
 from typing import List, Optional
 
@@ -24,12 +24,14 @@ class SocialRepository:
         )
 
         if mode == "following" and user_id:
-            # Only show posts from people user follows + own posts
+            user_id_str = str(user_id)
+            # Only show posts from people user follows (exclude own posts)
             following_ids = self.db.query(SocialFollow.following_id).filter(
-                SocialFollow.follower_id == user_id
+                SocialFollow.follower_id == user_id_str
             ).subquery()
+            
             query = query.filter(
-                (SocialPost.user_id.in_(following_ids)) | (SocialPost.user_id == user_id)
+                SocialPost.user_id.in_(following_ids)
             )
         # else: "for_you" mode → show ALL posts (no filter)
 
@@ -157,3 +159,29 @@ class SocialRepository:
         # Delete the post itself
         self.db.query(SocialPost).filter(SocialPost.id == post_id).delete(synchronize_session=False)
         self.db.commit()
+
+    def create_story(self, story: SocialStory) -> SocialStory:
+        self.db.add(story)
+        self.db.commit()
+        self.db.refresh(story)
+        return story
+
+    def get_active_stories(self, user_id: str) -> List[tuple]:
+        from datetime import datetime, timezone
+        now = datetime.now(timezone.utc)
+        
+        # Get stories from users I follow, plus my own stories, which haven't expired
+        following_ids = self.db.query(SocialFollow.following_id).filter(
+            SocialFollow.follower_id == user_id
+        ).subquery()
+
+        return (
+            self.db.query(SocialStory, UserAccount)
+            .join(UserAccount, SocialStory.user_id == UserAccount.id)
+            .filter(
+                (SocialStory.user_id.in_(following_ids)) | (SocialStory.user_id == user_id),
+                SocialStory.expires_at > now
+            )
+            .order_by(SocialStory.created_at.desc())
+            .all()
+        )

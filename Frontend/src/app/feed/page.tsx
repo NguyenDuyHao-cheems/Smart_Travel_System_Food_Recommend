@@ -3,7 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { AppShell } from '../../components/AppShell';
 import { PostCard, SocialPost } from '../../components/social/PostCard';
 import { QuickCreateBox } from '../../components/social/QuickCreateBox';
-import { FeedRightSidebar } from '../../components/social/FeedRightSidebar';
+import { StoryList } from '../../components/social/StoryList';
+import { UserSearchPanel } from '../../components/social/UserSearchPanel';
 import { Sparkles, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -77,11 +78,8 @@ export default function FeedPage() {
 
   return (
     <AppShell>
-      <div className="max-w-[960px] mx-auto px-4 pt-4 pb-8">
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-6">
-
-          {/* ─── Center: Feed ─── */}
-          <div className="min-w-0 flex flex-col gap-4">
+      <div className="max-w-[680px] mx-auto px-4 pt-4 pb-8">
+        <div className="flex flex-col gap-4">
 
             {/* Feed Header */}
             <div className="flex items-center py-1">
@@ -89,6 +87,12 @@ export default function FeedPage() {
                 Bảng tin
               </h1>
             </div>
+
+            {/* Tìm kiếm bạn bè */}
+            <UserSearchPanel />
+
+            {/* Quick Story List */}
+            <StoryList />
 
             {/* Quick Create Box */}
             <QuickCreateBox
@@ -147,14 +151,6 @@ export default function FeedPage() {
                 ))}
               </div>
             )}
-          </div>
-
-          {/* ─── Right Sidebar ─── */}
-          <div className="hidden lg:block">
-            <div className="sticky top-24">
-              <FeedRightSidebar />
-            </div>
-          </div>
         </div>
       </div>
     </AppShell>

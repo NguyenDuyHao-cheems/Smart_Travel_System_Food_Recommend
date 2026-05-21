@@ -17,7 +17,14 @@ def update_schema():
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS full_name VARCHAR;",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url VARCHAR;",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS cover_url VARCHAR;",
-        "ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_stats JSON;"
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_stats JSON;",
+        """CREATE TABLE IF NOT EXISTS social_stories (
+            id VARCHAR PRIMARY KEY,
+            user_id VARCHAR NOT NULL REFERENCES users(id),
+            media_url VARCHAR NOT NULL,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+            expires_at TIMESTAMP WITH TIME ZONE NOT NULL
+        );"""
     ]
     
     with engine.connect() as conn:

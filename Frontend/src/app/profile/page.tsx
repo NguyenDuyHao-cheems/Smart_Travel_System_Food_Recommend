@@ -113,6 +113,8 @@ export default function ProfilePage() {
   const [reviewsCount, setReviewsCount] = useState<number>(0);
   const [discoveriesCount, setDiscoveriesCount] = useState<number>(0);
   const [streakCount, setStreakCount] = useState<number>(0);
+  const [followersCount, setFollowersCount] = useState<number>(0);
+  const [followingCount, setFollowingCount] = useState<number>(0);
 
   const [personalization, setPersonalization] = useState<{
     favorite_dishes: string[];
@@ -230,6 +232,19 @@ export default function ProfilePage() {
             setStreakCount(data.streak_count);
           }
 
+          // Fetch social follow stats
+          const socialUserId = localStorage.getItem("user_id") || "";
+          if (socialUserId) {
+            const socialRes = await fetch(`${API_BASE}/api/v1/social/users/${socialUserId}/profile`, {
+              headers: { "Authorization": `Bearer ${token}` }
+            });
+            if (socialRes.ok) {
+              const socialData = await socialRes.json();
+              setFollowersCount(socialData.followers_count ?? 0);
+              setFollowingCount(socialData.following_count ?? 0);
+            }
+          }
+
           // Fetch onboarding personalization preferences
           const userId = localStorage.getItem("user_id") || "";
           if (userId) {
@@ -343,9 +358,9 @@ export default function ProfilePage() {
                       • Tham gia từ {joinDate || "tháng 5, 2024"}
                     </p>
                     <p className="text-gray-500 dark:text-[#9A8A7A] font-medium flex items-center gap-2 text-sm mt-2">
-                      <span className="flex items-center gap-1 cursor-pointer hover:text-brand transition-colors"><strong className="text-gray-900 dark:text-[#E6DFD5]">12</strong> Đang theo dõi</span>
+                      <span className="flex items-center gap-1 cursor-pointer hover:text-brand transition-colors"><strong className="text-gray-900 dark:text-[#E6DFD5]">{followingCount}</strong> Đang theo dõi</span>
                       <span>•</span>
-                      <span className="flex items-center gap-1 cursor-pointer hover:text-brand transition-colors"><strong className="text-gray-900 dark:text-[#E6DFD5]">108</strong> Người theo dõi</span>
+                      <span className="flex items-center gap-1 cursor-pointer hover:text-brand transition-colors"><strong className="text-gray-900 dark:text-[#E6DFD5]">{followersCount}</strong> Người theo dõi</span>
                     </p>
                   </div>
                   

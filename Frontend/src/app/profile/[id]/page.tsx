@@ -96,6 +96,16 @@ export default function PublicProfilePage() {
       } else {
         toast.info(`Đã bỏ theo dõi ${profile?.full_name || profile?.username}`);
       }
+
+      // Re-fetch chính xác số followers từ server
+      const profileRes = await fetch(`http://localhost:8000/api/v1/social/users/${id}/profile`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (profileRes.ok) {
+        const profileData = await profileRes.json();
+        setFollowersCount(profileData.followers_count);
+        setIsFollowing(profileData.is_following);
+      }
     } catch (error) {
       // Revert Optimistic Update
       setIsFollowing(currentStatus);

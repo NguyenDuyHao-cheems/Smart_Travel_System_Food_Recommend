@@ -12,7 +12,7 @@ import {
   AlertDialogHeader, 
   AlertDialogTitle 
 } from '../ui/alert-dialog';
-import { Heart, MessageCircle, Share2, MapPin, MoreHorizontal, Trash2, Flag, Link as LinkIcon, Send, Loader2 } from 'lucide-react';
+import { Heart, MessageCircle, MapPin, MoreHorizontal, Trash2, Flag, Link as LinkIcon, Send, Loader2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -32,6 +32,14 @@ export interface SocialPost {
   full_name?: string;
   avatar_url?: string;
   is_liked?: boolean;
+  metadata?: {
+    is_food_review?: boolean;
+    rating?: number;
+    spicy_level?: string;
+    price?: number;
+    ai_match?: number;
+    mood?: string;
+  };
 }
 
 interface PostCardProps {
@@ -165,7 +173,7 @@ export function PostCard({ post, onLikeToggle, onDelete }: PostCardProps) {
   };
 
   return (
-    <div className="bg-card text-card-foreground border rounded-xl p-4 mb-4 shadow-sm transition-all hover:shadow-md">
+    <div className="bg-card text-card-foreground border rounded-xl p-4 mb-4 shadow-sm transition-all hover:shadow-md hover:scale-[1.005] group">
       <div className="flex items-start space-x-3">
         <Link href={profileUrl} className="shrink-0">
           <Avatar className="w-10 h-10 border border-border hover:opacity-80 transition-opacity">
@@ -237,6 +245,8 @@ export function PostCard({ post, onLikeToggle, onDelete }: PostCardProps) {
             </div>
           )}
 
+
+
           {post.media_urls && post.media_urls.length > 0 && (
             <div className={`mt-3 grid gap-2 ${post.media_urls.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
               {post.media_urls.map((url, idx) => (
@@ -269,12 +279,7 @@ export function PostCard({ post, onLikeToggle, onDelete }: PostCardProps) {
               <span>{repliesCount > 0 ? repliesCount : ''}</span>
             </button>
 
-            <button 
-              onClick={handleCopyLink}
-              className="flex items-center space-x-1.5 text-sm text-muted-foreground hover:text-green-500 transition-colors"
-            >
-              <Share2 className="w-4 h-4" />
-            </button>
+
           </div>
 
           {/* ── Comment Section ── */}

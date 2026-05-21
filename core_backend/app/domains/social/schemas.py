@@ -58,3 +58,35 @@ class LinkPreviewResponse(BaseModel):
     description: Optional[str] = None
     image_url: Optional[str] = None
     site_name: Optional[str] = None
+
+class StoryCreate(BaseModel):
+    media_url: str
+    overlays: Optional[List[dict]] = None
+
+class StoryResponse(BaseModel):
+    id: str
+    user_id: str
+    media_url: str
+    created_at: datetime
+    expires_at: datetime
+    views_count: int = 0
+    overlays: Optional[List[dict]] = None
+    
+    # Extra fields for UI
+    username: Optional[str] = None
+    full_name: Optional[str] = None
+    avatar_url: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+class StoryViewCreate(BaseModel):
+    reaction: Optional[str] = None
+
+class StoryViewerItem(BaseModel):
+    id: str
+    username: str
+    full_name: Optional[str] = None
+    avatar_url: Optional[str] = None
+    reaction: Optional[str] = None
+    viewed_at: datetime

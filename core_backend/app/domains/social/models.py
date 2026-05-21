@@ -43,3 +43,23 @@ class SocialNotification(Base):
     post_id = Column(String, ForeignKey("social_posts.id", ondelete="CASCADE"), nullable=True)
     is_read = Column(Boolean, default=False)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+class SocialStory(Base):
+    __tablename__ = "social_stories"
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(PG_UUID(as_uuid=False), ForeignKey("users.id"), nullable=False, index=True)
+    media_url = Column(String, nullable=False)
+    overlays = Column(JSON, default=list)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    expires_at = Column(DateTime, nullable=False)
+    views_count = Column(Integer, default=0)
+
+class SocialStoryView(Base):
+    __tablename__ = "social_story_views"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    story_id = Column(String, ForeignKey("social_stories.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(PG_UUID(as_uuid=False), ForeignKey("users.id"), nullable=False, index=True)
+    reaction = Column(String, nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))

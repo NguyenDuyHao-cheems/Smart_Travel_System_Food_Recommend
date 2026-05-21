@@ -5,8 +5,8 @@ from html.parser import HTMLParser
 from urllib.parse import urlparse
 from cachetools import TTLCache
 
-from .models import SocialPost, SocialFollow, SocialLike, SocialNotification
-from .schemas import SocialPostCreate, SocialPostResponse
+from .models import SocialPost, SocialFollow, SocialLike, SocialNotification, SocialStory, SocialStoryView
+from .schemas import SocialPostCreate, SocialPostResponse, StoryCreate, StoryResponse, StoryViewCreate, StoryViewerItem
 from .repository import SocialRepository
 
 preview_cache = TTLCache(maxsize=1000, ttl=86400)
@@ -53,9 +53,9 @@ class SocialService:
         if post_data.parent_id:
             # Increment replies count on parent
             self.repo.increment_post_replies(post_data.parent_id, 1)
-            # Create notification for parent post owner
+            # Create notification for parent post owner (never notify self)
             parent_post = self.repo.get_post_by_id(post_data.parent_id)
-            if parent_post and parent_post.user_id != user_id:
+            if parent_post and str(parent_post.user_id) != str(user_id):
                 notif = SocialNotification(
                     user_id=parent_post.user_id,
                     actor_id=user_id,
@@ -127,9 +127,9 @@ class SocialService:
             self.repo.create_like(like)
             self.repo.increment_post_likes(post_id, 1)
             
-            # Notification
+            # Notification (never notify self)
             post = self.repo.get_post_by_id(post_id)
-            if post and post.user_id != user_id:
+            if post and str(post.user_id) != str(user_id):
                 notif = SocialNotification(
                     user_id=post.user_id,
                     actor_id=user_id,
@@ -238,8 +238,117 @@ class SocialService:
             raise HTTPException(status_code=404, detail="Post not found")
         if str(post.user_id) != current_user_id:
             raise HTTPException(status_code=403, detail="Not authorized to delete this post")
+        
         self.repo.delete_post(post_id)
         return {"status": "ok", "message": "Post deleted successfully"}
+
+    def create_story(self, user_id: str, story_data: StoryCreate) -> StoryResponse:
+        from datetime import datetime, timezone, timedelta
+        now = datetime.now(timezone.utc)
+        expires = now + timedelta(hours=24)
+        
+        story = SocialStory(
+            user_id=user_id,
+            media_url=story_data.media_url,
+            overlays=story_data.overlays or [],
+            created_at=now,
+            expires_at=expires
+        )
+        self.repo.create_story(story)
+        
+        # We need the user account to return the full UI response
+        from app.domains.users.models import UserAccount
+        user_account = self.repo.db.query(UserAccount).filter(UserAccount.id == user_id).first()
+
+        return StoryResponse(
+            id=story.id,
+            user_id=story.user_id,
+            media_url=story.media_url,
+            created_at=story.created_at,
+            expires_at=story.expires_at,
+            views_count=story.views_count,
+            overlays=story.overlays,
+            username=user_account.username if user_account else None,
+            full_name=user_account.full_name if user_account else None,
+            avatar_url=user_account.avatar_url if user_account else None
+        )
+
+    def get_active_stories(self, user_id: str) -> list[StoryResponse]:
+        results = self.repo.get_active_stories(user_id)
+        stories = []
+        for story, user in results:
+            stories.append(StoryResponse(
+                id=story.id,
+                user_id=story.user_id,
+                media_url=story.media_url,
+                created_at=story.created_at,
+                expires_at=story.expires_at,
+                views_count=story.views_count,
+                overlays=story.overlays,
+                username=user.username,
+                full_name=user.full_name,
+                avatar_url=user.avatar_url
+            ))
+        return stories
+
+    def increment_story_views(self, story_id: str, user_id: str, reaction: str = None):
+        story = self.repo.db.query(SocialStory).filter(SocialStory.id == story_id).first()
+        if not story:
+            raise HTTPException(status_code=404, detail="Story not found")
+
+        # Check if view already exists
+        view = self.repo.db.query(SocialStoryView).filter(
+            SocialStoryView.story_id == story_id,
+            SocialStoryView.user_id == user_id
+        ).first()
+
+        if view:
+            # Update reaction if provided
+            if reaction:
+                view.reaction = reaction
+                self.repo.db.commit()
+            return {"status": "ok", "message": "View updated"}
+        
+        # New view
+        new_view = SocialStoryView(story_id=story_id, user_id=user_id, reaction=reaction)
+        self.repo.db.add(new_view)
+        story.views_count += 1
+        self.repo.db.commit()
+        return {"status": "ok", "message": "View recorded"}
+
+    def get_story_viewers(self, story_id: str, current_user_id: str) -> list[StoryViewerItem]:
+        story = self.repo.db.query(SocialStory).filter(SocialStory.id == story_id).first()
+        if not story:
+            raise HTTPException(status_code=404, detail="Story not found")
+        if str(story.user_id) != current_user_id:
+            raise HTTPException(status_code=403, detail="Not authorized to view this story's viewers")
+
+        from app.domains.users.models import UserAccount
+        viewers = self.repo.db.query(SocialStoryView, UserAccount).join(
+            UserAccount, SocialStoryView.user_id == UserAccount.id
+        ).filter(SocialStoryView.story_id == story_id).order_by(SocialStoryView.created_at.desc()).all()
+
+        return [
+            StoryViewerItem(
+                id=str(user.id),
+                username=user.username,
+                full_name=user.full_name,
+                avatar_url=user.avatar_url,
+                reaction=view.reaction,
+                viewed_at=view.created_at
+            ) for view, user in viewers
+        ]
+
+    def delete_story(self, story_id: str, current_user_id: str):
+        story = self.repo.db.query(SocialStory).filter(SocialStory.id == story_id).first()
+        if not story:
+            raise HTTPException(status_code=404, detail="Story not found")
+        if str(story.user_id) != current_user_id:
+            raise HTTPException(status_code=403, detail="Not authorized to delete this story")
+        
+        self.repo.db.delete(story)
+        self.repo.db.commit()
+        return {"status": "ok", "message": "Story deleted successfully"}
 
     def get_link_preview(self, url: str) -> dict:
         if url in preview_cache:

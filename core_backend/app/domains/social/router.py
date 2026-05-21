@@ -4,7 +4,7 @@ from typing import List
 from app.core.dependencies import get_db
 from app.core.dependencies import get_current_user, get_optional_current_user
 from app.domains.users.models import UserAccount
-from .schemas import SocialPostCreate, SocialPostResponse
+from .schemas import SocialPostCreate, SocialPostResponse, StoryCreate, StoryResponse, StoryViewCreate, StoryViewerItem
 from .service import SocialService
 
 router = APIRouter()
@@ -17,6 +17,51 @@ def create_post(
 ):
     service = SocialService(db)
     return service.create_post(current_user.id, post_data)
+
+@router.post("/stories", response_model=StoryResponse)
+def create_story(
+    story_data: StoryCreate,
+    db: Session = Depends(get_db),
+    current_user: UserAccount = Depends(get_current_user)
+):
+    service = SocialService(db)
+    return service.create_story(current_user.id, story_data)
+
+@router.get("/stories", response_model=List[StoryResponse])
+def get_active_stories(
+    db: Session = Depends(get_db),
+    current_user: UserAccount = Depends(get_current_user)
+):
+    service = SocialService(db)
+    return service.get_active_stories(current_user.id)
+
+@router.delete("/stories/{story_id}")
+def delete_story(
+    story_id: str,
+    db: Session = Depends(get_db),
+    current_user: UserAccount = Depends(get_current_user)
+):
+    service = SocialService(db)
+    return service.delete_story(story_id, str(current_user.id))
+
+@router.post("/stories/{story_id}/view")
+def view_story(
+    story_id: str,
+    payload: StoryViewCreate,
+    db: Session = Depends(get_db),
+    current_user: UserAccount = Depends(get_current_user)
+):
+    service = SocialService(db)
+    return service.increment_story_views(story_id, str(current_user.id), payload.reaction)
+
+@router.get("/stories/{story_id}/viewers", response_model=List[StoryViewerItem])
+def get_story_viewers(
+    story_id: str,
+    db: Session = Depends(get_db),
+    current_user: UserAccount = Depends(get_current_user)
+):
+    service = SocialService(db)
+    return service.get_story_viewers(story_id, str(current_user.id))
 
 @router.get("/feed", response_model=List[SocialPostResponse])
 def get_feed(

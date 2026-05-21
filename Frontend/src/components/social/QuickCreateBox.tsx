@@ -1,7 +1,7 @@
 'use client';
 import React, { useState, useRef } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
-import { ImagePlus, MapPin, Send, Loader2 } from 'lucide-react';
+import { ImagePlus, MapPin, Send, Loader2, Sparkles } from 'lucide-react';
 import { Button } from '../ui/button';
 import { supabase } from '../../lib/supabase';
 import { toast } from 'sonner';
@@ -19,8 +19,15 @@ export function QuickCreateBox({ username, avatarUrl, onSubmit }: QuickCreateBox
   const [mediaUrls, setMediaUrls] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-  
+  const [selectedMood, setSelectedMood] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const MOODS = [
+    { id: 'stress', label: '😭 Stress', suggest: 'Mì cay Sasin, Trà sữa đậm vị' },
+    { id: 'study', label: '🧠 Chạy Deadline', suggest: 'Americano, Bánh Croissant' },
+    { id: 'chill', label: '🎉 Chill cuối tuần', suggest: 'Ốc đêm, Cocktail nhẹ' },
+    { id: 'dating', label: '💖 Hẹn hò', suggest: 'Steak house, Rượu vang' },
+  ];
 
   const displayName = username || 'Bạn';
   const initial = displayName.charAt(0).toUpperCase();
@@ -73,6 +80,7 @@ export function QuickCreateBox({ username, avatarUrl, onSubmit }: QuickCreateBox
     setIsSubmitting(false);
     setContent('');
     setMediaUrls([]);
+    setSelectedMood(null);
     setIsFocused(false);
   };
 
@@ -130,6 +138,40 @@ export function QuickCreateBox({ username, avatarUrl, onSubmit }: QuickCreateBox
           {content && content.match(/(https?:\/\/[^\s]+)/) && (
             <div className="mb-2">
               <LinkPreview url={content.match(/(https?:\/\/[^\s]+)/)![0]} />
+            </div>
+          )}
+
+          {/* AI Mood Selector */}
+          {isFocused && (
+            <div className="mt-2 mb-3">
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-brand" />
+                <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Tâm trạng của bạn? (AI sẽ gợi ý món)</span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {MOODS.map(mood => (
+                  <button
+                    key={mood.id}
+                    onClick={() => {
+                      if (selectedMood === mood.id) {
+                        setSelectedMood(null);
+                        setContent(content.replace(`\n\n✨ AI gợi ý: ${mood.suggest} (Vì đang ${mood.label})`, ''));
+                      } else {
+                        setSelectedMood(mood.id);
+                        const baseContent = content.replace(/\n\n✨ AI gợi ý: .*/, '');
+                        setContent(`${baseContent}\n\n✨ AI gợi ý: ${mood.suggest} (Vì đang ${mood.label})`);
+                      }
+                    }}
+                    className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all border ${
+                      selectedMood === mood.id 
+                        ? 'border-brand text-brand bg-brand/10' 
+                        : 'border-border text-muted-foreground hover:bg-muted'
+                    }`}
+                  >
+                    {mood.label}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
 
