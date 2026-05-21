@@ -135,7 +135,9 @@ export function AppShell({ children, healthStatus = "loading" }: AppShellProps) 
             >
               <MapPin
                 className={`w-3.5 h-3.5 flex-shrink-0 ${
-                  status === 'success'
+                  !mounted
+                    ? 'text-brand dark:text-[#E8735A]'
+                    : status === 'success'
                     ? 'text-brand dark:text-[#E8735A]'
                     : status === 'loading'
                     ? 'text-brand dark:text-[#E8735A] animate-pulse'
@@ -143,7 +145,9 @@ export function AppShell({ children, healthStatus = "loading" }: AppShellProps) 
                 }`}
               />
               <span className="text-[#3D312A]/70 dark:text-[#E6DFD5]/80 truncate">
-                {address || (status === 'loading' ? 'Đang tìm...' : 'Chưa định vị')}
+                {!mounted
+                  ? 'Chưa định vị'
+                  : address || (status === 'loading' ? 'Đang tìm...' : 'Chưa định vị')}
               </span>
             </button>
 
