@@ -17,6 +17,7 @@ import { RecommendResult } from "./result/page";
 import { useOptimizedLocation } from "../hooks/useOptimizedLocation";
 import { useSelector } from "react-redux";
 import { RootState } from "../store";
+import NewspaperMenu from "../components/NewspaperMenu";
 
 /* ── Types ── */
 type HealthStatus = "loading" | "ok" | "degraded" | "error";
@@ -468,6 +469,9 @@ function HomeContent() {
                 ))}
               </div>
             </div>
+
+            {/* ── Newspaper Daily Menu ── */}
+            <NewspaperMenu />
 
             {/* ── Recommendations Grid ── */}
             <div className="w-full mt-4 relative z-20 border-t border-[#3D312A]/10 pt-10">

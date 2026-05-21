@@ -135,3 +135,29 @@ class SessionDataResponse(BaseModel):
     allergen_flagged_count: Optional[int] = 0
     warning: Optional[str] = None
     created_at: Optional[datetime] = None
+
+
+class NewspaperMenuItem(BaseModel):
+    slot: str  # "breakfast", "lunch", "dinner"
+    restaurant_id: str
+    restaurant_name: str
+    address: Optional[str] = None
+    rating_avg: float = 0.0
+    image_url: Optional[str] = None
+    price_range: Optional[str] = None
+    open_time: Optional[str] = None
+    close_time: Optional[str] = None
+    google_maps_url: Optional[str] = None
+    lat: Optional[float] = None
+    lng: Optional[float] = None
+    suggested_dish_name: Optional[str] = None
+    suggested_dish_price: Optional[int] = None
+
+
+class NewspaperMenuResponse(BaseModel):
+    items: List[NewspaperMenuItem]
+    is_fallback: bool = False
+    radius_km: float = 10.0
+    message: Optional[str] = None
+
+
