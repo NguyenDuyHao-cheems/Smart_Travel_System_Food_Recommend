@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { ImagePlus, MapPin, Send, Loader2, Sparkles } from 'lucide-react';
 import { Button } from '../ui/button';
@@ -10,7 +10,7 @@ import { LinkPreview } from './LinkPreview';
 interface QuickCreateBoxProps {
   username?: string | null;
   avatarUrl?: string | null;
-  onSubmit: (content: string, mediaUrls: string[], resId?: string) => void;
+  onSubmit: (content: string, mediaUrls: string[], resId?: string, mood?: string | null) => void;
 }
 
 export function QuickCreateBox({ username, avatarUrl, onSubmit }: QuickCreateBoxProps) {
@@ -19,15 +19,21 @@ export function QuickCreateBox({ username, avatarUrl, onSubmit }: QuickCreateBox
   const [mediaUrls, setMediaUrls] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-  const [selectedMood, setSelectedMood] = useState<string | null>(null);
+  const [showResSelector, setShowResSelector] = useState(false);
+  const [isLoadingRes, setIsLoadingRes] = useState(false);
+  const [suggestedRestaurants, setSuggestedRestaurants] = useState<any[]>([]);
+  const [taggedRes, setTaggedRes] = useState<{id: string, name: string} | null>(null);
+  const [searchResQuery, setSearchResQuery] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const MOODS = [
-    { id: 'stress', label: '😭 Stress', suggest: 'Mì cay Sasin, Trà sữa đậm vị' },
-    { id: 'study', label: '🧠 Chạy Deadline', suggest: 'Americano, Bánh Croissant' },
-    { id: 'chill', label: '🎉 Chill cuối tuần', suggest: 'Ốc đêm, Cocktail nhẹ' },
-    { id: 'dating', label: '💖 Hẹn hò', suggest: 'Steak house, Rượu vang' },
-  ];
+  // Debounce search
+  useEffect(() => {
+    if (!showResSelector) return;
+    const timer = setTimeout(() => {
+      loadRestaurants(searchResQuery);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchResQuery, showResSelector]);
 
   const displayName = username || 'Bạn';
   const initial = displayName.charAt(0).toUpperCase();
@@ -76,12 +82,46 @@ export function QuickCreateBox({ username, avatarUrl, onSubmit }: QuickCreateBox
   const handleSubmit = async () => {
     if (!content.trim() && mediaUrls.length === 0) return;
     setIsSubmitting(true);
-    await onSubmit(content.trim(), mediaUrls, undefined);
+    await onSubmit(content.trim(), mediaUrls, taggedRes?.id, null);
     setIsSubmitting(false);
     setContent('');
     setMediaUrls([]);
-    setSelectedMood(null);
+    setTaggedRes(null);
+    setShowResSelector(false);
     setIsFocused(false);
+  };
+
+  const loadRestaurants = async (query: string = '') => {
+    setIsLoadingRes(true);
+    try {
+      let lat = '';
+      let lng = '';
+      if (typeof window !== 'undefined') {
+        const cachedStr = localStorage.getItem('user_cached_gps');
+        if (cachedStr) {
+          try {
+            const coords = JSON.parse(cachedStr);
+            lat = coords.lat;
+            lng = coords.lng;
+          } catch(e) {}
+        }
+      }
+
+      let url = `http://localhost:8000/api/v1/restaurants/search?q=${encodeURIComponent(query)}&limit=10`;
+      if (lat && lng) {
+        url += `&lat=${lat}&lng=${lng}`;
+      }
+
+      const res = await fetch(url);
+      if (res.ok) {
+        const data = await res.json();
+        setSuggestedRestaurants(Array.isArray(data) ? data : data.results || []);
+      }
+    } catch (err) {
+      console.error('Error fetching restaurants for tagging', err);
+    } finally {
+      setIsLoadingRes(false);
+    }
   };
 
   return (
@@ -141,37 +181,59 @@ export function QuickCreateBox({ username, avatarUrl, onSubmit }: QuickCreateBox
             </div>
           )}
 
-          {/* AI Mood Selector */}
-          {isFocused && (
-            <div className="mt-2 mb-3">
-              <div className="flex items-center gap-1.5 mb-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-brand" />
-                <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Tâm trạng của bạn? (AI sẽ gợi ý món)</span>
+          {/* Restaurant Tag Selector */}
+          {showResSelector && isFocused && (
+            <div className="mt-2 mb-3 bg-muted/30 p-3 rounded-lg border border-border">
+              <div className="flex items-center gap-1.5 mb-2">
+                <MapPin className="w-3.5 h-3.5 text-brand" />
+                <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Chọn quán để gắn thẻ</span>
               </div>
-              <div className="flex flex-wrap gap-2">
-                {MOODS.map(mood => (
-                  <button
-                    key={mood.id}
-                    onClick={() => {
-                      if (selectedMood === mood.id) {
-                        setSelectedMood(null);
-                        setContent(content.replace(`\n\n✨ AI gợi ý: ${mood.suggest} (Vì đang ${mood.label})`, ''));
-                      } else {
-                        setSelectedMood(mood.id);
-                        const baseContent = content.replace(/\n\n✨ AI gợi ý: .*/, '');
-                        setContent(`${baseContent}\n\n✨ AI gợi ý: ${mood.suggest} (Vì đang ${mood.label})`);
-                      }
-                    }}
-                    className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all border ${
-                      selectedMood === mood.id 
-                        ? 'border-brand text-brand bg-brand/10' 
-                        : 'border-border text-muted-foreground hover:bg-muted'
-                    }`}
-                  >
-                    {mood.label}
-                  </button>
-                ))}
-              </div>
+              <input 
+                type="text" 
+                placeholder="Tìm kiếm quán ăn..." 
+                className="w-full text-sm bg-background border border-border rounded-md px-3 py-2 mb-2 focus:outline-none focus:ring-1 focus:ring-brand"
+                value={searchResQuery}
+                onChange={(e) => setSearchResQuery(e.target.value)}
+              />
+              {isLoadingRes ? (
+                <div className="flex justify-center py-4"><Loader2 className="w-5 h-5 animate-spin text-brand" /></div>
+              ) : (
+                <div className="flex flex-col gap-2 max-h-40 overflow-y-auto pr-1">
+                  {suggestedRestaurants.map(r => (
+                    <button
+                      key={r.id}
+                      onClick={() => {
+                        setTaggedRes({ id: r.id, name: r.name });
+                        setShowResSelector(false);
+                      }}
+                      className="flex items-center gap-2 text-left p-2 hover:bg-background rounded-md border border-transparent hover:border-border transition-colors"
+                    >
+                      {r.image_url && <img src={r.image_url} alt={r.name} className="w-8 h-8 rounded object-cover" />}
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-semibold truncate">{r.name}</div>
+                        <div className="text-xs text-muted-foreground truncate">{r.address}</div>
+                      </div>
+                    </button>
+                  ))}
+                  {suggestedRestaurants.length === 0 && !isLoadingRes && (
+                    <div className="text-xs text-center text-muted-foreground py-2">Không tìm thấy quán nào gần đây.</div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Tagged Restaurant Display */}
+          {taggedRes && (
+            <div className="mt-2 mb-3 inline-flex items-center gap-2 px-3 py-1.5 bg-brand/10 text-brand rounded-full text-sm font-medium border border-brand/20">
+              <MapPin className="w-4 h-4" />
+              Tại: <span className="font-bold truncate max-w-[200px]">{taggedRes.name}</span>
+              <button 
+                onClick={() => setTaggedRes(null)} 
+                className="ml-1 hover:bg-brand/20 rounded-full p-0.5 transition-colors"
+              >
+                ✕
+              </button>
             </div>
           )}
 
@@ -195,7 +257,13 @@ export function QuickCreateBox({ username, avatarUrl, onSubmit }: QuickCreateBox
                   <ImagePlus className="w-4 h-4" />
                   <span className="hidden sm:inline">Ảnh / Video</span>
                 </button>
-                <button className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-rose-500 px-3 py-1.5 rounded-lg hover:bg-rose-500/10 transition-colors">
+                <button 
+                  onClick={() => {
+                    if (!showResSelector) loadRestaurants();
+                    setShowResSelector(!showResSelector);
+                  }}
+                  className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg transition-colors ${showResSelector ? 'bg-brand/10 text-brand' : 'text-muted-foreground hover:text-brand hover:bg-brand/10'}`}
+                >
                   <MapPin className="w-4 h-4" />
                   <span className="hidden sm:inline">Gắn thẻ quán</span>
                 </button>

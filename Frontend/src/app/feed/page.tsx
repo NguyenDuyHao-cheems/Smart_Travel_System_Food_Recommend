@@ -47,12 +47,26 @@ export default function FeedPage() {
     }
   };
 
-  const handleCreatePost = async (content: string, mediaUrls: string[], resId?: string) => {
+  const handleCreatePost = async (content: string, mediaUrls: string[], resId?: string, mood?: string | null) => {
     const token = localStorage.getItem('access_token');
     if (!token) {
       toast.error('Vui lòng đăng nhập để đăng bài viết.');
       return;
     }
+    
+    // Transform mood ID to mood label before sending
+    let moodLabel = null;
+    if (mood) {
+      const MOODS = [
+        { id: 'stress', label: '😭 Stress' },
+        { id: 'study', label: '🧠 Chạy Deadline' },
+        { id: 'chill', label: '🎉 Chill cuối tuần' },
+        { id: 'dating', label: '💖 Hẹn hò' },
+      ];
+      const found = MOODS.find(m => m.id === mood);
+      if (found) moodLabel = found.label;
+    }
+
     try {
       const res = await fetch('http://localhost:8000/api/v1/social/posts', {
         method: 'POST',
@@ -60,7 +74,7 @@ export default function FeedPage() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({ content, media_urls: mediaUrls, res_id: resId }),
+        body: JSON.stringify({ content, media_urls: mediaUrls, res_id: resId, mood: moodLabel }),
       });
       if (res.ok) {
         const newPost = await res.json();

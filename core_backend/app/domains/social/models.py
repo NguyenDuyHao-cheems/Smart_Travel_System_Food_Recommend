@@ -12,12 +12,16 @@ class SocialPost(Base):
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     user_id = Column(PG_UUID(as_uuid=False), ForeignKey("users.id"), nullable=False, index=True)
     content = Column(String, nullable=True)
+    mood = Column(String, nullable=True)
     media_urls = Column(JSON, nullable=True) # JSON list of URLs for images/videos
     res_id = Column(PG_UUID(as_uuid=False), ForeignKey("restaurants.id"), nullable=True, index=True)
     parent_id = Column(String, ForeignKey("social_posts.id"), nullable=True, index=True)
     likes_count = Column(Integer, default=0)
     replies_count = Column(Integer, default=0)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    from sqlalchemy.orm import relationship
+    restaurant = relationship("RestaurantModel", foreign_keys=[res_id])
 
 class SocialFollow(Base):
     __tablename__ = "social_follows"

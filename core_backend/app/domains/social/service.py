@@ -44,6 +44,7 @@ class SocialService:
         post = SocialPost(
             user_id=user_id,
             content=post_data.content,
+            mood=post_data.mood,
             media_urls=post_data.media_urls,
             res_id=post_data.res_id,
             parent_id=post_data.parent_id
@@ -192,6 +193,7 @@ class SocialService:
                 id=post.id,
                 user_id=post.user_id,
                 content=post.content,
+                mood=post.mood,
                 media_urls=post.media_urls,
                 res_id=post.res_id,
                 parent_id=post.parent_id,
@@ -201,7 +203,9 @@ class SocialService:
                 username=user.username,
                 full_name=user.full_name,
                 avatar_url=user.avatar_url,
-                is_liked=is_liked
+                is_liked=is_liked,
+                restaurant_name=post.restaurant.name if post.res_id and post.restaurant else None,
+                restaurant_image_url=post.restaurant.image_url if post.res_id and post.restaurant else None
             ))
         return formatted
 

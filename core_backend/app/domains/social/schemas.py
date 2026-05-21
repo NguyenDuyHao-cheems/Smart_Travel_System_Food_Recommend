@@ -4,6 +4,7 @@ from datetime import datetime
 
 class SocialPostCreate(BaseModel):
     content: Optional[str] = None
+    mood: Optional[str] = None
     media_urls: Optional[List[str]] = None
     res_id: Optional[str] = None
     parent_id: Optional[str] = None
@@ -12,9 +13,10 @@ class SocialPostResponse(BaseModel):
     id: str
     user_id: str
     content: Optional[str]
+    mood: Optional[str] = None
     media_urls: Optional[List[str]]
-    res_id: Optional[str]
-    parent_id: Optional[str]
+    res_id: Optional[str] = None
+    parent_id: Optional[str] = None
     likes_count: int
     replies_count: int
     created_at: datetime
@@ -24,6 +26,10 @@ class SocialPostResponse(BaseModel):
     full_name: Optional[str] = None
     avatar_url: Optional[str] = None
     is_liked: Optional[bool] = False
+    
+    # Optional restaurant details if tagged
+    restaurant_name: Optional[str] = None
+    restaurant_image_url: Optional[str] = None
 
     class Config:
         from_attributes = True

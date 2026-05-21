@@ -22,8 +22,11 @@ export interface SocialPost {
   id: string;
   user_id: string;
   content?: string;
+  mood?: string | null;
   media_urls?: string[];
   res_id?: string;
+  restaurant_name?: string;
+  restaurant_image_url?: string;
   parent_id?: string;
   likes_count: number;
   replies_count: number;
@@ -57,6 +60,11 @@ export function PostCard({ post, onLikeToggle, onDelete }: PostCardProps) {
 
   // Comment state
   const [showComments, setShowComments] = useState(false);
+
+  // Utility to generate SEO-friendly slug
+  const generateSlug = (name: string) => {
+    return name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+  };
   const [comments, setComments] = useState<SocialPost[]>([]);
   const [commentText, setCommentText] = useState('');
   const [isLoadingComments, setIsLoadingComments] = useState(false);
@@ -184,11 +192,11 @@ export function PostCard({ post, onLikeToggle, onDelete }: PostCardProps) {
         
         <div className="flex-1 min-w-0">
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between">
-            <div className="flex items-center space-x-2 truncate">
-              <Link href={profileUrl} className="text-sm font-semibold truncate text-foreground hover:underline">
+            <div className="flex items-center flex-wrap gap-1.5 truncate">
+              <Link href={profileUrl} className="text-sm font-semibold text-foreground hover:underline shrink-0">
                 {displayName}
               </Link>
-              <Link href={profileUrl} className="text-xs text-muted-foreground truncate hover:underline">
+              <Link href={profileUrl} className="text-xs text-muted-foreground truncate hover:underline shrink-0">
                 @{displayUsername}
               </Link>
             </div>
@@ -239,9 +247,33 @@ export function PostCard({ post, onLikeToggle, onDelete }: PostCardProps) {
           })()}
 
           {post.res_id && (
-            <div className="mt-3 flex items-center text-xs text-primary bg-primary/10 w-max px-2 py-1 rounded-md cursor-pointer hover:bg-primary/20 transition-colors">
-              <MapPin className="w-3 h-3 mr-1" />
-              <span>Gắn thẻ gợi ý nhà hàng</span>
+            <div className="mt-3 overflow-hidden rounded-xl border border-border bg-card shadow-sm hover:shadow-md transition-all group max-w-sm">
+              <Link 
+                href={`/restaurant/${post.restaurant_name ? generateSlug(post.restaurant_name) : post.res_id}`} 
+                onClick={() => {
+                  if (typeof window !== 'undefined') {
+                    sessionStorage.setItem('current_res_id', post.res_id!);
+                  }
+                }}
+                className="flex items-center p-2.5 gap-3"
+              >
+                {post.restaurant_image_url ? (
+                  <img src={post.restaurant_image_url} alt={post.restaurant_name || "Nhà hàng"} className="w-12 h-12 rounded-lg object-cover bg-muted" />
+                ) : (
+                  <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                    <MapPin className="w-5 h-5" />
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-primary mb-0.5 uppercase tracking-wider">
+                    <MapPin className="w-3.5 h-3.5" />
+                    Đã gắn thẻ quán
+                  </div>
+                  <h4 className="text-sm font-bold truncate group-hover:underline text-foreground">
+                    {post.restaurant_name || "Nhà hàng gợi ý"}
+                  </h4>
+                </div>
+              </Link>
             </div>
           )}
 

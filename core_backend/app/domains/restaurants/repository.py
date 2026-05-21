@@ -12,6 +12,24 @@ class RestaurantRepository:
         return db.query(RestaurantModel).filter(RestaurantModel.id == restaurant_id).first()
 
     @staticmethod
+    def search_restaurants(db: Session, query: str = "", lat: float = None, lng: float = None, limit: int = 5):
+        from sqlalchemy import or_, desc
+        db_query = db.query(RestaurantModel).filter(RestaurantModel.is_active == True)
+        
+        if query:
+            db_query = db_query.filter(RestaurantModel.name.ilike(f"%{query}%"))
+            
+        if lat is not None and lng is not None:
+            # Approximate Euclidean distance sorting
+            from sqlalchemy import func
+            distance = func.power(RestaurantModel.lat - lat, 2) + func.power(RestaurantModel.lng - lng, 2)
+            db_query = db_query.order_by(distance)
+        else:
+            db_query = db_query.order_by(desc(RestaurantModel.rating_avg))
+            
+        return db_query.limit(limit).all()
+
+    @staticmethod
     def get_dishes_by_restaurant_id(db: Session, restaurant_id: str):
         return db.query(DishModel).filter(DishModel.res_id == restaurant_id).all()
 
