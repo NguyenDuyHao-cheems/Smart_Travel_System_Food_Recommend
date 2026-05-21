@@ -353,3 +353,30 @@ def test_user_budget_zero_means_unlimited(client):
         # budget=0 is not > 0, so default budget is used
         assert data["fallback_applied"] is False
         assert data["applied_budget"] == SearchService.DEFAULT_BUDGET_VND
+
+
+def test_get_lucky_wheel_dishes(client):
+    # 1. Test standard fallback (no coordinates)
+    response = client.get("/api/v1/search/lucky-wheel-dishes")
+    assert response.status_code == 200
+    dishes = response.json()
+    assert isinstance(dishes, list)
+    assert len(dishes) == 12
+    assert "Phở Bò" in dishes
+    assert "Bánh Mì" in dishes
+
+    # 2. Test fallback with coordinates (but empty test DB candidate list)
+    response = client.get("/api/v1/search/lucky-wheel-dishes?lat=21.0278&lng=105.8342")
+    assert response.status_code == 200
+    dishes_coords = response.json()
+    assert isinstance(dishes_coords, list)
+    assert len(dishes_coords) == 12
+    assert "Phở Bò" in dishes_coords
+
+    # 3. Test vegetarian onboarding fallback path with query param (user_id not in DB)
+    response = client.get("/api/v1/search/lucky-wheel-dishes?user_id=nonexistent-user-id")
+    assert response.status_code == 200
+    dishes_veg = response.json()
+    assert len(dishes_veg) == 12
+    assert "Phở Bò" in dishes_veg  # Since user is not found, falls back to non-vegetarian default
+
