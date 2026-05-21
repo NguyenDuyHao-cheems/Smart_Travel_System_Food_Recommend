@@ -15,6 +15,7 @@ import {
   Sparkles,
   AlertTriangle,
   MapPin,
+  Route,
 } from "lucide-react";
 import { ThemeToggle } from "./ThemeToggle";
 import { UserDropdown } from "./UserDropdown";
@@ -27,6 +28,7 @@ const NAV_ITEMS = [
   { icon: Heart, label: "Yêu thích", href: "/favorites" },
   { icon: Clock, label: "Lịch sử", href: "/history" },
   { icon: FolderOpen, label: "Bộ sưu tập", href: "/collections" },
+  { icon: Route, label: "Lộ trình", href: "/itinerary" },
   { icon: Settings, label: "Cài đặt", href: "/settings" },
 ];
 
@@ -40,13 +42,16 @@ export function AppShell({ children, healthStatus = "loading" }: AppShellProps) 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [showAuthExpiredModal, setShowAuthExpiredModal] = useState(false);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
 
   const address = useSelector((state: RootState) => state.location.address);
   const status = useSelector((state: RootState) => state.location.status);
+  const itineraryCount = useSelector((state: RootState) => state.itinerary.items.length);
 
   useEffect(() => {
+    setMounted(true);
     const handleAuthExpired = () => {
       // Clear localStorage immediately
       localStorage.removeItem("access_token");
@@ -141,6 +146,20 @@ export function AppShell({ children, healthStatus = "loading" }: AppShellProps) 
                 {address || (status === 'loading' ? 'Đang tìm...' : 'Chưa định vị')}
               </span>
             </button>
+
+            {/* Itinerary badge */}
+            {mounted && itineraryCount > 0 && (
+              <Link
+                href="/itinerary"
+                className="relative flex items-center justify-center w-9 h-9 rounded-full bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-700/40 hover:bg-orange-100 dark:hover:bg-orange-900/40 transition-colors"
+                title="Xem lộ trình"
+              >
+                <Route className="w-4 h-4 text-orange-500" />
+                <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-orange-500 text-white text-[10px] font-bold flex items-center justify-center leading-none">
+                  {itineraryCount}
+                </span>
+              </Link>
+            )}
 
             {healthStatus !== "loading" && (
               <div

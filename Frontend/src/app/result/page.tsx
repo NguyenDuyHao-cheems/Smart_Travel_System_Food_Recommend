@@ -15,6 +15,7 @@ import {
   Info,
   Home,
   X,
+  Route,
 } from 'lucide-react';
 import { AppShell } from '../../components/AppShell';
 import { LoadingState } from '../../components/ui/LoadingState';
@@ -30,8 +31,9 @@ import { AddToCollectionModal } from '../../components/AddToCollectionModal';
 import { toast } from 'sonner';
 import { interactionService } from '../../services/interactionService';
 import { useOptimizedLocation } from '../../hooks/useOptimizedLocation';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '../../store';
+import { addItem, removeItem } from '../../store/slices/itinerarySlice';
 
 export interface AllergenDishWarning {
   dish_name: string;
@@ -43,6 +45,8 @@ export interface RecommendResult {
   match: string;
   dist: string;
   distance_km?: number;
+  lat?: number;
+  lng?: number;
   price: string;
   rating: string;
   reason: string;
@@ -140,6 +144,37 @@ function HeroResultCard({ item, sessionId, searchMode, onAddCollection, isModalO
   const [isFav, setIsFav] = useState(false);
   const [isInColl, setIsInColl] = useState(false);
   const userId = typeof window !== 'undefined' ? localStorage.getItem('user_id') : null;
+
+  const dispatch = useDispatch();
+  const itineraryItems = useSelector((state: RootState) => state.itinerary.items);
+  const isInItinerary = itineraryItems.some(i => i.id === item.id);
+
+  const toggleItinerary = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isInItinerary) {
+      dispatch(removeItem(item.id));
+      toast.success('Đã xóa khỏi lộ trình');
+    } else {
+      dispatch(addItem({
+        id: item.id,
+        name: item.name,
+        lat: item.lat,
+        lng: item.lng,
+        address: item.restaurantName || item.reason || '',
+        img: item.img,
+        rating: item.rating,
+        price: item.price,
+        reason: item.reason,
+        google_maps_url: item.google_maps_url
+      }));
+      toast.success('Đã thêm vào lộ trình', {
+        action: {
+          label: 'Xem',
+          onClick: () => router.push('/itinerary')
+        }
+      });
+    }
+  };
 
   useEffect(() => {
     if (userId) {
@@ -266,6 +301,13 @@ function HeroResultCard({ item, sessionId, searchMode, onAddCollection, isModalO
           </div>
           <div className="absolute top-6 right-6 flex gap-2">
             <button
+              onClick={toggleItinerary}
+              className={`w-10 h-10 rounded-full bg-white/90 dark:bg-[#2A2420]/80 border border-gray-200 dark:border-[#4D3D32] flex items-center justify-center hover:scale-110 transition-all cursor-pointer shadow-sm ${isInItinerary ? 'bg-orange-50 dark:bg-orange-950/40 border-orange-200 dark:border-orange-500/30' : ''}`}
+              title={isInItinerary ? "Xóa khỏi lộ trình" : "Thêm vào lộ trình"}
+            >
+              <Route className={`w-5 h-5 ${isInItinerary ? 'text-orange-500 fill-current' : 'text-gray-400'}`} />
+            </button>
+            <button
               onClick={(e) => {
                 e.stopPropagation();
                 // [FIX-CONFLICT]: Ngăn không cho mở Modal nếu món ăn đã có trong bộ sưu tập (tránh thêm trùng lặp), hiển thị toast với icon Bookmark
@@ -335,6 +377,37 @@ function SmallResultCard({ item, index, sessionId, searchMode, onAddCollection, 
   const [isInColl, setIsInColl] = useState(false);
   const userId = typeof window !== 'undefined' ? localStorage.getItem('user_id') : null;
 
+  const dispatch = useDispatch();
+  const itineraryItems = useSelector((state: RootState) => state.itinerary.items);
+  const isInItinerary = itineraryItems.some(i => i.id === item.id);
+
+  const toggleItinerary = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isInItinerary) {
+      dispatch(removeItem(item.id));
+      toast.success('Đã xóa khỏi lộ trình');
+    } else {
+      dispatch(addItem({
+        id: item.id,
+        name: item.name,
+        lat: item.lat,
+        lng: item.lng,
+        address: item.restaurantName || item.reason || '',
+        img: item.img,
+        rating: item.rating,
+        price: item.price,
+        reason: item.reason,
+        google_maps_url: item.google_maps_url
+      }));
+      toast.success('Đã thêm vào lộ trình', {
+        action: {
+          label: 'Xem',
+          onClick: () => router.push('/itinerary')
+        }
+      });
+    }
+  };
+
   useEffect(() => {
     if (userId) {
       setIsFav(favoriteService.isFavorite(userId, item.name));
@@ -397,8 +470,15 @@ function SmallResultCard({ item, index, sessionId, searchMode, onAddCollection, 
           {index + 2}
         </span>
 
-        {/* Heart & Bookmark */}
+        {/* Heart, Bookmark & Route */}
         <div className="absolute top-3 right-3 flex flex-col gap-2">
+          <button
+            onClick={toggleItinerary}
+            className={`w-8 h-8 rounded-full bg-white/90 dark:bg-[#2A2420]/80 flex items-center justify-center hover:scale-110 transition-all cursor-pointer shadow-sm ${isInItinerary ? 'bg-orange-50 dark:bg-orange-950/40 border-orange-200 dark:border-orange-500/30' : ''}`}
+            title={isInItinerary ? "Xóa khỏi lộ trình" : "Thêm vào lộ trình"}
+          >
+            <Route className={`w-4 h-4 ${isInItinerary ? 'text-orange-500 fill-current' : 'text-gray-400'}`} />
+          </button>
           <button
             onClick={toggleFav}
             className="w-8 h-8 rounded-full bg-white/90 dark:bg-[#2A2420]/80 flex items-center justify-center hover:scale-110 transition-all cursor-pointer shadow-sm"

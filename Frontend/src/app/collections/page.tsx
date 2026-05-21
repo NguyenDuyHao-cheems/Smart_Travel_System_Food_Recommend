@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { Suspense, useEffect, useState } from "react";
 import { PageLayout } from "../../components/PageLayout";
 import { collectionService, Collection } from "../../services/collectionService";
 import { FolderOpen, Plus, Trash2, ChevronLeft, AlertCircle } from "lucide-react";
@@ -18,7 +18,7 @@ import {
   DialogTitle,
 } from "../../components/ui/dialog";
 
-export default function CollectionsPage() {
+function CollectionsPageInner() {
   const [collections, setCollections] = useState<Collection[]>([]);
   const [userId, setUserId] = useState<string | null>(null);
   const [selectedCollection, setSelectedCollection] = useState<Collection | null>(null);
@@ -329,5 +329,13 @@ export default function CollectionsPage() {
         </DialogContent>
       </Dialog>
     </PageLayout>
+  );
+}
+
+export default function CollectionsPage() {
+  return (
+    <Suspense>
+      <CollectionsPageInner />
+    </Suspense>
   );
 }
