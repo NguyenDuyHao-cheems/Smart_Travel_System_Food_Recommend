@@ -278,3 +278,178 @@ class SearchService:
         if reasons:
             return " · ".join(reasons)
         return "Phù hợp với tìm kiếm của bạn"
+
+    @staticmethod
+    def get_lucky_wheel_dishes(
+        db: Session,
+        lat: float | None = None,
+        lng: float | None = None,
+        user_id: str | None = None,
+        limit: int = 12
+    ) -> list[str]:
+        from sqlalchemy import desc
+        from app.domains.ranking.models import DishModel, RestaurantModel
+        from app.domains.users.models import UserOnboarding
+
+        # Predefined default/popular dishes
+        DEFAULT_DISHES = [
+            "Phở Bò", "Bún Chả", "Bánh Mì", "Cơm Tấm", "Bún Đậu Mắm Tôm",
+            "Bún Bò Huế", "Mì Quảng", "Hủ Tiếu", "Bánh Xèo", "Gà Nướng",
+            "Lẩu Thái", "Nem Nướng"
+        ]
+
+        DEFAULT_VEGETARIAN_DISHES = [
+            "Phở Chay", "Bún Chả Chay", "Bánh Mì Chay", "Cơm Tấm Chay",
+            "Đậu Hũ Lướt Ván", "Lẩu Nấm Chay", "Mì Quảng Chay", "Hủ Tiếu Chay",
+            "Bánh Xèo Chay", "Nấm Kho Tộ", "Gỏi Cuốn Chay", "Bún Bò Huế Chay"
+        ]
+
+        is_vegetarian = False
+        if user_id:
+            try:
+                onboarding = db.query(UserOnboarding).filter(UserOnboarding.user_id == user_id).first()
+                if onboarding:
+                    is_vegetarian = getattr(onboarding, "is_vegetarian", False) or False
+            except Exception as e:
+                logger.error(f"Error checking vegetarian status for lucky wheel: {e}")
+
+        fallback_list = DEFAULT_VEGETARIAN_DISHES if is_vegetarian else DEFAULT_DISHES
+
+        def is_valid_lucky_dish(dish_name: str) -> bool:
+            name_lower = dish_name.lower()
+            
+            # Exact words/phrases to exclude
+            exclude_exact = {
+                "pepsi", "coca", "coca-cola", "cocacola", "sprite", "7up", "sevenup", "sting", "revive", "mirinda", "fanta", "soda", "milo",
+                "aquafina", "dasani", "lavie", "vĩnh hảo", "nước suối", "nước khoáng", "trà đá", "trà nóng", "khăn lạnh", "khăn ướt", "khăn giấy",
+                "khăn", "đá", "ly đá", "đá chén", "chén đá", "tẩy đá", "bột ớt", "tương ớt", "bánh mì không", "cơm không", "thêm", "topping", 
+                "bia", "heineken", "tiger", "redbull", "bò húc", "red bull", "trà ô long", "trà oolong", "đá lau", "hộp mang về", "măng chua thêm",
+                "trà chanh", "trà tắc", "trà đào", "chanh muối", "phindi", "sinh tố", "nước ép", "nước dừa", "sữa tươi"
+            }
+            if name_lower in exclude_exact:
+                return False
+                
+            # Substrings that indicate drinks, extras, or non-food items
+            exclude_subs = [
+                "pepsi", "coca-cola", "cocacola", "aquafina", "dasani", "lavie", "nước suối", "trà đá", 
+                "khăn lạnh", "khăn ướt", "khăn giấy", "hộp mang về", "ly đá", "tẩy đá", "bún thêm", 
+                "phở thêm", "mì thêm", "cơm thêm", "thịt thêm", "chả thêm", "trứng thêm", "gà thêm", "rau thêm",
+                "bánh tráng thêm", "bánh mì thêm", "trà tắc", "trà chanh", "nước ngọt", "chén đá",
+                "phindi", "cà phê", "cafe", "coffee", "trà sữa", "sinh tố", "nước ép", "nước dừa", "sữa tươi"
+            ]
+            for sub in exclude_subs:
+                if sub in name_lower:
+                    return False
+                    
+            # Check for simple beverages/alcohol
+            if name_lower.startswith("bia ") or " bia " in name_lower or name_lower.endswith(" bia"):
+                return False
+                
+            # Exclude names containing words like "thêm", "topping" at the end
+            words = name_lower.split()
+            if not words:
+                return False
+            if words[-1] in {"thêm", "topping", "extra", "lon", "chai"}:
+                return False
+                
+            # Exclude simple soft drinks with volume/brand as first word
+            soft_drink_brands = {
+                "pepsi", "coca", "7up", "sevenup", "sting", "mirinda", "fanta", "sprite", "redbull", "tiger", "heineken",
+                "cafe", "coffee", "phindi", "matcha"
+            }
+            if words[0] in soft_drink_brands:
+                return False
+
+            return True
+
+        if lat is None or lng is None:
+            return fallback_list
+
+        try:
+            # Query dishes near location (15km bounding box)
+            lat_range = 0.135
+            lng_range = 0.135
+
+            query = (
+                db.query(DishModel.name, DishModel.res_id)
+                .join(RestaurantModel, DishModel.res_id == RestaurantModel.id)
+                .filter(
+                    RestaurantModel.lat.between(lat - lat_range, lat + lat_range),
+                    RestaurantModel.lng.between(lng - lng_range, lng + lng_range),
+                    RestaurantModel.is_active == True
+                )
+            )
+
+            if is_vegetarian:
+                query = query.filter(DishModel.is_vegetarian == True)
+
+            candidates = (
+                query.order_by(desc(RestaurantModel.rating_avg))
+                .limit(300)
+                .all()
+            )
+        except Exception as e:
+            logger.error(f"Error querying dynamic dishes: {e}")
+            candidates = []
+
+        if not candidates:
+            return fallback_list
+
+        seen = set()
+        dishes = []
+        restaurant_dish_count = {}
+
+        # Pass 1: At most 1 dish per restaurant to ensure high diversity
+        for name, res_id in candidates:
+            clean_name = name.strip()
+            if len(clean_name) <= 3 or len(clean_name) >= 25:
+                continue
+
+            if not is_valid_lucky_dish(clean_name):
+                continue
+
+            dup_key = clean_name.lower()
+            if dup_key in seen:
+                continue
+
+            # Limit to 1 dish per restaurant initially
+            if restaurant_dish_count.get(res_id, 0) >= 1:
+                continue
+
+            seen.add(dup_key)
+            dishes.append(clean_name)
+            restaurant_dish_count[res_id] = 1
+            if len(dishes) >= limit:
+                break
+
+        # Pass 2: If we need more dishes, allow multiple from the same restaurants
+        if len(dishes) < limit:
+            for name, res_id in candidates:
+                clean_name = name.strip()
+                if len(clean_name) <= 3 or len(clean_name) >= 25:
+                    continue
+
+                if not is_valid_lucky_dish(clean_name):
+                    continue
+
+                dup_key = clean_name.lower()
+                if dup_key in seen:
+                    continue
+
+                seen.add(dup_key)
+                dishes.append(clean_name)
+                restaurant_dish_count[res_id] = restaurant_dish_count.get(res_id, 0) + 1
+                if len(dishes) >= limit:
+                    break
+
+        # Pass 3: Fill the rest using fallback list
+        if len(dishes) < limit:
+            for d in fallback_list:
+                if d.lower() not in seen:
+                    dishes.append(d)
+                    seen.add(d.lower())
+                    if len(dishes) >= limit:
+                        break
+
+        return dishes
+
