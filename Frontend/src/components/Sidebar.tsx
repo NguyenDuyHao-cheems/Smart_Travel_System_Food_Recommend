@@ -14,6 +14,7 @@ import {
   Settings,
   MoreVertical,
   User,
+  Dices,
 } from "lucide-react";
 
 interface SidebarProps {
@@ -65,6 +66,12 @@ export function Sidebar({
       label: "Bộ sưu tập",
       active: pathname === "/collections",
       href: "/collections",
+    },
+    {
+      icon: Dices,
+      label: "Hôm nay ăn gì?",
+      active: pathname === "/lucky-wheel",
+      href: "/lucky-wheel",
     },
   ];
 
