@@ -37,10 +37,13 @@ cp core_backend/.env.example core_backend/.env
 #### Đối với file .env trong core_backend
 - `DATABASE_URL`: đây là connection cho phép kết nối với cơ sở dữ liệu trên supabase. Để có được biến này, cần phải tạo một dự án trên supabase. Sau đó lấy connection string. Nó sẽ có dạng: `postgresql://user:password@host:5432/dbname` với phần password là password riêng của dự án đó trên supabase.
 - `SECRET_KEY`: đây là key bí mật dùng để mã hóa và giải mã JWT token. Để có được biến này, cần phải tạo một chuỗi ngẫu nhiên gồm 32 ký tự. Có thể sử dụng các trang web tạo chuỗi ngẫu nhiên để tạo ra chuỗi này.
+- `ENABLE_GRPC`: Bật/Tắt giao tiếp gRPC giữa Core Backend và AI Engine (`true`/`false`). Mặc định là `true`. Tự động fallback về HTTP REST nếu gRPC bị lỗi hoặc tắt.
+- `AI_ENGINE_GRPC_TARGET`: Địa chỉ gRPC server của AI Engine. Mặc định là `localhost:50051`.
 - Các biến còn lại có thể để mặc định.
 
 #### Đối với file .env trong ai_engine 
 - `AI_SERVICE_PORT`: có thể để 8001
+- `AI_GRPC_PORT`: Port chạy gRPC server của AI Engine. Mặc định là `50051`.
 - `EMBEDDING_MODEL_NAME`: là model dùng để nhúng vector, có thể sử dụng `bkai-foundation-models/vietnamese-bi-encoder`
 - `HF_TOKEN`: được lấy từ trang access token của hugging face giúp tải model xuống nhanh hơn.
 - `LAMBDAMART_MODEL_PATH`: `models/lambdamart.lgb`
@@ -61,7 +64,7 @@ docker compose up --build -d
 ```
  Kết quả mong đợi:
  NAME           STATUS          PORTS
- ai_engine      healthy         0.0.0.0:8001->8001/tcp
+ ai_engine      healthy         0.0.0.0:8001->8001/tcp, 0.0.0.0:50051->50051/tcp
  core_backend   healthy         0.0.0.0:8000->8000/tcp
 ```
 
@@ -106,6 +109,25 @@ cd Frontend
 npm install    # Hoặc yarn install
 # Lưu ý: Nếu gặp lỗi Peer Dependency, hãy dùng: npm install --legacy-peer-deps
 npm run dev    # Chạy ở chế độ phát triển
+```
+
+---
+
+## 📡 Giao Tiếp gRPC & Biên Dịch Protobuf
+
+Hệ thống sử dụng kênh truyền **gRPC** hiệu năng cao (chạy song song trên cổng `50051` của AI Engine) để truyền dữ liệu vector và xếp hạng nhanh chóng, giảm thiểu trễ so với REST JSON thông thường.
+
+### 1. Biên dịch lại file `.proto` (Khi có thay đổi schema)
+Nếu bạn cập nhật định nghĩa API trong file `protobuf/ai_service.proto`, hãy chạy lệnh sau để tự động biên dịch lại code Python cho cả `core_backend` và `ai_engine`:
+```bash
+python protobuf/compile_proto.py
+```
+*(Script này cũng sẽ tự động xử lý lỗi relative import mặc định của Python gRPC compiler).*
+
+### 2. Kiểm thử nhanh gRPC
+Bạn có thể khởi động các service và chạy script kiểm thử độc lập dưới đây để xác thực kết nối gRPC (bao gồm cả kiểm tra tiếng Việt Unicode):
+```bash
+python ai_engine/tests/test_grpc_flow.py
 ```
 
 

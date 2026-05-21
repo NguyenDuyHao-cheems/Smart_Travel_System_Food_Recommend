@@ -3,6 +3,7 @@ import httpx
 from typing import List, Optional
 from app.core.config import settings
 from app.domains.search.schemas import AIResponseData
+from .grpc_client import GRPCServiceClient
 
 logger = logging.getLogger(__name__)
 
@@ -21,18 +22,27 @@ async def embed_text(text: str) -> Optional[List[float]]:
 
 class AIServiceClient:
     """
-    Client cho AI Engine.
-    Dùng Singleton pattern qua get_ai_client() — không tạo instance mới mỗi request.
+    Client cho AI Engine, hỗ trợ chuyển đổi gRPC và HTTP REST song song.
     """
 
-    def __init__(self, base_url: str):
+    def __init__(self, base_url: str, grpc_target: str):
         self.base_url = base_url
-        self._client = httpx.AsyncClient(base_url=base_url, timeout=_TIMEOUT)
+        self.grpc_target = grpc_target
+        self._http_client = httpx.AsyncClient(base_url=base_url, timeout=_TIMEOUT)
+        self._grpc_client = GRPCServiceClient(target=grpc_target)
 
     async def check_health(self) -> bool:
-        """Trả về True nếu AI Engine đang hoạt động."""
-        response = await self._client.get("/api/health")
-        return response.status_code == 200
+        """Trả về True nếu AI Engine đang hoạt động (Thử gRPC trước nếu bật, sau đó HTTP)."""
+        if settings.ENABLE_GRPC:
+            if await self._grpc_client.check_health():
+                return True
+            logger.warning("gRPC Health Check failed, falling back to HTTP Health Check")
+        try:
+            response = await self._http_client.get("/api/health")
+            return response.status_code == 200
+        except Exception as e:
+            logger.error("HTTP Health Check failed: %s", e)
+            return False
 
     async def extract_intent_and_vectorize(self, query: str) -> Optional[AIResponseData]:
         """
@@ -41,7 +51,23 @@ class AIServiceClient:
         if not query.strip():
             return None
 
-        response = await self._client.post(
+        # gRPC call with HTTP Fallback
+        if settings.ENABLE_GRPC:
+            try:
+                data = await self._grpc_client.extract_intent_and_vectorize(query)
+                if data:
+                    return AIResponseData(
+                        raw_text=data["raw_text"],
+                        cleaned_query=data["cleaned_query"],
+                        vector=data["vector"],
+                        lat=None,
+                        lng=None
+                    )
+            except Exception as e:
+                logger.warning("gRPC extract_intent_and_vectorize failed (%s). Falling back to HTTP REST...", e)
+
+        # Fallback to HTTP REST
+        response = await self._http_client.post(
             "/api/v1/nlp/extract-intent",
             json={"text": query},
         )
@@ -52,8 +78,18 @@ class AIServiceClient:
         if not text.strip():
             return None
 
+        # gRPC call with HTTP Fallback
+        if settings.ENABLE_GRPC:
+            try:
+                vector = await self._grpc_client.embed_text(text)
+                if vector and len(vector) == settings.VECTOR_DIM:
+                    return vector
+            except Exception as e:
+                logger.warning("gRPC embed_text failed (%s). Falling back to HTTP REST...", e)
+
+        # Fallback to HTTP REST
         try:
-            response = await self._client.post(
+            response = await self._http_client.post(
                 "/api/v1/nlp/embed",
                 json={"text": text},
             )
@@ -78,7 +114,15 @@ class AIServiceClient:
         """
         Gửi yêu cầu reload mô hình LightFM sang AI Engine.
         """
-        response = await self._client.post("/api/v1/admin/recommendations/reload")
+        # gRPC call with HTTP Fallback
+        if settings.ENABLE_GRPC:
+            try:
+                return await self._grpc_client.reload_recommendation_model()
+            except Exception as e:
+                logger.warning("gRPC reload_recommendation_model failed (%s). Falling back to HTTP REST...", e)
+
+        # Fallback to HTTP REST
+        response = await self._http_client.post("/api/v1/admin/recommendations/reload")
         response.raise_for_status()
         return response.json()
 
@@ -86,8 +130,16 @@ class AIServiceClient:
         """
         Lấy danh sách Restaurant IDs từ AI Engine dựa trên mô hình LightFM.
         """
+        # gRPC call with HTTP Fallback
+        if settings.ENABLE_GRPC:
+            try:
+                return await self._grpc_client.get_lightfm_recommendations(user_id, limit)
+            except Exception as e:
+                logger.warning("gRPC get_lightfm_recommendations failed (%s). Falling back to HTTP REST...", e)
+
+        # Fallback to HTTP REST
         try:
-            response = await self._client.get(
+            response = await self._http_client.get(
                 "/api/v1/restaurants/recommendations",
                 params={"user_id": str(user_id), "limit": limit}
             )
@@ -97,9 +149,36 @@ class AIServiceClient:
             logger.error("Error communicating with AI Engine recommendations: %s", e)
             return []
 
+    async def rank_candidates(self, user_id: str, candidates: List[dict], top_k: int) -> dict:
+        """
+        Gửi yêu cầu rerank ứng viên sang AI Engine.
+        """
+        # gRPC call with HTTP Fallback
+        if settings.ENABLE_GRPC:
+            try:
+                return await self._grpc_client.rank_candidates(user_id, candidates, top_k)
+            except Exception as e:
+                logger.warning("gRPC rank_candidates failed (%s). Falling back to HTTP REST...", e)
+
+        # Fallback to HTTP REST
+        response = await self._http_client.post(
+            "/api/v1/ml/rank",
+            json={
+                "user_id": str(user_id),
+                "candidates": candidates,
+                "top_k": top_k,
+            }
+        )
+        response.raise_for_status()
+        return response.json()
+
+    async def close(self):
+        await self._http_client.aclose()
+        await self._grpc_client.close()
+
 
 # ---------------------------------------------------------------------------
-# Singleton factory — Fix PR Issue #5: không tạo client mới mỗi request
+# Singleton factory
 # ---------------------------------------------------------------------------
 
 _client_instance: Optional[AIServiceClient] = None
@@ -109,5 +188,8 @@ def get_ai_client() -> AIServiceClient:
     """Singleton factory cho AIServiceClient."""
     global _client_instance
     if _client_instance is None:
-        _client_instance = AIServiceClient(base_url=settings.AI_ENGINE_BASE_URL)
+        _client_instance = AIServiceClient(
+            base_url=settings.AI_ENGINE_BASE_URL,
+            grpc_target=settings.AI_ENGINE_GRPC_TARGET
+        )
     return _client_instance
