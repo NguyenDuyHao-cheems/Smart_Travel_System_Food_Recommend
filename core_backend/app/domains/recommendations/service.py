@@ -103,7 +103,8 @@ class RecommendationService:
                 img=model.image_url or "/images/default_food.jpg",
                 total_reviews=getattr(model, "total_reviews", 0) or 0,
                 google_maps_url=getattr(model, "google_maps_url", None),
-                allergen_warning=None
+                allergen_warning=None,
+                is_vegetarian=getattr(model, "is_vegetarian", False) or False
             )
             results.append({"res": res, "dist": dist_km, "rank": idx})
             
@@ -235,7 +236,8 @@ class RecommendationService:
                 img=model.image_url or "/images/default_food.jpg",
                 total_reviews=getattr(model, "total_reviews", 0) or 0,
                 google_maps_url=getattr(model, "google_maps_url", None),
-                allergen_warning=None
+                allergen_warning=None,
+                is_vegetarian=getattr(model, "is_vegetarian", False) or False
             )
             results.append(res)
             

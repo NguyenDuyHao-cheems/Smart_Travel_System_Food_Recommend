@@ -34,6 +34,8 @@ import { useOptimizedLocation } from '../../hooks/useOptimizedLocation';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '../../store';
 import { addItem, removeItem } from '../../store/slices/itinerarySlice';
+import { SortSelector, type SortOption } from '../../components/SortSelector';
+import { AdvancedFilters, type AdvancedFilterState } from '../../components/AdvancedFilters';
 
 export interface AllergenDishWarning {
   dish_name: string;
@@ -56,6 +58,7 @@ export interface RecommendResult {
   restaurantName?: string;
   google_maps_url?: string;
   allergen_warning?: AllergenDishWarning[];
+  is_vegetarian?: boolean;
 }
 
 interface VibeTag {
@@ -107,6 +110,20 @@ function getMatchColor(match: string): string {
   if (num >= 90) return 'bg-green-500/90';
   if (num >= 85) return 'bg-yellow-500';
   return 'bg-brand';
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Helper to parse price and rating for client-side sorting
+   ───────────────────────────────────────────────────────────── */
+function parsePrice(priceStr: string): number {
+  if (!priceStr) return 0;
+  // E.g. "50.000đ - 100.000đ" -> "50000đ - 100000đ"
+  let clean = priceStr.toLowerCase().replace(/\./g, '');
+  // E.g. "50k" -> "50000"
+  clean = clean.replace(/(\d+)k/g, '$1000');
+  const matches = clean.match(/\d+/g);
+  if (!matches || matches.length === 0) return 0;
+  return parseInt(matches[0], 10);
 }
 
 /* ─────────────────────────────────────────────────────────────
@@ -664,6 +681,13 @@ function ResultPageContent() {
     }
     return [];
   });
+  const [sortBy, setSortBy] = useState<SortOption>('recommend');
+  const [advFilters, setAdvFilters] = useState<AdvancedFilterState>({
+    minPrice: null,
+    maxPrice: null,
+    minRating: null,
+    vegetarianOnly: false,
+  });
   const [apiError, setApiError] = useState<string | null>(null);
 
   const [isSearching, setIsSearching] = useState(false);
@@ -835,6 +859,30 @@ function ResultPageContent() {
       filtered = filtered.filter((r) => (r.distance_km ?? 0) <= distanceRadius);
     }
 
+    // Apply vegetarian filter
+    if (advFilters.vegetarianOnly) {
+      filtered = filtered.filter((r) => r.is_vegetarian === true);
+    }
+
+    // Apply rating filter
+    if (advFilters.minRating !== null) {
+      filtered = filtered.filter((r) => {
+        const rate = parseFloat(r.rating);
+        return !isNaN(rate) && rate >= advFilters.minRating!;
+      });
+    }
+
+    // Apply price range filter
+    if (advFilters.minPrice !== null || advFilters.maxPrice !== null) {
+      filtered = filtered.filter((r) => {
+        const priceVal = parsePrice(r.price);
+        if (priceVal === 0) return advFilters.minPrice === null || advFilters.minPrice === 0;
+        const matchesMin = advFilters.minPrice === null || priceVal >= advFilters.minPrice;
+        const matchesMax = advFilters.maxPrice === null || priceVal <= advFilters.maxPrice;
+        return matchesMin && matchesMax;
+      });
+    }
+
     // [FIX-CONFLICT]: Thêm logic lọc bỏ các kết quả bị trùng lặp tên (remove duplicates by name) để hiển thị danh sách sạch hơn
     const seen = new Set();
     const unique = filtered.filter(item => {
@@ -844,9 +892,38 @@ function ResultPageContent() {
       return !duplicate;
     });
 
+    let sorted = [...unique];
+    if (sortBy === 'distance') {
+      sorted.sort((a, b) => {
+        const distA = a.distance_km ?? Infinity;
+        const distB = b.distance_km ?? Infinity;
+        return distA - distB;
+      });
+    } else if (sortBy === 'price_asc') {
+      sorted.sort((a, b) => {
+        const valA = parsePrice(a.price);
+        const valB = parsePrice(b.price);
+        const priceA = valA === 0 ? Infinity : valA;
+        const priceB = valB === 0 ? Infinity : valB;
+        return priceA - priceB;
+      });
+    } else if (sortBy === 'price_desc') {
+      sorted.sort((a, b) => {
+        const priceA = parsePrice(a.price);
+        const priceB = parsePrice(b.price);
+        return priceB - priceA;
+      });
+    } else if (sortBy === 'rating') {
+      sorted.sort((a, b) => {
+        const rateA = parseFloat(a.rating) || 0;
+        const rateB = parseFloat(b.rating) || 0;
+        return rateB - rateA;
+      });
+    }
+
     // Cắt lấy đúng 16 món để hiển thị (1 hero + 15 small)
-    return unique.slice(0, 16);
-  }, [results, distanceFilterEnabled, distanceRadius]);
+    return sorted.slice(0, 16);
+  }, [results, distanceFilterEnabled, distanceRadius, sortBy, advFilters]);
 
   const heroItem = displayResults[0];
   const gridItems = displayResults.slice(1);
@@ -856,19 +933,34 @@ function ResultPageContent() {
       {isSearching && <SearchLoadingOverlay message={searchLoadingMsg} />}
 
       <div className="border-b border-[#E6DFD5]/60 dark:border-[#3D312A]/60 bg-[#FDFBF7]/80 dark:bg-[#2A2420]/80 backdrop-blur-sm">
-        <div className="max-w-7xl mx-auto px-4 md:px-8 py-4 flex flex-wrap items-center gap-x-4 gap-y-3">
-          <BudgetSelector
-            value={budget}
-            onChange={(newBudget) => {
-              setBudget(newBudget);
-              handleSearch(inputValue, newBudget);
-            }}
-          />
-          <DistanceFilter
-            enabled={distanceFilterEnabled}
-            onToggle={setDistanceFilterEnabled}
-            radius={distanceRadius}
-            onRadiusChange={setDistanceRadius}
+        <div className="max-w-7xl mx-auto px-4 md:px-8 py-4 flex flex-col gap-4">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
+            <BudgetSelector
+              value={budget}
+              onChange={(newBudget) => {
+                setBudget(newBudget);
+                handleSearch(inputValue, newBudget);
+              }}
+            />
+            <DistanceFilter
+              enabled={distanceFilterEnabled}
+              onToggle={setDistanceFilterEnabled}
+              radius={distanceRadius}
+              onRadiusChange={setDistanceRadius}
+              totalCount={results.length}
+              filteredCount={displayResults.length}
+            />
+            <div className="hidden md:block h-6 w-px bg-gray-200 dark:bg-[#4D3D32]" />
+            <SortSelector
+              value={sortBy}
+              onChange={setSortBy}
+              hasCoordinates={!!coords}
+            />
+          </div>
+          <div className="h-px bg-gray-100 dark:bg-[#4D3D32]/40" />
+          <AdvancedFilters
+            filters={advFilters}
+            onChange={setAdvFilters}
             totalCount={results.length}
             filteredCount={displayResults.length}
           />
