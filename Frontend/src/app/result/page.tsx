@@ -36,6 +36,7 @@ import { RootState } from '../../store';
 import { addItem, removeItem } from '../../store/slices/itinerarySlice';
 import { SortSelector, type SortOption } from '../../components/SortSelector';
 import { AdvancedFilters, type AdvancedFilterState } from '../../components/AdvancedFilters';
+import { TagFilter } from '../../components/TagFilter';
 
 export interface AllergenDishWarning {
   dish_name: string;
@@ -689,6 +690,16 @@ function ResultPageContent() {
     vegetarianOnly: false,
   });
   const [apiError, setApiError] = useState<string | null>(null);
+  const [selectedTag, setSelectedTag] = useState<string | null>(null);
+
+  // Tự động thu thập tất cả tag duy nhất có trong kết quả trả về từ API
+  const availableTags = useMemo(() => {
+    const tagsSet = new Set<string>();
+    results.forEach((r) => {
+      r.tags?.forEach((t) => tagsSet.add(t));
+    });
+    return Array.from(tagsSet);
+  }, [results]);
 
   const [isSearching, setIsSearching] = useState(false);
   const [searchLoadingMsg, setSearchLoadingMsg] = useState("Đang phân tích sở thích của bạn...");
@@ -855,6 +866,14 @@ function ResultPageContent() {
 
   const displayResults = useMemo(() => {
     let filtered = results;
+
+    // Apply tag filter (client-side)
+    if (selectedTag) {
+      filtered = filtered.filter((r) =>
+        r.tags?.some((t) => t.toLowerCase() === selectedTag.toLowerCase())
+      );
+    }
+
     if (distanceFilterEnabled) {
       filtered = filtered.filter((r) => (r.distance_km ?? 0) <= distanceRadius);
     }
@@ -923,7 +942,7 @@ function ResultPageContent() {
 
     // Cắt lấy đúng 16 món để hiển thị (1 hero + 15 small)
     return sorted.slice(0, 16);
-  }, [results, distanceFilterEnabled, distanceRadius, sortBy, advFilters]);
+  }, [results, distanceFilterEnabled, distanceRadius, sortBy, advFilters, selectedTag]);
 
   const heroItem = displayResults[0];
   const gridItems = displayResults.slice(1);
@@ -964,6 +983,16 @@ function ResultPageContent() {
             totalCount={results.length}
             filteredCount={displayResults.length}
           />
+          {availableTags.length > 0 && (
+            <>
+              <div className="h-px bg-gray-100 dark:bg-[#4D3D32]/40" />
+              <TagFilter
+                tags={availableTags}
+                selectedTag={selectedTag}
+                onSelect={setSelectedTag}
+              />
+            </>
+          )}
         </div>
       </div>
 
