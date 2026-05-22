@@ -966,24 +966,24 @@ function ResultPageContent() {
               onToggle={setDistanceFilterEnabled}
               radius={distanceRadius}
               onRadiusChange={setDistanceRadius}
-              totalCount={results.length}
-              filteredCount={displayResults.length}
+              totalCount={mounted ? results.length : 0}
+              filteredCount={mounted ? displayResults.length : 0}
             />
             <div className="hidden md:block h-6 w-px bg-gray-200 dark:bg-[#4D3D32]" />
             <SortSelector
               value={sortBy}
               onChange={setSortBy}
-              hasCoordinates={!!coords}
+              hasCoordinates={mounted ? !!coords : false}
             />
           </div>
           <div className="h-px bg-gray-100 dark:bg-[#4D3D32]/40" />
           <AdvancedFilters
             filters={advFilters}
             onChange={setAdvFilters}
-            totalCount={results.length}
-            filteredCount={displayResults.length}
+            totalCount={mounted ? results.length : 0}
+            filteredCount={mounted ? displayResults.length : 0}
           />
-          {availableTags.length > 0 && (
+          {mounted && availableTags.length > 0 && (
             <>
               <div className="h-px bg-gray-100 dark:bg-[#4D3D32]/40" />
               <TagFilter
