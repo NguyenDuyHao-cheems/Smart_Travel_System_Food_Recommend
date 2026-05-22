@@ -26,7 +26,8 @@ Khi thêm bất kỳ tính năng mới hoặc thay đổi logic nghiệp vụ qu
    - Đối với `core_backend`: Chạy `pytest` trong thư mục `core_backend/` để kiểm tra.
    - Đối với `ai_engine`: Chạy `pytest` trong thư mục `ai_engine/` để kiểm tra.
 3. **Mục tiêu phủ test (Coverage)**: Đảm bảo độ bao phủ test đạt ít nhất 80% đối với phần code logic nghiệp vụ mới được bổ sung.
-
+# Test on what implement
+Chỉ chạy các test case của tính năng mới hoặc sửa đổi. Không chạy toàn bộ test suite trừ khi có yêu cầu.
 <!-- END:unit-testing-rules -->
 
 <!-- BEGIN:gemini-rules -->
