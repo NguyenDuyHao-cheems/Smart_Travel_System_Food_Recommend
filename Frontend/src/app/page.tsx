@@ -17,6 +17,7 @@ import { RecommendResult } from "./result/page";
 import { useOptimizedLocation } from "../hooks/useOptimizedLocation";
 import { useSelector } from "react-redux";
 import { RootState } from "../store";
+import NewspaperMenu from "../components/NewspaperMenu";
 
 /* ── Types ── */
 type HealthStatus = "loading" | "ok" | "degraded" | "error";
@@ -219,12 +220,16 @@ function HomeContent() {
       const token = localStorage.getItem("access_token");
       const userId = localStorage.getItem("user_id");
 
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
       const res = await fetch(`${BACKEND_URL}/api/v1/search/recommend`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: token ? `Bearer ${token}` : "",
-        },
+        headers,
         body: JSON.stringify({
           query: finalQuery,
           lat: gps.lat,
@@ -435,8 +440,16 @@ function HomeContent() {
                   onSearch={() => handleSearch()}
                   compact={false}
                 />
-                <div className="mt-4 flex justify-center">
+                <div className="mt-4 flex flex-col items-center gap-4">
                   <BudgetSelector value={budget} onChange={setBudget} />
+                  
+                  <Link
+                    href="/lucky-wheel"
+                    className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full text-xs font-bold uppercase tracking-wider bg-white dark:bg-[#3D312A] border border-[#E6DFD5] dark:border-[#4D3D32] text-[#3D312A] dark:text-[#E6DFD5] hover:border-brand/40 hover:text-brand dark:hover:text-brand hover:shadow-[0_0_15px_rgba(232,115,90,0.15)] transition-all cursor-pointer shadow-sm group"
+                  >
+                    <span className="text-base group-hover:rotate-45 transition-transform duration-300">🎡</span>
+                    <span>Hôm nay ăn gì? Thử Vòng Quay May Mắn!</span>
+                  </Link>
                 </div>
               </div>
 
@@ -472,6 +485,9 @@ function HomeContent() {
                 </Link>
               </div>
             </div>
+
+            {/* ── Newspaper Daily Menu ── */}
+            <NewspaperMenu />
 
             {/* ── Recommendations Grid ── */}
             <div className="w-full mt-4 relative z-20 border-t border-[#3D312A]/10 pt-10">
