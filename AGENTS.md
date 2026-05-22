@@ -56,6 +56,16 @@ Chỉ chạy các test case của tính năng mới hoặc sửa đổi. Không 
 
 <!-- END:gemini-rules -->
 
+<!-- BEGIN:env-rules -->
+
+# Env & Config Rules: Quản lý biến môi trường và cấu hình
+
+1. **Thông báo khi thay đổi env/config**: Nếu sửa đổi `ai_engine/app/core/config.py`, config của core_backend, hoặc thêm biến môi trường (env key) mới, agent/contributor PHẢI thông báo để chia sẻ key mới đó với team.
+2. **Không commit key env**: Tuyệt đối không bao giờ commit key env hoặc thông tin nhạy cảm vào bất kỳ vị trí nào trên repository.
+3. **Không xóa file ví dụ**: Tuyệt đối không xóa các file mẫu cấu hình môi trường (như `env.example` hoặc `.env.example`).
+
+<!-- END:env-rules -->
+
 <!-- BEGIN:docs-index -->
 
 # Documentation Index
@@ -65,8 +75,6 @@ Chỉ chạy các test case của tính năng mới hoặc sửa đổi. Không 
 | File                      | Chủ đề                                    | Khi nào cần đọc                           |
 | ------------------------- | ----------------------------------------- | ----------------------------------------- |
 | docs/ARCHITECTURE.md      | Service Communication, Data Flow          | Giao tiếp service, luồng dữ liệu tổng thể |
-| docs/BE_API_DOCS.md       | API Contract & Endpoint của Core Backend  | Khi gọi API, viết client, thêm/sửa router |
-| docs/AI-ENGINE_API_DOCS.md| API Contract & Endpoint của AI Engine     | Khi cần gọi API NLP, Rerank, Embeddings   |
 | docs/DATABASE.md          | Schema, migration guide (Alembic)         | Thêm bảng, cột, vector field              |
 | docs/TECH_STACK.md        | Thư viện chính các service                | Biết đúng package để tránh import sai     |
 | docs/foder_description.md | Cấu trúc thư mục chi tiết                 | Tìm file trong codebase                   |
