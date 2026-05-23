@@ -28,6 +28,27 @@ Khi thêm bất kỳ tính năng mới hoặc thay đổi logic nghiệp vụ qu
 3. **Mục tiêu phủ test (Coverage)**: Đảm bảo độ bao phủ test đạt ít nhất 80% đối với phần code logic nghiệp vụ mới được bổ sung.
 # Test on what implement
 Chỉ chạy các test case của tính năng mới hoặc sửa đổi. Không chạy toàn bộ test suite trừ khi có yêu cầu.
+# Test on frontend
+You are strictly forbidden from running global check commands (e.g., `npm run lint`, `npx tsc --noEmit`, `npm test`) on the entire project, as it consumes too many tokens. Instead, follow this precise pipeline for verification:
+## 1. Identify Changed Files First
+Before verifying your changes, run:
+`git status --porcelain` or `git diff --name-only`
+Identify exactly which files you have modified or created.
+## 2. Execute Targeted, Low-Token Verifications
+Only run checks on the specific files you modified. Use the following optimized flags to suppress unnecessary output:
+- **For Linter (ESLint):**
+  Run: `npx eslint <path-to-changed-file> --quiet --no-color`
+  *(Note: `--quiet` hides warnings and only shows blockers. `--no-color` eliminates ANSI color codes which waste tokens).*
+- **For TypeScript (Type-Check):**
+  Do NOT run `tsc --noEmit` globally. Use `tsc-files` to check only the modified files:
+  Run: `npx tsc-files --noEmit --pretty false <path-to-changed-file>`
+- **For Unit Tests (Jest/Vitest):**
+  Only run the test file related to your change:
+  Run: `npx jest --findRelatedTests <path-to-changed-file> --silent --no-colors`
+## 3. Output Processing Rules
+- If the command succeeds with zero errors, DO NOT print empty success logs. Just state: "Verification passed."
+- If the command fails, only analyze the specific lines indicating the error. Do not dump the entire terminal buffer into your context.
+
 <!-- END:unit-testing-rules -->
 
 <!-- BEGIN:gemini-rules -->
@@ -81,3 +102,6 @@ Chỉ chạy các test case của tính năng mới hoặc sửa đổi. Không 
 | docs/spec_design.md       | Tài liệu thiết kế đặc tả chi tiết         | Hiểu chi tiết thiết kế logic nghiệp vụ    |
 
 <!-- END:docs-index -->
+
+
+

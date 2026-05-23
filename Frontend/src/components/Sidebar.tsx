@@ -16,6 +16,7 @@ import {
   User,
   MessageSquare,
   Dices,
+  Users,
 } from "lucide-react";
 
 interface SidebarProps {
@@ -79,6 +80,12 @@ export function Sidebar({
       label: "Hôm nay ăn gì?",
       active: pathname === "/lucky-wheel",
       href: "/lucky-wheel",
+    },
+    {
+      icon: Users,
+      label: "Bạn bè",
+      active: pathname === "/friends",
+      href: "/friends",
     },
   ];
 

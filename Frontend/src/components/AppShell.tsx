@@ -17,6 +17,7 @@ import {
   MapPin,
   Route,
   MessageSquare,
+  Users,
 } from "lucide-react";
 import { ThemeToggle } from "./ThemeToggle";
 import { UserDropdown } from "./UserDropdown";
@@ -32,6 +33,8 @@ const NAV_ITEMS = [
   { icon: Clock, label: "Lịch sử", href: "/history" },
   { icon: FolderOpen, label: "Bộ sưu tập", href: "/collections" },
   { icon: Route, label: "Lộ trình", href: "/itinerary" },
+  { icon: Users, label: "Bạn bè", href: "/friends" },
+  { icon: Sparkles, label: "Gợi ý nhóm", href: "/group-recommend" },
   { icon: Settings, label: "Cài đặt", href: "/settings" },
 ];
 

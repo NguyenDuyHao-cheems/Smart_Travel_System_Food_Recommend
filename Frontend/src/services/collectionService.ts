@@ -37,7 +37,7 @@ export const collectionService = {
       const token = localStorage.getItem("access_token");
       if (!token) return collectionService.getCollections(userId);
 
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
       
       // 1. Get current local collections to check for unsynced data
       const localData = localStorage.getItem(COLLECTIONS_KEY);
@@ -179,7 +179,7 @@ export const collectionService = {
       const token = localStorage.getItem("access_token");
       if (!token) return newColl;
 
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
       const res = await fetch(`${apiUrl}/api/v1/users/collections`, {
         method: "POST",
         headers: {
@@ -241,7 +241,7 @@ export const collectionService = {
       const token = localStorage.getItem("access_token");
       if (!token) return;
 
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
       await fetch(`${apiUrl}/api/v1/users/collections/${id}`, {
         method: "DELETE",
         headers: {
@@ -276,7 +276,7 @@ export const collectionService = {
       const token = localStorage.getItem("access_token");
       if (!token) return;
 
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
       await fetch(`${apiUrl}/api/v1/users/collections/${id}`, {
         method: "PUT",
         headers: {
@@ -312,7 +312,7 @@ export const collectionService = {
       const token = localStorage.getItem("access_token");
       if (!token) return;
 
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
       await fetch(`${apiUrl}/api/v1/users/collections/${collectionId}/items`, {
         method: "POST",
         headers: {
@@ -354,7 +354,7 @@ export const collectionService = {
       const token = localStorage.getItem("access_token");
       if (!token) return;
 
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
       await fetch(`${apiUrl}/api/v1/users/collections/${collectionId}/items/${item.id}`, {
         method: "DELETE",
         headers: {
