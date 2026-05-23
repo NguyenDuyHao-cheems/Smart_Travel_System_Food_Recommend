@@ -175,11 +175,22 @@ export function QuickCreateBox({ username, avatarUrl, onSubmit }: QuickCreateBox
           )}
 
           {/* Link preview */}
-          {content && content.match(/(https?:\/\/[^\s]+)/) && (
-            <div className="mb-2">
-              <LinkPreview url={content.match(/(https?:\/\/[^\s]+)/)![0]} />
-            </div>
-          )}
+          {(() => {
+            const linkMatchRegex = /(https?:\/\/[^\s]+)|([a-zA-Z0-9.-]+\.[a-zA-Z]{2,}(?:\/[^\s]*)?)/i;
+            const match = content.match(linkMatchRegex);
+            if (match && match[0]) {
+              let url = match[0];
+              const lastChar = url[url.length - 1];
+              if (['.', ',', '!', '?'].includes(lastChar)) url = url.slice(0, -1);
+              if (!url.startsWith('http://') && !url.startsWith('https://')) url = 'https://' + url;
+              return (
+                <div className="mb-2">
+                  <LinkPreview url={url} />
+                </div>
+              );
+            }
+            return null;
+          })()}
 
           {/* Restaurant Tag Selector */}
           {showResSelector && isFocused && (

@@ -52,6 +52,38 @@ interface PostCardProps {
   onDelete?: (postId: string) => void;
 }
 
+const urlMatchRegex = /^(https?:\/\/[^\s]+)$|^([a-zA-Z0-9.-]+\.[a-zA-Z]{2,}(?:\/[^\s]*)?)$/i;
+
+const parseLinks = (text: string) => {
+  const words = text.split(/(\s+)/);
+  return words.map((word, i) => {
+    let cleanWord = word;
+    let punctuation = '';
+    const lastChar = word[word.length - 1];
+    if (lastChar && ['.', ',', '!', '?'].includes(lastChar)) {
+      cleanWord = word.slice(0, -1);
+      punctuation = lastChar;
+    }
+    
+    const match = cleanWord.match(urlMatchRegex);
+    if (match) {
+      let href = cleanWord;
+      if (!href.startsWith('http://') && !href.startsWith('https://')) {
+        href = 'https://' + href;
+      }
+      return (
+        <React.Fragment key={i}>
+          <a href={href} target="_blank" rel="noopener noreferrer" className="text-brand hover:underline break-all" onClick={(e) => e.stopPropagation()}>
+            {cleanWord}
+          </a>
+          {punctuation}
+        </React.Fragment>
+      );
+    }
+    return word;
+  });
+};
+
 export function PostCard({ post, onLikeToggle, onDelete }: PostCardProps) {
   const [isLiked, setIsLiked] = useState(post.is_liked || false);
   const [likesCount, setLikesCount] = useState(post.likes_count || 0);
@@ -233,15 +265,20 @@ export function PostCard({ post, onLikeToggle, onDelete }: PostCardProps) {
 
           {post.content && (
             <div className="mt-2 text-sm text-foreground whitespace-pre-wrap break-words">
-              {post.content}
+              {parseLinks(post.content)}
             </div>
           )}
 
           {(() => {
             if (!post.content) return null;
-            const match = post.content.match(/(https?:\/\/[^\s]+)/);
+            const linkMatchRegex = /(https?:\/\/[^\s]+)|([a-zA-Z0-9.-]+\.[a-zA-Z]{2,}(?:\/[^\s]*)?)/i;
+            const match = post.content.match(linkMatchRegex);
             if (match && match[0]) {
-              return <LinkPreview url={match[0]} />;
+              let url = match[0];
+              const lastChar = url[url.length - 1];
+              if (['.', ',', '!', '?'].includes(lastChar)) url = url.slice(0, -1);
+              if (!url.startsWith('http://') && !url.startsWith('https://')) url = 'https://' + url;
+              return <LinkPreview url={url} />;
             }
             return null;
           })()}
@@ -364,7 +401,7 @@ export function PostCard({ post, onLikeToggle, onDelete }: PostCardProps) {
                               {cName}
                             </Link>
                             <p className="text-sm text-foreground mt-0.5 whitespace-pre-wrap break-words">
-                              {comment.content}
+                              {parseLinks(comment.content || '')}
                             </p>
                           </div>
                           <span className="text-[11px] text-muted-foreground ml-3 mt-0.5 block">
