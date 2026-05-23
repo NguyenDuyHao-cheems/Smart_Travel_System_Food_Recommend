@@ -59,6 +59,8 @@ class SearchService:
             request.budget if request.budget and request.budget > 0
             else self.DEFAULT_BUDGET_VND
         )
+        distance_lat, distance_lng = self._distance_origin_for_request(request)
+        viewport_bounds = self._viewport_bounds_for_request(request)
 
         recommend_results = await recommend(
             query=request.query,
@@ -66,10 +68,13 @@ class SearchService:
             db=db,
             query_vector=ai_response.vector,
             budget=effective_budget,
-            user_location=[request.lat, request.lng],
+            user_location=[distance_lat, distance_lng],
             tag_name=request.tag_name,
             cleaned_query=ai_response.cleaned_query,
             search_mode=request.search_mode or "basic",
+            viewport_bounds=viewport_bounds,
+            map_center=[distance_lat, distance_lng] if request.map_radius_km is not None else None,
+            map_radius_km=request.map_radius_km,
         )
 
         top_k = getattr(request, "top_k", 24) or 24
@@ -104,7 +109,7 @@ class SearchService:
             req_tags = request.tag_name or ai_response.cleaned_query
 
             results.append(
-                self._map_to_recommend_result(model, request.lat, request.lng, match_str, request_tags=req_tags)
+                self._map_to_recommend_result(model, distance_lat, distance_lng, match_str, request_tags=req_tags)
             )
 
         logger.debug("Search: query=%r, mapped=%d, filtered_out=%d", request.query, len(results), filtered_out_count)
@@ -154,6 +159,24 @@ class SearchService:
             allergen_flagged_count=allergen_flagged_count,
             warning=warning,
         )
+
+    @staticmethod
+    def _distance_origin_for_request(request: SearchRecommendRequest) -> tuple[float, float]:
+        if request.map_center_lat is not None and request.map_center_lng is not None:
+            return request.map_center_lat, request.map_center_lng
+        return request.lat, request.lng
+
+    @staticmethod
+    def _viewport_bounds_for_request(request: SearchRecommendRequest) -> dict[str, float] | None:
+        values = {
+            "north": request.map_north,
+            "south": request.map_south,
+            "east": request.map_east,
+            "west": request.map_west,
+        }
+        if any(value is None for value in values.values()):
+            return None
+        return {key: float(value) for key, value in values.items()}
 
     @staticmethod
     def get_session(session_id: str, db: Session) -> SessionDataResponse:

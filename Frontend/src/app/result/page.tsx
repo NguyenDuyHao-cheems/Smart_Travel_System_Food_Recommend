@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, Suspense, useMemo, useRef } from 'react';
+import React, { useState, useEffect, Suspense, useMemo, useRef, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -16,6 +16,8 @@ import {
   Home,
   X,
   Route,
+  Map as MapIcon,
+  LogOut,
 } from 'lucide-react';
 import { AppShell } from '../../components/AppShell';
 import { LoadingState } from '../../components/ui/LoadingState';
@@ -36,6 +38,7 @@ import { RootState } from '../../store';
 import { addItem, removeItem } from '../../store/slices/itinerarySlice';
 import { SortSelector, type SortOption } from '../../components/SortSelector';
 import { AdvancedFilters, type AdvancedFilterState } from '../../components/AdvancedFilters';
+import { ResultMapView, type MapViewport } from '../../components/ResultMapView';
 
 export interface AllergenDishWarning {
   dish_name: string;
@@ -601,9 +604,11 @@ function FeatureBar() {
 function ResultPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const urlQuery = searchParams.get('q') || '';
   let sessionIdFromUrl = searchParams.get('session_id') || '';
+  const isMapEntryWithoutSearch = searchParams.get('map') === '1' && !urlQuery && !sessionIdFromUrl;
   // [FIX-CONFLICT]: Lấy session_id từ sessionStorage (nếu URL không có) vì ta đã giấu nó đi
-  if (typeof window !== 'undefined' && !sessionIdFromUrl) {
+  if (typeof window !== 'undefined' && !sessionIdFromUrl && !isMapEntryWithoutSearch) {
     sessionIdFromUrl = sessionStorage.getItem('current_search_session_id') || '';
   }
 
@@ -622,6 +627,8 @@ function ResultPageContent() {
     const searchParams = new URLSearchParams(window.location.search);
     const q = searchParams.get('q');
     let sessionId = searchParams.get('session_id');
+    const mapEntryWithoutSearch = searchParams.get('map') === '1' && !q && !sessionId;
+    if (mapEntryWithoutSearch) return false;
     if (!sessionId) {
       sessionId = sessionStorage.getItem('current_search_session_id');
     }
@@ -665,6 +672,16 @@ function ResultPageContent() {
 
   const [distanceFilterEnabled, setDistanceFilterEnabled] = useState(false);
   const [distanceRadius, setDistanceRadius] = useState(2);
+  const [mapViewEnabled, setMapViewEnabled] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return new URLSearchParams(window.location.search).get('map') === '1';
+  });
+
+  useEffect(() => {
+    if (searchParams.get('map') === '1') {
+      setMapViewEnabled(true);
+    }
+  }, [searchParams]);
 
   const [collectionModalItem, setCollectionModalItem] = useState<RecommendResult | null>(null);
 
@@ -672,6 +689,9 @@ function ResultPageContent() {
     if (typeof window === 'undefined') return [];
     const searchParams = new URLSearchParams(window.location.search);
     let sessionId = searchParams.get('session_id');
+    const q = searchParams.get('q');
+    const mapEntryWithoutSearch = searchParams.get('map') === '1' && !q && !sessionId;
+    if (mapEntryWithoutSearch) return [];
     if (!sessionId) {
       sessionId = sessionStorage.getItem('current_search_session_id');
     }
@@ -695,6 +715,11 @@ function ResultPageContent() {
 
   useEffect(() => {
     if (!sessionIdFromUrl) {
+      if (isMapEntryWithoutSearch) {
+        setSearchQuery('');
+        setInputValue('');
+        setResults([]);
+      }
       setIsLoading(false);
       return;
     }
@@ -750,7 +775,7 @@ function ResultPageContent() {
     };
 
     loadSession();
-  }, [sessionIdFromUrl, setInputValue]);
+  }, [isMapEntryWithoutSearch, sessionIdFromUrl, setInputValue]);
 
   // Sync coords ref when coords are initially fetched/loaded
   useEffect(() => {
@@ -782,7 +807,11 @@ function ResultPageContent() {
     }
   }, [coords, searchQuery]);
 
-  const handleSearch = async (overrideQuery?: string, overrideBudget?: BudgetOption) => {
+  const handleSearch = async (
+    overrideQuery?: string,
+    overrideBudget?: BudgetOption,
+    options?: { viewport?: MapViewport; stayOnPage?: boolean }
+  ) => {
     const finalQuery = (overrideQuery ?? inputValue).trim();
     const finalBudget = overrideBudget ?? budget;
 
@@ -795,7 +824,7 @@ function ResultPageContent() {
       setSearchLoadingMsg("Đang xác định vị trí của bạn...");
 
       const gps = await getOptimizedLocation();
-      if (!gps) {
+      if (!gps && !options?.viewport) {
         setApiError("Không thể xác định vị trí thực tế của bạn. Vui lòng kiểm tra quyền truy cập GPS để tiếp tục.");
         setIsSearching(false);
         return;
@@ -805,6 +834,8 @@ function ResultPageContent() {
       const token = localStorage.getItem('access_token');
       const userId = localStorage.getItem('user_id');
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      const requestLat = gps?.lat ?? options?.viewport?.centerLat;
+      const requestLng = gps?.lng ?? options?.viewport?.centerLng;
 
       const res = await fetch(`${apiUrl}/api/v1/search/recommend`, {
         method: 'POST',
@@ -814,12 +845,19 @@ function ResultPageContent() {
         },
         body: JSON.stringify({
           query: finalQuery,
-          lat: gps.lat,
-          lng: gps.lng,
+          lat: requestLat,
+          lng: requestLng,
           user_id: userId || undefined,
           budget: finalBudget === 'auto' ? undefined : parseInt(finalBudget, 10),
           search_mode: searchMode,
-          top_k: 24, // Xin dư ra 24 món để bù trừ khi lọc trùng tên
+          map_center_lat: options?.viewport?.centerLat,
+          map_center_lng: options?.viewport?.centerLng,
+          map_north: options?.viewport?.north,
+          map_south: options?.viewport?.south,
+          map_east: options?.viewport?.east,
+          map_west: options?.viewport?.west,
+          map_radius_km: options?.viewport?.radiusKm,
+          top_k: options?.viewport ? 48 : 24,
         }),
       });
 
@@ -840,8 +878,38 @@ function ResultPageContent() {
         if (typeof window !== 'undefined') {
           sessionStorage.setItem('current_search_session_id', data.session_id);
           sessionStorage.setItem('current_search_mode', searchMode);
+          sessionStorage.setItem(`session_data_${data.session_id}`, JSON.stringify({
+            query: finalQuery,
+            results: data.results || [],
+            fallback_applied: data.fallback_applied || false,
+            fallback_reason: data.fallback_reason || '',
+            applied_budget: data.applied_budget ?? null,
+            filtered_out_count: data.filtered_out_count || 0,
+            allergen_flagged_count: data.allergen_flagged_count || 0,
+            warning: data.warning || '',
+          }));
         }
-        window.location.href = `/result?q=${encodeURIComponent(finalQuery)}`;
+        if (options?.stayOnPage) {
+          setSearchQuery(finalQuery);
+          setInputValue(finalQuery);
+          setResults(data.results || []);
+          setFallbackApplied(data.fallback_applied || false);
+          setFallbackReason(data.fallback_reason || '');
+          setAppliedBudget(data.applied_budget ?? null);
+          setFilteredCount(data.filtered_out_count || 0);
+          setAllergyFlaggedCount(data.allergen_flagged_count || 0);
+          setAllergyWarning(data.warning || '');
+          if (typeof window !== 'undefined') {
+            const params = new URLSearchParams(window.location.search);
+            params.set('q', finalQuery);
+            if (mapViewEnabled) {
+              params.set('map', '1');
+            }
+            window.history.replaceState(null, '', `/result?${params.toString()}`);
+          }
+        } else {
+          window.location.href = `/result?q=${encodeURIComponent(finalQuery)}`;
+        }
       } else {
         throw new Error("Không thể kết nối với hệ thống AI.");
       }
@@ -852,6 +920,12 @@ function ResultPageContent() {
       setIsSearching(false);
     }
   };
+
+  const handleViewportSearch = useCallback((viewport: MapViewport) => {
+    const queryForMap = (inputValue || searchQuery).trim();
+    if (!queryForMap) return;
+    handleSearch(queryForMap, budget, { viewport, stayOnPage: true });
+  }, [budget, inputValue, searchMode, searchQuery]);
 
   const displayResults = useMemo(() => {
     let filtered = results;
@@ -927,10 +1001,79 @@ function ResultPageContent() {
 
   const heroItem = displayResults[0];
   const gridItems = displayResults.slice(1);
+  const fallbackMapCenter = coords || lastSearchCoordsRef.current;
+
+  const renderResultCards = (compact = false) => (
+    <>
+      {heroItem && (
+        <HeroResultCard
+          item={heroItem}
+          sessionId={sessionIdFromUrl}
+          searchMode={searchMode}
+          onAddCollection={setCollectionModalItem}
+          isModalOpen={!!collectionModalItem}
+        />
+      )}
+
+      {gridItems.length > 0 && (
+        <div className={`grid grid-cols-1 sm:grid-cols-2 ${compact ? 'lg:grid-cols-2' : 'lg:grid-cols-3'} gap-5`}>
+          {gridItems.map((item, idx) => (
+            <SmallResultCard
+              key={item.id || idx}
+              item={item}
+              index={idx}
+              sessionId={sessionIdFromUrl}
+              searchMode={searchMode}
+              onAddCollection={setCollectionModalItem}
+              isModalOpen={!!collectionModalItem}
+            />
+          ))}
+        </div>
+      )}
+
+      <FeatureBar />
+    </>
+  );
+  const mapFloatingButton = (
+    <button
+      type="button"
+      onClick={() => {
+        if (mapViewEnabled) {
+          router.push('/');
+          return;
+        }
+        setMapViewEnabled((current) => {
+          const next = !current;
+          if (typeof window !== 'undefined') {
+            const params = new URLSearchParams(window.location.search);
+            if (next) {
+              params.set('map', '1');
+            } else {
+              params.delete('map');
+            }
+            const queryString = params.toString();
+            window.history.replaceState(null, '', queryString ? `/result?${queryString}` : '/result');
+          }
+          return next;
+        });
+      }}
+      className={`fixed left-4 top-28 z-40 inline-flex items-center justify-center gap-2 h-11 px-4 rounded-full border-2 border-[#3D312A] shadow-[4px_4px_0px_rgba(61,49,42,1)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-[2px_2px_0px_rgba(61,49,42,1)] transition-all duration-150 cursor-pointer font-black text-xs uppercase tracking-wide ${
+        mapViewEnabled
+          ? 'bg-brand text-white hover:bg-brand-hover'
+          : 'bg-white dark:bg-[#3D312A] text-[#3D312A] dark:text-[#E6DFD5] hover:text-brand'
+      }`}
+      title={mapViewEnabled ? 'Thoát khỏi bản đồ' : 'Hiện bản đồ kết quả'}
+      aria-label={mapViewEnabled ? 'Thoát khỏi bản đồ' : 'Hiện bản đồ kết quả'}
+    >
+      {mapViewEnabled ? <LogOut className="w-4 h-4" /> : <MapIcon className="w-4 h-4" />}
+      <span>{mapViewEnabled ? 'Thoát bản đồ' : 'Bản đồ'}</span>
+    </button>
+  );
 
   return (
     <AppShell>
       {isSearching && <SearchLoadingOverlay message={searchLoadingMsg} />}
+      {mapFloatingButton}
 
       <div className="border-b border-[#E6DFD5]/60 dark:border-[#3D312A]/60 bg-[#FDFBF7]/80 dark:bg-[#2A2420]/80 backdrop-blur-sm">
         <div className="max-w-7xl mx-auto px-4 md:px-8 py-4 flex flex-col gap-4">
@@ -1047,7 +1190,7 @@ function ResultPageContent() {
                       setQuery={setInputValue}
                       searchMode={searchMode}
                       setSearchMode={setSearchMode}
-                      onSearch={() => handleSearch()}
+                      onSearch={() => handleSearch(inputValue, undefined, mapViewEnabled ? { stayOnPage: true } : undefined)}
                       compact={true}
                     />
                   </div>
@@ -1074,6 +1217,34 @@ function ResultPageContent() {
                     Thử kết nối lại
                   </button>
                 </motion.div>
+              ) : mapViewEnabled ? (
+                <div className="flex flex-col xl:flex-row gap-6 items-start">
+                  <div className="min-w-0 w-full xl:flex-1">
+                    {results.length === 0 ? (
+                      <div className="py-16 text-center bg-white dark:bg-[#3D312A] rounded-3xl border border-gray-100 dark:border-[#4D3D32] shadow-sm">
+                        <div className="w-16 h-16 bg-gray-50 dark:bg-[#2A2420] rounded-full flex items-center justify-center mx-auto mb-5">
+                          <Search className="w-8 h-8 text-gray-400 dark:text-[#7A6A5A]" />
+                        </div>
+                        <h2 className="text-xl font-bold text-gray-800 dark:text-[#E6DFD5] mb-2">
+                          Nhập món ăn để tìm trên bản đồ
+                        </h2>
+                        <p className="text-sm text-gray-500 dark:text-[#9A8A7A] max-w-md mx-auto leading-relaxed">
+                          Tìm món ăn ở thanh tìm kiếm phía trên, sau đó chọn bán kính 2 km, 4 km hoặc 8 km trên bản đồ để lọc theo vùng.
+                        </p>
+                      </div>
+                    ) : (
+                      renderResultCards(true)
+                    )}
+                  </div>
+                  <div className="w-full xl:w-[430px] xl:shrink-0 xl:sticky xl:top-24 h-[560px] order-first xl:order-none">
+                    <ResultMapView
+                      results={displayResults}
+                      fallbackCenter={fallbackMapCenter}
+                      isSearching={isSearching}
+                      onViewportSearch={handleViewportSearch}
+                    />
+                  </div>
+                </div>
               ) : results.length === 0 ? (
                 <motion.div
                   initial={{ opacity: 0, scale: 0.95 }}
@@ -1100,23 +1271,7 @@ function ResultPageContent() {
                     Thử tìm từ khóa khác
                   </button>
                 </motion.div>
-              ) : (
-                <>
-                  {/* Hero Card #1 */}
-                  {heroItem && <HeroResultCard item={heroItem} sessionId={sessionIdFromUrl} searchMode={searchMode} onAddCollection={setCollectionModalItem} isModalOpen={!!collectionModalItem} />}
-
-                  {/* Small Cards Grid #2+ */}
-                  {gridItems.length > 0 && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                      {gridItems.map((item, idx) => (
-                        <SmallResultCard key={item.id || idx} item={item} index={idx} sessionId={sessionIdFromUrl} searchMode={searchMode} onAddCollection={setCollectionModalItem} isModalOpen={!!collectionModalItem} />
-                      ))}
-                    </div>
-                  )}
-
-                  <FeatureBar />
-                </>
-              )}
+              ) : renderResultCards(false)}
             </motion.div>
           )}
         </AnimatePresence>

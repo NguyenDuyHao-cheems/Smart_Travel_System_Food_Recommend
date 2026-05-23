@@ -31,6 +31,9 @@ async def recommend(
     tag_name: Optional[str] = None,
     cleaned_query: str = "",
     search_mode: str = "basic",
+    viewport_bounds: Optional[dict] = None,
+    map_center: Optional[List[float]] = None,
+    map_radius_km: Optional[float] = None,
 ):
     """
     Recommendation pipeline:
@@ -63,6 +66,9 @@ async def recommend(
         query_text=query,
         tag_name=tag_name,
         cleaned_query=cleaned_query,
+        viewport_bounds=viewport_bounds,
+        map_center=map_center,
+        map_radius_km=map_radius_km,
     )
 
     if not raw_candidates:

@@ -1,5 +1,6 @@
 from unittest.mock import AsyncMock, patch
-from app.domains.search.schemas import AIResponseData
+import pytest
+from app.domains.search.schemas import AIResponseData, SearchRecommendRequest
 from app.domains.search.service import SearchService
 
 
@@ -100,6 +101,52 @@ def test_process_recommend_query_success_without_fallback(client):
         # Verify recommend was called with query_vector
         call_kwargs = mock_recommend.call_args
         assert call_kwargs.kwargs.get("query_vector") == [1.0, 2.0, 3.0]
+
+
+@pytest.mark.asyncio
+async def test_process_recommend_query_map_viewport_uses_map_center(db_session):
+    with patch(
+        "app.domains.search.service.recommend",
+        new_callable=AsyncMock,
+    ) as mock_recommend:
+        mock_ai = AsyncMock()
+        restaurant = MockRestaurantModel("1")
+        restaurant.lat = 10.01
+        restaurant.lng = 106.0
+        mock_ai.extract_intent_and_vectorize.return_value = AIResponseData(
+            vector=[1.0, 2.0, 3.0],
+            cleaned_query="mi cay",
+        )
+        mock_recommend.return_value = _mock_recommend_results(
+            results=[restaurant],
+        )
+
+        request = SearchRecommendRequest(
+            query="toi muon an mi cay",
+            lat=20.0,
+            lng=106.0,
+            map_center_lat=10.0,
+            map_center_lng=106.0,
+            map_north=10.05,
+            map_south=9.95,
+            map_east=106.05,
+            map_west=105.95,
+            map_radius_km=2,
+        )
+        response = await SearchService(mock_ai).process_recommend_query(request, db_session)
+
+        assert response.results[0].distance_km < 2
+        assert response.results[0].lat == 10.01
+        assert response.results[0].lng == 106.0
+        assert mock_recommend.call_args.kwargs.get("user_location") == [10.0, 106.0]
+        assert mock_recommend.call_args.kwargs.get("viewport_bounds") == {
+            "north": 10.05,
+            "south": 9.95,
+            "east": 106.05,
+            "west": 105.95,
+        }
+        assert mock_recommend.call_args.kwargs.get("map_center") == [10.0, 106.0]
+        assert mock_recommend.call_args.kwargs.get("map_radius_km") == 2
 
 
 def test_process_recommend_query_budget_no_longer_triggers_memory_fallback(client):
@@ -425,8 +472,6 @@ def test_get_newspaper_menu_router(client):
         assert data["items"][0]["restaurant_name"] == "Quán ăn sáng"
         assert data["items"][0]["suggested_dish_name"] == "Phở Bò"
 
-
-import pytest
 
 @pytest.mark.asyncio
 async def test_get_newspaper_menu_service_logic():
