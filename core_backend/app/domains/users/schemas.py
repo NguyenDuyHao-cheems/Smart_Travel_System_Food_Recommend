@@ -236,5 +236,21 @@ class CollectionResponse(BaseModel):
         from_attributes = True
 
 
+class AddFriendRequest(BaseModel):
+    username: str = Field(..., description="Username of the user to add as a friend")
+
+
+class FriendResponse(BaseModel):
+    friend_id: str
+    username: str
+    full_name: Optional[str] = None
+    avatar_url: Optional[str] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+
 
 

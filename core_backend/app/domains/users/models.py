@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 import uuid
-from sqlalchemy import Column, String, Integer, JSON, DateTime, event, DDL, ForeignKey, Boolean
+from sqlalchemy import Column, String, Integer, JSON, DateTime, event, DDL, ForeignKey, Boolean, UniqueConstraint
 from app.core.database import Base
 from pgvector.sqlalchemy import Vector
 from sqlalchemy.ext.compiler import compiles
@@ -139,4 +139,21 @@ class UserCollectionItem(Base):
     item_type = Column(String, nullable=True)
     note = Column(String, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+
+class UserFriend(Base):
+    """
+    Stores user friend relationships (mutual friendships are stored as A -> B and B -> A).
+    """
+    __tablename__ = "user_friends"
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    friend_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "friend_id", name="uq_user_friend"),
+    )
+
 
