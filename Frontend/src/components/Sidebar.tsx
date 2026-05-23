@@ -14,6 +14,7 @@ import {
   Settings,
   MoreVertical,
   User,
+  MessageSquare,
   Dices,
   Users,
 } from "lucide-react";
@@ -48,6 +49,12 @@ export function Sidebar({
   }, [propUsername, propAvatar]);
 
   const navItems = [
+    {
+      icon: MessageSquare,
+      label: "Bảng tin",
+      active: pathname === "/feed",
+      href: "/feed",
+    },
     {
       icon: Compass,
       label: "Khám phá",

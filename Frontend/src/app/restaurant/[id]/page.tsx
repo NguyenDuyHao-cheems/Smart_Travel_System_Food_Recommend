@@ -399,7 +399,9 @@ export default function RestaurantDetailPage() {
                 </div>
                 {restaurant.price_range && (
                   <div className="flex items-center gap-1">
-                    <span className="w-5 h-5 flex items-center justify-center text-green-400 font-bold text-lg">$</span>
+                    <span className="w-5 h-5 flex items-center justify-center text-green-400">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-banknote"><rect width="20" height="12" x="2" y="6" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/></svg>
+                    </span>
                     <span className="font-medium">{restaurant.price_range}</span>
                   </div>
                 )}
@@ -552,8 +554,14 @@ export default function RestaurantDetailPage() {
                       </motion.div>
                     ))
                   ) : (
-                    <div className="col-span-full py-10 text-center bg-gray-100 dark:bg-[#3D312A]/50 rounded-3xl">
-                      <p className="text-gray-500">Đang cập nhật thực đơn...</p>
+                    <div className="col-span-full py-16 flex flex-col items-center justify-center text-center bg-white dark:bg-[#3D312A] rounded-3xl border border-dashed border-gray-200 dark:border-[#4D3D32]">
+                      <div className="w-20 h-20 mb-4 bg-gray-50 dark:bg-[#2A2420] rounded-full flex items-center justify-center">
+                        <UtensilsCrossed className="w-10 h-10 text-gray-300 dark:text-gray-600" />
+                      </div>
+                      <h4 className="text-lg font-bold text-gray-800 dark:text-[#E6DFD5] mb-2">Chưa có thực đơn</h4>
+                      <p className="text-sm text-gray-500 max-w-sm">
+                        Quán ăn này hiện chưa cung cấp danh sách món ăn chi tiết trên hệ thống. Bạn có thể đến trực tiếp để khám phá nhé!
+                      </p>
                     </div>
                   )}
                 </div>

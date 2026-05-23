@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { X, AlertTriangle, RefreshCw, Sparkles } from "lucide-react";
+import { X, AlertTriangle, RefreshCw, Sparkles, MessageSquare } from "lucide-react";
 import { AppShell } from "../components/AppShell";
 import { UserDropdown } from "../components/UserDropdown";
 import { BudgetSelector, type BudgetOption } from "../components/BudgetSelector";
@@ -467,6 +467,22 @@ function HomeContent() {
                     {t.emoji} {t.title}
                   </button>
                 ))}
+              </div>
+              
+              {/* Feed Banner Button */}
+              <div className="mt-4 w-full max-w-lg">
+                <Link
+                  href="/feed"
+                  className="flex items-center justify-center gap-4 px-6 py-4 bg-gradient-to-r from-brand/90 to-rose-500/90 hover:from-brand hover:to-rose-500 text-white rounded-[24px] shadow-lg shadow-rose-500/20 hover:shadow-xl hover:shadow-rose-500/30 hover:-translate-y-1 transition-all cursor-pointer group border border-white/10"
+                >
+                  <div className="bg-white/20 p-2.5 rounded-xl group-hover:rotate-12 transition-transform">
+                    <MessageSquare className="w-6 h-6 text-white" />
+                  </div>
+                  <div className="text-left">
+                    <div className="font-black text-lg tracking-tight leading-tight">Khám phá Bảng tin 🌟</div>
+                    <div className="text-[13px] text-white/90 font-medium mt-0.5">Tham gia cộng đồng chia sẻ trải nghiệm ẩm thực!</div>
+                  </div>
+                </Link>
               </div>
             </div>
 

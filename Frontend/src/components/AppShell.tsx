@@ -16,16 +16,19 @@ import {
   AlertTriangle,
   MapPin,
   Route,
+  MessageSquare,
   Users,
 } from "lucide-react";
 import { ThemeToggle } from "./ThemeToggle";
 import { UserDropdown } from "./UserDropdown";
+import { NotificationPanel } from "./social/NotificationPanel";
 import { useSelector } from "react-redux";
 import { RootState } from "../store";
 import { LocationModal } from "./LocationModal";
 
 const NAV_ITEMS = [
   { icon: Compass, label: "Khám phá", href: "/" },
+  { icon: MessageSquare, label: "Bảng tin", href: "/feed" },
   { icon: Heart, label: "Yêu thích", href: "/favorites" },
   { icon: Clock, label: "Lịch sử", href: "/history" },
   { icon: FolderOpen, label: "Bộ sưu tập", href: "/collections" },
@@ -183,6 +186,7 @@ export function AppShell({ children, healthStatus = "loading" }: AppShellProps) 
               />
             )}
             <ThemeToggle />
+            <NotificationPanel />
             <UserDropdown />
           </div>
         </div>
