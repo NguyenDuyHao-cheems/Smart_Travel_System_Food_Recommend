@@ -7,6 +7,8 @@ import { PostCard, SocialPost } from '../../../components/social/PostCard';
 import { Loader2, ArrowLeft, Users, UserPlus, UserCheck } from 'lucide-react';
 import { toast } from 'sonner';
 
+const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
 interface PublicProfile {
   id: string;
   username: string;
@@ -38,7 +40,7 @@ export default function PublicProfilePage() {
         }
 
         // Fetch profile
-        const profileRes = await fetch(`http://localhost:8000/api/v1/social/users/${id}/profile`, { headers });
+        const profileRes = await fetch(`${BACKEND_URL}/api/v1/social/users/${id}/profile`, { headers });
         if (!profileRes.ok) {
           if (profileRes.status === 404) {
             toast.error('Người dùng không tồn tại');
@@ -53,7 +55,7 @@ export default function PublicProfilePage() {
         setFollowersCount(profileData.followers_count);
 
         // Fetch posts
-        const postsRes = await fetch(`http://localhost:8000/api/v1/social/users/${id}/posts`, { headers });
+        const postsRes = await fetch(`${BACKEND_URL}/api/v1/social/users/${id}/posts`, { headers });
         if (postsRes.ok) {
           const postsData = await postsRes.json();
           setPosts(postsData);
@@ -81,7 +83,7 @@ export default function PublicProfilePage() {
     setFollowersCount(prev => currentStatus ? prev - 1 : prev + 1);
 
     try {
-      const res = await fetch(`http://localhost:8000/api/v1/social/users/${id}/follow`, {
+      const res = await fetch(`${BACKEND_URL}/api/v1/social/users/${id}/follow`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -98,7 +100,7 @@ export default function PublicProfilePage() {
       }
 
       // Re-fetch chính xác số followers từ server
-      const profileRes = await fetch(`http://localhost:8000/api/v1/social/users/${id}/profile`, {
+      const profileRes = await fetch(`${BACKEND_URL}/api/v1/social/users/${id}/profile`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (profileRes.ok) {
@@ -121,7 +123,7 @@ export default function PublicProfilePage() {
       return;
     }
     try {
-      await fetch(`http://localhost:8000/api/v1/social/posts/${postId}/like`, {
+      await fetch(`${BACKEND_URL}/api/v1/social/posts/${postId}/like`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`

@@ -7,6 +7,8 @@ import { supabase } from '../../lib/supabase';
 import { toast } from 'sonner';
 import { LinkPreview } from './LinkPreview';
 
+const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
 interface QuickCreateBoxProps {
   username?: string | null;
   avatarUrl?: string | null;
@@ -107,7 +109,7 @@ export function QuickCreateBox({ username, avatarUrl, onSubmit }: QuickCreateBox
         }
       }
 
-      let url = `http://localhost:8000/api/v1/restaurants/search?q=${encodeURIComponent(query)}&limit=10`;
+      let url = `${BACKEND_URL}/api/v1/restaurants/search?q=${encodeURIComponent(query)}&limit=10`;
       if (lat && lng) {
         url += `&lat=${lat}&lng=${lng}`;
       }

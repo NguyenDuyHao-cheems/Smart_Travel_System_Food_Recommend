@@ -2,6 +2,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Plus, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+
+const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 import { supabase } from '../../lib/supabase';
 import { StoryViewer } from './StoryViewer';
 import { StoryEditor } from './StoryEditor';
@@ -29,7 +31,7 @@ export function StoryList() {
     setIsLoading(true);
     try {
       const token = localStorage.getItem('access_token');
-      const res = await fetch('http://localhost:8000/api/v1/social/stories', {
+      const res = await fetch(`${BACKEND_URL}/api/v1/social/stories`, {
         headers: { 'Authorization': token ? `Bearer ${token}` : '' }
       });
       if (res.ok) {

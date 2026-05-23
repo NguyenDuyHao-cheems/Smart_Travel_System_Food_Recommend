@@ -5,6 +5,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
 import { toast } from 'sonner';
 
+const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
 interface Story {
   id: string;
   user_id: string;
@@ -92,7 +94,7 @@ export function StoryViewer({ stories, initialIndex, onClose, onDelete }: StoryV
       // Gọi API ngầm
       const token = localStorage.getItem('access_token');
       if (token) {
-        fetch(`http://localhost:8000/api/v1/social/stories/${currentStory.id}/view`, {
+        fetch(`${BACKEND_URL}/api/v1/social/stories/${currentStory.id}/view`, {
           method: 'POST',
           headers: { 
             'Authorization': `Bearer ${token}`,
@@ -172,7 +174,7 @@ export function StoryViewer({ stories, initialIndex, onClose, onDelete }: StoryV
 
     setIsDeleting(true);
     try {
-      const res = await fetch(`http://localhost:8000/api/v1/social/stories/${currentStory.id}`, {
+      const res = await fetch(`${BACKEND_URL}/api/v1/social/stories/${currentStory.id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -200,7 +202,7 @@ export function StoryViewer({ stories, initialIndex, onClose, onDelete }: StoryV
     // Call API
     const token = localStorage.getItem('access_token');
     if (token && currentStory) {
-      fetch(`http://localhost:8000/api/v1/social/stories/${currentStory.id}/view`, {
+      fetch(`${BACKEND_URL}/api/v1/social/stories/${currentStory.id}/view`, {
         method: 'POST',
         headers: { 
           'Authorization': `Bearer ${token}`,
@@ -222,7 +224,7 @@ export function StoryViewer({ stories, initialIndex, onClose, onDelete }: StoryV
     const token = localStorage.getItem('access_token');
     if (token && currentStory) {
       try {
-        const res = await fetch(`http://localhost:8000/api/v1/social/stories/${currentStory.id}/viewers`, {
+        const res = await fetch(`${BACKEND_URL}/api/v1/social/stories/${currentStory.id}/viewers`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         if (res.ok) {

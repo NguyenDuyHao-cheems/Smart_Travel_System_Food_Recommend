@@ -67,7 +67,7 @@ def get_story_viewers(
 def get_feed(
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
-    mode: str = Query("for_you", regex="^(for_you|following)$"),
+    mode: str = Query("for_you", pattern="^(for_you|following)$"),
     db: Session = Depends(get_db),
     current_user: UserAccount = Depends(get_optional_current_user)
 ):

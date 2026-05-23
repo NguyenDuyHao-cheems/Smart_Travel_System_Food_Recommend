@@ -13,6 +13,8 @@ const FEED_TABS = [
   { key: 'following', label: 'Đang theo dõi' },
 ];
 
+const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
 export default function FeedPage() {
   const [posts, setPosts] = useState<SocialPost[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -31,7 +33,7 @@ export default function FeedPage() {
     setIsLoading(true);
     try {
       const token = localStorage.getItem('access_token');
-      const res = await fetch(`http://localhost:8000/api/v1/social/feed?mode=${mode}`, {
+      const res = await fetch(`${BACKEND_URL}/api/v1/social/feed?mode=${mode}`, {
         headers: { 'Authorization': token ? `Bearer ${token}` : '' }
       });
       if (res.ok) {
@@ -68,7 +70,7 @@ export default function FeedPage() {
     }
 
     try {
-      const res = await fetch('http://localhost:8000/api/v1/social/posts', {
+      const res = await fetch(`${BACKEND_URL}/api/v1/social/posts`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

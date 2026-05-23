@@ -2,6 +2,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, UserPlus, UserCheck, Loader2, X } from 'lucide-react';
 
+const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
 interface UserResult {
   id: string;
   username: string;
@@ -36,7 +38,7 @@ export function UserSearchPanel() {
     try {
       const token = localStorage.getItem('access_token');
       const res = await fetch(
-        `http://localhost:8000/api/v1/social/users/search?q=${encodeURIComponent(q)}`,
+        `${BACKEND_URL}/api/v1/social/users/search?q=${encodeURIComponent(q)}`,
         { headers: { Authorization: token ? `Bearer ${token}` : '' } }
       );
       if (res.ok) setResults(await res.json());
@@ -50,7 +52,7 @@ export function UserSearchPanel() {
     // Optimistic
     setFollowingState(prev => ({ ...prev, [userId]: !prev[userId] }));
     try {
-      await fetch(`http://localhost:8000/api/v1/social/users/${userId}/follow`, {
+      await fetch(`${BACKEND_URL}/api/v1/social/users/${userId}/follow`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       });

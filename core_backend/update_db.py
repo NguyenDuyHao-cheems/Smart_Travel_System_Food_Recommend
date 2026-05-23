@@ -18,12 +18,54 @@ def update_schema():
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url VARCHAR;",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS cover_url VARCHAR;",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_stats JSON;",
+        """CREATE TABLE IF NOT EXISTS social_posts (
+            id VARCHAR PRIMARY KEY,
+            user_id VARCHAR NOT NULL REFERENCES users(id),
+            content TEXT,
+            mood VARCHAR,
+            media_urls JSONB,
+            res_id VARCHAR REFERENCES restaurants(id),
+            parent_id VARCHAR REFERENCES social_posts(id),
+            likes_count INTEGER DEFAULT 0,
+            replies_count INTEGER DEFAULT 0,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );""",
+        """CREATE TABLE IF NOT EXISTS social_follows (
+            follower_id VARCHAR NOT NULL REFERENCES users(id),
+            following_id VARCHAR NOT NULL REFERENCES users(id),
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (follower_id, following_id)
+        );""",
+        """CREATE TABLE IF NOT EXISTS social_likes (
+            user_id VARCHAR NOT NULL REFERENCES users(id),
+            post_id VARCHAR NOT NULL REFERENCES social_posts(id) ON DELETE CASCADE,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (user_id, post_id)
+        );""",
+        """CREATE TABLE IF NOT EXISTS social_notifications (
+            id VARCHAR PRIMARY KEY,
+            user_id VARCHAR NOT NULL REFERENCES users(id),
+            actor_id VARCHAR NOT NULL REFERENCES users(id),
+            type VARCHAR NOT NULL,
+            post_id VARCHAR REFERENCES social_posts(id) ON DELETE CASCADE,
+            is_read BOOLEAN DEFAULT FALSE,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );""",
         """CREATE TABLE IF NOT EXISTS social_stories (
             id VARCHAR PRIMARY KEY,
             user_id VARCHAR NOT NULL REFERENCES users(id),
             media_url VARCHAR NOT NULL,
-            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-            expires_at TIMESTAMP WITH TIME ZONE NOT NULL
+            overlays JSONB DEFAULT '[]'::jsonb,
+            expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+            views_count INTEGER DEFAULT 0,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );""",
+        """CREATE TABLE IF NOT EXISTS social_story_views (
+            id SERIAL PRIMARY KEY,
+            story_id VARCHAR NOT NULL REFERENCES social_stories(id) ON DELETE CASCADE,
+            user_id VARCHAR NOT NULL REFERENCES users(id),
+            reaction VARCHAR,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
         );"""
     ]
     

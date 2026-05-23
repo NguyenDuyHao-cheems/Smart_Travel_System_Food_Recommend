@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from typing import List, Optional
 from datetime import datetime
 
@@ -31,8 +31,7 @@ class SocialPostResponse(BaseModel):
     restaurant_name: Optional[str] = None
     restaurant_image_url: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class SocialNotificationResponse(BaseModel):
     id: str
@@ -45,8 +44,7 @@ class SocialNotificationResponse(BaseModel):
     is_read: bool
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class PublicUserProfileResponse(BaseModel):
     id: str
@@ -83,8 +81,7 @@ class StoryResponse(BaseModel):
     full_name: Optional[str] = None
     avatar_url: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class StoryViewCreate(BaseModel):
     reaction: Optional[str] = None

@@ -18,6 +18,8 @@ import { vi } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { LinkPreview } from './LinkPreview';
 
+const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
 export interface SocialPost {
   id: string;
   user_id: string;
@@ -114,7 +116,7 @@ export function PostCard({ post, onLikeToggle, onDelete }: PostCardProps) {
     setLikesCount(prev => isLiked ? prev - 1 : prev + 1);
     if (onLikeToggle) onLikeToggle(post.id, isLiked);
     // Fire API
-    fetch(`http://localhost:8000/api/v1/social/posts/${post.id}/like`, {
+    fetch(`${BACKEND_URL}/api/v1/social/posts/${post.id}/like`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}` }
     }).catch(() => {});
@@ -123,7 +125,7 @@ export function PostCard({ post, onLikeToggle, onDelete }: PostCardProps) {
   const handleDelete = async () => {
     const token = localStorage.getItem('access_token');
     try {
-      const res = await fetch(`http://localhost:8000/api/v1/social/posts/${post.id}`, {
+      const res = await fetch(`${BACKEND_URL}/api/v1/social/posts/${post.id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -155,7 +157,7 @@ export function PostCard({ post, onLikeToggle, onDelete }: PostCardProps) {
     setIsLoadingComments(true);
     try {
       const token = localStorage.getItem('access_token');
-      const res = await fetch(`http://localhost:8000/api/v1/social/posts/${post.id}/thread`, {
+      const res = await fetch(`${BACKEND_URL}/api/v1/social/posts/${post.id}/thread`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
       if (res.ok) setComments(await res.json());
@@ -176,7 +178,7 @@ export function PostCard({ post, onLikeToggle, onDelete }: PostCardProps) {
 
     setIsSendingComment(true);
     try {
-      const res = await fetch('http://localhost:8000/api/v1/social/posts', {
+      const res = await fetch(`${BACKEND_URL}/api/v1/social/posts`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

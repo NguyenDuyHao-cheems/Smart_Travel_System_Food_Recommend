@@ -6,6 +6,8 @@ import { createPortal } from 'react-dom';
 import { toast } from 'sonner';
 import { supabase } from '../../lib/supabase';
 
+const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
 interface OverlayText {
   id: string;
   text: string;
@@ -99,7 +101,7 @@ export function StoryEditor({ file, onClose, onSuccess }: StoryEditorProps) {
         y: positionsRef.current[o.id]?.y || 0
       }));
 
-      const res = await fetch('http://localhost:8000/api/v1/social/stories', {
+      const res = await fetch(`${BACKEND_URL}/api/v1/social/stories`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

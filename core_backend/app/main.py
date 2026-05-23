@@ -11,7 +11,6 @@ import app.domains.social.models
 
 # ── Create tables on startup (SQLite / Postgres compatible) ──────────────────
 UserBase.metadata.create_all(bind=engine)
-print('TABLES:', Base.metadata.tables.keys())
 Base.metadata.create_all(bind=engine)
 
 import asyncio

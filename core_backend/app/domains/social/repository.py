@@ -28,7 +28,7 @@ class SocialRepository:
             # Only show posts from people user follows (exclude own posts)
             following_ids = self.db.query(SocialFollow.following_id).filter(
                 SocialFollow.follower_id == user_id_str
-            ).subquery()
+            )
             
             query = query.filter(
                 SocialPost.user_id.in_(following_ids)
@@ -173,7 +173,7 @@ class SocialRepository:
         # Get stories from users I follow, plus my own stories, which haven't expired
         following_ids = self.db.query(SocialFollow.following_id).filter(
             SocialFollow.follower_id == user_id
-        ).subquery()
+        )
 
         return (
             self.db.query(SocialStory, UserAccount)

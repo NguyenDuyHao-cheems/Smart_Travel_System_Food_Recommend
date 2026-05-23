@@ -4,6 +4,8 @@ import { Bell, BellDot, Heart, MessageCircle, UserPlus, X, Check } from 'lucide-
 import { formatDistanceToNow } from 'date-fns';
 import { vi } from 'date-fns/locale';
 
+const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
 interface Notification {
   id: string;
   type: 'like' | 'reply' | 'follow';
@@ -34,7 +36,7 @@ export function NotificationPanel() {
   const fetchUnread = useCallback(async () => {
     if (!token) return;
     try {
-      const res = await fetch('http://localhost:8000/api/v1/social/notifications/unread-count', {
+      const res = await fetch(`${BACKEND_URL}/api/v1/social/notifications/unread-count`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
@@ -47,7 +49,7 @@ export function NotificationPanel() {
   const fetchNotifications = async () => {
     if (!token) return;
     try {
-      const res = await fetch('http://localhost:8000/api/v1/social/notifications', {
+      const res = await fetch(`${BACKEND_URL}/api/v1/social/notifications`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) setNotifications(await res.json());
@@ -57,7 +59,7 @@ export function NotificationPanel() {
   const markAllRead = async () => {
     if (!token) return;
     try {
-      await fetch('http://localhost:8000/api/v1/social/notifications/mark-read', {
+      await fetch(`${BACKEND_URL}/api/v1/social/notifications/mark-read`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       });
