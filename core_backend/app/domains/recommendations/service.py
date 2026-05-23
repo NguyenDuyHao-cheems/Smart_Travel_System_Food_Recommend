@@ -243,3 +243,273 @@ class RecommendationService:
             
         return results
 
+    @staticmethod
+    async def get_group_recommendations(
+        user: UserAccount,
+        friend_ids: list[str],
+        lat: float,
+        lng: float,
+        limit: int,
+        db: Session,
+        budget: int | None = None,
+        radius: float = 5.0
+    ) -> dict:
+        from app.domains.users.models import UserFriend, UserOnboarding
+        from app.services.ai_client import embed_text
+        from app.services.allergy_filter import (
+            filter_allergy,
+            fetch_allergen_map,
+        )
+
+        # 1. Verify friend_ids are actual friends of user
+        verified_friend_ids = []
+        if friend_ids:
+            friends = db.query(UserFriend.friend_id).filter(
+                UserFriend.user_id == str(user.id),
+                UserFriend.friend_id.in_(friend_ids)
+            ).all()
+            verified_friend_ids = [f[0] for f in friends]
+
+        all_member_ids = [str(user.id)] + verified_friend_ids
+
+        # 2. Gather profiles
+        member_accounts = db.query(UserAccount).filter(UserAccount.id.in_(all_member_ids)).all()
+        member_onboardings = db.query(UserOnboarding).filter(UserOnboarding.user_id.in_(all_member_ids)).all()
+
+        accounts_map = {str(acc.id): acc for acc in member_accounts}
+        onboardings_map = {str(onb.user_id): onb for onb in member_onboardings}
+
+        # 3. Aggregate constraints
+        group_is_vegetarian = False
+        group_allergies = set()
+
+        for member_id in all_member_ids:
+            onb = onboardings_map.get(member_id)
+            if onb:
+                if getattr(onb, "is_vegetarian", False):
+                    group_is_vegetarian = True
+                if onb.allergies:
+                    onb_allg = onb.allergies
+                    if isinstance(onb_allg, str):
+                        onb_allg = [a.strip() for a in onb_allg.split(",")]
+                    for item in onb_allg:
+                        if item:
+                            group_allergies.add(item.strip().lower())
+
+            acc = accounts_map.get(member_id)
+            if acc and acc.allergies:
+                acc_allg = acc.allergies
+                if isinstance(acc_allg, str):
+                    acc_allg = [a.strip() for a in acc_allg.split(",")]
+                for item in acc_allg:
+                    if item:
+                        group_allergies.add(item.strip().lower())
+
+        # 4. Resolve preference vectors
+        vectors = []
+        for member_id in all_member_ids:
+            vec = None
+            acc = accounts_map.get(member_id)
+            if acc and acc.preferences_vector is not None:
+                vec = list(acc.preferences_vector)
+            
+            if vec is None:
+                onb = onboardings_map.get(member_id)
+                if onb and onb.preferences_vector is not None:
+                    vec = list(onb.preferences_vector)
+
+            # Cold-start handling: generate temporary vector from favorite dishes
+            if vec is None:
+                onb = onboardings_map.get(member_id)
+                if onb and onb.favorite_dishes:
+                    fav_dishes = onb.favorite_dishes
+                    if isinstance(fav_dishes, str):
+                        fav_dishes = [d.strip() for d in fav_dishes.split(",") if d.strip()]
+                    if isinstance(fav_dishes, list) and fav_dishes:
+                        dishes_str = ", ".join(fav_dishes)
+                        try:
+                            temp_vec = await embed_text(dishes_str)
+                            if temp_vec and len(temp_vec) == 768:
+                                vec = temp_vec
+                        except Exception as e:
+                            import logging
+                            logging.getLogger(__name__).warning(f"Error embedding cold start dishes for user {member_id}: {e}")
+
+            if vec is not None:
+                vectors.append(vec)
+
+        # Compute average vector
+        average_vector = None
+        if vectors:
+            dim = len(vectors[0])
+            average_vector = []
+            for i in range(dim):
+                average_vector.append(sum(v[i] for v in vectors) / len(vectors))
+
+        # 5. Perform query
+        # Retrieve candidates in a dynamic loop over expanding bounding box ranges.
+        # This prioritizes local restaurants first while ensuring a safe candidate pool size (>= 40)
+        # to satisfy the "Minimum 16 results" requirement after applying allergy filters.
+        budget_expr = None
+        if budget and budget > 0:
+            from sqlalchemy import cast, func, Integer, case, or_, and_
+            raw_min_price_str = case(
+                (RestaurantModel.price_range.contains("-"), func.split_part(RestaurantModel.price_range, "-", 1)),
+                else_=RestaurantModel.price_range,
+            )
+            raw_max_price_str = case(
+                (RestaurantModel.price_range.contains("-"), func.split_part(RestaurantModel.price_range, "-", 2)),
+                else_=RestaurantModel.price_range,
+            )
+            
+            clean_min_price_str = func.regexp_replace(raw_min_price_str, r'\D', '', 'g')
+            clean_max_price_str = func.regexp_replace(raw_max_price_str, r'\D', '', 'g')
+            
+            clean_min_price_int = func.coalesce(cast(func.nullif(clean_min_price_str, ''), Integer), 0)
+            clean_max_price_int = func.coalesce(cast(func.nullif(clean_max_price_str, ''), Integer), 0)
+
+            budget_expr = or_(
+                and_(clean_min_price_int == 0, clean_max_price_int == 0),
+                clean_min_price_int <= budget,
+                clean_max_price_int <= budget,
+            )
+
+        raw_candidates = []
+        is_global_fallback = False
+        steps = [0.15, 0.3, 0.6, 1.0]
+        max_lat_range = radius / 111.0
+        max_lng_range = radius / 109.0
+
+        for factor in steps:
+            lat_val = max_lat_range * factor
+            lng_val = max_lng_range * factor
+            base_query = db.query(RestaurantModel).filter(
+                RestaurantModel.lat.between(lat - lat_val, lat + lat_val),
+                RestaurantModel.lng.between(lng - lng_val, lng + lng_val),
+                RestaurantModel.is_active == True
+            )
+
+            # Apply hard vegetarian filter
+            if group_is_vegetarian:
+                base_query = base_query.filter(RestaurantModel.is_vegetarian == True)
+
+            # Apply budget filter
+            if budget_expr is not None:
+                base_query = base_query.filter(budget_expr)
+
+            if average_vector:
+                temp_candidates = base_query.order_by(
+                    RestaurantModel.embedding_vector.cosine_distance(average_vector)
+                ).limit(150).all()
+            else:
+                temp_candidates = base_query.filter(
+                    RestaurantModel.rating_avg.isnot(None),
+                    RestaurantModel.total_reviews > 5
+                ).order_by(
+                    desc(RestaurantModel.rating_avg),
+                    desc(RestaurantModel.total_reviews)
+                ).limit(150).all()
+
+            if len(temp_candidates) >= 40:
+                raw_candidates = temp_candidates
+                break
+            else:
+                raw_candidates = temp_candidates
+
+        # Fallback globally if no restaurants within bounding box
+        if not raw_candidates:
+            is_global_fallback = True
+            fallback_query = db.query(RestaurantModel).filter(
+                RestaurantModel.is_active == True
+            )
+            if group_is_vegetarian:
+                fallback_query = fallback_query.filter(RestaurantModel.is_vegetarian == True)
+            if budget_expr is not None:
+                fallback_query = fallback_query.filter(budget_expr)
+
+            raw_candidates = fallback_query.filter(
+                RestaurantModel.rating_avg.isnot(None),
+                RestaurantModel.total_reviews > 5
+            ).order_by(
+                desc(RestaurantModel.rating_avg),
+                desc(RestaurantModel.total_reviews)
+            ).limit(150).all()
+
+        # 6. Apply hard allergy filter
+        safe_candidates = raw_candidates
+        applied_allergies_list = list(group_allergies)
+        if applied_allergies_list:
+            restaurant_ids = [c.id for c in raw_candidates]
+            allergen_map = fetch_allergen_map(db, restaurant_ids)
+            safe_candidates, removed_candidates = filter_allergy(
+                candidates=raw_candidates,
+                user_allergies=applied_allergies_list,
+                allergen_map=allergen_map
+            )
+
+        # 7. Formulate RecommendResult
+        results = []
+        for idx, model in enumerate(safe_candidates):
+            lat2, lng2 = float(model.lat or 0), float(model.lng or 0)
+            R = 6371.0
+            p1, p2 = math.radians(lat), math.radians(lat2)
+            dp, dl = math.radians(lat2 - lat), math.radians(lng2 - lng)
+            a = math.sin(dp / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
+            dist_km = R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+
+            if dist_km > radius and not is_global_fallback:
+                continue
+
+            price_str = model.price_range or ""
+            if price_str:
+                try:
+                    parts = price_str.split("-")
+                    formatted = [f"{int(p.strip()) // 1000}k" for p in parts if p.strip().isdigit()]
+                    price_display = " - ".join(formatted) or price_str
+                except Exception:
+                    price_display = price_str
+            else:
+                price_display = "Liên hệ"
+
+            rating_display = str(model.rating_avg) if model.rating_avg else "Mới"
+            if getattr(model, 'total_reviews', 0) in (0, None):
+                rating_display = "Chưa có đánh giá"
+
+            match_str = "95%" if average_vector else "Thịnh Hành"
+
+            reason = []
+            if dist_km < 2.0:
+                reason.append("Rất gần nhóm")
+            if model.rating_avg and model.rating_avg >= 4.5:
+                reason.append("Đánh giá xuất sắc")
+            reason_str = " · ".join(reason) if reason else ("Phù hợp với nhóm" if average_vector else "Quán ăn nổi bật")
+
+            res = RecommendResult(
+                id=str(model.id),
+                name=model.name or "Không rõ tên",
+                match=match_str,
+                dist=f"{dist_km:.1f} km",
+                distance_km=round(dist_km, 2),
+                lat=float(model.lat) if model.lat is not None else None,
+                lng=float(model.lng) if model.lng is not None else None,
+                price=price_display,
+                rating=rating_display,
+                reason=reason_str,
+                img=model.image_url or "/images/default_food.jpg",
+                total_reviews=getattr(model, "total_reviews", 0) or 0,
+                google_maps_url=getattr(model, "google_maps_url", None),
+                allergen_warning=None,
+                is_vegetarian=getattr(model, "is_vegetarian", False) or False
+            )
+            results.append(res)
+
+        final_results = results[:limit]
+
+        return {
+            "results": final_results,
+            "group_size": len(all_member_ids),
+            "applied_vegetarian_filter": group_is_vegetarian,
+            "applied_allergies": applied_allergies_list
+        }
+
+
