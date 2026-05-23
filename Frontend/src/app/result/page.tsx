@@ -16,6 +16,8 @@ import {
   Home,
   X,
   Route,
+  SlidersHorizontal,
+  RotateCcw,
 } from 'lucide-react';
 import { AppShell } from '../../components/AppShell';
 import { LoadingState } from '../../components/ui/LoadingState';
@@ -36,7 +38,6 @@ import { RootState } from '../../store';
 import { addItem, removeItem } from '../../store/slices/itinerarySlice';
 import { SortSelector, type SortOption } from '../../components/SortSelector';
 import { AdvancedFilters, type AdvancedFilterState } from '../../components/AdvancedFilters';
-import { TagFilter } from '../../components/TagFilter';
 
 export interface AllergenDishWarning {
   dish_name: string;
@@ -682,15 +683,23 @@ function ResultPageContent() {
     }
     return [];
   });
-  const [sortBy, setSortBy] = useState<SortOption>('recommend');
+const [sortBy, setSortBy] = useState<SortOption>('recommend');
   const [advFilters, setAdvFilters] = useState<AdvancedFilterState>({
     minPrice: null,
     maxPrice: null,
     minRating: null,
     vegetarianOnly: false,
   });
-  const [apiError, setApiError] = useState<string | null>(null);
+  const [isAdvancedFiltersOpen, setIsAdvancedFiltersOpen] = useState(false);
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const activeAdvFilterCount = [
+    advFilters.minPrice !== null || advFilters.maxPrice !== null,
+    advFilters.minRating !== null,
+    advFilters.vegetarianOnly,
+    selectedTag !== null,
+  ].filter(Boolean).length;
+  const hasActiveAdvFilters = activeAdvFilterCount > 0;
+  const [apiError, setApiError] = useState<string | null>(null);
 
   // Tự động thu thập tất cả tag duy nhất có trong kết quả trả về từ API
   const availableTags = useMemo(() => {
@@ -952,7 +961,8 @@ function ResultPageContent() {
       {isSearching && <SearchLoadingOverlay message={searchLoadingMsg} />}
 
       <div className="border-b border-[#E6DFD5]/60 dark:border-[#3D312A]/60 bg-[#FDFBF7]/80 dark:bg-[#2A2420]/80 backdrop-blur-sm">
-        <div className="max-w-7xl mx-auto px-4 md:px-8 py-4 flex flex-col gap-4">
+        <div className="max-w-7xl mx-auto px-4 md:px-8 py-4 flex flex-col gap-3">
+          {/* Row 1: Budget and Distance Filters */}
           <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
             <BudgetSelector
               value={budget}
@@ -969,35 +979,77 @@ function ResultPageContent() {
               totalCount={mounted ? results.length : 0}
               filteredCount={mounted ? displayResults.length : 0}
             />
-            <div className="hidden md:block h-6 w-px bg-gray-200 dark:bg-[#4D3D32]" />
+          </div>
+
+          <div className="h-px bg-gray-200/50 dark:bg-[#3D312A]/50" />
+
+          {/* Row 2: Sort Selector */}
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
             <SortSelector
               value={sortBy}
               onChange={setSortBy}
               hasCoordinates={mounted ? !!coords : false}
             />
           </div>
-          <div className="h-px bg-gray-100 dark:bg-[#4D3D32]/40" />
-          <AdvancedFilters
-            filters={advFilters}
-            onChange={setAdvFilters}
-            totalCount={mounted ? results.length : 0}
-            filteredCount={mounted ? displayResults.length : 0}
-          />
-          {mounted && availableTags.length > 0 && (
-            <>
-              <div className="h-px bg-gray-100 dark:bg-[#4D3D32]/40" />
-              <TagFilter
-                tags={availableTags}
-                selectedTag={selectedTag}
-                onSelect={setSelectedTag}
-              />
-            </>
-          )}
+
+          <div className="h-px bg-gray-200/50 dark:bg-[#3D312A]/50" />
+
+          {/* Row 3: Advanced Filter Toggle Button and Reset */}
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setIsAdvancedFiltersOpen(prev => !prev)}
+              className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-semibold border transition-all duration-200 cursor-pointer ${
+                isAdvancedFiltersOpen || hasActiveAdvFilters
+                  ? 'bg-brand-muted dark:bg-brand/10 border-brand/40 dark:border-brand/30 text-brand-hover dark:text-[#E6DFD5] shadow-sm shadow-brand/5 dark:shadow-none'
+                  : 'bg-white dark:bg-[#3D312A] border-gray-200 dark:border-[#4D3D32] text-gray-600 dark:text-[#9A8A7A] hover:border-brand/70 hover:text-brand-hover'
+              }`}
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5" />
+              Bộ lọc nâng cao
+              {activeAdvFilterCount > 0 && (
+                <span className="bg-brand text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-bold ml-0.5">
+                  {activeAdvFilterCount}
+                </span>
+              )}
+            </button>
+            {hasActiveAdvFilters && (
+              <button
+                type="button"
+                onClick={() => {
+                  setAdvFilters({ minPrice: null, maxPrice: null, minRating: null, vegetarianOnly: false });
+                  setSelectedTag(null);
+                }}
+                className="inline-flex items-center gap-1 text-[11px] font-bold text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 px-2.5 py-1 rounded-lg transition-all"
+              >
+                <RotateCcw className="w-3 h-3" />
+                Đặt lại
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 md:py-12 w-full">
-        <AnimatePresence mode="wait">
+      <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 md:py-12 w-full flex flex-col lg:flex-row gap-0 lg:gap-8 items-start">
+        {/* Left Sidebar for Filters (Collapsible) */}
+        <div className={`transition-all duration-300 overflow-hidden flex-shrink-0 ${isAdvancedFiltersOpen ? 'w-full lg:w-[320px] opacity-100 mb-8 lg:mb-0' : 'w-0 opacity-0 h-0 lg:h-auto'}`}>
+          <div className="lg:sticky lg:top-24 w-full lg:w-[320px]">
+            <AdvancedFilters
+              filters={advFilters}
+              onChange={setAdvFilters}
+              totalCount={mounted ? results.length : 0}
+              filteredCount={mounted ? displayResults.length : 0}
+              availableTags={mounted ? availableTags : []}
+              selectedTag={selectedTag}
+              onTagSelect={setSelectedTag}
+              isOpen={true} // The component itself is always 'open' visually, the container hides it
+            />
+          </div>
+        </div>
+
+        {/* Right Content for Results */}
+        <div className="flex-1 min-w-0 w-full transition-all duration-300">
+          <AnimatePresence mode="wait">
           {(!mounted || isLoading) ? (
             <LoadingState
               searchQuery={searchQuery}
@@ -1148,7 +1200,8 @@ function ResultPageContent() {
               )}
             </motion.div>
           )}
-        </AnimatePresence>
+          </AnimatePresence>
+        </div>
       </div>
       <AddToCollectionModal
         isOpen={!!collectionModalItem}
