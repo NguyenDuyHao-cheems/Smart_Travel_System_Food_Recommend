@@ -7,7 +7,7 @@ from cachetools import TTLCache
 from app.core.dependencies import get_db, get_optional_current_user, get_current_user
 from app.domains.users.models import UserAccount
 from app.domains.search.schemas import RecommendResult
-from .schemas import HomeRecommendationResponse
+from .schemas import HomeRecommendationResponse, GroupRecommendationRequest, GroupRecommendationResponse
 from .service import RecommendationService
 from app.services.ai_client import get_ai_client
 
@@ -104,4 +104,38 @@ async def get_personalized_recommendations(
         lat=lat,
         lng=lng
     )
+
+
+@router.post("/recommendations/group", response_model=GroupRecommendationResponse)
+async def get_group_recommendations(
+    request: GroupRecommendationRequest,
+    current_user: UserAccount = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Lấy gợi ý quán ăn nhóm dựa trên danh sách bạn bè được chọn.
+    Tự động gộp ràng buộc ăn chay / dị ứng và trung bình hóa vector sở thích.
+    """
+    try:
+        res = await RecommendationService.get_group_recommendations(
+            user=current_user,
+            friend_ids=request.friend_ids,
+            lat=request.lat,
+            lng=request.lng,
+            limit=request.limit,
+            budget=request.budget,
+            radius=request.radius,
+            db=db
+        )
+        return GroupRecommendationResponse(
+            results=res["results"],
+            group_size=res["group_size"],
+            applied_vegetarian_filter=res["applied_vegetarian_filter"],
+            applied_allergies=res["applied_allergies"]
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Lỗi khi tính toán gợi ý nhóm: {str(e)}"
+        )
 

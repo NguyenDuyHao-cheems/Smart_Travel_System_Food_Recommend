@@ -27,7 +27,9 @@ import {
   Pencil,
   X,
   Sparkles,
-  Heart
+  Heart,
+  Copy,
+  Check
 } from "lucide-react";
 import { AppShell } from "../../components/AppShell";
 
@@ -84,7 +86,7 @@ export default function SettingsPage() {
           }
         }
       } catch (err) {
-        console.error("Profile refresh failed:", err);
+        console.warn("Profile refresh failed:", err);
       }
     };
     fetchProfile();
@@ -348,6 +350,16 @@ function AccountSettings({
   const [showPasswordModal, setShowPasswordModal] = React.useState(false);
   const [showDeleteModal, setShowDeleteModal] = React.useState(false);
   const [passwords, setPasswords] = React.useState({ old: "", new: "", confirm: "" });
+  const [copied, setCopied] = React.useState(false);
+
+  const handleCopyId = () => {
+    if (typeof window !== 'undefined' && userId) {
+      navigator.clipboard.writeText(userId);
+      setCopied(true);
+      toast.success("Đã sao chép User ID!");
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
 
   // Circular Crop & Edit Image State
   const [showCropModal, setShowCropModal] = React.useState(false);
@@ -1589,6 +1601,27 @@ function AccountSettings({
                 <Lock className="absolute right-5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               </div>
             </div>
+            <div>
+              <label className="text-[13px] font-bold text-gray-400 uppercase tracking-wider block mb-2">
+                User ID
+              </label>
+              <div className="flex gap-2">
+                <input 
+                  type="text" 
+                  value={userId}
+                  readOnly
+                  className="flex-1 bg-gray-100/50 dark:bg-[#3D312A]/50 border border-gray-100 dark:border-[#4D3D32] rounded-2xl px-5 py-3.5 text-sm font-medium text-gray-400 cursor-default select-all"
+                />
+                <button 
+                  type="button"
+                  onClick={handleCopyId}
+                  className="px-5 py-2 bg-brand/10 hover:bg-brand/20 dark:bg-brand/20 dark:hover:bg-brand/35 text-brand dark:text-[#E8735A] text-xs font-bold rounded-2xl transition-all shadow-sm active:scale-95 cursor-pointer flex-shrink-0 flex items-center justify-center gap-1.5 border border-brand/20"
+                >
+                  {copied ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
+                  {copied ? "Đã chép" : "Sao chép"}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -1856,7 +1889,7 @@ function PersonalizationSettings() {
           });
         }
       } catch (err) {
-        console.error(err);
+        console.warn("Failed to fetch preferences:", err);
       } finally {
         setLoading(false);
       }
