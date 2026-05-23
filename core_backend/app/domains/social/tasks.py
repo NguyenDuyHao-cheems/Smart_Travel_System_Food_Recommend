@@ -38,10 +38,11 @@ def cleanup_expired_stories():
                     parts = story.media_url.split('/public/social_media/')
                     if len(parts) == 2:
                         file_path = parts[1]
-                        delete_url = f"{settings.SUPABASE_URL}/storage/v1/object/social_media/{file_path}"
+                        delete_url = f"{settings.SUPABASE_URL}/storage/v1/object/social_media"
+                        payload = {"prefixes": [file_path]}
                         
-                        # Request Supabase to delete the file
-                        res = client.delete(delete_url, headers=headers)
+                        # Request Supabase to delete the file (bulk delete API)
+                        res = client.request("DELETE", delete_url, headers=headers, json=payload)
                         if res.status_code in (200, 204):
                             print(f"Successfully deleted {file_path} from Supabase.")
                         else:
@@ -58,3 +59,8 @@ def cleanup_expired_stories():
         print(f"Critical error in story cleanup task: {e}")
     finally:
         db.close()
+
+if __name__ == "__main__":
+    print("Manual execution: cleanup_expired_stories()")
+    cleanup_expired_stories()
+    print("Finished execution.")
