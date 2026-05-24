@@ -25,6 +25,7 @@ import {
   UtensilsCrossed,
   MapPin
 } from "lucide-react";
+import { useLanguage } from "../../components/LanguageProvider";
 
 interface GroupRecommendationResponse {
   results: RecommendResult[];
@@ -35,6 +36,7 @@ interface GroupRecommendationResponse {
 
 export default function GroupRecommendPage() {
   const router = useRouter();
+  const { t, language } = useLanguage();
   
   // App states
   const [userId, setUserId] = useState<string | null>(null);
@@ -75,7 +77,7 @@ export default function GroupRecommendPage() {
   useEffect(() => {
     const storedUserId = localStorage.getItem("user_id");
     if (!storedUserId) {
-      toast.error("Vui lòng đăng nhập để sử dụng tính năng gợi ý nhóm");
+      toast.error(t("groupRecommend.pleaseLogin"));
       router.push("/auth");
       return;
     }
@@ -120,14 +122,14 @@ export default function GroupRecommendPage() {
         setFriends(data);
       } catch (err: any) {
         console.error("Lỗi khi tải bạn bè:", err);
-        toast.error(err.message || "Không thể tải danh sách bạn bè");
+        toast.error(err.message || t("groupRecommend.cantLoadFriends"));
       } finally {
         setLoadingFriends(false);
       }
     };
 
     loadFriends();
-  }, [router]);
+  }, [router, t]);
 
   // Sync states to localStorage on change
   useEffect(() => {
@@ -167,12 +169,12 @@ export default function GroupRecommendPage() {
 
   const handleGetGroupRecommendations = async () => {
     if (selectedFriendIds.length === 0) {
-      toast.error("Vui lòng chọn ít nhất 1 người bạn đi cùng!");
+      toast.error(t("groupRecommend.selectFriendPrompt"));
       return;
     }
 
     if (!searchCoords) {
-      toast.error("Vui lòng định vị vị trí hiện tại của bạn hoặc chọn vùng trên bản đồ để tìm quán lân cận!");
+      toast.error(t("groupRecommend.selectLocationPrompt"));
       return;
     }
 
@@ -201,7 +203,7 @@ export default function GroupRecommendPage() {
       });
 
       if (response.status === 401) {
-        toast.error("Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.");
+        toast.error(t("groupRecommend.sessionExpired"));
         localStorage.removeItem("access_token");
         localStorage.removeItem("user_id");
         router.push("/auth");
@@ -210,7 +212,7 @@ export default function GroupRecommendPage() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.detail || "Không thể lấy gợi ý nhóm");
+        throw new Error(errorData.detail || t("groupRecommend.fetchError"));
       }
 
       const data: GroupRecommendationResponse = await response.json();
@@ -223,10 +225,10 @@ export default function GroupRecommendPage() {
         radius: radius,
       });
       setHasSearched(true);
-      toast.success("Đã tìm thấy các gợi ý phù hợp cho nhóm của bạn!");
+      toast.success(t("groupRecommend.recsFound"));
     } catch (err: any) {
       console.error(err);
-      toast.error(err.message || "Có lỗi xảy ra khi tính toán gợi ý");
+      toast.error(err.message || t("groupRecommend.calcError"));
     } finally {
       setRecLoading(false);
     }
@@ -239,10 +241,10 @@ export default function GroupRecommendPage() {
         <div>
           <h1 className="text-3xl font-black text-[#3D312A] dark:text-[#E6DFD5] flex items-center gap-3">
             <Sparkles className="w-8 h-8 text-brand dark:text-[#E8735A]" />
-            Gợi ý nhóm
+            {t("groupRecommend.title")}
           </h1>
           <p className="text-gray-500 dark:text-[#9A8A7A] mt-2">
-            Tìm kiếm quán ăn tối ưu nhất cho nhóm bằng cách gộp sở thích và tự động áp dụng các ràng buộc ăn chay/dị ứng của tất cả thành viên.
+            {t("groupRecommend.desc")}
           </p>
         </div>
 
@@ -256,14 +258,14 @@ export default function GroupRecommendPage() {
               <div className="flex justify-between items-center mb-4">
                 <div className="flex items-center gap-2">
                   <Users className="w-5 h-5 text-brand dark:text-[#E8735A]" />
-                  <h2 className="font-bold text-[#3D312A] dark:text-[#E6DFD5] text-lg">Chọn thành viên</h2>
+                  <h2 className="font-bold text-[#3D312A] dark:text-[#E6DFD5] text-lg">{t("groupRecommend.selectMembers")}</h2>
                 </div>
                 {friends.length > 0 && (
                   <button
                     onClick={selectAllFriends}
                     className="text-xs font-bold text-brand dark:text-[#E8735A] hover:underline cursor-pointer"
                   >
-                    {selectedFriendIds.length === friends.length ? "Bỏ chọn tất cả" : "Chọn tất cả"}
+                    {selectedFriendIds.length === friends.length ? t("groupRecommend.deselectAll") : t("groupRecommend.selectAll")}
                   </button>
                 )}
               </div>
@@ -275,7 +277,7 @@ export default function GroupRecommendPage() {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between">
                       <span className="block font-bold text-[10px] text-orange-600 dark:text-[#E8735A] uppercase tracking-wider mb-0.5">
-                        {customCoords ? "📍 Vị trí tùy chọn (Bản đồ)" : "📱 Vị trí hiện tại (GPS)"}
+                        {customCoords ? t("groupRecommend.customLocation") : t("groupRecommend.currentLocation")}
                       </span>
                       {customCoords && (
                         <button
@@ -283,16 +285,16 @@ export default function GroupRecommendPage() {
                           onClick={() => {
                             setCustomCoords(null);
                             setCustomAddress("");
-                            toast.success("Đã khôi phục về vị trí GPS hiện tại!");
+                            toast.success(t("groupRecommend.gpsRestored"));
                           }}
                           className="text-[10px] font-bold text-gray-400 hover:text-brand dark:hover:text-[#E8735A] hover:underline cursor-pointer"
                         >
-                          Khôi phục GPS
+                          {t("groupRecommend.restoreGPS")}
                         </button>
                       )}
                     </div>
                     <p className="truncate font-semibold text-[#3D312A] dark:text-[#E6DFD5]">
-                      {searchAddress || "Chưa xác định vị trí"}
+                      {searchAddress || t("groupRecommend.notPositioned")}
                     </p>
                     {searchCoords && (
                       <p className="text-[10px] text-gray-400 dark:text-[#9A8A7A] mt-0.5 font-mono">
@@ -308,12 +310,12 @@ export default function GroupRecommendPage() {
                   className="w-full py-2 bg-white dark:bg-[#3D312A]/80 hover:bg-gray-50 dark:hover:bg-[#4D3D32] border border-orange-200/60 dark:border-[#4D3D32] rounded-xl text-xs font-bold text-brand dark:text-[#E8735A] flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-sm"
                 >
                   <Compass className="w-3.5 h-3.5" />
-                  Chọn vùng trên bản đồ trực quan
+                  {t("groupRecommend.selectOnMap")}
                 </button>
 
                 <div className="pt-2 border-t border-orange-100/50 dark:border-[#4D3D32]/50 space-y-1.5">
                   <div className="flex justify-between items-center text-[10px]">
-                    <span className="font-bold text-gray-400 dark:text-[#9A8A7A]">BÁN KÍNH TÌM KIẾM:</span>
+                    <span className="font-bold text-gray-400 dark:text-[#9A8A7A]">{t("groupRecommend.searchRadius")}</span>
                     <span className="font-black text-brand dark:text-[#E8735A]">{radius} km</span>
                   </div>
                   <input
@@ -332,21 +334,21 @@ export default function GroupRecommendPage() {
               {loadingFriends ? (
                 <div className="flex flex-col items-center justify-center py-12">
                   <Loader2 className="w-8 h-8 animate-spin text-brand dark:text-[#E8735A] mb-2" />
-                  <p className="text-xs text-gray-400 dark:text-[#9A8A7A]">Đang tải danh sách bạn bè...</p>
+                  <p className="text-xs text-gray-400 dark:text-[#9A8A7A]">{t("groupRecommend.loadingFriends")}</p>
                 </div>
               ) : friends.length === 0 ? (
                 <div className="text-center py-8 px-4 border-2 border-dashed border-[#3D312A]/10 dark:border-[#4D3D32] rounded-2xl">
                   <Users className="w-10 h-10 mx-auto text-gray-300 dark:text-[#5A4D43] mb-3" />
-                  <p className="text-sm font-bold text-gray-700 dark:text-[#E6DFD5] mb-1">Chưa có bạn bè</p>
+                  <p className="text-sm font-bold text-gray-700 dark:text-[#E6DFD5] mb-1">{t("groupRecommend.noFriendsTitle")}</p>
                   <p className="text-xs text-gray-400 dark:text-[#9A8A7A] mb-4">
-                    Bạn cần kết nối với ít nhất một người bạn để có thể thực hiện gợi ý nhóm.
+                    {t("groupRecommend.noFriendsDesc")}
                   </p>
                   <button
                     onClick={() => router.push("/friends")}
                     className="px-4 py-2 bg-brand dark:bg-[#E8735A] text-white text-xs font-bold rounded-xl flex items-center gap-2 mx-auto shadow-sm cursor-pointer hover:scale-[1.01]"
                   >
                     <Plus className="w-3.5 h-3.5" />
-                    Thêm bạn bè
+                    {t("groupRecommend.addFriendsBtn")}
                   </button>
                 </div>
               ) : (
@@ -403,14 +405,14 @@ export default function GroupRecommendPage() {
               <div className="mt-6 pt-6 border-t border-[#3D312A]/10 dark:border-[#4D3D32]">
                 <div className="flex justify-between items-center mb-2">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-bold text-[#3D312A] dark:text-[#E6DFD5]">Ngân sách nhóm</span>
+                    <span className="text-sm font-bold text-[#3D312A] dark:text-[#E6DFD5]">{t("groupRecommend.groupBudget")}</span>
                     {!enableBudget ? (
                       <span className="text-[10px] bg-gray-100 dark:bg-[#4D3D32] px-2 py-0.5 rounded-full text-gray-500 dark:text-[#9A8A7A]">
-                        Không giới hạn
+                        {t("groupRecommend.unlimited")}
                       </span>
                     ) : (
                       <span className="text-[10px] bg-brand/10 dark:bg-[#E8735A]/10 px-2 py-0.5 rounded-full text-brand dark:text-[#E8735A] font-bold">
-                        Tối đa: {budget >= 1000000 ? "1.0Mđ" : `${budget / 1000}kđ`}
+                        {t("groupRecommend.maxLabel")}{budget >= 1000000 ? "1.0Mđ" : `${budget / 1000}kđ`}
                       </span>
                     )}
                   </div>
@@ -480,19 +482,19 @@ export default function GroupRecommendPage() {
                 {recLoading ? (
                   <>
                     <Loader2 className="w-5 h-5 animate-spin" />
-                    Đang tính toán gợi ý tối ưu...
+                    {t("groupRecommend.loadingSuggestions")}
                   </>
                 ) : (
                   <>
                     <Sparkles className="w-5 h-5" />
-                    Gợi ý cho nhóm ({selectedFriendIds.length + 1} người)
+                    {t("groupRecommend.suggestBtn").replace("{count}", String(selectedFriendIds.length + 1))}
                   </>
                 )}
               </button>
 
               <p className="text-[10px] text-gray-400 dark:text-[#8A7A6A] mt-3 flex items-start gap-1 leading-normal">
                 <Info className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
-                <span>Hệ thống sẽ lấy sở thích của bạn và những người bạn được chọn, kết hợp để tìm các quán ăn phù hợp nhất.</span>
+                <span>{t("groupRecommend.disclaimer")}</span>
               </p>
             </div>
 
@@ -505,13 +507,13 @@ export default function GroupRecommendPage() {
               >
                 <div className="flex items-center gap-2 pb-2 border-b border-[#3D312A]/10 dark:border-[#4D3D32]">
                   <ShieldCheck className="w-5 h-5 text-emerald-500" />
-                  <h3 className="font-bold text-[#3D312A] dark:text-[#E6DFD5] text-sm">Các ràng buộc đã áp dụng</h3>
+                  <h3 className="font-bold text-[#3D312A] dark:text-[#E6DFD5] text-sm">{t("groupRecommend.appliedConstraints")}</h3>
                 </div>
 
                 <div className="space-y-3 text-xs">
                   {/* Vegetarian stat */}
                   <div className="flex justify-between items-center">
-                    <span className="text-gray-500 dark:text-[#9A8A7A]">Bộ lọc ăn chay (Vegetarian):</span>
+                    <span className="text-gray-500 dark:text-[#9A8A7A]">{t("groupRecommend.vegetarianFilter")}</span>
                     <span
                       className={`px-2 py-0.5 rounded font-bold ${
                         groupStats.vegetarian
@@ -519,14 +521,14 @@ export default function GroupRecommendPage() {
                           : "bg-gray-100 dark:bg-[#4D3D32] text-gray-400"
                       }`}
                     >
-                      {groupStats.vegetarian ? "KÍCH HOẠT" : "KHÔNG"}
+                      {groupStats.vegetarian ? t("groupRecommend.activated") : t("groupRecommend.no")}
                     </span>
                   </div>
 
                   {/* Budget stat */}
                   {groupStats.budget != null && (
                     <div className="flex justify-between items-center">
-                      <span className="text-gray-500 dark:text-[#9A8A7A]">Lọc ngân sách nhóm:</span>
+                      <span className="text-gray-500 dark:text-[#9A8A7A]">{t("groupRecommend.budgetFilter")}</span>
                       <span className="px-2 py-0.5 rounded font-bold bg-[#F4EAD5] dark:bg-[#A91B0D]/20 text-brand dark:text-[#E8735A]">
                         ≤ {groupStats.budget.toLocaleString('vi-VN')}đ
                       </span>
@@ -536,7 +538,7 @@ export default function GroupRecommendPage() {
                   {/* Radius stat */}
                   {groupStats.radius != null && (
                     <div className="flex justify-between items-center">
-                      <span className="text-gray-500 dark:text-[#9A8A7A]">Bán kính tìm kiếm:</span>
+                      <span className="text-gray-500 dark:text-[#9A8A7A]">{t("groupRecommend.radiusFilter")}</span>
                       <span className="px-2 py-0.5 rounded font-bold bg-[#F4EAD5] dark:bg-[#A91B0D]/20 text-brand dark:text-[#E8735A]">
                         {groupStats.radius} km
                       </span>
@@ -545,9 +547,9 @@ export default function GroupRecommendPage() {
 
                   {/* Allergies list */}
                   <div>
-                    <span className="text-gray-500 dark:text-[#9A8A7A] block mb-1.5">Loại trừ thực phẩm gây dị ứng:</span>
+                    <span className="text-gray-500 dark:text-[#9A8A7A] block mb-1.5">{t("groupRecommend.excludeAllergies")}</span>
                     {groupStats.allergies.length === 0 ? (
-                      <span className="text-gray-400 italic font-medium">Không phát hiện dị ứng trong nhóm</span>
+                      <span className="text-gray-400 italic font-medium">{t("groupRecommend.noAllergiesDetected")}</span>
                     ) : (
                       <div className="flex flex-wrap gap-1.5 mt-1">
                         {groupStats.allergies.map((allergy) => (
@@ -555,7 +557,7 @@ export default function GroupRecommendPage() {
                             key={allergy}
                             className="px-2 py-1 rounded bg-amber-50 dark:bg-amber-950/20 text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-900/30 font-semibold"
                           >
-                            ⚠️ Không chứa {allergy}
+                            ⚠️ {t("groupRecommend.excludeAllergies")} {allergy}
                           </span>
                         ))}
                       </div>
@@ -575,10 +577,10 @@ export default function GroupRecommendPage() {
                   <div className="absolute inset-0 border-4 border-t-brand dark:border-t-[#E8735A] rounded-full animate-spin" />
                 </div>
                 <h3 className="font-bold text-gray-700 dark:text-[#E6DFD5] text-lg mb-2">
-                  Đang phân tích khẩu vị nhóm
+                  {t("groupRecommend.analyzingTaste")}
                 </h3>
                 <p className="text-gray-400 dark:text-[#9A8A7A] text-sm max-w-sm px-6">
-                  Đang tính toán vector sở thích trung bình, nạp dữ liệu dị ứng và lọc hơn 150 nhà hàng tương thích...
+                  {t("groupRecommend.analyzingTasteDesc")}
                 </p>
               </div>
             ) : recommendations.length === 0 ? (
@@ -589,19 +591,19 @@ export default function GroupRecommendPage() {
                 {hasSearched ? (
                   <>
                     <h3 className="font-bold text-gray-700 dark:text-[#E6DFD5] text-lg mb-2">
-                      Không tìm thấy quán ăn phù hợp
+                      {t("groupRecommend.noMatchesFound")}
                     </h3>
                     <p className="text-gray-500 dark:text-[#9A8A7A] max-w-sm mb-6 text-sm">
-                      Các ràng buộc dị ứng hoặc ăn chay của nhóm bạn quá chặt chẽ, hoặc không có quán ăn nào trong phạm vi tìm kiếm phù hợp. Thử thay đổi thành viên xem sao!
+                      {t("groupRecommend.noMatchesDesc")}
                     </p>
                   </>
                 ) : (
                   <>
                     <h3 className="font-bold text-gray-700 dark:text-[#E6DFD5] text-lg mb-2">
-                      Chưa có kết quả gợi ý
+                      {t("groupRecommend.noResultsYet")}
                     </h3>
                     <p className="text-gray-500 dark:text-[#9A8A7A] max-w-sm mb-6 text-sm">
-                      Chọn các thành viên đi cùng ở bảng bên trái và nhấp nút <strong>Gợi ý cho nhóm</strong> để nhận danh sách quán ăn tối ưu từ AI.
+                      {t("groupRecommend.noResultsDesc")}
                     </p>
                   </>
                 )}
@@ -611,9 +613,9 @@ export default function GroupRecommendPage() {
                 {/* Results Header */}
                 <div className="flex justify-between items-center">
                   <h3 className="font-black text-xl text-[#3D312A] dark:text-[#E6DFD5] flex items-center gap-2">
-                    🎯 Quán ăn gợi ý cho nhóm
+                    🎯 {t("groupRecommend.recsTitle")}
                     <span className="px-2 py-0.5 text-xs font-black rounded-full bg-brand-muted dark:bg-[#A91B0D]/20 text-brand dark:text-[#E8735A]">
-                      {recommendations.length} kết quả
+                      {recommendations.length}{t("groupRecommend.resultsCount")}
                     </span>
                   </h3>
                 </div>
@@ -623,9 +625,9 @@ export default function GroupRecommendPage() {
                   <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/30 rounded-2xl p-4 flex gap-3 text-xs">
                     <AlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0" />
                     <div>
-                      <p className="font-bold text-amber-800 dark:text-amber-300">Kết quả được thu hẹp</p>
+                      <p className="font-bold text-amber-800 dark:text-amber-300">{t("groupRecommend.resultsNarrowed")}</p>
                       <p className="text-amber-700 dark:text-amber-400 mt-0.5">
-                        Do nhóm của bạn có các hạn chế khắt khe về dị ứng/ăn chay, số lượng quán ăn an toàn và phù hợp đã giảm xuống dưới 16.
+                        {t("groupRecommend.resultsNarrowedDesc")}
                       </p>
                     </div>
                   </div>
@@ -653,7 +655,7 @@ export default function GroupRecommendPage() {
           setCustomCoords(coords);
           setCustomAddress(addr);
           setRadius(rad);
-          toast.success("Đã cập nhật vùng tìm kiếm quán!");
+          toast.success(t("groupRecommend.mapUpdated"));
         }}
       />
     </PageLayout>

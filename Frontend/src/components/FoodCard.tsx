@@ -10,6 +10,8 @@ import { AddToCollectionModal } from "./AddToCollectionModal";
 import { interactionService } from "../services/interactionService";
 import { useRouter } from "next/navigation";
 
+import { useLanguage } from "./LanguageProvider";
+
 interface FoodCardProps {
   item: RecommendResult;
   userId: string;
@@ -21,9 +23,27 @@ interface FoodCardProps {
 
 export function FoodCard({ item, userId, onRemove, showRemove, showAddCollection = true, onAddCollection }: FoodCardProps) {
   const router = useRouter();
+  const { t, language } = useLanguage();
   const [isFav, setIsFav] = React.useState(false);
   const [isInColl, setIsInColl] = React.useState(false);
   const [isCollectionModalOpen, setIsCollectionModalOpen] = React.useState(false);
+
+  const translateReason = (reason: string): string => {
+    if (language !== 'en') return reason;
+    return reason
+      .replace(/Đánh giá xuất sắc/g, 'Excellent rating')
+      .replace(/Đánh giá cao/g, 'Highly rated')
+      .replace(/Nhà hàng xuất sắc/g, 'Top restaurant')
+      .replace(/Rất gần bạn/g, 'Very close to you')
+      .replace(/Gần bạn/g, 'Near you')
+      .replace(/Rất gần nhóm/g, 'Very close to group')
+      .replace(/Gần nhóm/g, 'Near group')
+      .replace(/Gợi ý cho bạn/g, 'Recommended for you')
+      .replace(/Quán ngọn phù hợp/g, 'Great match')
+      .replace(/Phù hợp với nhóm/g, 'Great fit for group')
+      .replace(/Quán ăn nổi bật/g, 'Trending restaurant')
+      .replace(/Thịnh Hành/g, 'Trending');
+  };
 
   React.useEffect(() => {
     if (userId) {
@@ -42,13 +62,13 @@ export function FoodCard({ item, userId, onRemove, showRemove, showAddCollection
   const toggleFavorite = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!userId) {
-      toast.error("Vui lòng đăng nhập để sử dụng chức năng này");
+      toast.error(t("favorites.pleaseLoginAction"));
       return;
     }
     if (isFav) {
       favoriteService.removeFavorite(userId, item.name);
       setIsFav(false);
-      toast.success("Đã xóa khỏi yêu thích");
+      toast.success(t("favorites.removedSuccess"));
 
       interactionService.logInteraction({
         res_id: item.id,
@@ -58,7 +78,7 @@ export function FoodCard({ item, userId, onRemove, showRemove, showAddCollection
     } else {
       favoriteService.addFavorite(userId, item);
       setIsFav(true);
-      toast.success("Đã thêm vào yêu thích");
+      toast.success(t("favorites.addedSuccess"));
 
       interactionService.logInteraction({
         res_id: item.id,
@@ -72,7 +92,7 @@ export function FoodCard({ item, userId, onRemove, showRemove, showAddCollection
     // Guard: nếu item.id bị thiếu thì không navigate
     if (!item.id || item.id === "undefined" || item.id === "null") {
       console.warn("[FoodCard] item.id is missing, cannot navigate:", item);
-      toast.error("Không thể mở chi tiết nhà hàng này. Vui lòng thử lại sau.");
+      toast.error(t("favorites.cardDetailError"));
       return;
     }
 
@@ -83,7 +103,7 @@ export function FoodCard({ item, userId, onRemove, showRemove, showAddCollection
     });
     
     if (item.id.startsWith("mock-")) {
-      toast.info("Đây là kết quả mẫu. Hãy thử tìm kiếm để xem các nhà hàng thật nhé!");
+      toast.info(t("favorites.sampleResultInfo"));
       return;
     }
     
@@ -123,7 +143,7 @@ export function FoodCard({ item, userId, onRemove, showRemove, showAddCollection
             <button 
               onClick={(e) => { e.stopPropagation(); onRemove(item); }}
               className="w-8 h-8 rounded-full bg-white/90 dark:bg-[#2A2420]/80 flex items-center justify-center hover:scale-110 hover:bg-red-50 transition-all shadow-sm"
-              title="Xóa"
+              title={t("favorites.deleteBtn")}
             >
               <Trash2 className="w-4 h-4 text-red-500" />
             </button>
@@ -133,12 +153,12 @@ export function FoodCard({ item, userId, onRemove, showRemove, showAddCollection
               onClick={(e) => { 
                 e.stopPropagation(); 
                 if (!userId) {
-                  toast.error("Vui lòng đăng nhập để sử dụng chức năng này");
+                  toast.error(t("favorites.pleaseLoginAction"));
                   return;
                 }
                 // [FIX-CONFLICT]: Ngăn không cho mở Modal nếu món ăn đã có trong bộ sưu tập (tránh thêm trùng lặp), hiển thị toast với icon Bookmark
                 if (isInColl) {
-                  toast.info("Món ăn này đã có trong bộ sưu tập của bạn.", {
+                  toast.info(t("favorites.alreadyInCollection"), {
                     icon: <Bookmark className="w-4 h-4" />
                   });
                   return;
@@ -147,7 +167,7 @@ export function FoodCard({ item, userId, onRemove, showRemove, showAddCollection
                 if (onAddCollection) onAddCollection(item);
               }}
               className={`w-8 h-8 rounded-full bg-white/90 dark:bg-[#2A2420]/80 flex items-center justify-center hover:scale-110 transition-all shadow-sm ${isInColl ? 'hover:bg-yellow-50' : 'hover:bg-brand-muted'}`}
-              title={isInColl ? "Đã có trong bộ sưu tập" : "Thêm vào bộ sưu tập"}
+              title={isInColl ? t("collections.alreadyInCollectionCheck") : t("collections.addToCollection")}
             >
               {isInColl ? (
                 <Check className="w-4 h-4 text-yellow-500" />
@@ -184,7 +204,7 @@ export function FoodCard({ item, userId, onRemove, showRemove, showAddCollection
         )}
         {item.reason && (
           <p className="text-xs text-gray-500 dark:text-[#9A8A7A] leading-relaxed mb-3 line-clamp-2 flex-1">
-            {item.reason}
+            {translateReason(item.reason)}
           </p>
         )}
         {item.tags && item.tags.length > 0 && (

@@ -5,6 +5,7 @@ import { ThemeProvider } from "../components/ThemeProvider";
 import { Toaster } from "sonner";
 import { StoreProvider } from "../store/StoreProvider";
 import { LocationInitializer } from "../components/LocationInitializer";
+import { LanguageProvider } from "../components/LanguageProvider";
 
 const beVietnamPro = Be_Vietnam_Pro({
   subsets: ["latin", "vietnamese"],
@@ -29,18 +30,21 @@ export default function RootLayout({
         className={`${beVietnamPro.className} antialiased text-slate-800 dark:text-[#E6DFD5] bg-slate-50 dark:bg-[#2A2420]`}
       >
         <StoreProvider>
-          <LocationInitializer />
-          <ThemeProvider
-            attribute="class"
-            defaultTheme="system"
-            enableSystem
-            disableTransitionOnChange
-          >
-            {children}
-            <Toaster position="top-center" richColors />
-          </ThemeProvider>
+          <LanguageProvider>
+            <LocationInitializer />
+            <ThemeProvider
+              attribute="class"
+              defaultTheme="system"
+              enableSystem
+              disableTransitionOnChange
+            >
+              {children}
+              <Toaster position="top-center" richColors />
+            </ThemeProvider>
+          </LanguageProvider>
         </StoreProvider>
       </body>
     </html>
   );
 }
+

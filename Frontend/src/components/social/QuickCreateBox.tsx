@@ -6,6 +6,7 @@ import { Button } from '../ui/button';
 import { supabase } from '../../lib/supabase';
 import { toast } from 'sonner';
 import { LinkPreview } from './LinkPreview';
+import { useLanguage } from '../LanguageProvider';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -16,6 +17,7 @@ interface QuickCreateBoxProps {
 }
 
 export function QuickCreateBox({ username, avatarUrl, onSubmit }: QuickCreateBoxProps) {
+  const { t } = useLanguage();
   const [content, setContent] = useState('');
   const [isFocused, setIsFocused] = useState(false);
   const [mediaUrls, setMediaUrls] = useState<string[]>([]);
@@ -37,7 +39,7 @@ export function QuickCreateBox({ username, avatarUrl, onSubmit }: QuickCreateBox
     return () => clearTimeout(timer);
   }, [searchResQuery, showResSelector]);
 
-  const displayName = username || 'Bạn';
+  const displayName = username || t("feed.quickCreate.you");
   const initial = displayName.charAt(0).toUpperCase();
   const avatar = avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${displayName}`;
 
@@ -70,10 +72,10 @@ export function QuickCreateBox({ username, avatarUrl, onSubmit }: QuickCreateBox
         .getPublicUrl(filePath);
 
       setMediaUrls(prev => [...prev, publicUrl]);
-      toast.success('Tải ảnh lên thành công!');
+      toast.success(t("feed.quickCreate.uploadSuccess"));
     } catch (err: any) {
       console.error('Upload error:', err);
-      toast.error(`Lỗi tải ảnh lên: ${err.message || 'Không rõ nguyên nhân'}`);
+      toast.error(t("feed.quickCreate.uploadFailed").replace("{error}", err.message || 'Unknown error'));
     } finally {
       setIsUploading(false);
       // Reset input so the same file can be selected again if needed
@@ -146,7 +148,7 @@ export function QuickCreateBox({ username, avatarUrl, onSubmit }: QuickCreateBox
               value={content}
               onChange={(e) => setContent(e.target.value)}
               onFocus={() => setIsFocused(true)}
-              placeholder={`${displayName} đang nghĩ gì về món ăn hôm nay?`}
+              placeholder={t("feed.quickCreate.placeholder").replace("{username}", displayName)}
               rows={isFocused ? 3 : 1}
               className="w-full bg-transparent px-4 py-3 text-sm resize-none outline-none text-foreground placeholder:text-muted-foreground"
             />
@@ -199,11 +201,11 @@ export function QuickCreateBox({ username, avatarUrl, onSubmit }: QuickCreateBox
             <div className="mt-2 mb-3 bg-muted/30 p-3 rounded-lg border border-border">
               <div className="flex items-center gap-1.5 mb-2">
                 <MapPin className="w-3.5 h-3.5 text-brand" />
-                <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Chọn quán để gắn thẻ</span>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{t("feed.quickCreate.tagTitle")}</span>
               </div>
               <input 
                 type="text" 
-                placeholder="Tìm kiếm quán ăn..." 
+                placeholder={t("feed.quickCreate.searchPlaceholder")}
                 className="w-full text-sm bg-background border border-border rounded-md px-3 py-2 mb-2 focus:outline-none focus:ring-1 focus:ring-brand"
                 value={searchResQuery}
                 onChange={(e) => setSearchResQuery(e.target.value)}
@@ -229,7 +231,7 @@ export function QuickCreateBox({ username, avatarUrl, onSubmit }: QuickCreateBox
                     </button>
                   ))}
                   {suggestedRestaurants.length === 0 && !isLoadingRes && (
-                    <div className="text-xs text-center text-muted-foreground py-2">Không tìm thấy quán nào gần đây.</div>
+                    <div className="text-xs text-center text-muted-foreground py-2">{t("feed.quickCreate.noResults")}</div>
                   )}
                 </div>
               )}
@@ -240,7 +242,7 @@ export function QuickCreateBox({ username, avatarUrl, onSubmit }: QuickCreateBox
           {taggedRes && (
             <div className="mt-2 mb-3 inline-flex items-center gap-2 px-3 py-1.5 bg-brand/10 text-brand rounded-full text-sm font-medium border border-brand/20">
               <MapPin className="w-4 h-4" />
-              Tại: <span className="font-bold truncate max-w-[200px]">{taggedRes.name}</span>
+              {t("feed.quickCreate.taggedAt").replace("{name}", "")} <span className="font-bold truncate max-w-[200px]">{taggedRes.name}</span>
               <button 
                 onClick={() => setTaggedRes(null)} 
                 className="ml-1 hover:bg-brand/20 rounded-full p-0.5 transition-colors"
@@ -268,7 +270,7 @@ export function QuickCreateBox({ username, avatarUrl, onSubmit }: QuickCreateBox
                   className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-brand px-3 py-1.5 rounded-lg hover:bg-brand/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <ImagePlus className="w-4 h-4" />
-                  <span className="hidden sm:inline">Ảnh / Video</span>
+                  <span className="hidden sm:inline">{t("feed.quickCreate.actionMedia")}</span>
                 </button>
                 <button 
                   onClick={() => {
@@ -278,7 +280,7 @@ export function QuickCreateBox({ username, avatarUrl, onSubmit }: QuickCreateBox
                   className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg transition-colors ${showResSelector ? 'bg-brand/10 text-brand' : 'text-muted-foreground hover:text-brand hover:bg-brand/10'}`}
                 >
                   <MapPin className="w-4 h-4" />
-                  <span className="hidden sm:inline">Gắn thẻ quán</span>
+                  <span className="hidden sm:inline">{t("feed.quickCreate.actionTag")}</span>
                 </button>
               </div>
               <div className="flex items-center gap-2">
@@ -286,7 +288,7 @@ export function QuickCreateBox({ username, avatarUrl, onSubmit }: QuickCreateBox
                   onClick={() => { setIsFocused(false); setContent(''); setMediaUrls([]); }}
                   className="text-xs text-muted-foreground hover:text-foreground px-3 py-1.5 rounded-lg hover:bg-muted transition-colors"
                 >
-                  Hủy
+                  {t("feed.quickCreate.cancel")}
                 </button>
                 <Button
                   onClick={handleSubmit}
@@ -295,7 +297,7 @@ export function QuickCreateBox({ username, avatarUrl, onSubmit }: QuickCreateBox
                   className="rounded-full px-5 text-xs font-semibold gap-1.5"
                 >
                   <Send className="w-3.5 h-3.5" />
-                  {isSubmitting ? 'Đang đăng...' : 'Đăng bài'}
+                  {isSubmitting ? t("feed.quickCreate.submitting") : t("feed.quickCreate.submit")}
                 </Button>
               </div>
             </div>
