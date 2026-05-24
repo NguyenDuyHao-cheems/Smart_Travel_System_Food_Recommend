@@ -14,9 +14,10 @@ import {
 } from '../ui/alert-dialog';
 import { Heart, MessageCircle, MapPin, MoreHorizontal, Trash2, Flag, Link as LinkIcon, Send, Loader2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
-import { vi } from 'date-fns/locale';
+import { enUS, vi } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { LinkPreview } from './LinkPreview';
+import { useLanguage } from '../LanguageProvider';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -87,6 +88,7 @@ const parseLinks = (text: string) => {
 };
 
 export function PostCard({ post, onLikeToggle, onDelete }: PostCardProps) {
+  const { language, t } = useLanguage();
   const [isLiked, setIsLiked] = useState(post.is_liked || false);
   const [likesCount, setLikesCount] = useState(post.likes_count || 0);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -111,7 +113,7 @@ export function PostCard({ post, onLikeToggle, onDelete }: PostCardProps) {
 
   const handleLike = () => {
     const token = localStorage.getItem('access_token');
-    if (!token) { toast.error('Vui lòng đăng nhập.'); return; }
+    if (!token) { toast.error(t('socialPost.loginRequired')); return; }
     setIsLiked(!isLiked);
     setLikesCount(prev => isLiked ? prev - 1 : prev + 1);
     if (onLikeToggle) onLikeToggle(post.id, isLiked);
@@ -130,14 +132,14 @@ export function PostCard({ post, onLikeToggle, onDelete }: PostCardProps) {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {
-        toast.success('Đã xóa bài viết.');
+        toast.success(t('socialPost.deleteSuccess'));
         if (onDelete) onDelete(post.id);
         else window.location.reload();
       } else {
-        toast.error('Lỗi khi xóa bài viết.');
+        toast.error(t('socialPost.deleteError'));
       }
     } catch {
-      toast.error('Lỗi khi xóa bài viết.');
+      toast.error(t('socialPost.deleteError'));
     } finally {
       setIsDeleteDialogOpen(false);
     }
@@ -145,11 +147,11 @@ export function PostCard({ post, onLikeToggle, onDelete }: PostCardProps) {
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(`${window.location.origin}/post/${post.id}`);
-    toast.success('Đã sao chép liên kết');
+    toast.success(t('socialPost.copySuccess'));
   };
 
   const handleReport = () => {
-    toast.success('Đã gửi báo cáo vi phạm. Cảm ơn bạn!');
+    toast.success(t('socialPost.reportThanks'));
   };
 
   // ── Comment handlers ──
@@ -174,7 +176,7 @@ export function PostCard({ post, onLikeToggle, onDelete }: PostCardProps) {
     const text = commentText.trim();
     if (!text) return;
     const token = localStorage.getItem('access_token');
-    if (!token) { toast.error('Vui lòng đăng nhập để bình luận.'); return; }
+    if (!token) { toast.error(t('socialPost.commentLoginRequired')); return; }
 
     setIsSendingComment(true);
     try {
@@ -192,16 +194,16 @@ export function PostCard({ post, onLikeToggle, onDelete }: PostCardProps) {
         setRepliesCount(prev => prev + 1);
         setCommentText('');
       } else {
-        toast.error('Không thể gửi bình luận.');
+        toast.error(t('socialPost.commentSendError'));
       }
     } catch {
-      toast.error('Lỗi kết nối.');
+      toast.error(t('socialPost.connectionError'));
     } finally {
       setIsSendingComment(false);
     }
   };
 
-  const displayName = post.full_name || post.username || 'Người dùng ẩn danh';
+  const displayName = post.full_name || post.username || t('socialPost.anonymousUser');
   const displayUsername = post.username || 'anonymous';
   const initial = displayName.charAt(0).toUpperCase();
   const profileUrl = `/profile/${post.user_id}`;
@@ -210,7 +212,7 @@ export function PostCard({ post, onLikeToggle, onDelete }: PostCardProps) {
   const formatTime = (dateStr: string) => {
     return formatDistanceToNow(
       new Date(dateStr.endsWith('Z') ? dateStr : dateStr + 'Z'),
-      { addSuffix: true, locale: vi }
+      { addSuffix: true, locale: language === 'en' ? enUS : vi }
     );
   };
 
@@ -249,15 +251,15 @@ export function PostCard({ post, onLikeToggle, onDelete }: PostCardProps) {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
                   <DropdownMenuItem onClick={handleCopyLink} className="cursor-pointer">
-                    <LinkIcon className="w-4 h-4 mr-2" /> Sao chép liên kết
+                    <LinkIcon className="w-4 h-4 mr-2" /> {t('socialPost.copyLink')}
                   </DropdownMenuItem>
                   {isOwner ? (
                     <DropdownMenuItem onClick={() => setIsDeleteDialogOpen(true)} className="cursor-pointer text-rose-500 focus:text-rose-500 focus:bg-rose-50">
-                      <Trash2 className="w-4 h-4 mr-2" /> Xóa bài viết
+                      <Trash2 className="w-4 h-4 mr-2" /> {t('socialPost.deletePost')}
                     </DropdownMenuItem>
                   ) : (
                     <DropdownMenuItem onClick={handleReport} className="cursor-pointer text-orange-500 focus:text-orange-500 focus:bg-orange-50">
-                      <Flag className="w-4 h-4 mr-2" /> Báo cáo vi phạm
+                      <Flag className="w-4 h-4 mr-2" /> {t('socialPost.report')}
                     </DropdownMenuItem>
                   )}
                 </DropdownMenuContent>
@@ -297,7 +299,7 @@ export function PostCard({ post, onLikeToggle, onDelete }: PostCardProps) {
                 className="flex items-center p-2.5 gap-3"
               >
                 {post.restaurant_image_url ? (
-                  <img src={post.restaurant_image_url} alt={post.restaurant_name || "Nhà hàng"} className="w-12 h-12 rounded-lg object-cover bg-muted" />
+                  <img src={post.restaurant_image_url} alt={post.restaurant_name || t('socialPost.restaurant')} className="w-12 h-12 rounded-lg object-cover bg-muted" />
                 ) : (
                   <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
                     <MapPin className="w-5 h-5" />
@@ -306,10 +308,10 @@ export function PostCard({ post, onLikeToggle, onDelete }: PostCardProps) {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5 text-xs font-semibold text-primary mb-0.5 uppercase tracking-wider">
                     <MapPin className="w-3.5 h-3.5" />
-                    Đã gắn thẻ quán
+                    {t('socialPost.taggedRestaurant')}
                   </div>
                   <h4 className="text-sm font-bold truncate group-hover:underline text-foreground">
-                    {post.restaurant_name || "Nhà hàng gợi ý"}
+                    {post.restaurant_name || t('socialPost.suggestedRestaurant')}
                   </h4>
                 </div>
               </Link>
@@ -363,7 +365,7 @@ export function PostCard({ post, onLikeToggle, onDelete }: PostCardProps) {
                   value={commentText}
                   onChange={(e) => setCommentText(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendComment(); }}}
-                  placeholder="Viết bình luận..."
+                  placeholder={t('socialPost.commentPlaceholder')}
                   className="flex-1 text-sm px-3 py-2 rounded-full border border-border bg-muted/30 focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand placeholder:text-muted-foreground transition-all"
                   disabled={isSendingComment}
                 />
@@ -382,11 +384,11 @@ export function PostCard({ post, onLikeToggle, onDelete }: PostCardProps) {
                   <Loader2 className="w-5 h-5 text-muted-foreground animate-spin" />
                 </div>
               ) : comments.length === 0 ? (
-                <p className="text-xs text-muted-foreground text-center py-2">Chưa có bình luận nào. Hãy là người đầu tiên!</p>
+                <p className="text-xs text-muted-foreground text-center py-2">{t('socialPost.noComments')}</p>
               ) : (
                 <div className="space-y-3 max-h-[320px] overflow-y-auto pr-1">
                   {comments.map((comment) => {
-                    const cName = comment.full_name || comment.username || 'Ẩn danh';
+                    const cName = comment.full_name || comment.username || t('socialPost.anonymous');
                     const cInitial = cName.charAt(0).toUpperCase();
                     const cProfileUrl = `/profile/${comment.user_id}`;
                     return (
@@ -424,15 +426,15 @@ export function PostCard({ post, onLikeToggle, onDelete }: PostCardProps) {
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Bạn có chắc chắn muốn xóa bài viết này?</AlertDialogTitle>
+            <AlertDialogTitle>{t('socialPost.deleteConfirmTitle')}</AlertDialogTitle>
             <AlertDialogDescription>
-              Hành động này không thể hoàn tác. Bài viết của bạn sẽ bị xóa vĩnh viễn khỏi hệ thống.
+              {t('socialPost.deleteConfirmDesc')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Hủy</AlertDialogCancel>
+            <AlertDialogCancel>{t('socialPost.cancel')}</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} className="bg-rose-500 hover:bg-rose-600 text-white">
-              Xóa bài viết
+              {t('socialPost.deletePost')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

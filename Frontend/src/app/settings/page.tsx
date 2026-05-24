@@ -99,7 +99,7 @@ export default function SettingsPage() {
     try {
       const token = localStorage.getItem("access_token");
       if (!token || token === "undefined" || token === "null") {
-        alert("Vui lòng đăng nhập lại để thực hiện thay đổi!");
+        alert(t("settings.pleaseLoginAgain"));
         return false;
       }
 
@@ -120,12 +120,12 @@ export default function SettingsPage() {
           localStorage.removeItem("user_avatar");
           localStorage.removeItem("user_id");
           localStorage.removeItem("login_method");
-          alert("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại!");
+          alert(t("settings.sessionExpiredAlert"));
           window.location.href = "/auth";
           return false;
         }
         const errorData = await res.json();
-        throw new Error(errorData.detail || "Cập nhật thất bại!");
+        throw new Error(errorData.detail || t("settings.updateProfileFailed"));
       }
 
       // Update local state and localStorage on success
@@ -149,7 +149,7 @@ export default function SettingsPage() {
       return true;
     } catch (err: any) {
       console.error(err);
-      alert(err.message || "Có lỗi xảy ra khi lưu vào Database!");
+      alert(err.message || t("settings.savingError"));
       return false;
     }
   };
@@ -169,7 +169,7 @@ export default function SettingsPage() {
         },
       });
 
-      if (!res.ok) throw new Error("Xóa tài khoản thất bại!");
+      if (!res.ok) throw new Error(t("settings.deleteAccountFailed"));
 
       // Clear everything and redirect
       localStorage.clear();
@@ -177,7 +177,7 @@ export default function SettingsPage() {
       return true;
     } catch (err: any) {
       console.error(err);
-      toast.error(err.message || "Có lỗi xảy ra khi xóa tài khoản!");
+      toast.error(err.message || t("settings.deleteAccountFailed"));
       return false;
     }
   };

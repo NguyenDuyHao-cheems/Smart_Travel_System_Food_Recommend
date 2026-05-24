@@ -52,6 +52,9 @@ class GRPCServiceClient:
             req = ai_service_pb2.HealthCheckRequest()
             resp = await self.stub.CheckHealth(req, timeout=3.0)
             return resp.status == "online"
+        except grpc.RpcError as e:
+            logger.warning("gRPC health check failed: %s (%s)", e.code(), e.details())
+            return False
         except Exception as e:
             logger.warning("gRPC health check failed: %s", e)
             return False

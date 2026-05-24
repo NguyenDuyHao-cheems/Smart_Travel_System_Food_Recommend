@@ -3,14 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Sparkles } from 'lucide-react';
-
-const AI_STATUS_MESSAGES = [
-  "Đang khởi tạo hệ thống phân tích toàn diện...",
-  "Đang quét dữ liệu ẩm thực trên toàn khu vực...",
-  "Đang phân tích thói quen và sở thích của bạn...",
-  "Đang tối ưu hóa danh sách gợi ý tốt nhất...",
-  "Sẵn sàng hiển thị kết quả cho bạn!",
-];
+import { useLanguage } from '../LanguageProvider';
 
 /* ── Skeleton Card ── */
 function SkeletonCard({ delay = 0 }: { delay?: number }) {
@@ -72,6 +65,14 @@ function HeroSkeleton() {
 
 /* ── Status Text Animation ── */
 function StatusText() {
+  const { t } = useLanguage();
+  const aiStatusMessages = [
+    t('loadingState.statusInit'),
+    t('loadingState.statusScan'),
+    t('loadingState.statusAnalyze'),
+    t('loadingState.statusOptimize'),
+    t('loadingState.statusReady'),
+  ];
   const [msgIdx, setMsgIdx] = useState(0);
   const [visible, setVisible] = useState(true);
 
@@ -79,14 +80,14 @@ function StatusText() {
     const cycle = () => {
       setVisible(false);
       const timer = setTimeout(() => {
-        setMsgIdx(prev => (prev + 1) % AI_STATUS_MESSAGES.length);
+        setMsgIdx(prev => (prev + 1) % aiStatusMessages.length);
         setVisible(true);
       }, 300);
       return () => clearTimeout(timer);
     };
     const interval = setInterval(cycle, 1800);
     return () => clearInterval(interval);
-  }, []);
+  }, [aiStatusMessages.length]);
 
   return (
     <motion.p
@@ -94,7 +95,7 @@ function StatusText() {
       transition={{ duration: 0.25 }}
       className="text-sm font-medium text-brand dark:text-[#E8735A] dark:text-[#E6DFD5]"
     >
-      {AI_STATUS_MESSAGES[msgIdx]}
+      {aiStatusMessages[msgIdx]}
     </motion.p>
   );
 }
@@ -107,6 +108,7 @@ interface LoadingStateProps {
 }
 
 export function LoadingState({ searchQuery, locError, getLocation }: LoadingStateProps) {
+  const { t } = useLanguage();
   return (
     <motion.div
       key="loading"
@@ -130,7 +132,7 @@ export function LoadingState({ searchQuery, locError, getLocation }: LoadingStat
         </div>
 
         <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-[#E6DFD5] mb-2 tracking-tight">
-          Đang tìm kiếm cho bạn...
+          {t('loadingState.title')}
         </h1>
 
         <p className="text-sm text-gray-500 dark:text-[#9A8A7A] mb-4 max-w-md border border-gray-200 dark:border-[#4D3D32] rounded-xl px-4 py-2 bg-gray-50 dark:bg-[#3D312A]">
@@ -143,7 +145,7 @@ export function LoadingState({ searchQuery, locError, getLocation }: LoadingStat
           <div className="mt-6 p-4 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 rounded-xl text-red-600 dark:text-red-400 text-sm max-w-sm flex flex-col items-center gap-3">
             <p>⚠️ {locError}</p>
             <button onClick={getLocation} className="px-4 py-2 bg-red-100 dark:bg-red-500/20 hover:bg-red-200 dark:hover:bg-red-500/30 rounded-full font-semibold transition">
-              Thử lại
+              {t('loadingState.retry')}
             </button>
           </div>
         )}

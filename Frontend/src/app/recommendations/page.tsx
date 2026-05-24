@@ -8,6 +8,7 @@ import { Sparkles, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { useOptimizedLocation } from "../../hooks/useOptimizedLocation";
+import { useLanguage } from "../../components/LanguageProvider";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -17,12 +18,13 @@ export default function RecommendationsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
   const { getOptimizedLocation } = useOptimizedLocation();
+  const { t, language } = useLanguage();
 
   useEffect(() => {
     async function fetchRecs() {
       const id = localStorage.getItem("user_id");
       if (!id) {
-        toast.error("Vui lòng đăng nhập để xem gợi ý");
+        toast.error(t("recommendationsPage.pleaseLogin"));
         router.push("/auth");
         return;
       }
@@ -47,7 +49,7 @@ export default function RecommendationsPage() {
         }
         const gps = await getOptimizedLocation();
         if (!gps) {
-          toast.error("Không thể xác định vị trí. Vui lòng bật GPS.");
+          toast.error(t("recommendationsPage.locationError"));
           setIsLoading(false);
           return;
         }
@@ -89,28 +91,28 @@ export default function RecommendationsPage() {
             }
           }
         } else {
-          toast.error("Không thể lấy dữ liệu gợi ý.");
+          toast.error(t("recommendationsPage.fetchError"));
         }
       } catch (err) {
         console.error("Error fetching recommendations:", err);
-        toast.error("Lỗi kết nối hệ thống.");
+        toast.error(t("recommendationsPage.connectionError"));
       } finally {
         setIsLoading(false);
       }
     }
 
     fetchRecs();
-  }, [router, getOptimizedLocation]);
+  }, [router, getOptimizedLocation, language]);
 
   return (
     <PageLayout>
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-[#E6DFD5] flex items-center gap-3">
           <Sparkles className="w-8 h-8 text-brand dark:text-[#E8735A] fill-brand/20" />
-          Gợi ý dành riêng cho bạn
+          {t("recommendationsPage.title")}
         </h1>
         <p className="text-gray-500 dark:text-[#9A8A7A] mt-2">
-          Các địa điểm được tự động chọn lọc dựa trên khoảng cách và sở thích của bạn
+          {t("recommendationsPage.desc")}
         </p>
       </div>
 
@@ -123,13 +125,13 @@ export default function RecommendationsPage() {
       ) : recommendations.length === 0 ? (
         <div className="text-center py-20 bg-white dark:bg-[#3D312A] rounded-3xl border border-gray-100 dark:border-[#4D3D32]">
           <Sparkles className="w-16 h-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-gray-700 dark:text-[#E6DFD5] mb-2">Chưa có đủ dữ liệu để gợi ý</h2>
-          <p className="text-gray-500 dark:text-[#9A8A7A] mb-6">Hãy tìm kiếm và yêu thích thêm các món ăn để AI hiểu bạn hơn nhé!</p>
+          <h2 className="text-xl font-bold text-gray-700 dark:text-[#E6DFD5] mb-2">{t("recommendationsPage.emptyTitle")}</h2>
+          <p className="text-gray-500 dark:text-[#9A8A7A] mb-6">{t("recommendationsPage.emptyDesc")}</p>
           <button
             onClick={() => router.push('/')}
             className="px-6 py-2.5 bg-brand hover:bg-brand-hover text-white rounded-full font-semibold transition-colors"
           >
-            Khám phá ngay
+            {t("recommendationsPage.exploreNow")}
           </button>
         </div>
       ) : (

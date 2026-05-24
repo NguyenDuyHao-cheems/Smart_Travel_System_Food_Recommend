@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { createPortal } from 'react-dom';
 import { toast } from 'sonner';
 import { supabase } from '../../lib/supabase';
+import { useLanguage } from '../LanguageProvider';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -25,6 +26,7 @@ interface StoryEditorProps {
 const COLORS = ['#FFFFFF', '#000000', '#FF5722', '#4CAF50', '#2196F3', '#FFC107'];
 
 export function StoryEditor({ file, onClose, onSuccess }: StoryEditorProps) {
+  const { t } = useLanguage();
   const [mounted, setMounted] = useState(false);
   const [previewUrl, setPreviewUrl] = useState('');
   const [overlays, setOverlays] = useState<OverlayText[]>([]);
@@ -45,7 +47,7 @@ export function StoryEditor({ file, onClose, onSuccess }: StoryEditorProps) {
     const id = Date.now().toString();
     setOverlays([
       ...overlays,
-      { id, text: 'Nhập chữ...', color: activeColor, x: 0, y: 0 }
+      { id, text: t('storyEditor.defaultText'), color: activeColor, x: 0, y: 0 }
     ]);
     positionsRef.current[id] = { x: 0, y: 0 };
     setActiveTextId(id);
@@ -73,7 +75,7 @@ export function StoryEditor({ file, onClose, onSuccess }: StoryEditorProps) {
   const handleUpload = async () => {
     const token = localStorage.getItem('access_token');
     if (!token) {
-      toast.error('Vui lòng đăng nhập!');
+      toast.error(t('storyEditor.loginRequired'));
       return;
     }
 
@@ -113,14 +115,14 @@ export function StoryEditor({ file, onClose, onSuccess }: StoryEditorProps) {
         }),
       });
 
-      if (!res.ok) throw new Error('Lỗi server khi lưu Story');
+      if (!res.ok) throw new Error(t('storyEditor.serverError'));
 
-      toast.success('Đăng Story thành công!');
+      toast.success(t('storyEditor.success'));
       onSuccess();
       onClose();
     } catch (err: any) {
       console.error(err);
-      toast.error(err.message || 'Lỗi không xác định');
+      toast.error(err.message || t('storyEditor.unknownError'));
       setIsUploading(false);
     }
   };
@@ -151,7 +153,7 @@ export function StoryEditor({ file, onClose, onSuccess }: StoryEditorProps) {
             onClick={handleAddText}
             className="flex items-center gap-2 px-4 py-2 bg-white/10 rounded-full text-white hover:bg-white/20 font-semibold"
           >
-            <Type className="w-5 h-5" /> Thêm chữ
+            <Type className="w-5 h-5" /> {t('storyEditor.addText')}
           </button>
         </div>
       </div>
@@ -198,7 +200,7 @@ export function StoryEditor({ file, onClose, onSuccess }: StoryEditorProps) {
           className="flex items-center gap-2 px-6 py-3 bg-brand hover:bg-orange-600 rounded-full text-white font-bold text-lg shadow-lg shadow-brand/30 disabled:opacity-50"
         >
           {isUploading ? <Loader2 className="w-6 h-6 animate-spin" /> : <Send className="w-6 h-6" />}
-          {isUploading ? 'Đang đăng...' : 'Đăng Story'}
+          {isUploading ? t('storyEditor.uploading') : t('storyEditor.submit')}
         </button>
       </div>
     </div>
