@@ -139,7 +139,7 @@ export function AppShell({ children, healthStatus = "loading", headerAction }: A
           </div>
 
           {/* Right: Health dot + Location + Theme + User */}
-          <div className="flex items-center justify-end gap-2 overflow-hidden min-w-0">
+          <div className="flex items-center justify-end gap-2 overflow-x-clip min-w-0">
             {headerAction}
 
             {/* Location Indicator Widget - Text version (Desktop >= 1024px) */}
