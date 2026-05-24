@@ -33,18 +33,6 @@ export function NotificationPanel() {
   }, []);
 
   const token = isMounted ? localStorage.getItem('access_token') : null;
-  const fetchUnread = useCallback(async () => {
-    if (!token) return;
-    try {
-      const res = await fetch(`${BACKEND_URL}/api/v1/social/notifications/unread-count`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setUnreadCount(data.count);
-      }
-    } catch { /* silent */ }
-  }, [token]);
 
   const fetchNotifications = async () => {
     if (!token) return;
@@ -70,10 +58,23 @@ export function NotificationPanel() {
 
   // Poll unread count every 30s
   useEffect(() => {
-    fetchUnread();
-    const interval = setInterval(fetchUnread, 30_000);
+    if (!token) return;
+    const fetchCount = async () => {
+      try {
+        const res = await fetch(`${BACKEND_URL}/api/v1/social/notifications/unread-count`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setUnreadCount(data.count);
+        }
+      } catch { /* silent */ }
+    };
+
+    fetchCount();
+    const interval = setInterval(fetchCount, 30_000);
     return () => clearInterval(interval);
-  }, [fetchUnread]);
+  }, [token]);
 
   const handleOpen = () => {
     setIsOpen(true);

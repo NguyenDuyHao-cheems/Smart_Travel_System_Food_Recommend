@@ -7,8 +7,8 @@ from sqlalchemy.orm import Session
 
 from app.services.user_services import get_user_allergies, get_user_preferences_vector
 from app.services.allergy_filter import (
-    filter_allergy, handle_fallback, 
-    fetch_allergen_map, fetch_dish_detail_map, annotate_allergy
+    handle_fallback, 
+    fetch_allergy_data, annotate_allergy
 )
 from app.domains.ranking.retrieval_service import RetrievalService
 from app.domains.ranking.feature_service import FeatureService
@@ -60,16 +60,63 @@ async def recommend(
 
     # Lấy candidates từ DB với semantic ordering
     retrieval = RetrievalService(db)
-    raw_candidates = retrieval.get_candidates(
-        budget=budget,
-        query_vector=final_vector,
-        query_text=query,
-        tag_name=tag_name,
-        cleaned_query=cleaned_query,
-        viewport_bounds=viewport_bounds,
-        map_center=map_center,
-        map_radius_km=map_radius_km,
-    )
+    raw_candidates = []
+    results_contain_warnings = False
+
+    # Progressive Spatial Relaxation
+    # If the user has allergies and map search bounds exist, progressively expand radius to ensure >= 16 results
+    radius_levels = []
+    if user_allergies and map_radius_km:
+        radius_levels = [map_radius_km]
+        for r_lvl in [15.0, 30.0, 50.0]:
+            if r_lvl > map_radius_km:
+                radius_levels.append(r_lvl)
+
+    if radius_levels:
+        for r_lvl in radius_levels:
+            raw_candidates = retrieval.get_candidates(
+                budget=budget,
+                query_vector=final_vector,
+                query_text=query,
+                tag_name=tag_name,
+                cleaned_query=cleaned_query,
+                viewport_bounds=viewport_bounds,
+                map_center=map_center,
+                map_radius_km=r_lvl,
+                user_allergies=user_allergies,
+            )
+            if len(raw_candidates) >= 16:
+                break
+        
+        # High warning fallback mode: if still < 16, query WITHOUT allergy filter at max radius
+        if len(raw_candidates) < 16:
+            unfiltered_candidates = retrieval.get_candidates(
+                budget=budget,
+                query_vector=final_vector,
+                query_text=query,
+                tag_name=tag_name,
+                cleaned_query=cleaned_query,
+                viewport_bounds=viewport_bounds,
+                map_center=map_center,
+                map_radius_km=radius_levels[-1],
+                user_allergies=None,
+            )
+            if len(unfiltered_candidates) >= 16:
+                raw_candidates = unfiltered_candidates
+                results_contain_warnings = True
+    else:
+        # No radius search or no allergies: basic query with inline filter if allergies exist
+        raw_candidates = retrieval.get_candidates(
+            budget=budget,
+            query_vector=final_vector,
+            query_text=query,
+            tag_name=tag_name,
+            cleaned_query=cleaned_query,
+            viewport_bounds=viewport_bounds,
+            map_center=map_center,
+            map_radius_km=map_radius_km,
+            user_allergies=user_allergies,
+        )
 
     if not raw_candidates:
         return {
@@ -79,10 +126,12 @@ async def recommend(
             "fallback_applied": False,
         }
 
-    # Pre-fetch allergens từ dishes cho tất cả restaurant candidates
+    # Pre-fetch allergens từ dishes cho tất cả restaurant candidates (combined query)
     restaurant_ids = [c.id for c in raw_candidates]
-    allergen_map = fetch_allergen_map(db, restaurant_ids) if user_allergies else {}
-    dish_detail_map = fetch_dish_detail_map(db, restaurant_ids) if user_allergies else {}
+    if user_allergies:
+        allergen_map, dish_detail_map = fetch_allergy_data(db, restaurant_ids)
+    else:
+        allergen_map, dish_detail_map = {}, {}
     
     # Thay vì filter (loại bỏ), ta annotate (gắn nhãn)
     safe_candidates, flagged_count = annotate_allergy(
@@ -130,7 +179,8 @@ async def recommend(
     
     try:
         from app.services.ai_client import get_ai_client
-        data = await get_ai_client().rank_candidates(
+        ai_client = await get_ai_client()
+        data = await ai_client.rank_candidates(
             user_id=user_id or "anonymous",
             candidates=featured,
             top_k=len(featured),
@@ -167,6 +217,7 @@ async def recommend(
         "filtered_out_count": len(removed),
         "allergen_flagged_count": flagged_count,
         "fallback_applied": False,
+        "results_contain_warnings": results_contain_warnings,
     }
 
 

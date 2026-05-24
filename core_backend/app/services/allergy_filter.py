@@ -1,6 +1,8 @@
 from typing import List, Dict, Any, Tuple, Union, Optional
+from sqlalchemy import cast, String, or_, not_, and_
 from sqlalchemy.orm import Session
 from app.domains.ranking.models import DishModel
+
 
 ALLERGY_MAP = {
     "peanut": ["peanut", "groundnut", "satay", "lạc", "đậu phộng", "sa tế"],
@@ -25,6 +27,109 @@ ALLERGY_MAP = {
     "đậu nành": ["soy", "đậu nành", "tương", "tofu", "đậu hũ"],
     "đậu hũ": ["soy", "đậu nành", "tương", "tofu", "đậu hũ"]
 }
+
+def get_allergy_keywords(user_allergies: List[str]) -> List[str]:
+    """Translate user allergies to mapped keywords using ALLERGY_MAP."""
+    if not user_allergies:
+        return []
+    keywords = []
+    for allergy in user_allergies:
+        if allergy:
+            allergy_norm = allergy.lower().strip()
+            keywords.extend(ALLERGY_MAP.get(allergy_norm, [allergy_norm]))
+    return list(set(keywords))
+
+def get_unsafe_dish_filter(db: Session, keywords: List[str]) -> Optional[Any]:
+    """
+    Returns a SQLAlchemy filter clause for DishModel that matches any of the allergy keywords.
+    Optimized for PostgreSQL JSONB GIN index, with fallback for SQLite.
+    """
+    if not keywords:
+        return None
+
+    dialect = db.bind.dialect.name
+    if dialect == "postgresql":
+        from sqlalchemy.dialects.postgresql import JSONB, array
+        # Use postgresql.array() to force compilation as ARRAY[...] (text[]) instead of JSONB
+        return cast(DishModel.allergens, JSONB).has_any(array(keywords))
+    else:
+        # SQLite fallback: cast to String and check with ILIKE/LIKE
+        return or_(*[cast(DishModel.allergens, String).ilike(f"%{kw}%") for kw in keywords])
+
+def apply_inline_allergy_filter(db: Session, query, user_allergies: List[str]):
+    """
+    Applies inline allergy filtering to a RestaurantModel query.
+    Excludes restaurants that have dishes, but all of them are unsafe.
+    """
+    if not user_allergies:
+        return query
+
+    keywords = get_allergy_keywords(user_allergies)
+    if not keywords:
+        return query
+
+    unsafe_clause = get_unsafe_dish_filter(db, keywords)
+    if unsafe_clause is None:
+        return query
+
+    from app.domains.ranking.models import RestaurantModel
+    from sqlalchemy import exists
+    # Optimize using correlated EXISTS subqueries instead of IN/NOT IN with massive lists
+    # Using exists() construct directly avoids invoking db.query which is mocked in tests.
+    has_dishes = exists().where(DishModel.res_id == RestaurantModel.id)
+    has_safe_dish = exists().where(
+        and_(
+            DishModel.res_id == RestaurantModel.id,
+            not_(unsafe_clause)
+        )
+    )
+
+    # Exclude restaurants that have dishes but no safe dishes
+    return query.filter(
+        not_(
+            and_(
+                has_dishes,
+                not_(has_safe_dish)
+            )
+        )
+    )
+
+
+def fetch_allergy_data(db: Session, restaurant_ids: List[str]) -> Tuple[Dict[str, List[str]], Dict[str, List[Dict]]]:
+    """
+    Combined retrieval of allergen_map and dish_detail_map in a single query.
+    """
+    if not restaurant_ids:
+        return {}, {}
+
+    dishes = db.query(DishModel.res_id, DishModel.name, DishModel.allergens).filter(
+        DishModel.res_id.in_(restaurant_ids)
+    ).all()
+
+    allergen_map: Dict[str, List[str]] = {}
+    detail_map: Dict[str, List[Dict]] = {}
+
+    for res_id, name, allergens in dishes:
+        if res_id not in detail_map:
+            detail_map[res_id] = []
+        
+        parsed_allergens = (
+            allergens if isinstance(allergens, list)
+            else ([a.strip() for a in allergens.split(',')] if allergens else [])
+        )
+        
+        detail_map[res_id].append({
+            "name": name,
+            "allergens": parsed_allergens
+        })
+
+        if parsed_allergens:
+            if res_id not in allergen_map:
+                allergen_map[res_id] = []
+            allergen_map[res_id].extend(parsed_allergens)
+
+    return allergen_map, detail_map
+
 
 def normalize(text: Optional[str]) -> str:
     """Normalize text by converting to lowercase and stripping whitespace."""

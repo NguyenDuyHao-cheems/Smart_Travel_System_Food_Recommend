@@ -3,9 +3,10 @@ import uuid as _uuid
 import shortuuid
 
 
-from fastapi import HTTPException, Request
+from fastapi import HTTPException, Request, BackgroundTasks
 from sqlalchemy.orm import Session
 from typing import Optional
+from datetime import datetime, timezone
 
 from .schemas import (
     AIResponseData,
@@ -27,8 +28,40 @@ from app.services.review_sentiment import (
 logger = logging.getLogger(__name__)
 
 
+def save_search_session_bg(
+    session_id: _uuid.UUID,
+    user_id: Optional[_uuid.UUID],
+    query: str,
+    lat: Optional[float],
+    lng: Optional[float],
+    budget: Optional[int],
+    results_json: dict,
+):
+    from app.core.database import SessionLocal
+    from .models import SearchSession
+    db = SessionLocal()
+    try:
+        session_obj = SearchSession(
+            id=session_id,
+            user_id=user_id,
+            query=query,
+            lat=lat,
+            lng=lng,
+            budget=budget,
+            results_json=results_json,
+        )
+        db.add(session_obj)
+        db.commit()
+        logger.info("Saved search session in background: id=%s", session_id)
+    except Exception as e:
+        logger.error("Failed to save search session in background: %s", e)
+    finally:
+        db.close()
+
+
 class SearchService:
     DEFAULT_BUDGET_VND = 50_000
+    _session_cache = {}
 
     def __init__(self, ai_client: AIServiceClient):
         self.ai_client = ai_client
@@ -44,6 +77,7 @@ class SearchService:
         request: SearchRecommendRequest,
         db: Session,
         http_request: Optional[Request] = None,
+        background_tasks: Optional[BackgroundTasks] = None,
     ) -> SessionCreateResponse:
         """
         Pipeline recommend:
@@ -121,8 +155,6 @@ class SearchService:
         logger.debug("Search: query=%r, mapped=%d, filtered_out=%d", request.query, len(results), filtered_out_count)
 
         # ── Lưu session vào DB ──────────────────────────────────────────────
-        from .models import SearchSession
-
         user_uuid = None
         if request.user_id:
             try:
@@ -138,24 +170,51 @@ class SearchService:
             "applied_budget": effective_budget,
             "filtered_out_count": filtered_out_count,
             "allergen_flagged_count": allergen_flagged_count,
-            "warning": warning
+            "warning": warning,
+            "results_contain_warnings": recommend_results.get("results_contain_warnings", False),
         }
 
-        session_obj = SearchSession(
-            user_id=user_uuid,
-            query=request.query,
-            lat=request.lat,
-            lng=request.lng,
-            budget=effective_budget,
-            results_json=full_session_data,
-        )
-        db.add(session_obj)
-        db.commit()
-        db.refresh(session_obj)
-        logger.info("Saved search session: id=%s", session_obj.id)
+        session_id = _uuid.uuid4()
+        
+        # Lưu vào cache trong bộ nhớ để tránh race condition với lượt redirect ngay lập tức của Frontend
+        SearchService._session_cache[str(session_id)] = {
+            "query": request.query,
+            "results_json": full_session_data,
+            "created_at": datetime.now(timezone.utc),
+        }
+        if len(SearchService._session_cache) > 100:
+            oldest_key = next(iter(SearchService._session_cache))
+            SearchService._session_cache.pop(oldest_key, None)
+
+        if background_tasks:
+            background_tasks.add_task(
+                save_search_session_bg,
+                session_id,
+                user_uuid,
+                request.query,
+                request.lat,
+                request.lng,
+                effective_budget,
+                full_session_data,
+            )
+            logger.info("Enqueued search session saving in background: id=%s", session_id)
+        else:
+            from .models import SearchSession
+            session_obj = SearchSession(
+                id=session_id,
+                user_id=user_uuid,
+                query=request.query,
+                lat=request.lat,
+                lng=request.lng,
+                budget=effective_budget,
+                results_json=full_session_data,
+            )
+            db.add(session_obj)
+            db.commit()
+            logger.info("Saved search session synchronously: id=%s", session_id)
 
         return SessionCreateResponse(
-            session_id=shortuuid.encode(session_obj.id),
+            session_id=shortuuid.encode(session_id),
             results=results,
 
             fallback_applied=recommend_results.get("fallback_applied", False),
@@ -164,6 +223,7 @@ class SearchService:
             filtered_out_count=filtered_out_count,
             allergen_flagged_count=allergen_flagged_count,
             warning=warning,
+            results_contain_warnings=recommend_results.get("results_contain_warnings", False),
         )
 
     @staticmethod
@@ -204,6 +264,29 @@ class SearchService:
                 raise HTTPException(status_code=422, detail="session_id không hợp lệ.")
 
 
+        # Kiểm tra trước từ bộ nhớ đệm (cache in-memory) để giải quyết tình huống đua dữ liệu (race condition)
+        if uid:
+            uid_str = str(uid)
+            if uid_str in SearchService._session_cache:
+                cache_data = SearchService._session_cache[uid_str]
+                data = cache_data["results_json"] or {}
+                if isinstance(data, list):
+                    data = {"results": data}
+                results = [RecommendResult(**r) for r in data.get("results", [])]
+                return SessionDataResponse(
+                    session_id=shortuuid.encode(uid),
+                    query=cache_data["query"],
+                    results=results,
+                    fallback_applied=data.get("fallback_applied", False),
+                    fallback_reason=data.get("fallback_reason"),
+                    applied_budget=data.get("applied_budget"),
+                    filtered_out_count=data.get("filtered_out_count", 0),
+                    allergen_flagged_count=data.get("allergen_flagged_count", 0),
+                    warning=data.get("warning"),
+                    results_contain_warnings=data.get("results_contain_warnings", False),
+                    created_at=cache_data["created_at"],
+                )
+
         obj = db.query(SearchSession).filter(SearchSession.id == uid).first()
         if not obj:
             raise HTTPException(status_code=404, detail="Không tìm thấy phiên tìm kiếm.")
@@ -226,6 +309,7 @@ class SearchService:
             filtered_out_count=data.get("filtered_out_count", 0),
             allergen_flagged_count=data.get("allergen_flagged_count", 0),
             warning=data.get("warning"),
+            results_contain_warnings=data.get("results_contain_warnings", False),
             created_at=obj.created_at,
         )
 
@@ -509,6 +593,7 @@ class SearchService:
         user_id: str | None = None,
     ) -> NewspaperMenuResponse:
         import random
+        from sqlalchemy import desc
         from app.domains.ranking.models import RestaurantModel, DishModel
         from app.domains.users.models import UserOnboarding
 
@@ -553,7 +638,17 @@ class SearchService:
                 RestaurantModel.lat.between(lat - lat_range, lat + lat_range),
                 RestaurantModel.lng.between(lng - lng_range, lng + lng_range)
             )
-            raw_candidates = local_query.limit(150).all()
+            candidate_ids = [
+                r[0] for r in local_query.with_entities(RestaurantModel.id)
+                .order_by(desc(RestaurantModel.rating_avg), desc(RestaurantModel.total_reviews))
+                .limit(100)
+                .all()
+            ]
+            if candidate_ids:
+                sampled_ids = random.sample(candidate_ids, min(len(candidate_ids), 50))
+                raw_candidates = db.query(RestaurantModel).filter(RestaurantModel.id.in_(sampled_ids)).all()
+            else:
+                raw_candidates = []
 
             # Python precise Haversine filtering
             candidates_10km = []
@@ -584,7 +679,17 @@ class SearchService:
                 message = "Không tìm thấy quán ăn nào trong vòng 20km xung quanh vị trí của bạn."
         else:
             # Fallback to global if coordinates are missing (cannot compute distance)
-            candidates = query.limit(150).all()
+            candidate_ids = [
+                r[0] for r in query.with_entities(RestaurantModel.id)
+                .order_by(desc(RestaurantModel.rating_avg), desc(RestaurantModel.total_reviews))
+                .limit(100)
+                .all()
+            ]
+            if candidate_ids:
+                sampled_ids = random.sample(candidate_ids, min(len(candidate_ids), 50))
+                candidates = db.query(RestaurantModel).filter(RestaurantModel.id.in_(sampled_ids)).all()
+            else:
+                candidates = []
             is_fallback = True
             radius_km = 0.0
             message = "Không có thông tin vị trí. Bản tin hiển thị các quán ăn nổi bật toàn quốc."

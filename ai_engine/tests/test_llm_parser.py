@@ -12,6 +12,11 @@ from typing import Optional
 # Helpers
 # ---------------------------------------------------------------------------
 
+@pytest.fixture(autouse=True)
+def clear_query_cache():
+    from app.nlp.llm_parser import _query_cache
+    _query_cache.clear()
+
 def make_gemini_response(cleaned_query="phở bò, bún bò Huế"):
     """Tạo mock Gemini API response dict."""
     content = {"cleaned_query": cleaned_query}
@@ -206,3 +211,15 @@ class TestCleanQueryWithGemini:
 
         assert result == "phở bò"
         mock_request.is_disconnected.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_cache_hit_returns_cached_query(self):
+        """Khi có trong cache -> lấy từ cache mà không gọi Gemini API."""
+        from app.nlp.llm_parser import clean_query_with_gemini, _query_cache
+        
+        # Populate cache
+        _query_cache["hôm nay trời lạnh ăn gì"] = "lẩu thái, đồ nướng"
+        
+        # Gọi clean_query_with_gemini mà không cần mock Gemini client
+        result = await clean_query_with_gemini("Hôm nay trời lạnh ăn gì")
+        assert result == "lẩu thái, đồ nướng"

@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from app.core.dependencies import get_db, get_current_user
+from app.core.dependencies import get_db, get_current_user, get_optional_current_user
 from app.domains.users.models import UserAccount
 from .schema import RestaurantDetailResponse, ReviewCreate, ReviewResponse
 from .service import RestaurantService
@@ -29,9 +29,13 @@ async def search_restaurants(
     ]
 
 @router.get("/restaurants/{id}", response_model=RestaurantDetailResponse)
-async def get_restaurant_detail(id: str, db: Session = Depends(get_db)):
+async def get_restaurant_detail(
+    id: str,
+    db: Session = Depends(get_db),
+    current_user: UserAccount = Depends(get_optional_current_user)
+):
     """Lấy thông tin chi tiết của một nhà hàng bao gồm danh sách món ăn và bình luận."""
-    return await RestaurantService.get_restaurant_detail(db, id)
+    return await RestaurantService.get_restaurant_detail(db, id, current_user)
 
 @router.get("/reviews/check-anonymous")
 async def check_anonymous_status(

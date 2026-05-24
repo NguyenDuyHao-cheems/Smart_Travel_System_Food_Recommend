@@ -14,6 +14,9 @@ engine = create_engine(DATABASE_URL)
 
 def update_schema():
     queries = [
+        "ALTER TABLE restaurants ADD COLUMN IF NOT EXISTS price_min INTEGER;",
+        "ALTER TABLE restaurants ADD COLUMN IF NOT EXISTS price_max INTEGER;",
+        "CREATE INDEX IF NOT EXISTS idx_notifications_user_unread ON social_notifications (user_id) WHERE is_read = FALSE;",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS full_name VARCHAR;",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url VARCHAR;",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS cover_url VARCHAR;",

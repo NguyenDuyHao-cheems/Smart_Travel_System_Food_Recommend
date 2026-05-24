@@ -680,12 +680,10 @@ function ResultPageContent() {
   const { query: inputValue, setQuery: setInputValue, searchMode, setSearchMode } = useSearchState("");
   const [budget, setBudget] = useState<BudgetOption>(() => {
     if (typeof window === 'undefined') return 'auto';
-    const params = new URLSearchParams(window.location.search);
-    const b = params.get('budget');
+    const b = searchParams.get('budget');
     if (b && ['30000', '50000', '100000', '200000'].includes(b)) {
       return b as BudgetOption;
     }
-    // TODO: Onboarding Integration - If not in URL, fetch from user profile
     return 'auto';
   });
   const { getOptimizedLocation } = useOptimizedLocation();
@@ -721,6 +719,14 @@ function ResultPageContent() {
     // Save current URL as the last search URL for the Back button in settings
     if (typeof window !== 'undefined') {
       localStorage.setItem('last_search_url', window.location.pathname + window.location.search);
+    }
+  }, [searchParams]);
+
+  // Sync budget from URL
+  useEffect(() => {
+    const urlBudget = searchParams.get('budget');
+    if (urlBudget && urlBudget !== 'auto') {
+      setBudget(urlBudget as BudgetOption);
     }
   }, [searchParams]);
 
@@ -790,8 +796,7 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
     advFilters.minPrice !== null || advFilters.maxPrice !== null,
     advFilters.minRating !== null,
     advFilters.vegetarianOnly,
-    selectedTags.length > 0,
-  ].filter(Boolean).length;
+  ].filter(Boolean).length + selectedTags.length;
   const hasActiveAdvFilters = activeAdvFilterCount > 0;
   const [apiError, setApiError] = useState<string | null>(null);
 
@@ -1087,7 +1092,12 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
             window.history.replaceState(null, '', `/result?${params.toString()}`);
           }
         } else {
-          window.location.href = `/result?q=${encodeURIComponent(finalQuery)}`;
+          const params = new URLSearchParams();
+          params.set('q', finalQuery);
+          if (finalBudget !== 'auto') {
+            params.set('budget', String(finalBudget));
+          }
+          window.location.href = `/result?${params.toString()}`;
         }
       } else {
         throw new Error("Không thể kết nối với hệ thống AI.");
