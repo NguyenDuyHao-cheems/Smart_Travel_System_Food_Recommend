@@ -221,7 +221,7 @@ export default function ProfilePage() {
       try {
         const token = localStorage.getItem("access_token");
         if (!token) {
-          toast.error(t("profile.loginRequired") || "Vui lòng đăng nhập để xem trang cá nhân!");
+          toast.error(t("profile.loginRequired"));
           router.push("/auth");
           return;
         }

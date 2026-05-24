@@ -44,7 +44,7 @@ export function AddToCollectionModal({ isOpen, onClose, item, onSuccess }: AddTo
     toast.success(t("collections.addedSuccess"));
     
     const coll = collections.find(c => c.id === collectionId);
-    const collName = coll ? coll.name : "Bộ sưu tập";
+    const collName = coll ? coll.name : t("collections.defaultName");
     
     interactionService.logInteraction({
       res_id: item.id,

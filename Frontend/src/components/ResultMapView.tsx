@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { LocateFixed, Minus, Plus, Radius, Utensils, Star } from 'lucide-react';
 import type { RecommendResult } from '../app/result/page';
+import { useLanguage } from './LanguageProvider';
 
 export interface MapViewport {
   centerLat: number;
@@ -66,6 +67,13 @@ function getCleanRating(ratingStr: string | undefined) {
   return parsed.toFixed(1);
 }
 
+function translateMapReason(reason: string, language: 'vi' | 'en') {
+  if (language !== 'en') return reason;
+  return reason
+    .replace(/Đánh giá xuất sắc/g, 'Excellent rating')
+    .replace(/Đánh giá cao/g, 'Highly rated');
+}
+
 export function ResultMapView({
   results,
   fallbackCenter,
@@ -74,6 +82,7 @@ export function ResultMapView({
   selectedId: propSelectedId,
   onSelectId: propOnSelectId,
 }: ResultMapViewProps) {
+  const { language, t } = useLanguage();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const dragRef = useRef<{ x: number; y: number; center: { lat: number; lng: number }; moved: boolean } | null>(null);
   const hasInteractedRef = useRef(false);
@@ -343,8 +352,8 @@ export function ResultMapView({
             <Utensils className="w-4 h-4" />
           </span>
           <div className="min-w-0">
-            <p className="text-sm font-bold text-gray-800 dark:text-[#E6DFD5] truncate">Bản đồ kết quả</p>
-            <p className="text-[11px] text-gray-400 dark:text-[#9A8A7A]">{mapResults.length} quán có tọa độ</p>
+            <p className="text-sm font-bold text-gray-800 dark:text-[#E6DFD5] truncate">{t('resultMap.title')}</p>
+            <p className="text-[11px] text-gray-400 dark:text-[#9A8A7A]">{mapResults.length} {t('resultMap.withCoordinates')}</p>
           </div>
         </div>
       </div>
@@ -374,7 +383,7 @@ export function ResultMapView({
         <div data-map-control="true" className="absolute top-4 left-4 z-30 flex flex-wrap items-center gap-2 rounded-2xl bg-white/95 dark:bg-[#2A2420]/95 border border-gray-200 dark:border-[#4D3D32] shadow-sm px-3 py-2">
           <span className="inline-flex items-center gap-1 text-[11px] font-bold text-gray-600 dark:text-[#C8BFB0]">
             <Radius className="w-3.5 h-3.5" />
-            Chọn vùng
+            {t('resultMap.selectArea')}
           </span>
           {[2, 4, 8].map((radiusKm) => (
             <button
@@ -410,7 +419,7 @@ export function ResultMapView({
               }}
               className="px-2.5 py-1 rounded-full text-[11px] font-bold border border-red-200 dark:border-red-950 bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400 hover:bg-red-100 transition-all cursor-pointer hover:scale-105"
             >
-              Tắt
+              {t('resultMap.off')}
             </button>
           )}
         </div>
@@ -458,7 +467,7 @@ export function ResultMapView({
               left: project(fallbackCenter.lat, fallbackCenter.lng, zoom).x - topLeft.x,
               top: project(fallbackCenter.lat, fallbackCenter.lng, zoom).y - topLeft.y,
             }}
-            title="Vị trí của bạn (Click để tìm quán quanh đây)"
+            title={t('resultMap.yourLocationTitle')}
           >
             <span className="absolute inset-0 rounded-full bg-[#FFD700]/30 animate-ping" />
             <span className="flex items-center justify-center w-8 h-8 rounded-full bg-[#FFD700] border-2 border-black shadow-lg text-black relative z-10">
@@ -509,7 +518,7 @@ export function ResultMapView({
                   </span>
                   {item.reason && (
                     <p className="mt-1 text-[10px] text-gray-400 dark:text-[#7A6A5A] line-clamp-2 leading-relaxed">
-                      {item.reason}
+                      {translateMapReason(item.reason, language)}
                     </p>
                   )}
                 </div>
@@ -553,10 +562,10 @@ export function ResultMapView({
 
         <div className="absolute left-4 bottom-4 max-w-[calc(100%-2rem)] rounded-2xl bg-white/90 dark:bg-[#2A2420]/90 border border-gray-200 dark:border-[#4D3D32] px-3 py-2 text-[11px] font-semibold text-gray-600 dark:text-[#C8BFB0] shadow-sm pointer-events-none">
           {isSearching
-            ? 'Đang lọc quán trong vùng...'
+            ? t('resultMap.filteringArea')
             : selectedRadiusKm
-              ? `Click lên bản đồ để lọc trong bán kính ${selectedRadiusKm} km`
-              : 'Chọn bán kính 2, 4 hoặc 8 km để lọc theo vùng'}
+              ? t('resultMap.clickToFilter').replace('{radius}', String(selectedRadiusKm))
+              : t('resultMap.chooseRadius')}
         </div>
 
         <span className="absolute right-3 bottom-3 px-2 py-1 rounded-full bg-white/80 dark:bg-[#2A2420]/80 text-[10px] text-gray-500 dark:text-[#9A8A7A]">

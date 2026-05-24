@@ -7,10 +7,12 @@ import { ThemeToggle } from "./ThemeToggle";
 import { useSelector } from "react-redux";
 import { RootState } from "../store";
 import { LocationModal } from "./LocationModal";
+import { useLanguage } from "./LanguageProvider";
 
 const playfair = Playfair_Display({ subsets: ["latin"], weight: ["400", "600", "700"] });
 
 export function Header({ onLogoClick }: { onLogoClick?: () => void }) {
+  const { t } = useLanguage();
   const [isLocationModalOpen, setIsLocationModalOpen] = React.useState(false);
   const address = useSelector((state: RootState) => state.location.address);
   const status = useSelector((state: RootState) => state.location.status);
@@ -58,7 +60,7 @@ export function Header({ onLogoClick }: { onLogoClick?: () => void }) {
           <button
             onClick={() => setIsLocationModalOpen(true)}
             className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-[#E6DFD5] dark:border-[#3D312A] hover:bg-brand-muted/30 dark:hover:bg-brand/10 hover:border-brand/30 dark:hover:border-brand/30 transition-all text-xs font-semibold cursor-pointer max-w-[140px] sm:max-w-[240px] md:max-w-[320px]"
-            title="Nhấp để thay đổi vị trí của bạn"
+            title={t("appshell.locationTitle")}
           >
             <MapPin
               className={`w-3.5 h-3.5 flex-shrink-0 ${
@@ -70,7 +72,7 @@ export function Header({ onLogoClick }: { onLogoClick?: () => void }) {
               }`}
             />
             <span className="text-[#7A6A5A] dark:text-[#E6DFD5]/80 truncate">
-              {address || (status === 'loading' ? 'Đang tìm...' : 'Chưa định vị')}
+              {address || (status === 'loading' ? t("appshell.finding") : t("appshell.notPositioned"))}
             </span>
           </button>
 

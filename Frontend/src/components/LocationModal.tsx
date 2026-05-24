@@ -7,6 +7,7 @@ import { RootState } from '../store';
 import { setLocation, setLocationStatus } from '../store/slices/locationSlice';
 import { toast } from 'sonner';
 import { useGeolocation } from '../hooks/useGeolocation';
+import { useLanguage } from './LanguageProvider';
 
 interface LocationModalProps {
   isOpen: boolean;
@@ -14,6 +15,7 @@ interface LocationModalProps {
 }
 
 export function LocationModal({ isOpen, onClose }: LocationModalProps) {
+  const { t } = useLanguage();
   const dispatch = useDispatch();
   const coords = useSelector((state: RootState) => state.location.coords);
   const address = useSelector((state: RootState) => state.location.address);
@@ -48,7 +50,7 @@ export function LocationModal({ isOpen, onClose }: LocationModalProps) {
       }
       setInputLat(gpsLocation.lat.toString());
       setInputLng(gpsLocation.lng.toString());
-      toast.success('Định vị GPS thành công!');
+      toast.success(t('locationModal.gpsSuccess'));
       
       // Auto close modal after 800ms so user has time to read the success toast
       const timer = setTimeout(() => {
@@ -74,7 +76,7 @@ export function LocationModal({ isOpen, onClose }: LocationModalProps) {
     
     const now = Date.now();
     if (now - lastUpdateRef.current < 2000) {
-      toast.warning('Vui lòng đợi 2 giây giữa các lần cập nhật vị trí.');
+      toast.warning(t('locationModal.waitWarning'));
       return;
     }
     lastUpdateRef.current = now;
@@ -92,7 +94,7 @@ export function LocationModal({ isOpen, onClose }: LocationModalProps) {
 
     const now = Date.now();
     if (now - lastUpdateRef.current < 2000) {
-      toast.warning('Vui lòng đợi 2 giây giữa các lần cập nhật vị trí.');
+      toast.warning(t('locationModal.waitWarning'));
       return;
     }
     lastUpdateRef.current = now;
@@ -101,17 +103,17 @@ export function LocationModal({ isOpen, onClose }: LocationModalProps) {
     const lng = parseFloat(inputLng);
 
     if (isNaN(lat) || isNaN(lng)) {
-      setErrorMsg('Kinh độ và vĩ độ phải là chữ số hợp lệ.');
+      setErrorMsg(t('locationModal.invalidNumber'));
       return;
     }
 
     if (lat < -90 || lat > 90) {
-      setErrorMsg('Vĩ độ (Latitude) phải nằm trong khoảng từ -90 đến 90.');
+      setErrorMsg(t('locationModal.invalidLatitude'));
       return;
     }
 
     if (lng < -180 || lng > 180) {
-      setErrorMsg('Kinh độ (Longitude) phải nằm trong khoảng từ -180 đến 180.');
+      setErrorMsg(t('locationModal.invalidLongitude'));
       return;
     }
 
@@ -120,7 +122,7 @@ export function LocationModal({ isOpen, onClose }: LocationModalProps) {
       localStorage.setItem('user_cached_gps', JSON.stringify({ lat, lng }));
       localStorage.removeItem('user_cached_address');
     }
-    toast.success('Đã cập nhật vị trí thủ công thành công!');
+    toast.success(t('locationModal.manualSuccess'));
     onClose();
   };
 
@@ -139,7 +141,7 @@ export function LocationModal({ isOpen, onClose }: LocationModalProps) {
         <div className="flex items-center justify-between px-6 py-4 border-b border-[#E6DFD5]/60 dark:border-[#3D312A]/60 bg-gray-50 dark:bg-[#2F2824]">
           <div className="flex items-center gap-2">
             <MapPin className="w-5 h-5 text-brand dark:text-[#E8735A]" />
-            <h3 className="text-lg font-bold text-[#3D312A] dark:text-[#E6DFD5]">Vị trí hiện tại của bạn</h3>
+            <h3 className="text-lg font-bold text-[#3D312A] dark:text-[#E6DFD5]">{t('locationModal.title')}</h3>
           </div>
           <button
             onClick={onClose}
@@ -154,10 +156,10 @@ export function LocationModal({ isOpen, onClose }: LocationModalProps) {
           {/* Current Address display */}
           <div className="mb-6 p-4 rounded-2xl bg-brand-muted/40 dark:bg-brand/5 border border-brand-muted/60 dark:border-brand/10">
             <p className="text-xs font-semibold text-gray-400 dark:text-[#9A8A7A] uppercase tracking-wider mb-1">
-              Hệ thống đang ghi nhận
+              {t('locationModal.recording')}
             </p>
             <h4 className="text-sm font-bold text-[#3D312A] dark:text-[#E6DFD5] leading-snug">
-              {address || 'Đang cập nhật địa chỉ hoặc chưa định vị...'}
+              {address || t('locationModal.addressUpdating')}
             </h4>
             {coords && (
               <p className="text-xs text-[#7A6A5A] dark:text-[#9A8A7A] mt-1.5 flex gap-3 font-mono">
@@ -174,17 +176,17 @@ export function LocationModal({ isOpen, onClose }: LocationModalProps) {
               {status === 'success' ? (
                 <>
                   <CheckCircle className="w-3.5 h-3.5 text-green-500" />
-                  <span className="text-green-600 dark:text-green-400 font-medium">Đã xác định vị trí</span>
+                  <span className="text-green-600 dark:text-green-400 font-medium">{t('locationModal.located')}</span>
                 </>
               ) : status === 'loading' ? (
                 <>
                   <RefreshCw className="w-3.5 h-3.5 text-brand animate-spin" />
-                  <span className="text-brand dark:text-[#E8735A] font-medium">Đang tìm tọa độ...</span>
+                  <span className="text-brand dark:text-[#E8735A] font-medium">{t('locationModal.findingCoords')}</span>
                 </>
               ) : (
                 <>
                   <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
-                  <span className="text-amber-600 dark:text-amber-400 font-medium">Định vị bị lỗi / chưa cấp quyền</span>
+                  <span className="text-amber-600 dark:text-amber-400 font-medium">{t('locationModal.locationError')}</span>
                 </>
               )}
             </div>
@@ -198,14 +200,14 @@ export function LocationModal({ isOpen, onClose }: LocationModalProps) {
             className="w-full mb-6 py-3 px-4 flex items-center justify-center gap-2 bg-brand text-white text-sm font-bold rounded-2xl hover:bg-brand-hover disabled:opacity-75 transition-colors shadow-sm shadow-brand/20 cursor-pointer"
           >
             <Navigation className={`w-4 h-4 ${isUpdatingGPS ? 'animate-pulse' : ''}`} />
-            {isUpdatingGPS ? 'Đang cập nhật qua GPS...' : 'Cập nhật tự động (Dùng GPS)'}
+            {isUpdatingGPS ? t('locationModal.updatingGps') : t('locationModal.autoGps')}
           </button>
 
           {/* Custom coordinate form */}
           <div className="relative mb-4 flex items-center">
             <div className="flex-grow border-t border-gray-200 dark:border-[#3D312A]" />
             <span className="flex-shrink mx-4 text-xs font-semibold text-gray-400 dark:text-[#7A6A5A] uppercase tracking-wider">
-              Hoặc nhập thủ công
+              {t('locationModal.manualDivider')}
             </span>
             <div className="flex-grow border-t border-gray-200 dark:border-[#3D312A]" />
           </div>
@@ -221,7 +223,7 @@ export function LocationModal({ isOpen, onClose }: LocationModalProps) {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-[#7A6A5A] dark:text-[#9A8A7A] mb-1.5 ml-1">
-                  Vĩ độ (Latitude)
+                  {t('locationModal.latitude')}
                 </label>
                 <input
                   type="text"
@@ -233,7 +235,7 @@ export function LocationModal({ isOpen, onClose }: LocationModalProps) {
               </div>
               <div>
                 <label className="block text-xs font-semibold text-[#7A6A5A] dark:text-[#9A8A7A] mb-1.5 ml-1">
-                  Kinh độ (Longitude)
+                  {t('locationModal.longitude')}
                 </label>
                 <input
                   type="text"
@@ -251,13 +253,13 @@ export function LocationModal({ isOpen, onClose }: LocationModalProps) {
                 onClick={onClose}
                 className="flex-1 py-3 rounded-full border border-gray-200 dark:border-[#4D3D32] text-sm font-semibold text-gray-500 dark:text-[#9A8A7A] hover:bg-gray-50 dark:hover:bg-[#3D312A] transition-all cursor-pointer"
               >
-                Hủy
+                {t('locationModal.cancel')}
               </button>
               <button
                 type="submit"
                 className="flex-1 py-3 rounded-full bg-[#3D312A] dark:bg-white text-white dark:text-[#2A2420] hover:bg-[#4D3D32] dark:hover:bg-[#E6DFD5] text-sm font-bold shadow-md transition-all cursor-pointer"
               >
-                Cập nhật thủ công
+                {t('locationModal.manualUpdate')}
               </button>
             </div>
           </form>

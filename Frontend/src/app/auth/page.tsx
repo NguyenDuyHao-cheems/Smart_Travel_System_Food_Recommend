@@ -17,6 +17,7 @@ import {
   AlertCircle
 } from "lucide-react";
 import { ThemeToggle } from "../../components/ThemeToggle";
+import { useLanguage } from "../../components/LanguageProvider";
 
 const roboto = Roboto({
   subsets: ["latin", "vietnamese"],
@@ -24,6 +25,7 @@ const roboto = Roboto({
 });
 
 function AuthPageContent() {
+  const { t } = useLanguage();
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectPath = searchParams.get("redirect") || "/";
@@ -51,11 +53,11 @@ function AuthPageContent() {
 
     // A/B: Validate theo yêu cầu
     if (username.length < 3) {
-      setErrorMsg("Tên đăng nhập phải có ít nhất 3 ký tự.");
+      setErrorMsg(t('auth.usernameMin'));
       return;
     }
     if (password.length < 8) {
-      setErrorMsg("Mật khẩu phải có ít nhất 8 ký tự.");
+      setErrorMsg(t('auth.passwordMin'));
       return;
     }
 
@@ -73,12 +75,12 @@ function AuthPageContent() {
       if (!res.ok) {
         // C: Hiển thị thông báo lỗi đúng chuẩn
         if (res.status === 409 && mode === "signup") {
-          throw new Error("Tên người dùng đã tồn tại.");
+          throw new Error(t('auth.usernameExists'));
         } else if (res.status === 401 && mode === "signin") {
-          throw new Error("Sai tên đăng nhập hoặc mật khẩu.");
+          throw new Error(t('auth.invalidCredentials'));
         } else {
           const errData = await res.json().catch(() => ({}));
-          throw new Error(errData.detail || `Lỗi server (${res.status})`);
+          throw new Error(errData.detail || t('auth.serverError').replace('{status}', String(res.status)));
         }
       }
 
@@ -101,7 +103,7 @@ function AuthPageContent() {
         router.push(redirectPath);
       }
     } catch (err: any) {
-      toast.error(err.message || "Có lỗi xảy ra, vui lòng thử lại.");
+      toast.error(err.message || t('auth.genericError'));
     } finally {
       setIsLoading(false);
     }
@@ -121,7 +123,7 @@ function AuthPageContent() {
 
         if (!res.ok) {
           const errData = await res.json().catch(() => ({}));
-          throw new Error(errData.detail || "Đăng nhập Google thất bại.");
+          throw new Error(errData.detail || t('auth.googleFailed'));
         }
 
         const data = await res.json();
@@ -141,7 +143,7 @@ function AuthPageContent() {
           router.push(redirectPath);
         }
       } catch (err: any) {
-        toast.error(err.message || "Có lỗi xảy ra khi đăng nhập Google.");
+        toast.error(err.message || t('auth.googleError'));
       } finally {
         setIsLoading(false);
       }
@@ -156,14 +158,14 @@ function AuthPageContent() {
   });
 
   const showShopeeError = () => {
-    setErrorMsg("Đăng nhập Google không thành công. Vui lòng thử lại.");
+    setErrorMsg(t('auth.googleUnsuccessful'));
     toast.custom((t) => (
       <div className="bg-black/70 backdrop-blur-md text-white px-5 py-4 rounded-2xl shadow-2xl flex items-center gap-4 border border-white/10 animate-in fade-in slide-in-from-top-4 duration-300">
         <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center flex-shrink-0">
           <span className="text-white text-xl font-black">!</span>
         </div>
         <p className="text-[15px] font-bold leading-tight">
-          Đăng nhập không thành công với Google
+          {t('auth.googleUnsuccessfulShort')}
         </p>
       </div>
     ), {
