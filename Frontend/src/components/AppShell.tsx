@@ -140,10 +140,10 @@ export function AppShell({ children, healthStatus = "loading", headerAction }: A
           <div className="flex items-center justify-end gap-2 overflow-hidden">
             {headerAction}
 
-            {/* Location Indicator Widget */}
+            {/* Location Indicator Widget - Text version (Desktop >= 1024px) */}
             <button
               onClick={() => setIsLocationModalOpen(true)}
-              className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border-2 border-[#3D312A]/20 dark:border-[#E6DFD5]/10 hover:bg-[#3D312A]/5 dark:hover:bg-[#E6DFD5]/5 hover:border-[#3D312A]/40 dark:hover:border-[#E6DFD5]/20 transition-all text-xs font-semibold cursor-pointer min-w-0 max-w-[140px] md:max-w-[200px]"
+              className="hidden lg:flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border-2 border-[#3D312A]/20 dark:border-[#E6DFD5]/10 hover:bg-[#3D312A]/5 dark:hover:bg-[#E6DFD5]/5 hover:border-[#3D312A]/40 dark:hover:border-[#E6DFD5]/20 transition-all text-xs font-semibold cursor-pointer min-w-0 max-w-[200px]"
               title="Nhấp để thay đổi vị trí của bạn"
             >
               <MapPin
@@ -164,10 +164,10 @@ export function AppShell({ children, healthStatus = "loading", headerAction }: A
               </span>
             </button>
 
-            {/* Location icon-only on mobile */}
+            {/* Location icon-only version (Tablet 640px to 1024px) */}
             <button
               onClick={() => setIsLocationModalOpen(true)}
-              className="sm:hidden p-2 hover:bg-[#3D312A]/10 dark:hover:bg-[#E6DFD5]/10 rounded transition-colors cursor-pointer flex-shrink-0"
+              className="hidden sm:flex lg:hidden p-2 hover:bg-[#3D312A]/10 dark:hover:bg-[#E6DFD5]/10 rounded transition-colors cursor-pointer flex-shrink-0"
               title="Nhấp để thay đổi vị trí của bạn"
             >
               <MapPin className={`w-4 h-4 flex-shrink-0 ${
@@ -179,23 +179,25 @@ export function AppShell({ children, healthStatus = "loading", headerAction }: A
               }`} />
             </button>
 
-            {/* Itinerary badge */}
+            {/* Itinerary badge - Hidden on mobile/high zoom (< 640px) */}
             {mounted && itineraryCount > 0 && (
-              <Link
-                href="/itinerary"
-                className="relative flex items-center justify-center w-9 h-9 rounded-full bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-700/40 hover:bg-orange-100 dark:hover:bg-orange-900/40 transition-colors flex-shrink-0"
-                title="Xem lộ trình"
-              >
-                <Route className="w-4 h-4 text-orange-500" />
-                <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-orange-500 text-white text-[10px] font-bold flex items-center justify-center leading-none">
-                  {itineraryCount}
-                </span>
-              </Link>
+              <div className="hidden sm:block flex-shrink-0">
+                <Link
+                  href="/itinerary"
+                  className="relative flex items-center justify-center w-9 h-9 rounded-full bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-700/40 hover:bg-orange-100 dark:hover:bg-orange-900/40 transition-colors"
+                  title="Xem lộ trình"
+                >
+                  <Route className="w-4 h-4 text-orange-500" />
+                  <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-orange-500 text-white text-[10px] font-bold flex items-center justify-center leading-none">
+                    {itineraryCount}
+                  </span>
+                </Link>
+              </div>
             )}
 
             {healthStatus !== "loading" && (
               <div
-                className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                className={`hidden sm:block w-2 h-2 rounded-full flex-shrink-0 ${
                   healthStatus === "ok"
                     ? "bg-emerald-500 animate-pulse"
                     : healthStatus === "degraded"
@@ -207,8 +209,15 @@ export function AppShell({ children, healthStatus = "loading", headerAction }: A
                 }
               />
             )}
-            <ThemeToggle />
-            <NotificationPanel />
+            
+            <div className="hidden sm:block flex-shrink-0">
+              <ThemeToggle />
+            </div>
+
+            <div className="hidden sm:block flex-shrink-0">
+              <NotificationPanel />
+            </div>
+
             <UserDropdown />
           </div>
         </div>
