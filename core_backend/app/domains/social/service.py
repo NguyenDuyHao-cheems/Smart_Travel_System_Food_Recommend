@@ -163,6 +163,9 @@ class SocialService:
                 "follow": f"{actor.full_name or actor.username} đã bắt đầu theo dõi bạn",
                 "like": f"{actor.full_name or actor.username} đã thích bài viết của bạn",
                 "reply": f"{actor.full_name or actor.username} đã trả lời bài viết của bạn",
+                "friend_request": f"{actor.full_name or actor.username} đã gửi lời mời kết bạn",
+                "friend_accept": f"{actor.full_name or actor.username} đã chấp nhận lời mời kết bạn",
+                "friend_decline": f"{actor.full_name or actor.username} đã từ chối lời mời kết bạn",
             }.get(notif.type, "Có thông báo mới")
             result.append({
                 "id": notif.id,

@@ -1,9 +1,9 @@
 import uuid
 from fastapi.testclient import TestClient
-from app.domains.users.models import UserFriend
 
 SIGN_UP_URL = "/api/v1/users/sign_up"
 FRIENDS_URL = "/api/v1/users/friends"
+REQUESTS_URL = "/api/v1/users/friends/requests"
 
 
 def _register_user(client: TestClient, username: str) -> dict:
@@ -23,13 +23,20 @@ def test_add_friend_success(client: TestClient):
     headers_a = {"Authorization": f"Bearer {user_a['access_token']}"}
     headers_b = {"Authorization": f"Bearer {user_b['access_token']}"}
     
-    # 2. User A adds User B by User B's username
+    # 2. User A sends friend request to User B
     payload = {"username": username_b}
     resp = client.post(FRIENDS_URL, json=payload, headers=headers_a)
     assert resp.status_code == 200
-    assert resp.json() == {"status": "success", "message": "Friend added successfully"}
+    assert resp.json() == {"status": "success", "message": "Gửi yêu cầu kết bạn thành công"}
     
-    # 3. Verify User A's friend list contains User B
+    # 3. User B accepts User A's request
+    reqs_b = client.get(REQUESTS_URL, headers=headers_b).json()
+    request_id = reqs_b["received"][0]["id"]
+    
+    resp_accept = client.post(f"{REQUESTS_URL}/{request_id}/accept", headers=headers_b)
+    assert resp_accept.status_code == 200
+    
+    # 4. Verify User A's friend list contains User B
     resp_list_a = client.get(FRIENDS_URL, headers=headers_a)
     assert resp_list_a.status_code == 200
     friends_a = resp_list_a.json()
@@ -37,7 +44,7 @@ def test_add_friend_success(client: TestClient):
     assert friends_a[0]["username"] == username_b
     assert friends_a[0]["friend_id"] == user_b["user_id"]
     
-    # 4. Verify User B's friend list contains User A (since it is mutual)
+    # 5. Verify User B's friend list contains User A
     resp_list_b = client.get(FRIENDS_URL, headers=headers_b)
     assert resp_list_b.status_code == 200
     friends_b = resp_list_b.json()
@@ -69,8 +76,11 @@ def test_remove_friend_success(client: TestClient):
     headers_a = {"Authorization": f"Bearer {user_a['access_token']}"}
     headers_b = {"Authorization": f"Bearer {user_b['access_token']}"}
     
-    # 2. Establish friendship A <-> B
+    # 2. User A sends request, B accepts -> friends
     client.post(FRIENDS_URL, json={"username": username_b}, headers=headers_a)
+    reqs_b = client.get(REQUESTS_URL, headers=headers_b).json()
+    request_id = reqs_b["received"][0]["id"]
+    client.post(f"{REQUESTS_URL}/{request_id}/accept", headers=headers_b)
     
     # 3. User A removes User B
     resp_delete = client.delete(f"{FRIENDS_URL}/{user_b['user_id']}", headers=headers_a)
@@ -94,7 +104,7 @@ def test_add_nonexistent_user_returns_404(client: TestClient):
     
     resp = client.post(FRIENDS_URL, json={"username": "does_not_exist_user"}, headers=headers)
     assert resp.status_code == 404
-    assert resp.json()["detail"] == "User not found"
+    assert resp.json()["detail"] == "Không tìm thấy người dùng này"
 
 
 def test_add_self_returns_400(client: TestClient):
@@ -104,7 +114,7 @@ def test_add_self_returns_400(client: TestClient):
     
     resp = client.post(FRIENDS_URL, json={"username": username}, headers=headers)
     assert resp.status_code == 400
-    assert resp.json()["detail"] == "Cannot add yourself as a friend"
+    assert resp.json()["detail"] == "Không thể kết bạn với chính mình"
 
 
 def test_add_duplicate_friend_returns_400(client: TestClient):
@@ -116,14 +126,14 @@ def test_add_duplicate_friend_returns_400(client: TestClient):
     
     headers_a = {"Authorization": f"Bearer {user_a['access_token']}"}
     
-    # First addition
+    # First addition -> sends request
     resp1 = client.post(FRIENDS_URL, json={"username": username_b}, headers=headers_a)
     assert resp1.status_code == 200
     
-    # Second addition (duplicate)
+    # Second addition -> returns 400 pending
     resp2 = client.post(FRIENDS_URL, json={"username": username_b}, headers=headers_a)
     assert resp2.status_code == 400
-    assert resp2.json()["detail"] == "Already friends"
+    assert resp2.json()["detail"] == "Yêu cầu kết bạn đang chờ duyệt"
 
 
 def test_remove_nonexistent_friendship_returns_404(client: TestClient):

@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 import uuid
-from sqlalchemy import Column, String, Integer, JSON, DateTime, event, DDL, ForeignKey, Boolean, UniqueConstraint
+from sqlalchemy import Column, String, Integer, JSON, DateTime, event, DDL, ForeignKey, Boolean, UniqueConstraint, UUID
 from app.core.database import Base
 from pgvector.sqlalchemy import Vector
 from sqlalchemy.ext.compiler import compiles
@@ -147,13 +147,31 @@ class UserFriend(Base):
     """
     __tablename__ = "user_friends"
 
-    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    friend_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    id = Column(UUID(as_uuid=False), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(UUID(as_uuid=False), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    friend_id = Column(UUID(as_uuid=False), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     __table_args__ = (
         UniqueConstraint("user_id", "friend_id", name="uq_user_friend"),
+    )
+
+
+class FriendRequest(Base):
+    """
+    Stores pending or declined friend requests between users.
+    """
+    __tablename__ = "friend_requests"
+
+    id = Column(UUID(as_uuid=False), primary_key=True, default=lambda: str(uuid.uuid4()))
+    sender_id = Column(UUID(as_uuid=False), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    receiver_id = Column(UUID(as_uuid=False), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    status = Column(String, default="pending", nullable=False) # 'pending', 'accepted', 'declined'
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
+    __table_args__ = (
+        UniqueConstraint("sender_id", "receiver_id", name="uq_sender_receiver"),
     )
 
 
