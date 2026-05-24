@@ -9,6 +9,7 @@ import json
 import logging
 import httpx
 from typing import Tuple, List, Optional
+from fastapi import Request
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -68,7 +69,7 @@ JSON: {"cleaned_query": "bánh xèo, nem rán, gà rán, khoai tây chiên, da h
 Chỉ trả về JSON {"cleaned_query": "..."}, không giải thích thêm!"""
 
 
-async def clean_query_with_gemini(text: str) -> str:
+async def clean_query_with_gemini(text: str, request: Optional[Request] = None) -> str:
     """
     Gửi câu query thô của user tới Gemini để làm sạch và reformulate.
     
@@ -84,7 +85,11 @@ async def clean_query_with_gemini(text: str) -> str:
     # --- Thử gọi Gemini trước ---
     if settings.GEMINI_API_KEY:
         try:
-            result = await _call_gemini(text)
+            if request and await request.is_disconnected():
+                logger.info("User disconnected. Aborting Gemini API call.")
+                return text
+
+            result = await _call_gemini(text, request)
             if result is not None:
                 return result
         except Exception as e:
@@ -96,7 +101,7 @@ async def clean_query_with_gemini(text: str) -> str:
     return text
 
 
-async def _call_gemini(text: str) -> Optional[str]:
+async def _call_gemini(text: str, request: Optional[Request] = None) -> Optional[str]:
     """
     Gọi Gemini API để reformulate query.
     Trả về cleaned_query string hoặc None nếu thất bại.
@@ -104,6 +109,10 @@ async def _call_gemini(text: str) -> Optional[str]:
     Fix #7: User text được gửi trong contents[].parts[].text thuần túy,
     system instructions được tách ra riêng trong system_instruction field.
     """
+    if request and await request.is_disconnected():
+        logger.info("User disconnected. Aborting Gemini API call.")
+        return None
+
     url = _GEMINI_URL_TEMPLATE.format(
         model=settings.GEMINI_MODEL_NAME,
         key=settings.GEMINI_API_KEY

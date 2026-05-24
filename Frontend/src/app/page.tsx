@@ -198,6 +198,16 @@ function HomeContent() {
     return () => clearInterval(interval);
   }, [healthStatus, checkHealth]);
 
+  const abortControllerRef = React.useRef<AbortController | null>(null);
+
+  const handleCancelSearch = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    setIsSearching(false);
+  };
+
   /* ── Search handler — GPS fallback, no reject ── */
   const handleSearch = async (overrideQuery?: string, explicitTag?: string) => {
     const finalQuery = (overrideQuery ?? query).trim();
@@ -206,10 +216,17 @@ function HomeContent() {
     setIsSearching(true);
     setApiError(null);
 
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     try {
       setSearchLoadingMsg("Đang xác định vị trí của bạn...");
 
       const gps = await getOptimizedLocation();
+      if (controller.signal.aborted) return;
       if (!gps) {
         setApiError("Không thể xác định vị trí thực tế của bạn. Vui lòng kiểm tra quyền truy cập GPS để tiếp tục.");
         setIsSearching(false);
@@ -230,6 +247,7 @@ function HomeContent() {
       const res = await fetch(`${BACKEND_URL}/api/v1/search/recommend`, {
         method: "POST",
         headers,
+        signal: controller.signal,
         body: JSON.stringify({
           query: finalQuery,
           lat: gps.lat,
@@ -266,10 +284,15 @@ function HomeContent() {
         throw new Error(errData.detail || "Không thể kết nối với hệ thống AI.");
       }
     } catch (err: any) {
+      if (err.name === "AbortError") return;
       // GeolocationPositionError doesn't serialize — use err.message safely
       const msg = err?.message || "Lỗi kết nối AI. Vui lòng thử lại.";
       setApiError(msg);
       setIsSearching(false);
+    } finally {
+      if (abortControllerRef.current === controller) {
+        abortControllerRef.current = null;
+      }
     }
   };
 
@@ -310,7 +333,7 @@ function HomeContent() {
         )}
 
         {/* ── Loading overlay ── */}
-        {isSearching && <SearchLoadingOverlay message={searchLoadingMsg} />}
+        {isSearching && <SearchLoadingOverlay message={searchLoadingMsg} onCancel={handleCancelSearch} />}
 
         {/* ── Hero Section ── */}
         <section
