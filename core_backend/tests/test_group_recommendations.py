@@ -100,15 +100,15 @@ async def test_get_group_recommendations_logic(db_session: Session):
             mq.filter.return_value = mq
             mq.order_by.return_value = mq
             mq.limit.return_value = mq
-            mq.all.return_value = [res1, res2, res3]
+            mq.all.return_value = [res1]
             return mq
         elif isinstance(model, type) and model == DishModel:
             mq = MagicMock()
             mq.filter.return_value = mq
             mq.all.return_value = [
-                ("res-1", ["soya"]),
-                ("res-2", ["shrimp"]),
-                ("res-3", ["shrimp"])
+                ("res-1", "Soya dish", ["soya"]),
+                ("res-2", "Shrimp dish", ["shrimp"]),
+                ("res-3", "Shrimp dish", ["shrimp"])
             ]
             return mq
         elif not isinstance(model, type):
@@ -117,11 +117,18 @@ async def test_get_group_recommendations_logic(db_session: Session):
             if "DishModel" in model_str:
                 mq = MagicMock()
                 mq.filter.return_value = mq
-                mq.all.return_value = [
-                    ("res-1", ["soya"]),
-                    ("res-2", ["shrimp"]),
-                    ("res-3", ["shrimp"])
-                ]
+                if len(args) == 2:
+                    mq.all.return_value = [
+                        ("res-1", "Soya dish", ["soya"]),
+                        ("res-2", "Shrimp dish", ["shrimp"]),
+                        ("res-3", "Shrimp dish", ["shrimp"])
+                    ]
+                else:
+                    mq.all.return_value = [
+                        ("res-1", ["soya"]),
+                        ("res-2", ["shrimp"]),
+                        ("res-3", ["shrimp"])
+                    ]
                 return mq
         return original_query(model, *args, **kwargs)
 

@@ -18,4 +18,6 @@ class GroupRecommendationResponse(BaseModel):
     group_size: int
     applied_vegetarian_filter: bool
     applied_allergies: List[str]
+    results_contain_warnings: bool = False
+
 

@@ -69,6 +69,12 @@ JSON: {"cleaned_query": "bánh xèo, nem rán, gà rán, khoai tây chiên, da h
 Chỉ trả về JSON {"cleaned_query": "..."}, không giải thích thêm!"""
 
 
+from cachetools import TTLCache
+
+# Cache up to 1000 items, with TTL of 1 hour (3600 seconds)
+_query_cache = TTLCache(maxsize=1000, ttl=3600)
+
+
 async def clean_query_with_gemini(text: str, request: Optional[Request] = None) -> str:
     """
     Gửi câu query thô của user tới Gemini để làm sạch và reformulate.
@@ -82,6 +88,15 @@ async def clean_query_with_gemini(text: str, request: Optional[Request] = None) 
     Returns:
         str: Câu truy vấn đã được làm sạch. Nếu Gemini fail → trả về text gốc.
     """
+    normalized_text = text.strip().lower()
+    print(f"[QUERY CACHE CHECK] query: '{text}' (normalized: '{normalized_text}')")
+    if normalized_text in _query_cache:
+        cached_val = _query_cache[normalized_text]
+        print(f"[QUERY CACHE HIT] returning cached value: '{cached_val}'")
+        logger.info("Query cache hit: '%s' → '%s'", text, cached_val)
+        return cached_val
+
+    print(f"[QUERY CACHE MISS] cache keys: {list(_query_cache.keys())} - calling Gemini API...")
     # --- Thử gọi Gemini trước ---
     if settings.GEMINI_API_KEY:
         try:
@@ -91,6 +106,8 @@ async def clean_query_with_gemini(text: str, request: Optional[Request] = None) 
 
             result = await _call_gemini(text, request)
             if result is not None:
+                _query_cache[normalized_text] = result
+                print(f"[QUERY CACHE SAVE] cached: '{normalized_text}' → '{result}'")
                 return result
         except Exception as e:
             logger.warning("Gemini API failed, falling back to original text: %s", e)

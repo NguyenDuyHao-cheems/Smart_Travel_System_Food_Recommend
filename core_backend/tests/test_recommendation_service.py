@@ -143,12 +143,15 @@ async def test_recommend_happy_path_with_rerank():
             self._json_data = json_data
         def json(self):
             return self._json_data
+        def raise_for_status(self):
+            pass
 
     with patch("app.services.recommendation_service.get_user_allergies", return_value=[]), \
          patch("app.services.recommendation_service.get_user_preferences_vector", return_value=None), \
          patch("app.services.recommendation_service.RetrievalService") as mock_retrieval_cls, \
          patch("app.services.recommendation_service.annotate_allergy", return_value=(candidates, 0)), \
          patch("app.services.recommendation_service.FeatureService") as mock_feature_cls, \
+         patch("app.core.config.settings.ENABLE_GRPC", False), \
          patch("httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post:
          
         mock_retrieval = MagicMock()
@@ -199,12 +202,15 @@ async def test_recommend_emotion_mode_pre_ranks_before_lambdamart_without_post_o
             self._json_data = json_data
         def json(self):
             return self._json_data
+        def raise_for_status(self):
+            pass
 
     with patch("app.services.recommendation_service.get_user_allergies", return_value=[]), \
          patch("app.services.recommendation_service.get_user_preferences_vector", return_value=None), \
          patch("app.services.recommendation_service.RetrievalService") as mock_retrieval_cls, \
          patch("app.services.recommendation_service.annotate_allergy", return_value=(candidates, 0)), \
          patch("app.services.recommendation_service.FeatureService") as mock_feature_cls, \
+         patch("app.core.config.settings.ENABLE_GRPC", False), \
          patch("httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post:
 
         mock_retrieval = MagicMock()

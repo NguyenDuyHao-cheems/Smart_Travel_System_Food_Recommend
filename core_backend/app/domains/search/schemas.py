@@ -107,6 +107,10 @@ class SearchRecommendResponse(BaseModel):
         None,
         description="Thông báo cảnh báo (ví dụ: dị ứng)."
     )
+    results_contain_warnings: Optional[bool] = Field(
+        False,
+        description="True nếu kết quả chứa các cảnh báo dị ứng (chế độ fallback)."
+    )
 
 class AISearchPayload(BaseModel):
     """
@@ -131,6 +135,7 @@ class SessionCreateResponse(BaseModel):
     filtered_out_count: Optional[int] = None
     allergen_flagged_count: Optional[int] = 0
     warning: Optional[str] = None
+    results_contain_warnings: Optional[bool] = False
 
 class SessionDataResponse(BaseModel):
     """Response trả về khi truy vấn session đã lưu."""
@@ -143,6 +148,7 @@ class SessionDataResponse(BaseModel):
     filtered_out_count: Optional[int] = None
     allergen_flagged_count: Optional[int] = 0
     warning: Optional[str] = None
+    results_contain_warnings: Optional[bool] = False
     created_at: Optional[datetime] = None
 
 
