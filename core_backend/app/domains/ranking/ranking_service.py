@@ -60,7 +60,8 @@ class RankingService:
         # Bước 3: Gọi AI Engine (LambdaMART rerank)
         try:
             from app.services.ai_client import get_ai_client
-            result = await get_ai_client().rank_candidates(
+            ai_client = await get_ai_client()
+            result = await ai_client.rank_candidates(
                 user_id=str(request.user_id),
                 candidates=featured,
                 top_k=request.k,

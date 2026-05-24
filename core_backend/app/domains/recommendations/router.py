@@ -76,7 +76,8 @@ async def reload_recommendations():
     [Admin/CLI Call] Yêu cầu AI Engine nạp nóng lại mô hình gợi ý LightFM mới từ đĩa.
     """
     try:
-        result = await get_ai_client().reload_recommendation_model()
+        ai_client = await get_ai_client()
+        result = await ai_client.reload_recommendation_model()
         return result
     except Exception as e:
         raise HTTPException(
@@ -131,7 +132,8 @@ async def get_group_recommendations(
             results=res["results"],
             group_size=res["group_size"],
             applied_vegetarian_filter=res["applied_vegetarian_filter"],
-            applied_allergies=res["applied_allergies"]
+            applied_allergies=res["applied_allergies"],
+            results_contain_warnings=res.get("results_contain_warnings", False)
         )
     except Exception as e:
         raise HTTPException(

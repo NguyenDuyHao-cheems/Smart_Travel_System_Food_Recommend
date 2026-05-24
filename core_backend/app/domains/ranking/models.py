@@ -18,6 +18,8 @@ class RestaurantModel(Base):
 
     # Tên field khớp ERD bản NEW
     price_range = Column(String, nullable=True)     # giá dạng string, vd "50000-100000"
+    price_min = Column(Integer, nullable=True)
+    price_max = Column(Integer, nullable=True)
     rating_avg = Column(Float, nullable=True)        # rating trung bình (0–5)
     sentiment_score = Column(Float, nullable=True)  # normalized aggregate review sentiment (-1 to 1)
     positive_review_count = Column(Integer, nullable=True, default=0)

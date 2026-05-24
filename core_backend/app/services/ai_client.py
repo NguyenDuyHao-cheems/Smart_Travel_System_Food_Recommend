@@ -17,7 +17,8 @@ async def embed_text(text: str) -> Optional[List[float]]:
 
     Returns None nếu AI Engine không phản hồi hoặc trả về sai dimension.
     """
-    return await get_ai_client().embed_text(text)
+    ai_client = await get_ai_client()
+    return await ai_client.embed_text(text)
 
 
 class AIServiceClient:
@@ -29,7 +30,10 @@ class AIServiceClient:
         self.base_url = base_url
         self.grpc_target = grpc_target
         self._http_client = httpx.AsyncClient(base_url=base_url, timeout=_TIMEOUT)
-        self._grpc_client = GRPCServiceClient(target=grpc_target)
+        if settings.ENABLE_GRPC:
+            self._grpc_client = GRPCServiceClient(target=grpc_target)
+        else:
+            self._grpc_client = None
 
     async def check_health(self) -> bool:
         """Trả về True nếu AI Engine đang hoạt động (Thử gRPC trước nếu bật, sau đó HTTP)."""
@@ -174,7 +178,8 @@ class AIServiceClient:
 
     async def close(self):
         await self._http_client.aclose()
-        await self._grpc_client.close()
+        if self._grpc_client is not None:
+            await self._grpc_client.close()
 
 
 # ---------------------------------------------------------------------------
@@ -184,7 +189,7 @@ class AIServiceClient:
 _client_instance: Optional[AIServiceClient] = None
 
 
-def get_ai_client() -> AIServiceClient:
+async def get_ai_client() -> AIServiceClient:
     """Singleton factory cho AIServiceClient."""
     global _client_instance
     if _client_instance is None:

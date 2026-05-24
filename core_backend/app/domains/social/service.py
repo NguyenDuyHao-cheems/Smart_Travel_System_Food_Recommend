@@ -70,12 +70,12 @@ class SocialService:
         user_repo = UserAccountRepository(self.repo.db)
         user = user_repo.get_by_id(str(user_id))
         return SocialPostResponse(
-            id=created_post.id,
-            user_id=created_post.user_id,
+            id=str(created_post.id),
+            user_id=str(created_post.user_id),
             content=created_post.content,
-            media_urls=created_post.media_urls,
-            res_id=created_post.res_id,
-            parent_id=created_post.parent_id,
+            media_urls=created_post.media_urls if isinstance(created_post.media_urls, list) else ([] if created_post.media_urls is None else [str(created_post.media_urls)]),
+            res_id=str(created_post.res_id) if created_post.res_id else None,
+            parent_id=str(created_post.parent_id) if created_post.parent_id else None,
             likes_count=created_post.likes_count or 0,
             replies_count=created_post.replies_count or 0,
             created_at=created_post.created_at,
@@ -183,22 +183,25 @@ class SocialService:
 
     def _format_post_results(self, results, current_user_id: str = None) -> list[SocialPostResponse]:
         formatted = []
+        post_ids = [str(post.id) for post, _ in results]
+        liked_post_ids = set()
+        
+        if current_user_id and post_ids:
+            liked_post_ids = self.repo.check_likes_batch(current_user_id, post_ids)
+
         for post, user in results:
-            # Check if current user liked it
-            is_liked = False
-            if current_user_id:
-                is_liked = self.repo.check_like(current_user_id, post.id)
+            is_liked = str(post.id) in liked_post_ids
                 
             formatted.append(SocialPostResponse(
-                id=post.id,
-                user_id=post.user_id,
+                id=str(post.id),
+                user_id=str(post.user_id),
                 content=post.content,
                 mood=post.mood,
-                media_urls=post.media_urls,
-                res_id=post.res_id,
-                parent_id=post.parent_id,
-                likes_count=post.likes_count,
-                replies_count=post.replies_count,
+                media_urls=post.media_urls if isinstance(post.media_urls, list) else ([] if post.media_urls is None else [str(post.media_urls)]),
+                res_id=str(post.res_id) if post.res_id else None,
+                parent_id=str(post.parent_id) if post.parent_id else None,
+                likes_count=post.likes_count or 0,
+                replies_count=post.replies_count or 0,
                 created_at=post.created_at,
                 username=user.username,
                 full_name=user.full_name,
@@ -265,8 +268,8 @@ class SocialService:
         user_account = self.repo.db.query(UserAccount).filter(UserAccount.id == user_id).first()
 
         return StoryResponse(
-            id=story.id,
-            user_id=story.user_id,
+            id=str(story.id),
+            user_id=str(story.user_id),
             media_url=story.media_url,
             created_at=story.created_at,
             expires_at=story.expires_at,
@@ -282,8 +285,8 @@ class SocialService:
         stories = []
         for story, user in results:
             stories.append(StoryResponse(
-                id=story.id,
-                user_id=story.user_id,
+                id=str(story.id),
+                user_id=str(story.user_id),
                 media_url=story.media_url,
                 created_at=story.created_at,
                 expires_at=story.expires_at,

@@ -1,6 +1,7 @@
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, UserPlus, UserCheck, Loader2, X } from 'lucide-react';
+import { useLanguage } from '../LanguageProvider';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -13,6 +14,7 @@ interface UserResult {
 }
 
 export function UserSearchPanel() {
+  const { t } = useLanguage();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<UserResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -74,7 +76,7 @@ export function UserSearchPanel() {
           type="text"
           value={query}
           onChange={e => setQuery(e.target.value)}
-          placeholder="Tìm kiếm bạn bè..."
+          placeholder={t("feed.searchFriends")}
           className="flex-1 bg-transparent text-sm outline-none text-foreground placeholder:text-muted-foreground"
         />
         {query && (
@@ -110,8 +112,8 @@ export function UserSearchPanel() {
                   }`}
                 >
                   {isFollowing
-                    ? <><UserCheck className="w-3 h-3" /> Đang theo dõi</>
-                    : <><UserPlus className="w-3 h-3" /> Theo dõi</>
+                    ? <><UserCheck className="w-3 h-3" /> {t("feed.searchPanel.following")}</>
+                    : <><UserPlus className="w-3 h-3" /> {t("feed.searchPanel.follow")}</>
                   }
                 </button>
               </div>
@@ -122,7 +124,7 @@ export function UserSearchPanel() {
 
       {query && !isSearching && results.length === 0 && (
         <p className="text-xs text-muted-foreground text-center py-4">
-          Không tìm thấy người dùng nào
+          {t("feed.searchPanel.noMatch")}
         </p>
       )}
     </div>

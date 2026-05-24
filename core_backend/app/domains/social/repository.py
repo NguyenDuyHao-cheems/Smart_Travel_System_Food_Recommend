@@ -1,4 +1,4 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from .models import SocialPost, SocialFollow, SocialLike, SocialNotification, SocialStory
 from app.domains.users.models import UserAccount
 from typing import List, Optional
@@ -14,11 +14,13 @@ class SocialRepository:
         return post
 
     def get_post_by_id(self, post_id: str) -> Optional[SocialPost]:
-        return self.db.query(SocialPost).filter(SocialPost.id == post_id).first()
+        return self.db.query(SocialPost).options(joinedload(SocialPost.restaurant)).filter(SocialPost.id == post_id).first()
 
     def get_feed(self, user_id: str, limit: int = 20, offset: int = 0, mode: str = "for_you") -> List[tuple]:
         query = self.db.query(SocialPost, UserAccount).join(
             UserAccount, SocialPost.user_id == UserAccount.id
+        ).options(
+            joinedload(SocialPost.restaurant)
         ).filter(
             SocialPost.parent_id.is_(None)  # Only main posts, not replies
         )
@@ -40,6 +42,8 @@ class SocialRepository:
     def get_replies(self, post_id: str, limit: int = 50) -> List[tuple]:
         return self.db.query(SocialPost, UserAccount).join(
             UserAccount, SocialPost.user_id == UserAccount.id
+        ).options(
+            joinedload(SocialPost.restaurant)
         ).filter(
             SocialPost.parent_id == post_id
         ).order_by(SocialPost.created_at.asc()).limit(limit).all()
@@ -66,6 +70,15 @@ class SocialRepository:
             SocialLike.user_id == user_id,
             SocialLike.post_id == post_id
         ).first() is not None
+
+    def check_likes_batch(self, user_id: str, post_ids: List[str]) -> set:
+        if not post_ids:
+            return set()
+        likes = self.db.query(SocialLike.post_id).filter(
+            SocialLike.user_id == user_id,
+            SocialLike.post_id.in_(post_ids)
+        ).all()
+        return {str(like[0]) for like in likes}
 
     def create_like(self, like: SocialLike):
         self.db.add(like)
@@ -133,6 +146,7 @@ class SocialRepository:
         return (
             self.db.query(SocialPost, UserAccount)
             .join(UserAccount, SocialPost.user_id == UserAccount.id)
+            .options(joinedload(SocialPost.restaurant))
             .filter(SocialPost.user_id == user_id, SocialPost.parent_id.is_(None))
             .order_by(SocialPost.created_at.desc())
             .offset(offset)
@@ -147,7 +161,7 @@ class SocialRepository:
         return followers, following
 
     def get_post_by_id(self, post_id: str) -> Optional[SocialPost]:
-        return self.db.query(SocialPost).filter(SocialPost.id == post_id).first()
+        return self.db.query(SocialPost).options(joinedload(SocialPost.restaurant)).filter(SocialPost.id == post_id).first()
 
     def delete_post(self, post_id: str):
         # Delete all notifications linked to this post

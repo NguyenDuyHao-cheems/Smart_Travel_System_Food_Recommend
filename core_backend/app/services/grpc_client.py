@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from typing import List, Optional
 import grpc
@@ -14,15 +15,37 @@ class GRPCServiceClient:
     """
     def __init__(self, target: str):
         self.target = target
-        # Re-use a single insecure async channel
-        self.channel = grpc.aio.insecure_channel(
-            self.target,
-            options=[
-                ('grpc.max_receive_message_length', 50 * 1024 * 1024),
-                ('grpc.max_send_message_length', 50 * 1024 * 1024)
-            ]
-        )
-        self.stub = ai_service_pb2_grpc.AIServiceStub(self.channel)
+        self._channel = None
+        self._stub = None
+        self._loop = None
+
+    def _get_channel_and_stub(self):
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = None
+
+        if self._channel is None or self._loop is not loop:
+            self._channel = grpc.aio.insecure_channel(
+                self.target,
+                options=[
+                    ('grpc.max_receive_message_length', 50 * 1024 * 1024),
+                    ('grpc.max_send_message_length', 50 * 1024 * 1024)
+                ]
+            )
+            self._stub = ai_service_pb2_grpc.AIServiceStub(self._channel)
+            self._loop = loop
+        return self._channel, self._stub
+
+    @property
+    def channel(self):
+        channel, _ = self._get_channel_and_stub()
+        return channel
+
+    @property
+    def stub(self):
+        _, stub = self._get_channel_and_stub()
+        return stub
 
     async def check_health(self) -> bool:
         try:
@@ -104,4 +127,8 @@ class GRPCServiceClient:
             raise e
 
     async def close(self):
-        await self.channel.close()
+        if self._channel is not None:
+            await self._channel.close()
+            self._channel = None
+            self._stub = None
+            self._loop = None

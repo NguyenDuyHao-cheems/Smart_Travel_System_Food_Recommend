@@ -110,6 +110,83 @@
 | `response_ms` | `int4` |  Nullable |
 | `results_json` | `jsonb` |  Nullable |
 
+## Table `social_follows`
+
+### Columns
+
+| Name | Type | Constraints |
+|------|------|-------------|
+| `follower_id` | `uuid` | Primary |
+| `following_id` | `uuid` | Primary |
+| `created_at` | `timestamp` |  Nullable |
+
+## Table `social_likes`
+
+### Columns
+
+| Name | Type | Constraints |
+|------|------|-------------|
+| `user_id` | `uuid` | Primary |
+| `post_id` | `varchar` | Primary |
+| `created_at` | `timestamp` |  Nullable |
+
+## Table `social_notifications`
+
+### Columns
+
+| Name | Type | Constraints |
+|------|------|-------------|
+| `id` | `varchar` | Primary |
+| `user_id` | `uuid` |  |
+| `actor_id` | `uuid` |  |
+| `type` | `varchar` |  |
+| `post_id` | `varchar` |  Nullable |
+| `is_read` | `bool` |  Nullable |
+| `created_at` | `timestamp` |  Nullable |
+
+## Table `social_posts`
+
+### Columns
+
+| Name | Type | Constraints |
+|------|------|-------------|
+| `id` | `varchar` | Primary |
+| `user_id` | `uuid` |  |
+| `content` | `varchar` |  Nullable |
+| `media_urls` | `json` |  Nullable |
+| `res_id` | `uuid` |  Nullable |
+| `parent_id` | `varchar` |  Nullable |
+| `likes_count` | `int4` |  Nullable |
+| `replies_count` | `int4` |  Nullable |
+| `created_at` | `timestamp` |  Nullable |
+| `mood` | `varchar` |  Nullable |
+
+## Table `social_stories`
+
+### Columns
+
+| Name | Type | Constraints |
+|------|------|-------------|
+| `id` | `varchar` | Primary |
+| `user_id` | `uuid` |  |
+| `media_url` | `varchar` |  |
+| `created_at` | `timestamp` |  Nullable |
+| `expires_at` | `timestamp` |  |
+| `overlays` | `json` |  Nullable |
+| `views_count` | `int4` |  Nullable |
+
+## Table `social_story_views`
+
+### Columns
+
+| Name | Type | Constraints |
+|------|------|-------------|
+| `id` | `int4` | Primary |
+| `story_id` | `varchar` |  |
+| `user_id` | `uuid` |  |
+| `reaction` | `varchar` |  Nullable |
+| `created_at` | `timestamptz` |  Nullable |
+
 ## Table `tags`
 
 ### Columns
@@ -156,6 +233,17 @@
 | `id` | `uuid` | Primary |
 | `user_id` | `uuid` |  |
 | `res_id` | `uuid` |  |
+| `created_at` | `timestamptz` |  Nullable |
+
+## Table `user_friends`
+
+### Columns
+
+| Name | Type | Constraints |
+|------|------|-------------|
+| `id` | `uuid` | Primary |
+| `user_id` | `uuid` |  |
+| `friend_id` | `uuid` |  |
 | `created_at` | `timestamptz` |  Nullable |
 
 ## Table `user_interactions`
@@ -215,4 +303,5 @@
 | `email` | `varchar` |  Nullable |
 | `status` | `varchar` |  Nullable |
 | `profile_stats` | `json` |  Nullable |
+| `cover_url` | `varchar` |  Nullable |
 

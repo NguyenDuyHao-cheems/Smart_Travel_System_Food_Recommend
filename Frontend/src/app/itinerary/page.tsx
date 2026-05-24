@@ -35,6 +35,7 @@ import {
   ItineraryItem,
 } from '../../store/slices/itinerarySlice';
 import { AppShell } from '../../components/AppShell';
+import { useLanguage } from '../../components/LanguageProvider';
 
 /* ──────────────────────────────────────────────
    Haversine distance calculation (km)
@@ -63,12 +64,15 @@ const SPEED: Record<string, number> = {
   driving: 40,
 };
 
-function formatTime(hours: number): string {
-  if (hours < 1 / 60) return '< 1 phút';
+function formatTime(hours: number, language: string): string {
+  if (hours < 1 / 60) return language === 'en' ? '< 1 min' : '< 1 phút';
   const mins = Math.round(hours * 60);
-  if (mins < 60) return `${mins} phút`;
+  if (mins < 60) return language === 'en' ? `${mins} mins` : `${mins} phút`;
   const h = Math.floor(mins / 60);
   const m = mins % 60;
+  if (language === 'en') {
+    return m > 0 ? `${h}h ${m}m` : `${h}h`;
+  }
   return m > 0 ? `${h} giờ ${m} phút` : `${h} giờ`;
 }
 
@@ -111,11 +115,15 @@ function SegmentCard({
   to,
   distKm,
   travelMode,
+  t,
+  language,
 }: {
   from: ItineraryItem;
   to: ItineraryItem;
   distKm: number;
   travelMode: string;
+  t: (key: string) => string;
+  language: string;
 }) {
   const speed = SPEED[travelMode] ?? 20;
   const timeHours = distKm / speed;
@@ -137,7 +145,7 @@ function SegmentCard({
           </span>
           <span className="flex items-center gap-1.5 text-gray-500 dark:text-[#9A8A7A]">
             <Clock className="w-3.5 h-3.5" />
-            {formatTime(timeHours)}
+            {formatTime(timeHours, language)}
           </span>
           <a
             href={`https://www.google.com/maps/dir/${from.lat},${from.lng}/${to.lat},${to.lng}`}
@@ -146,7 +154,7 @@ function SegmentCard({
             className="ml-auto flex items-center gap-1 text-xs font-semibold text-blue-500 hover:text-blue-700 hover:underline"
           >
             <ExternalLink className="w-3 h-3" />
-            Chỉ đường
+            {t("itinerary.directions")}
           </a>
         </div>
       </div>
@@ -157,7 +165,7 @@ function SegmentCard({
 /* ──────────────────────────────────────────────
    No-coords warning banner
 ────────────────────────────────────────────── */
-function NoCoordsBanner({ names }: { names: string[] }) {
+function NoCoordsBanner({ names, t }: { names: string[]; t: (key: string) => string }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: -10 }}
@@ -167,10 +175,10 @@ function NoCoordsBanner({ names }: { names: string[] }) {
       <AlertCircle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
       <div>
         <p className="font-semibold text-amber-800 dark:text-amber-300 text-sm">
-          Một số địa điểm thiếu toạ độ GPS
+          {t("itinerary.missingGPSWarning")}
         </p>
         <p className="text-xs text-amber-700 dark:text-amber-400 mt-1">
-          {names.join(', ')} — khoảng cách sẽ không được hiển thị.
+          {names.join(', ')} — {t("itinerary.missingGPSWarningDesc")}
         </p>
       </div>
     </motion.div>
@@ -184,17 +192,19 @@ function SummaryBar({
   totalKm,
   totalTime,
   count,
+  t,
 }: {
   totalKm: number;
   totalTime: string;
   count: number;
+  t: (key: string) => string;
 }) {
   return (
     <div className="grid grid-cols-3 gap-4 mb-8">
       {[
-        { icon: <MapPin className="w-5 h-5 text-orange-500" />, label: 'Điểm dừng', value: `${count} địa điểm` },
-        { icon: <TrendingUp className="w-5 h-5 text-blue-500" />, label: 'Tổng khoảng cách', value: `${totalKm.toFixed(1)} km` },
-        { icon: <Clock className="w-5 h-5 text-green-500" />, label: 'Thời gian di chuyển', value: totalTime },
+        { icon: <MapPin className="w-5 h-5 text-orange-500" />, label: t("itinerary.stopsCount"), value: `${count} ${t("itinerary.stopsCountValue")}` },
+        { icon: <TrendingUp className="w-5 h-5 text-blue-500" />, label: t("itinerary.totalDistance"), value: `${totalKm.toFixed(1)} km` },
+        { icon: <Clock className="w-5 h-5 text-green-500" />, label: t("itinerary.travelTime"), value: totalTime },
       ].map((stat) => (
         <div
           key={stat.label}
@@ -215,6 +225,7 @@ function SummaryBar({
 export default function ItineraryPage() {
   const router = useRouter();
   const dispatch = useDispatch();
+  const { t, language } = useLanguage();
   const items = useSelector((state: RootState) => state.itinerary.items);
   const travelMode = useSelector((state: RootState) => state.itinerary.travelMode);
   const userCoords = useSelector((state: RootState) => state.location.coords);
@@ -230,13 +241,13 @@ export default function ItineraryPage() {
     if (userCoords && items.length > 0 && items[0].lat && items[0].lng) {
       const dist = haversine(userCoords.lat, userCoords.lng, items[0].lat, items[0].lng);
       return {
-        from: { id: 'user', name: 'Vị trí hiện tại của bạn', lat: userCoords.lat, lng: userCoords.lng } as ItineraryItem,
+        from: { id: 'user', name: t("itinerary.currentLocation"), lat: userCoords.lat, lng: userCoords.lng } as ItineraryItem,
         to: items[0],
         distKm: dist,
       };
     }
     return null;
-  }, [items, userCoords]);
+  }, [items, userCoords, t]);
 
   /* Compute distances between consecutive items */
   const segments = useMemo(() => {
@@ -260,7 +271,7 @@ export default function ItineraryPage() {
   }, [segments, userSegment]);
 
   const speed = SPEED[travelMode] ?? 20;
-  const totalTimeStr = formatTime(totalKm / speed);
+  const totalTimeStr = formatTime(totalKm / speed, language);
 
   const missingCoords = items.filter((it) => !it.lat || !it.lng).map((it) => it.name);
 
@@ -334,10 +345,10 @@ export default function ItineraryPage() {
             <div className="flex-1">
               <h1 className="text-xl font-bold text-gray-900 dark:text-[#E6DFD5] flex items-center gap-2">
                 <Route className="w-5 h-5 text-orange-500" />
-                Lộ trình của tôi
+                {t("itinerary.title")}
               </h1>
               <p className="text-xs text-gray-400 dark:text-[#9A8A7A]">
-                {mounted ? items.length : 0} địa điểm · Kéo để sắp xếp lại
+                {mounted ? t("itinerary.subtitle").replace("{count}", String(items.length)) : ""}
               </p>
             </div>
 
@@ -347,7 +358,7 @@ export default function ItineraryPage() {
                 className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-xl transition-colors border border-red-200 dark:border-red-800/40"
               >
                 <Trash2 className="w-3.5 h-3.5" />
-                Xoá tất cả
+                {t("itinerary.clearAll")}
               </button>
             )}
           </div>
@@ -361,10 +372,10 @@ export default function ItineraryPage() {
                 <Route className="w-12 h-12 text-orange-300" />
               </div>
               <h2 className="text-2xl font-bold text-gray-800 dark:text-[#E6DFD5] mb-2">
-                Đang tải lộ trình...
+                {t("itinerary.loading")}
               </h2>
               <p className="text-gray-400 dark:text-[#9A8A7A] max-w-xs">
-                Vui lòng chờ trong giây lát.
+                {t("itinerary.pleaseWait")}
               </p>
             </div>
           ) : items.length === 0 ? (
@@ -377,16 +388,16 @@ export default function ItineraryPage() {
                 <Route className="w-12 h-12 text-orange-300" />
               </div>
               <h2 className="text-2xl font-bold text-gray-800 dark:text-[#E6DFD5] mb-2">
-                Lộ trình trống
+                {t("itinerary.emptyTitle")}
               </h2>
               <p className="text-gray-400 dark:text-[#9A8A7A] max-w-xs">
-                Nhấn nút <strong>🗺 Lộ trình</strong> trên thẻ nhà hàng để thêm điểm đến vào đây.
+                {t("itinerary.emptyDesc")}
               </p>
               <button
                 onClick={() => router.back()}
                 className="mt-8 px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-2xl shadow-lg shadow-orange-200/40 transition-all hover:-translate-y-0.5"
               >
-                Tìm địa điểm
+                {t("itinerary.findPlaces")}
               </button>
             </motion.div>
           ) : (
@@ -401,10 +412,10 @@ export default function ItineraryPage() {
                   <CloudRain className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
                   <div>
                     <p className="font-semibold text-blue-800 dark:text-blue-300 text-sm">
-                      ⚠️ Cảnh báo mưa tại {rainyStops.length} điểm dừng
+                      {t("itinerary.rainWarning").replace("{count}", String(rainyStops.length))}
                     </p>
                     <p className="text-xs text-blue-700 dark:text-blue-400 mt-1">
-                      {rainyStops.map((s) => s.name).join(', ')} — đang có mưa hoặc dự kiến mưa. Hãy mang theo áo mưa!
+                      {rainyStops.map((s) => s.name).join(', ')} — {t("itinerary.rainWarningDesc")}
                     </p>
                   </div>
                 </motion.div>
@@ -414,39 +425,39 @@ export default function ItineraryPage() {
               {weatherLoading && items.length > 0 && (
                 <div className="mb-4 flex items-center gap-2 text-xs text-gray-400 dark:text-[#9A8A7A]">
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  Đang kiểm tra thời tiết tại các điểm dừng...
+                  {t("itinerary.checkingWeather")}
                 </div>
               )}
 
               {/* Missing coords banner */}
-              {missingCoords.length > 0 && <NoCoordsBanner names={missingCoords} />}
+              {missingCoords.length > 0 && <NoCoordsBanner names={missingCoords} t={t} />}
 
               {/* Summary */}
-              <SummaryBar totalKm={totalKm} totalTime={totalTimeStr} count={items.length} />
+              <SummaryBar totalKm={totalKm} totalTime={totalTimeStr} count={items.length} t={t} />
 
               {/* Travel mode selector */}
               <div className="flex items-center gap-3 mb-6 flex-wrap">
-                <span className="text-sm font-semibold text-gray-500 dark:text-[#9A8A7A]">Phương tiện:</span>
+                <span className="text-sm font-semibold text-gray-500 dark:text-[#9A8A7A]">{t("itinerary.vehicleLabel")}</span>
                 <ModeButton
                   mode="walking"
                   active={travelMode === 'walking'}
                   onClick={() => dispatch(setTravelMode('walking'))}
                   icon={<Footprints className="w-4 h-4" />}
-                  label="Đi bộ"
+                  label={t("itinerary.walking")}
                 />
                 <ModeButton
                   mode="riding"
                   active={travelMode === 'riding'}
                   onClick={() => dispatch(setTravelMode('riding'))}
                   icon={<Bike className="w-4 h-4" />}
-                  label="Xe máy"
+                  label={t("itinerary.riding")}
                 />
                 <ModeButton
                   mode="driving"
                   active={travelMode === 'driving'}
                   onClick={() => dispatch(setTravelMode('driving'))}
                   icon={<Car className="w-4 h-4" />}
-                  label="Ô tô"
+                  label={t("itinerary.driving")}
                 />
               </div>
 
@@ -458,8 +469,8 @@ export default function ItineraryPage() {
                       📍
                     </span>
                     <div className="flex-1 min-w-0">
-                      <p className="font-bold text-gray-900 dark:text-[#E6DFD5] text-sm">Vị trí hiện tại của bạn</p>
-                      <p className="text-xs text-gray-400 dark:text-[#9A8A7A]">Điểm xuất phát của hành trình</p>
+                      <p className="font-bold text-gray-900 dark:text-[#E6DFD5] text-sm">{t("itinerary.currentLocation")}</p>
+                      <p className="text-xs text-gray-400 dark:text-[#9A8A7A]">{t("itinerary.startPoint")}</p>
                     </div>
                   </div>
                   <div className="mt-3 pl-10 border-l border-dashed border-blue-200 dark:border-blue-800">
@@ -470,7 +481,7 @@ export default function ItineraryPage() {
                       </span>
                       <span className="flex items-center gap-1 text-gray-500 dark:text-[#9A8A7A]">
                         <Clock className="w-3.5 h-3.5" />
-                        {formatTime(userSegment.distKm / speed)}
+                        {formatTime(userSegment.distKm / speed, language)}
                       </span>
                       <a
                         href={`https://www.google.com/maps/dir/${userSegment.from.lat},${userSegment.from.lng}/${userSegment.to.lat},${userSegment.to.lng}`}
@@ -479,7 +490,7 @@ export default function ItineraryPage() {
                         className="ml-auto flex items-center gap-1 font-semibold text-blue-500 hover:text-blue-700 hover:underline"
                       >
                         <ExternalLink className="w-3 h-3" />
-                        Chỉ đường
+                        {t("itinerary.directions")}
                       </a>
                     </div>
                   </div>
@@ -540,7 +551,7 @@ export default function ItineraryPage() {
                                   <MapPin className="w-3 h-3" /> GPS
                                 </span>
                               ) : (
-                                <span className="text-xs text-amber-500">Thiếu GPS</span>
+                                <span className="text-xs text-amber-500">{t("itinerary.missingGPS")}</span>
                               )}
                             </div>
                             {item.address && (
@@ -567,7 +578,7 @@ export default function ItineraryPage() {
                                 rel="noopener noreferrer"
                                 onClick={(e) => e.stopPropagation()}
                                 className="p-2 rounded-xl text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-colors"
-                                title="Mở Google Maps"
+                                title={t("itinerary.openInGoogleMaps")}
                               >
                                 <ExternalLink className="w-4 h-4" />
                               </a>
@@ -575,7 +586,7 @@ export default function ItineraryPage() {
                             <button
                               onClick={() => dispatch(removeItem(item.id))}
                               className="p-2 rounded-xl text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
-                              title="Xoá khỏi lộ trình"
+                              title={t("itinerary.deleteStopTitle")}
                             >
                               <X className="w-4 h-4" />
                             </button>
@@ -593,12 +604,14 @@ export default function ItineraryPage() {
                             to={segments[idx].to}
                             distKm={segments[idx].distKm}
                             travelMode={travelMode}
+                            t={t}
+                            language={language}
                           />
                         ) : (
                           <div className="relative mx-8 my-1">
                             <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-200 dark:bg-gray-700" />
                             <div className="ml-10 pl-3 py-2">
-                              <p className="text-xs text-gray-400 italic">Không có dữ liệu khoảng cách</p>
+                              <p className="text-xs text-gray-400 italic">{t("itinerary.noDistanceData")}</p>
                             </div>
                           </div>
                         )}
@@ -622,11 +635,11 @@ export default function ItineraryPage() {
                     className="flex items-center justify-center gap-3 w-full py-4 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-bold rounded-2xl shadow-xl shadow-orange-200/40 dark:shadow-orange-900/30 transition-all hover:-translate-y-0.5 text-base"
                   >
                     <Navigation className="w-5 h-5" />
-                    Mở lộ trình trong Google Maps
+                    {t("itinerary.openInGoogleMaps")}
                     <ChevronRight className="w-5 h-5" />
                   </a>
                   <p className="text-center text-xs text-gray-400 mt-2">
-                    Sẽ mở toàn bộ lộ trình xuất phát từ vị trí của bạn trên Google Maps
+                    {t("itinerary.openInGoogleMapsDesc")}
                   </p>
                 </motion.div>
               )}
@@ -656,17 +669,17 @@ export default function ItineraryPage() {
                 <Trash2 className="w-7 h-7 text-red-500" />
               </div>
               <h3 className="text-xl font-bold text-gray-900 dark:text-[#E6DFD5] text-center mb-2">
-                Xoá lộ trình?
+                {t("itinerary.clearConfirmTitle")}
               </h3>
               <p className="text-gray-500 dark:text-[#9A8A7A] text-center text-sm mb-6">
-                Toàn bộ {items.length} địa điểm sẽ bị xoá. Hành động này không thể hoàn tác.
+                {t("itinerary.clearConfirmDesc").replace("{count}", String(items.length))}
               </p>
               <div className="flex gap-3">
                 <button
                   onClick={() => setConfirmClear(false)}
                   className="flex-1 py-3 rounded-xl border border-gray-200 dark:border-[#4D3D32] text-gray-700 dark:text-[#C8BFB0] font-semibold hover:bg-gray-50 dark:hover:bg-[#4D3D32] transition-colors"
                 >
-                  Huỷ
+                  {t("itinerary.cancelBtn")}
                 </button>
                 <button
                   onClick={() => {
@@ -675,7 +688,7 @@ export default function ItineraryPage() {
                   }}
                   className="flex-1 py-3 rounded-xl bg-red-500 hover:bg-red-600 text-white font-bold shadow-lg shadow-red-200/40 transition-colors"
                 >
-                  Xoá tất cả
+                  {t("itinerary.clearAll")}
                 </button>
               </div>
             </motion.div>

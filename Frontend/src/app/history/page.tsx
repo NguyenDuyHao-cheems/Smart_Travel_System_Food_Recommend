@@ -7,7 +7,8 @@ import { Clock, Search, Trash2, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
-import { vi } from "date-fns/locale";
+import { vi, enUS } from "date-fns/locale";
+import { useLanguage } from "../../components/LanguageProvider";
 import {
   Dialog,
   DialogContent,
@@ -18,6 +19,7 @@ import {
 } from "../../components/ui/dialog";
 
 export default function HistoryPage() {
+  const { t, language } = useLanguage();
   const [history, setHistory] = useState<SearchHistoryItem[]>([]);
   const [userId, setUserId] = useState<string | null>(null);
   const [isClearModalOpen, setIsClearModalOpen] = useState(false);
@@ -26,20 +28,20 @@ export default function HistoryPage() {
   useEffect(() => {
     const id = localStorage.getItem("user_id");
     if (!id) {
-      toast.error("Vui lòng đăng nhập để xem lịch sử");
+      toast.error(t("history.pleaseLogin"));
       router.push("/auth");
       return;
     }
     setUserId(id);
     setHistory(historyService.getHistory(id));
-  }, [router]);
+  }, [router, t]);
 
   const handleRemove = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (!userId) return;
     historyService.removeHistoryItem(userId, id);
     setHistory(prev => prev.filter(h => h.id !== id));
-    toast.success("Đã xóa lịch sử");
+    toast.success(t("history.removedSuccess"));
   };
 
   const confirmClearAll = () => {
@@ -47,7 +49,7 @@ export default function HistoryPage() {
     historyService.clearHistory(userId);
     setHistory([]);
     setIsClearModalOpen(false);
-    toast.success("Đã xóa toàn bộ lịch sử");
+    toast.success(t("history.clearAllSuccess"));
   };
 
   const handleSearchAgain = (item: SearchHistoryItem) => {
@@ -82,10 +84,10 @@ export default function HistoryPage() {
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-[#E6DFD5] flex items-center gap-3">
             <Clock className="w-8 h-8 text-blue-500 fill-blue-500/20" />
-            Lịch sử tìm kiếm
+            {t("history.title")}
           </h1>
           <p className="text-gray-500 dark:text-[#9A8A7A] mt-2">
-            Xem lại các món ăn bạn đã tìm kiếm gần đây
+            {t("history.desc")}
           </p>
         </div>
         {history.length > 0 && (
@@ -93,7 +95,7 @@ export default function HistoryPage() {
             onClick={() => setIsClearModalOpen(true)}
             className="text-red-500 hover:text-red-600 text-sm font-semibold transition-colors flex items-center gap-1.5 px-3 py-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10 cursor-pointer"
           >
-            <Trash2 className="w-4 h-4" /> Xóa tất cả
+            <Trash2 className="w-4 h-4" /> {t("history.clearAllBtn")}
           </button>
         )}
       </div>
@@ -101,13 +103,13 @@ export default function HistoryPage() {
       {history.length === 0 ? (
         <div className="text-center py-20 bg-white dark:bg-[#3D312A] rounded-3xl border border-gray-100 dark:border-[#4D3D32]">
           <Clock className="w-16 h-16 text-gray-300 dark:text-[#6A5A4A] mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-gray-700 dark:text-[#E6DFD5] mb-2">Bạn chưa có lịch sử tìm kiếm</h2>
-          <p className="text-gray-500 dark:text-[#9A8A7A] mb-6">Hãy thử tìm một món ăn ngon ngay bây giờ!</p>
+          <h2 className="text-xl font-bold text-gray-700 dark:text-[#E6DFD5] mb-2">{t("history.emptyTitle")}</h2>
+          <p className="text-gray-500 dark:text-[#9A8A7A] mb-6">{t("history.emptyDesc")}</p>
           <button 
             onClick={() => router.push('/')}
             className="px-6 py-2.5 bg-brand hover:bg-brand-hover text-white rounded-full font-semibold transition-colors"
           >
-            Tìm kiếm ngay
+            {t("history.searchNowBtn")}
           </button>
         </div>
       ) : (
@@ -126,10 +128,10 @@ export default function HistoryPage() {
                   <h3 className="font-semibold text-gray-900 dark:text-[#E6DFD5] text-lg">{item.query}</h3>
                   <div className="flex items-center gap-3 text-sm text-gray-500 mt-1">
                     <span className="bg-gray-100 dark:bg-[#4D3D32] px-2 py-0.5 rounded text-xs font-medium">
-                      Ngân sách: {item.budget === 'auto' ? 'Tự động' : `${Number(item.budget).toLocaleString('vi-VN')}đ`}
+                      {t("history.budgetLabel")} {item.budget === 'auto' ? t("history.budgetAuto") : `${Number(item.budget).toLocaleString('vi-VN')}đ`}
                     </span>
                     <span>•</span>
-                    <span>{formatDistanceToNow(item.createdAt, { addSuffix: true, locale: vi })}</span>
+                    <span>{formatDistanceToNow(item.createdAt, { addSuffix: true, locale: language === 'en' ? enUS : vi })}</span>
                   </div>
                 </div>
               </div>
@@ -137,7 +139,7 @@ export default function HistoryPage() {
                 <button 
                   onClick={(e) => handleRemove(item.id, e)}
                   className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors opacity-0 group-hover:opacity-100"
-                  title="Xóa"
+                  title={t("favorites.deleteBtn")}
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -156,9 +158,11 @@ export default function HistoryPage() {
             <div className="w-16 h-16 rounded-full bg-red-100 dark:bg-red-500/10 flex items-center justify-center text-red-600 dark:text-red-500 mb-4">
               <Trash2 className="w-8 h-8" />
             </div>
-            <DialogTitle className="text-xl text-center font-bold text-gray-900 dark:text-[#E6DFD5]">Xóa lịch sử?</DialogTitle>
+            <DialogTitle className="text-xl text-center font-bold text-gray-900 dark:text-[#E6DFD5]">
+              {language === "vi" ? "Xóa lịch sử?" : "Clear history?"}
+            </DialogTitle>
             <DialogDescription className="text-center mt-2 text-sm text-gray-500 dark:text-[#9A8A7A]">
-              Hành động này không thể hoàn tác.
+              {language === "vi" ? "Hành động này không thể hoàn tác." : "This action cannot be undone."}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="mt-6 flex gap-3 sm:justify-center">
@@ -166,13 +170,13 @@ export default function HistoryPage() {
               onClick={() => setIsClearModalOpen(false)}
               className="flex-1 px-4 py-3 text-sm font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 dark:bg-[#3D312A] dark:text-[#E6DFD5] dark:hover:bg-[#4D3D32] rounded-xl transition-colors cursor-pointer"
             >
-              Hủy
+              {language === "vi" ? "Hủy" : "Cancel"}
             </button>
             <button
               onClick={confirmClearAll}
               className="flex-1 px-4 py-3 text-sm font-bold bg-red-500 hover:bg-red-600 text-white rounded-xl transition-colors shadow-sm cursor-pointer"
             >
-              Xóa ngay
+              {language === "vi" ? "Xóa ngay" : "Delete now"}
             </button>
           </DialogFooter>
         </DialogContent>

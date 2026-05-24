@@ -25,17 +25,18 @@ import { NotificationPanel } from "./social/NotificationPanel";
 import { useSelector } from "react-redux";
 import { RootState } from "../store";
 import { LocationModal } from "./LocationModal";
+import { useLanguage } from "./LanguageProvider";
 
 const NAV_ITEMS = [
-  { icon: Compass, label: "Khám phá", href: "/" },
-  { icon: MessageSquare, label: "Bảng tin", href: "/feed" },
-  { icon: Heart, label: "Yêu thích", href: "/favorites" },
-  { icon: Clock, label: "Lịch sử", href: "/history" },
-  { icon: FolderOpen, label: "Bộ sưu tập", href: "/collections" },
-  { icon: Route, label: "Lộ trình", href: "/itinerary" },
-  { icon: Users, label: "Bạn bè", href: "/friends" },
-  { icon: Sparkles, label: "Gợi ý nhóm", href: "/group-recommend" },
-  { icon: Settings, label: "Cài đặt", href: "/settings" },
+  { icon: Compass, label: "Khám phá", key: "discover", href: "/" },
+  { icon: MessageSquare, label: "Bảng tin", key: "feed", href: "/feed" },
+  { icon: Heart, label: "Yêu thích", key: "favorites", href: "/favorites" },
+  { icon: Clock, label: "Lịch sử", key: "history", href: "/history" },
+  { icon: FolderOpen, label: "Bộ sưu tập", key: "collections", href: "/collections" },
+  { icon: Route, label: "Lộ trình", key: "itinerary", href: "/itinerary" },
+  { icon: Users, label: "Bạn bè", key: "friends", href: "/friends" },
+  { icon: Sparkles, label: "Gợi ý nhóm", key: "groupRecommend", href: "/group-recommend" },
+  { icon: Settings, label: "Cài đặt", key: "settings", href: "/settings" },
 ];
 
 interface AppShellProps {
@@ -46,6 +47,7 @@ interface AppShellProps {
 }
 
 export function AppShell({ children, healthStatus = "loading", headerAction }: AppShellProps) {
+  const { t } = useLanguage();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [showAuthExpiredModal, setShowAuthExpiredModal] = useState(false);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
@@ -117,7 +119,7 @@ export function AppShell({ children, healthStatus = "loading", headerAction }: A
           <button
             onClick={() => setDrawerOpen(true)}
             className="p-2 hover:bg-[#3D312A]/10 dark:hover:bg-[#E6DFD5]/10 rounded transition-colors cursor-pointer"
-            aria-label="Mở menu"
+            aria-label={t("appshell.openMenu")}
           >
             <Menu className="w-5 h-5 text-[#3D312A] dark:text-[#E6DFD5]" />
           </button>
@@ -140,7 +142,7 @@ export function AppShell({ children, healthStatus = "loading", headerAction }: A
             <button
               onClick={() => setIsLocationModalOpen(true)}
               className="flex items-center gap-2 px-3 py-1.5 rounded-full border-2 border-[#3D312A]/20 dark:border-[#E6DFD5]/10 hover:bg-[#3D312A]/5 dark:hover:bg-[#E6DFD5]/5 hover:border-[#3D312A]/40 dark:hover:border-[#E6DFD5]/20 transition-all text-xs font-semibold cursor-pointer max-w-[120px] sm:max-w-[180px] md:max-w-[280px]"
-              title="Nhấp để thay đổi vị trí của bạn"
+              title={t("appshell.locationTitle")}
             >
               <MapPin
                 className={`w-3.5 h-3.5 flex-shrink-0 ${
@@ -155,8 +157,8 @@ export function AppShell({ children, healthStatus = "loading", headerAction }: A
               />
               <span className="text-[#3D312A]/70 dark:text-[#E6DFD5]/80 truncate">
                 {!mounted
-                  ? 'Chưa định vị'
-                  : address || (status === 'loading' ? 'Đang tìm...' : 'Chưa định vị')}
+                  ? t("appshell.notPositioned")
+                  : address || (status === 'loading' ? t("appshell.finding") : t("appshell.notPositioned"))}
               </span>
             </button>
 
@@ -165,7 +167,7 @@ export function AppShell({ children, healthStatus = "loading", headerAction }: A
               <Link
                 href="/itinerary"
                 className="relative flex items-center justify-center w-9 h-9 rounded-full bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-700/40 hover:bg-orange-100 dark:hover:bg-orange-900/40 transition-colors"
-                title="Xem lộ trình"
+                title={t("appshell.itineraryTitle")}
               >
                 <Route className="w-4 h-4 text-orange-500" />
                 <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-orange-500 text-white text-[10px] font-bold flex items-center justify-center leading-none">
@@ -184,7 +186,7 @@ export function AppShell({ children, healthStatus = "loading", headerAction }: A
                     : "bg-red-500"
                 }`}
                 title={
-                  healthStatus === "ok" ? "Hệ thống bình thường" : "Hệ thống có vấn đề"
+                  healthStatus === "ok" ? t("appshell.systemOk") : t("appshell.systemError")
                 }
               />
             )}
@@ -253,7 +255,7 @@ export function AppShell({ children, healthStatus = "loading", headerAction }: A
                     (item.href !== "/" && pathname.startsWith(item.href));
                   return (
                     <Link
-                      key={item.label}
+                      key={item.key}
                       href={item.href}
                       onClick={() => setDrawerOpen(false)}
                       className={`flex items-center gap-4 px-8 py-4 text-[14px] font-semibold border-b border-[#3D312A]/10 dark:border-[#E6DFD5]/10 transition-all uppercase tracking-[2px] ${
@@ -271,7 +273,7 @@ export function AppShell({ children, healthStatus = "loading", headerAction }: A
                       }}
                     >
                       <item.icon className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-brand dark:text-[#E8735A]' : ''}`} />
-                      {item.label}
+                      {t("sidebar." + item.key)}
                     </Link>
                   );
                 })}
@@ -280,7 +282,7 @@ export function AppShell({ children, healthStatus = "loading", headerAction }: A
               {/* Drawer footer */}
               <div className="relative z-10 px-6 pb-8">
                 <p className="text-xs text-[#3D312A]/50 dark:text-[#E6DFD5]/40 text-center italic">
-                  Gợi ý bởi AI · Vị ngon Sài Gòn
+                  {t("appshell.drawerFooter")}
                 </p>
               </div>
             </motion.div>
@@ -317,11 +319,11 @@ export function AppShell({ children, healthStatus = "loading", headerAction }: A
                 </div>
 
                 <h3 className="text-2xl font-black text-[#3D312A] dark:text-[#E6DFD5] mb-2 uppercase tracking-wide">
-                  Phiên Hết Hạn
+                  {t("appshell.sessionExpired")}
                 </h3>
                 
                 <p className="text-[#3D312A]/80 dark:text-[#C8BFB0]/80 text-sm leading-relaxed mb-6 max-w-sm">
-                  Phiên đăng nhập của bạn đã hết hạn hoặc không hợp lệ. Vui lòng đăng nhập lại để sử dụng đầy đủ các tính năng cá nhân hóa!
+                  {t("appshell.sessionExpiredDesc")}
                 </p>
 
                 <div className="flex flex-col sm:flex-row gap-3 w-full justify-center">
@@ -329,13 +331,13 @@ export function AppShell({ children, healthStatus = "loading", headerAction }: A
                     onClick={handleOk}
                     className="order-2 sm:order-1 px-6 py-3 border-2 border-[#3D312A] dark:border-[#E6DFD5]/25 rounded-2xl text-sm font-bold text-[#3D312A] dark:text-[#E6DFD5] hover:bg-[#3D312A]/10 dark:hover:bg-[#E6DFD5]/10 active:scale-95 transition-all uppercase tracking-wider cursor-pointer"
                   >
-                    Quay lại trang chủ
+                    {t("appshell.goHome")}
                   </button>
                   <button
                     onClick={handleLoginAgain}
                     className="order-1 sm:order-2 px-6 py-3 bg-[#E8735A] hover:bg-[#D65F47] text-white rounded-2xl text-sm font-black active:scale-95 transition-all shadow-[0_4px_14px_rgba(232,115,90,0.4)] uppercase tracking-wider cursor-pointer"
                   >
-                    Đăng nhập lại
+                    {t("appshell.loginAgain")}
                   </button>
                 </div>
               </div>
