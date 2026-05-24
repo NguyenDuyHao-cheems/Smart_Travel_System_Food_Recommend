@@ -1,6 +1,7 @@
 'use client';
 import React, { useState, useEffect, useCallback } from 'react';
-import { Bell, BellDot, Heart, MessageCircle, UserPlus, X, Check } from 'lucide-react';
+import { Bell, BellDot, Heart, MessageCircle, UserPlus, UserCheck, UserX, X, Check } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { formatDistanceToNow } from 'date-fns';
 import { enUS, vi } from 'date-fns/locale';
 import { useLanguage } from '../LanguageProvider';
@@ -9,7 +10,7 @@ const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 interface Notification {
   id: string;
-  type: 'like' | 'reply' | 'follow';
+  type: 'like' | 'reply' | 'follow' | 'friend_request' | 'friend_accept' | 'friend_decline';
   message: string;
   actor_username: string;
   actor_avatar: string | null;
@@ -21,9 +22,13 @@ const TYPE_ICON = {
   like: <Heart className="w-3.5 h-3.5 text-rose-500" />,
   reply: <MessageCircle className="w-3.5 h-3.5 text-blue-500" />,
   follow: <UserPlus className="w-3.5 h-3.5 text-brand" />,
+  friend_request: <UserPlus className="w-3.5 h-3.5 text-amber-500" />,
+  friend_accept: <UserCheck className="w-3.5 h-3.5 text-emerald-500" />,
+  friend_decline: <UserX className="w-3.5 h-3.5 text-rose-500" />,
 };
 
 export function NotificationPanel() {
+  const router = useRouter();
   const { t, language } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -35,6 +40,36 @@ export function NotificationPanel() {
   }, []);
 
   const token = isMounted ? localStorage.getItem('access_token') : null;
+
+  const handleNotificationClick = async (n: Notification) => {
+    if (!n.is_read && token) {
+      try {
+        await fetch(`${BACKEND_URL}/api/v1/social/notifications/mark-read`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setUnreadCount(0);
+        setNotifications(prev => prev.map(item => ({ ...item, is_read: true })));
+      } catch { /* silent */ }
+    }
+    setIsOpen(false);
+    if (['friend_request', 'friend_accept', 'friend_decline'].includes(n.type)) {
+      router.push('/friends?focus=requests');
+    }
+  };
+
+  const fetchUnread = useCallback(async () => {
+    if (!token) return;
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/v1/social/notifications/unread-count`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setUnreadCount(data.count);
+      }
+    } catch { /* silent */ }
+  }, [token]);
 
   const fetchNotifications = async () => {
     if (!token) return;
@@ -58,25 +93,20 @@ export function NotificationPanel() {
     } catch { /* silent */ }
   };
 
-  // Poll unread count every 30s
+  // Poll unread count and notifications (if open) every 5s
   useEffect(() => {
-    if (!token) return;
-    const fetchCount = async () => {
-      try {
-        const res = await fetch(`${BACKEND_URL}/api/v1/social/notifications/unread-count`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setUnreadCount(data.count);
-        }
-      } catch { /* silent */ }
-    };
-
-    fetchCount();
-    const interval = setInterval(fetchCount, 30_000);
+    fetchUnread();
+    if (isOpen) {
+      fetchNotifications();
+    }
+    const interval = setInterval(() => {
+      fetchUnread();
+      if (isOpen) {
+        fetchNotifications();
+      }
+    }, 5000);
     return () => clearInterval(interval);
-  }, [token]);
+  }, [fetchUnread, isOpen]);
 
   const handleOpen = () => {
     setIsOpen(true);
@@ -132,7 +162,8 @@ export function NotificationPanel() {
                   return (
                     <div
                       key={n.id}
-                      className={`flex items-start gap-3 px-4 py-3 border-b border-border/50 last:border-0 transition-colors ${
+                      onClick={() => handleNotificationClick(n)}
+                      className={`flex items-start gap-3 px-4 py-3 border-b border-border/50 last:border-0 transition-colors cursor-pointer hover:bg-muted/30 ${
                         n.is_read ? '' : 'bg-brand/5'
                       }`}
                     >
