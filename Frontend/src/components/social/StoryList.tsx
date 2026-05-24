@@ -2,24 +2,17 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Plus, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useLanguage } from '../../components/LanguageProvider';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 import { supabase } from '../../lib/supabase';
-import { StoryViewer } from './StoryViewer';
+import { StoryViewer, Story } from './StoryViewer';
 import { StoryEditor } from './StoryEditor';
 
-interface Story {
-  id: string;
-  user_id: string;
-  media_url: string;
-  created_at: string;
-  expires_at: string;
-  username: string | null;
-  full_name: string | null;
-  avatar_url: string | null;
-}
+
 
 export function StoryList() {
+  const { t } = useLanguage();
   const [stories, setStories] = useState<Story[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
@@ -60,7 +53,7 @@ export function StoryList() {
 
     const token = localStorage.getItem('access_token');
     if (!token) {
-      toast.error('Vui lòng đăng nhập để đăng Story.');
+      toast.error(t("feed.pleaseLoginStory"));
       return;
     }
 
@@ -91,7 +84,7 @@ export function StoryList() {
             )}
           </div>
           <span className="text-[11px] font-semibold text-foreground truncate w-full text-center">
-            Tạo mới
+            {t("feed.createNew")}
           </span>
         </div>
 

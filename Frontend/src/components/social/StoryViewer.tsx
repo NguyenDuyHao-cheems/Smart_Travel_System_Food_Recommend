@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
-interface Story {
+export interface Story {
   id: string;
   user_id: string;
   media_url: string;
@@ -57,7 +57,7 @@ export function StoryViewer({ stories, initialIndex, onClose, onDelete }: StoryV
   const [isLoadingViewers, setIsLoadingViewers] = useState(false);
   const viewedStoriesRef = useRef<Set<string>>(new Set());
   const lastUpdateRef = useRef<number>(Date.now());
-  const requestRef = useRef<number>();
+  const requestRef = useRef<number | undefined>(undefined);
 
   useEffect(() => {
     setMounted(true);
