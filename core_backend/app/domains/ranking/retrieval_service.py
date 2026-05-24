@@ -10,7 +10,7 @@ import logging
 import math
 from typing import List, Optional
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import cast, func, Integer, case, or_, and_
 
 from .models import RestaurantModel, DishModel
@@ -110,8 +110,10 @@ class RetrievalService:
         is_vegetarian_query = any(kw in q_norm for kw in vegetarian_keywords)
         is_food_query = any(q_norm in kw or kw in q_norm for kw in food_keywords)
 
-        # Khởi tạo query cơ bản — không giới hạn bounding box
-        query = self.db.query(RestaurantModel).filter(
+        # Khởi tạo query cơ bản — không giới hạn bounding box và preload tags quan hệ để tránh N+1 query
+        query = self.db.query(RestaurantModel).options(
+            joinedload(RestaurantModel.tags)
+        ).filter(
             RestaurantModel.is_active == True
         )
 
@@ -124,28 +126,13 @@ class RetrievalService:
         elif map_center and map_radius_km:
             query = self._apply_radius_bounding_box(query, map_center, map_radius_km)
 
-        # 2. Budget filter
+        # 2. Budget filter sử dụng các cột đã được đánh chỉ mục và parse sẵn (price_min, price_max)
         if budget and budget > 0:
-            raw_min_price_str = case(
-                (RestaurantModel.price_range.contains("-"), func.split_part(RestaurantModel.price_range, "-", 1)),
-                else_=RestaurantModel.price_range,
-            )
-            raw_max_price_str = case(
-                (RestaurantModel.price_range.contains("-"), func.split_part(RestaurantModel.price_range, "-", 2)),
-                else_=RestaurantModel.price_range,
-            )
-            
-            clean_min_price_str = func.regexp_replace(raw_min_price_str, r'\D', '', 'g')
-            clean_max_price_str = func.regexp_replace(raw_max_price_str, r'\D', '', 'g')
-            
-            clean_min_price_int = func.coalesce(cast(func.nullif(clean_min_price_str, ''), Integer), 0)
-            clean_max_price_int = func.coalesce(cast(func.nullif(clean_max_price_str, ''), Integer), 0)
-
             query = query.filter(
                 or_(
-                    and_(clean_min_price_int == 0, clean_max_price_int == 0),
-                    clean_min_price_int <= budget,
-                    clean_max_price_int <= budget,
+                    and_(RestaurantModel.price_min.is_(None), RestaurantModel.price_max.is_(None)),
+                    RestaurantModel.price_min <= budget,
+                    RestaurantModel.price_max <= budget,
                 )
             )
 

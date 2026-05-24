@@ -652,5 +652,108 @@ async def test_process_recommend_query_disconnected(db_session):
     assert "Client Closed Request" in exc_info.value.detail
 
 
+@pytest.mark.asyncio
+async def test_process_recommend_query_with_background_tasks(db_session):
+    from fastapi import BackgroundTasks
+    from app.domains.search.models import SearchSession
+    
+    mock_ai = AsyncMock()
+    mock_ai.extract_intent_and_vectorize.return_value = AIResponseData(
+        vector=[1.0, 2.0, 3.0],
+        cleaned_query="mì cay",
+    )
+    
+    with patch("app.domains.search.service.recommend", new_callable=AsyncMock) as mock_recommend:
+        mock_recommend.return_value = _mock_recommend_results(results=["1", "2"])
+        
+        request = SearchRecommendRequest(
+            query="Tôi muốn ăn mì cay",
+            lat=10.8700,
+            lng=106.8031,
+        )
+        
+        bg_tasks = BackgroundTasks()
+        service = SearchService(mock_ai)
+        
+        response = await service.process_recommend_query(
+            request, db_session, background_tasks=bg_tasks
+        )
+        
+        # Verify response was returned immediately
+        assert response.session_id is not None
+        assert len(response.results) >= 1
+        
+        # Verify background tasks contains the save task
+        assert len(bg_tasks.tasks) == 1
+        task = bg_tasks.tasks[0]
+        
+        # Run background task synchronously to verify it works
+        task.func(*task.args, **task.kwargs)
+        
+        # Query DB to check if the session is saved
+        import shortuuid
+        decoded_id = shortuuid.decode(response.session_id)
+        saved_session = db_session.query(SearchSession).filter(SearchSession.id == decoded_id).first()
+        assert saved_session is not None
+        assert saved_session.query == "Tôi muốn ăn mì cay"
+
+
+def test_get_session_from_in_memory_cache(db_session):
+    import uuid
+    import shortuuid
+    from datetime import datetime, timezone
+    
+    session_id = uuid.uuid4()
+    # Populate the cache manually
+    SearchService._session_cache[str(session_id)] = {
+        "query": "Lẩu thái chay ngon",
+        "results_json": {
+            "results": [
+                {
+                    "id": shortuuid.encode(uuid.uuid4()),
+                    "name": "Quán chay A",
+                    "match": "98%",
+                    "dist": "1.2 km",
+                    "distance_km": 1.2,
+                    "price": "50k - 100k",
+                    "rating": "4.5",
+                    "reason": "Ngon rẻ",
+                    "img": "/images/food.jpg",
+                    "total_reviews": 10,
+                    "google_maps_url": None,
+                    "allergen_warning": None,
+                    "is_vegetarian": True,
+                    "tags": ["chay"],
+                    "sentiment_score": 0.8,
+                    "sentiment_label": "Tích cực",
+                    "sentiment_review_count": 10
+                }
+            ],
+            "fallback_applied": False,
+            "fallback_reason": None,
+            "applied_budget": 50000,
+            "filtered_out_count": 0,
+            "allergen_flagged_count": 0,
+            "warning": None,
+            "results_contain_warnings": False,
+        },
+        "created_at": datetime.now(timezone.utc)
+    }
+    
+    # Query get_session which should read from in-memory cache directly without hitting DB
+    short_id = shortuuid.encode(session_id)
+    response = SearchService.get_session(short_id, db_session)
+    
+    assert response is not None
+    assert response.query == "Lẩu thái chay ngon"
+    assert len(response.results) == 1
+    assert response.results[0].name == "Quán chay A"
+    
+    # Cleanup cache
+    SearchService._session_cache.pop(str(session_id), None)
+
+
+
+
 
 
