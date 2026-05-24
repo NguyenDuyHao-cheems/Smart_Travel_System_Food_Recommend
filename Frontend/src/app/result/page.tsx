@@ -18,6 +18,7 @@ import {
   Route,
   Map as MapIcon,
   LogOut,
+  SlidersHorizontal,
 } from 'lucide-react';
 import { AppShell } from '../../components/AppShell';
 import { LoadingState } from '../../components/ui/LoadingState';
@@ -361,7 +362,7 @@ function HeroResultCard({ item, sessionId, searchMode, onAddCollection, isModalO
    Small Result Card (#2-#5)
    ───────────────────────────────────────────────────────────── */
 // [FIX-CONFLICT]: Tương tự HeroResultCard, bổ sung prop isModalOpen và state isInColl cho SmallResultCard
-function SmallResultCard({ item, index, sessionId, searchMode, onAddCollection, isModalOpen }: { item: RecommendResult; index: number; sessionId?: string; searchMode?: SearchMode; onAddCollection: (item: RecommendResult) => void; isModalOpen: boolean }) {
+function SmallResultCard({ item, index, rank, sessionId, searchMode, onAddCollection, isModalOpen }: { item: RecommendResult; index: number; rank?: number; sessionId?: string; searchMode?: SearchMode; onAddCollection: (item: RecommendResult) => void; isModalOpen: boolean }) {
   const router = useRouter();
   const tags = getTagsForItem(item, index);
   const matchColor = getMatchColor(item.match);
@@ -475,7 +476,7 @@ function SmallResultCard({ item, index, sessionId, searchMode, onAddCollection, 
       initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.05 }}
-      className="bg-white dark:bg-[#3D312A] rounded-2xl border border-gray-100 dark:border-[#4D3D32] shadow-sm dark:shadow-none overflow-hidden hover:shadow-lg dark:hover:border-gray-600 transition-all duration-300 cursor-pointer group"
+      className="bg-white dark:bg-[#3D312A] rounded-2xl border border-gray-100 dark:border-[#4D3D32] shadow-sm dark:shadow-none overflow-hidden hover:shadow-lg dark:hover:border-gray-600 transition-all duration-300 cursor-pointer group shrink-0"
       onClick={handleNavigate}
     >
       <div className="relative h-[180px] overflow-hidden">
@@ -487,7 +488,7 @@ function SmallResultCard({ item, index, sessionId, searchMode, onAddCollection, 
         <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent pointer-events-none" />
 
         <span className="absolute top-3 left-3 inline-flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold bg-gray-700/90 text-white backdrop-blur-sm">
-          {index + 2}
+          {rank !== undefined ? rank : index + 2}
         </span>
 
         {/* Heart, Bookmark & Route */}
@@ -676,6 +677,20 @@ function ResultPageContent() {
     if (typeof window === 'undefined') return false;
     return new URLSearchParams(window.location.search).get('map') === '1';
   });
+  const [showMapFilters, setShowMapFilters] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (selectedId) {
+      const element = document.getElementById(`restaurant-card-${selectedId}`);
+      if (element) {
+        element.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center',
+        });
+      }
+    }
+  }, [selectedId]);
 
   useEffect(() => {
     if (searchParams.get('map') === '1') {
@@ -1038,10 +1053,6 @@ function ResultPageContent() {
     <button
       type="button"
       onClick={() => {
-        if (mapViewEnabled) {
-          router.push('/');
-          return;
-        }
         setMapViewEnabled((current) => {
           const next = !current;
           if (typeof window !== 'undefined') {
@@ -1075,40 +1086,42 @@ function ResultPageContent() {
       {isSearching && <SearchLoadingOverlay message={searchLoadingMsg} />}
       {mapFloatingButton}
 
-      <div className="border-b border-[#E6DFD5]/60 dark:border-[#3D312A]/60 bg-[#FDFBF7]/80 dark:bg-[#2A2420]/80 backdrop-blur-sm">
-        <div className="max-w-7xl mx-auto px-4 md:px-8 py-4 flex flex-col gap-4">
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
-            <BudgetSelector
-              value={budget}
-              onChange={(newBudget) => {
-                setBudget(newBudget);
-                handleSearch(inputValue, newBudget);
-              }}
-            />
-            <DistanceFilter
-              enabled={distanceFilterEnabled}
-              onToggle={setDistanceFilterEnabled}
-              radius={distanceRadius}
-              onRadiusChange={setDistanceRadius}
+      {!mapViewEnabled && (
+        <div className="border-b border-[#E6DFD5]/60 dark:border-[#3D312A]/60 bg-[#FDFBF7]/80 dark:bg-[#2A2420]/80 backdrop-blur-sm">
+          <div className="max-w-7xl mx-auto px-4 md:px-8 py-4 flex flex-col gap-4">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
+              <BudgetSelector
+                value={budget}
+                onChange={(newBudget) => {
+                  setBudget(newBudget);
+                  handleSearch(inputValue, newBudget);
+                }}
+              />
+              <DistanceFilter
+                enabled={distanceFilterEnabled}
+                onToggle={setDistanceFilterEnabled}
+                radius={distanceRadius}
+                onRadiusChange={setDistanceRadius}
+                totalCount={results.length}
+                filteredCount={displayResults.length}
+              />
+              <div className="hidden md:block h-6 w-px bg-gray-200 dark:bg-[#4D3D32]" />
+              <SortSelector
+                value={sortBy}
+                onChange={setSortBy}
+                hasCoordinates={!!coords}
+              />
+            </div>
+            <div className="h-px bg-gray-100 dark:bg-[#4D3D32]/40" />
+            <AdvancedFilters
+              filters={advFilters}
+              onChange={setAdvFilters}
               totalCount={results.length}
               filteredCount={displayResults.length}
             />
-            <div className="hidden md:block h-6 w-px bg-gray-200 dark:bg-[#4D3D32]" />
-            <SortSelector
-              value={sortBy}
-              onChange={setSortBy}
-              hasCoordinates={!!coords}
-            />
           </div>
-          <div className="h-px bg-gray-100 dark:bg-[#4D3D32]/40" />
-          <AdvancedFilters
-            filters={advFilters}
-            onChange={setAdvFilters}
-            totalCount={results.length}
-            filteredCount={displayResults.length}
-          />
         </div>
-      </div>
+      )}
 
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 md:py-12 w-full">
         <AnimatePresence mode="wait">
@@ -1218,8 +1231,8 @@ function ResultPageContent() {
                   </button>
                 </motion.div>
               ) : mapViewEnabled ? (
-                <div className="flex flex-col xl:flex-row gap-6 items-start">
-                  <div className="min-w-0 w-full xl:flex-1">
+                <div className="flex flex-col xl:flex-row gap-6 items-stretch min-h-[calc(100vh-12rem)]">
+                  <div className="w-full xl:w-[450px] xl:shrink-0 flex flex-col gap-4">
                     {results.length === 0 ? (
                       <div className="py-16 text-center bg-white dark:bg-[#3D312A] rounded-3xl border border-gray-100 dark:border-[#4D3D32] shadow-sm">
                         <div className="w-16 h-16 bg-gray-50 dark:bg-[#2A2420] rounded-full flex items-center justify-center mx-auto mb-5">
@@ -1233,15 +1246,102 @@ function ResultPageContent() {
                         </p>
                       </div>
                     ) : (
-                      renderResultCards(true)
+                      <>
+                        {/* Sort & Filter Controls Inside Left Panel */}
+                        <div className="flex items-center justify-between gap-3 bg-white dark:bg-[#3D312A] p-4 rounded-2xl border border-gray-100 dark:border-[#4D3D32] shadow-sm">
+                          <div className="flex-1">
+                            <SortSelector
+                              value={sortBy}
+                              onChange={setSortBy}
+                              hasCoordinates={!!coords}
+                            />
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setShowMapFilters(!showMapFilters)}
+                            className={`h-10 px-4 rounded-xl text-xs font-bold border transition-all flex items-center gap-2 ${
+                              showMapFilters
+                                ? 'bg-[#123D2A] border-[#123D2A] text-white'
+                                : 'bg-gray-50 dark:bg-[#3D312A] text-gray-600 dark:text-[#C8BFB0] border-gray-200 dark:border-[#4D3D32] hover:border-[#123D2A]/50'
+                            }`}
+                          >
+                            <SlidersHorizontal className="w-4 h-4" />
+                            <span>Bộ lọc</span>
+                          </button>
+                        </div>
+
+                        {/* Collapsible Advanced Filters panel */}
+                        {showMapFilters && (
+                          <div className="p-4 bg-white dark:bg-[#3D312A] rounded-2xl border border-gray-100 dark:border-[#4D3D32] shadow-sm flex flex-col gap-4">
+                            <div className="flex flex-col gap-2">
+                              <p className="text-[11px] font-bold text-gray-400 dark:text-[#9A8A7A] uppercase tracking-wide">Ngân sách & Khoảng cách</p>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <BudgetSelector
+                                  value={budget}
+                                  onChange={(newBudget) => {
+                                    setBudget(newBudget);
+                                    handleSearch(inputValue, newBudget);
+                                  }}
+                                />
+                                <DistanceFilter
+                                  enabled={distanceFilterEnabled}
+                                  onToggle={setDistanceFilterEnabled}
+                                  radius={distanceRadius}
+                                  onRadiusChange={setDistanceRadius}
+                                  totalCount={results.length}
+                                  filteredCount={displayResults.length}
+                                />
+                              </div>
+                            </div>
+                            <div className="h-px bg-gray-100 dark:bg-[#4D3D32]/40" />
+                            <div className="flex flex-col gap-2">
+                              <p className="text-[11px] font-bold text-gray-400 dark:text-[#9A8A7A] uppercase tracking-wide">Lọc nâng cao</p>
+                              <AdvancedFilters
+                                filters={advFilters}
+                                onChange={setAdvFilters}
+                                totalCount={results.length}
+                                filteredCount={displayResults.length}
+                              />
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Vertical list of restaurants */}
+                        <div className="flex flex-col gap-5 overflow-y-auto max-h-[70vh] pr-1 scrollbar-thin">
+                          {displayResults.map((item, idx) => (
+                            <div
+                              key={item.id || idx}
+                              id={`restaurant-card-${item.id}`}
+                              onClick={() => setSelectedId(item.id)}
+                              className={`transition-all duration-300 rounded-2xl ${
+                                selectedId === item.id
+                                  ? 'ring-2 ring-brand ring-offset-2 dark:ring-offset-[#2A2420]'
+                                  : ''
+                              }`}
+                            >
+                              <SmallResultCard
+                                item={item}
+                                index={idx}
+                                rank={idx + 1}
+                                sessionId={sessionIdFromUrl}
+                                searchMode={searchMode}
+                                onAddCollection={setCollectionModalItem}
+                                isModalOpen={!!collectionModalItem}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </>
                     )}
                   </div>
-                  <div className="w-full xl:w-[430px] xl:shrink-0 xl:sticky xl:top-24 h-[560px] order-first xl:order-none">
+                  <div className="w-full xl:flex-1 h-[600px] xl:h-[750px] xl:sticky xl:top-24 order-first xl:order-none">
                     <ResultMapView
                       results={displayResults}
                       fallbackCenter={fallbackMapCenter}
                       isSearching={isSearching}
                       onViewportSearch={handleViewportSearch}
+                      selectedId={selectedId}
+                      onSelectId={setSelectedId}
                     />
                   </div>
                 </div>

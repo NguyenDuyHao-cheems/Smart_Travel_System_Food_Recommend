@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { X, AlertTriangle, RefreshCw, Sparkles, Map as MapIcon } from "lucide-react";
+import { X, AlertTriangle, RefreshCw, Sparkles } from "lucide-react";
 import { AppShell } from "../components/AppShell";
 import { UserDropdown } from "../components/UserDropdown";
 import { BudgetSelector, type BudgetOption } from "../components/BudgetSelector";
@@ -274,10 +274,6 @@ function HomeContent() {
 
   if (!mounted) return null;
 
-  const openMapView = () => {
-    router.push("/result?map=1");
-  };
-
   return (
     <>
       <AppShell healthStatus={healthStatus}>
@@ -320,16 +316,6 @@ function HomeContent() {
           className="relative w-full overflow-hidden"
           style={{ minHeight: "calc(100vh - 64px)" }}
         >
-          <button
-            type="button"
-            onClick={openMapView}
-            className="absolute left-5 top-5 md:left-8 md:top-8 z-40 inline-flex items-center justify-center gap-2 h-11 px-4 rounded-full bg-brand text-white border-2 border-[#3D312A] shadow-[4px_4px_0px_rgba(61,49,42,1)] hover:bg-brand-hover hover:-translate-y-0.5 active:translate-x-[2px] active:translate-y-[2px] active:shadow-[2px_2px_0px_rgba(61,49,42,1)] transition-all duration-150 cursor-pointer font-black text-xs uppercase tracking-wide"
-            title="Mở bản đồ kết quả"
-            aria-label="Mở bản đồ kết quả"
-          >
-            <MapIcon className="w-4 h-4" />
-            <span>Bản đồ</span>
-          </button>
 
           {/* ── Floating Food Decorations ── */}
 

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { LocateFixed, Minus, Plus, Radius, Utensils } from 'lucide-react';
+import { LocateFixed, Minus, Plus, Radius, Utensils, Star } from 'lucide-react';
 import type { RecommendResult } from '../app/result/page';
 
 export interface MapViewport {
@@ -19,6 +19,8 @@ interface ResultMapViewProps {
   fallbackCenter?: { lat: number; lng: number } | null;
   isSearching?: boolean;
   onViewportSearch: (viewport: MapViewport) => void;
+  selectedId?: string | null;
+  onSelectId?: (id: string | null) => void;
 }
 
 const TILE_SIZE = 256;
@@ -56,47 +58,121 @@ function hasCoordinates(item: RecommendResult) {
   return typeof item.lat === 'number' && typeof item.lng === 'number';
 }
 
+function getCleanRating(ratingStr: string | undefined) {
+  if (!ratingStr) return '—';
+  const cleanStr = ratingStr.trim().replace(',', '.');
+  const parsed = parseFloat(cleanStr);
+  if (isNaN(parsed)) return '—';
+  return parsed.toFixed(1);
+}
+
 export function ResultMapView({
   results,
   fallbackCenter,
   isSearching = false,
   onViewportSearch,
+  selectedId: propSelectedId,
+  onSelectId: propOnSelectId,
 }: ResultMapViewProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const dragRef = useRef<{ x: number; y: number; center: { lat: number; lng: number }; moved: boolean } | null>(null);
   const hasInteractedRef = useRef(false);
   const [size, setSize] = useState({ width: 0, height: 0 });
   const [zoom, setZoom] = useState(14);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [localSelectedId, setLocalSelectedId] = useState<string | null>(null);
   const [selectedRadiusKm, setSelectedRadiusKm] = useState<number | null>(null);
   const [circleCenter, setCircleCenter] = useState<{ lat: number; lng: number } | null>(null);
   const [hoverCircleCenter, setHoverCircleCenter] = useState<{ lat: number; lng: number } | null>(null);
 
+  const selectedId = propSelectedId !== undefined ? propSelectedId : localSelectedId;
+  const onSelectId = propOnSelectId || setLocalSelectedId;
+
   const mapResults = useMemo(() => results.filter(hasCoordinates), [results]);
   const initialCenter = useMemo(() => {
-    if (mapResults.length > 0) {
-      const total = mapResults.reduce(
-        (acc, item) => ({
-          lat: acc.lat + (item.lat || 0),
-          lng: acc.lng + (item.lng || 0),
-        }),
-        { lat: 0, lng: 0 }
-      );
-      return {
-        lat: total.lat / mapResults.length,
-        lng: total.lng / mapResults.length,
-      };
+    const points: { lat: number; lng: number }[] = [];
+    if (fallbackCenter) {
+      points.push(fallbackCenter);
     }
-    return fallbackCenter || DEFAULT_CENTER;
+    mapResults.forEach((item) => {
+      if (typeof item.lat === 'number' && typeof item.lng === 'number') {
+        points.push({ lat: item.lat, lng: item.lng });
+      }
+    });
+
+    if (points.length === 0) return DEFAULT_CENTER;
+
+    let minLat = Infinity;
+    let maxLat = -Infinity;
+    let minLng = Infinity;
+    let maxLng = -Infinity;
+
+    points.forEach((p) => {
+      if (p.lat < minLat) minLat = p.lat;
+      if (p.lat > maxLat) maxLat = p.lat;
+      if (p.lng < minLng) minLng = p.lng;
+      if (p.lng > maxLng) maxLng = p.lng;
+    });
+
+    return {
+      lat: (minLat + maxLat) / 2,
+      lng: (minLng + maxLng) / 2,
+    };
   }, [fallbackCenter, mapResults]);
 
   const [center, setCenter] = useState(initialCenter);
 
   useEffect(() => {
-    if (!hasInteractedRef.current) {
-      setCenter(initialCenter);
+    if (hasInteractedRef.current || size.width === 0 || size.height === 0) return;
+
+    const points: { lat: number; lng: number }[] = [];
+    if (fallbackCenter) {
+      points.push(fallbackCenter);
     }
-  }, [initialCenter]);
+    mapResults.forEach((item) => {
+      if (typeof item.lat === 'number' && typeof item.lng === 'number') {
+        points.push({ lat: item.lat, lng: item.lng });
+      }
+    });
+
+    if (points.length === 0) return;
+
+    if (points.length === 1) {
+      setCenter(points[0]);
+      setZoom(14);
+      return;
+    }
+
+    let minLat = Infinity;
+    let maxLat = -Infinity;
+    let minLng = Infinity;
+    let maxLng = -Infinity;
+
+    points.forEach((p) => {
+      if (p.lat < minLat) minLat = p.lat;
+      if (p.lat > maxLat) maxLat = p.lat;
+      if (p.lng < minLng) minLng = p.lng;
+      if (p.lng > maxLng) maxLng = p.lng;
+    });
+
+    const nextCenter = {
+      lat: (minLat + maxLat) / 2,
+      lng: (minLng + maxLng) / 2,
+    };
+
+    const pad = 1.35;
+    const pMin = project(minLat, minLng, 0);
+    const pMax = project(maxLat, maxLng, 0);
+    const pixelDeltaX = Math.abs(pMax.x - pMin.x);
+    const pixelDeltaY = Math.abs(pMax.y - pMin.y);
+
+    const zoomX = Math.log(size.width / (pixelDeltaX || 1) / pad) / Math.log(2);
+    const zoomY = Math.log(size.height / (pixelDeltaY || 1) / pad) / Math.log(2);
+
+    const nextZoom = clamp(Math.floor(Math.min(zoomX, zoomY)), MIN_ZOOM, MAX_ZOOM);
+
+    setCenter(nextCenter);
+    setZoom(nextZoom);
+  }, [fallbackCenter, mapResults, size]);
 
   useEffect(() => {
     if (!selectedRadiusKm) {
@@ -229,8 +305,14 @@ export function ResultMapView({
   };
 
   const recenter = () => {
-    hasInteractedRef.current = false;
-    setCenter(initialCenter);
+    if (fallbackCenter && typeof fallbackCenter.lat === 'number' && typeof fallbackCenter.lng === 'number') {
+      setCenter(fallbackCenter);
+      setZoom(15);
+      hasInteractedRef.current = true;
+    } else {
+      hasInteractedRef.current = false;
+      setCenter(initialCenter);
+    }
   };
 
   const activeCircleCenter = hoverCircleCenter ?? circleCenter ?? (selectedRadiusKm ? center : null);
@@ -307,7 +389,7 @@ export function ResultMapView({
                   setHoverCircleCenter(null);
                 }
               }}
-              className={`px-2.5 py-1 rounded-full text-[11px] font-bold border transition-all ${
+              className={`px-2.5 py-1 rounded-full text-[11px] font-bold border transition-all cursor-pointer ${
                 selectedRadiusKm === radiusKm
                   ? 'bg-brand text-white border-brand'
                   : 'bg-gray-50 dark:bg-[#3D312A] text-gray-600 dark:text-[#C8BFB0] border-gray-200 dark:border-[#4D3D32] hover:border-brand/50'
@@ -316,6 +398,21 @@ export function ResultMapView({
               {radiusKm} km
             </button>
           ))}
+          {selectedRadiusKm && (
+            <button
+              key="clear-radius"
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                setSelectedRadiusKm(null);
+                setCircleCenter(null);
+                setHoverCircleCenter(null);
+              }}
+              className="px-2.5 py-1 rounded-full text-[11px] font-bold border border-red-200 dark:border-red-950 bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400 hover:bg-red-100 transition-all cursor-pointer hover:scale-105"
+            >
+              Tắt
+            </button>
+          )}
         </div>
 
         {circlePixels && selectedRadiusKm && (
@@ -341,6 +438,35 @@ export function ResultMapView({
           </>
         )}
 
+        {fallbackCenter && typeof fallbackCenter.lat === 'number' && typeof fallbackCenter.lng === 'number' && (
+          <button
+            type="button"
+            data-map-control="true"
+            onClick={(event) => {
+              event.stopPropagation();
+              const radius = selectedRadiusKm || 2;
+              const bounds = getCircleBounds(fallbackCenter.lat, fallbackCenter.lng, radius);
+              onViewportSearch({
+                centerLat: fallbackCenter.lat,
+                centerLng: fallbackCenter.lng,
+                radiusKm: radius,
+                ...bounds,
+              });
+            }}
+            className="absolute -translate-x-1/2 -translate-y-1/2 z-40 group hover:scale-110 transition-transform cursor-pointer"
+            style={{
+              left: project(fallbackCenter.lat, fallbackCenter.lng, zoom).x - topLeft.x,
+              top: project(fallbackCenter.lat, fallbackCenter.lng, zoom).y - topLeft.y,
+            }}
+            title="Vị trí của bạn (Click để tìm quán quanh đây)"
+          >
+            <span className="absolute inset-0 rounded-full bg-[#FFD700]/30 animate-ping" />
+            <span className="flex items-center justify-center w-8 h-8 rounded-full bg-[#FFD700] border-2 border-black shadow-lg text-black relative z-10">
+              <Star className="w-4 h-4 fill-black" />
+            </span>
+          </button>
+        )}
+
         {mapResults.map((item, index) => {
           const point = project(item.lat || 0, item.lng || 0, zoom);
           const left = point.x - topLeft.x;
@@ -354,30 +480,39 @@ export function ResultMapView({
               data-map-control="true"
               onClick={(event) => {
                 event.stopPropagation();
-                setSelectedId(item.id);
+                onSelectId(item.id === selectedId ? null : item.id);
               }}
-              className={`absolute -translate-x-1/2 -translate-y-full group transition-transform ${
+              className={`absolute -translate-x-1/2 -translate-y-1/2 group transition-all duration-200 ${
                 selected ? 'z-30 scale-110' : 'z-20 hover:scale-105'
               }`}
               style={{ left, top }}
               title={item.name}
             >
-              <span className={`flex items-center justify-center w-9 h-9 rounded-full border-2 shadow-lg ${
+              <div className={`flex items-center justify-center w-8 h-8 rounded-full border-2 shadow-md transition-all ${
                 selected
-                  ? 'bg-brand text-white border-white'
-                  : 'bg-[#123D2A] text-white border-white/90'
+                  ? 'bg-brand border-white scale-110 ring-4 ring-brand/20'
+                  : 'bg-[#123D2A] border-white/90'
               }`}>
-                <Utensils className="w-4 h-4" />
-              </span>
-              <span className="absolute left-1/2 top-full -translate-x-1/2 -mt-1 w-2 h-2 bg-inherit rotate-45 border-r border-b border-white/80" />
+                <img
+                  src="/images/fork-knife.png"
+                  alt="Restaurant"
+                  className="w-4 h-4 invert"
+                />
+              </div>
+
               {selected && (
-                <span className="absolute left-1/2 bottom-[44px] -translate-x-1/2 w-52 rounded-2xl bg-white dark:bg-[#2A2420] border border-gray-100 dark:border-[#4D3D32] shadow-xl px-3 py-2 text-left">
-                  <span className="block text-xs font-bold text-gray-800 dark:text-[#E6DFD5] truncate">{item.name}</span>
-                  <span className="mt-1 flex items-center gap-2 text-[11px] text-gray-500 dark:text-[#9A8A7A]">
-                    <span>{item.dist}</span>
-                    <span>{item.rating}</span>
+                <div className="absolute left-1/2 bottom-[calc(100%+8px)] -translate-x-1/2 w-52 rounded-2xl bg-white dark:bg-[#2A2420] border border-gray-100 dark:border-[#4D3D32] shadow-xl px-3 py-2 text-left z-50">
+                  <span className="block text-xs font-bold text-gray-800 dark:text-[#E6DFD5]">{item.name}</span>
+                  <span className="mt-1 flex items-center justify-between text-[11px] text-gray-500 dark:text-[#9A8A7A]">
+                    {item.dist && <span>📍 {item.dist}</span>}
+                    <span>⭐ {getCleanRating(item.rating)}</span>
                   </span>
-                </span>
+                  {item.reason && (
+                    <p className="mt-1 text-[10px] text-gray-400 dark:text-[#7A6A5A] line-clamp-2 leading-relaxed">
+                      {item.reason}
+                    </p>
+                  )}
+                </div>
               )}
             </button>
           );
