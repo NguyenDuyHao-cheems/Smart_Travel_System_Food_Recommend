@@ -29,7 +29,7 @@ export const friendService = {
     }
 
     if (!res.ok) {
-      throw new Error("Không thể tải danh sách bạn bè");
+      throw new Error("Failed to load friends list");
     }
 
     return res.json();
@@ -39,7 +39,7 @@ export const friendService = {
     if (typeof window === "undefined") return;
 
     const token = localStorage.getItem("access_token");
-    if (!token) throw new Error("Chưa đăng nhập");
+    if (!token) throw new Error("Not signed in");
 
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
     const res = await fetch(`${apiUrl}/api/v1/users/friends`, {
@@ -61,7 +61,7 @@ export const friendService = {
 
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      throw new Error(data.detail || "Không thể kết bạn");
+      throw new Error(data.detail || "Could not send friend request");
     }
   },
 
@@ -69,7 +69,7 @@ export const friendService = {
     if (typeof window === "undefined") return;
 
     const token = localStorage.getItem("access_token");
-    if (!token) throw new Error("Chưa đăng nhập");
+    if (!token) throw new Error("Not signed in");
 
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
     const res = await fetch(`${apiUrl}/api/v1/users/friends/${friendId}`, {
@@ -89,7 +89,7 @@ export const friendService = {
 
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      throw new Error(data.detail || "Không thể xóa bạn bè");
+      throw new Error(data.detail || "Could not remove friend");
     }
   },
 
@@ -115,7 +115,7 @@ export const friendService = {
     }
 
     if (!res.ok) {
-      throw new Error("Không thể tải danh sách lời mời kết bạn");
+      throw new Error("Failed to load friend requests");
     }
 
     return res.json();
@@ -125,7 +125,7 @@ export const friendService = {
     if (typeof window === "undefined") return;
 
     const token = localStorage.getItem("access_token");
-    if (!token) throw new Error("Chưa đăng nhập");
+    if (!token) throw new Error("Not signed in");
 
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
     const res = await fetch(`${apiUrl}/api/v1/users/friends/requests/${requestId}/accept`, {
@@ -145,7 +145,7 @@ export const friendService = {
 
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      throw new Error(data.detail || "Không thể đồng ý kết bạn");
+      throw new Error(data.detail || "Could not accept friend request");
     }
   },
 
@@ -153,7 +153,7 @@ export const friendService = {
     if (typeof window === "undefined") return;
 
     const token = localStorage.getItem("access_token");
-    if (!token) throw new Error("Chưa đăng nhập");
+    if (!token) throw new Error("Not signed in");
 
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
     const res = await fetch(`${apiUrl}/api/v1/users/friends/requests/${requestId}/decline`, {
@@ -173,7 +173,7 @@ export const friendService = {
 
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      throw new Error(data.detail || "Không thể từ chối kết bạn");
+      throw new Error(data.detail || "Could not decline friend request");
     }
   },
 
@@ -181,7 +181,7 @@ export const friendService = {
     if (typeof window === "undefined") return;
 
     const token = localStorage.getItem("access_token");
-    if (!token) throw new Error("Chưa đăng nhập");
+    if (!token) throw new Error("Not signed in");
 
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
     const res = await fetch(`${apiUrl}/api/v1/users/friends/requests/${requestId}`, {
@@ -201,7 +201,7 @@ export const friendService = {
 
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      throw new Error(data.detail || "Không thể hủy yêu cầu kết bạn");
+      throw new Error(data.detail || "Could not cancel friend request");
     }
   }
 };

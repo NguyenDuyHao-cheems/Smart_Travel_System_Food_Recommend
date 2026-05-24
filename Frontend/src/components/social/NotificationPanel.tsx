@@ -27,6 +27,15 @@ const TYPE_ICON = {
   friend_decline: <UserX className="w-3.5 h-3.5 text-rose-500" />,
 };
 
+const NOTIFICATION_MESSAGE_KEY: Record<Notification['type'], string> = {
+  like: 'notifications.likeMessage',
+  reply: 'notifications.replyMessage',
+  follow: 'notifications.followMessage',
+  friend_request: 'notifications.friendRequestMessage',
+  friend_accept: 'notifications.friendAcceptMessage',
+  friend_decline: 'notifications.friendDeclineMessage',
+};
+
 export function NotificationPanel() {
   const router = useRouter();
   const { t, language } = useLanguage();
@@ -114,6 +123,10 @@ export function NotificationPanel() {
     if (unreadCount > 0) markAllRead();
   };
 
+  const getNotificationMessage = (n: Notification) => {
+    return t(NOTIFICATION_MESSAGE_KEY[n.type]).replace('{actor}', n.actor_username || '');
+  };
+
   if (!token) return null;
 
   return (
@@ -175,7 +188,7 @@ export function NotificationPanel() {
                         </span>
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm text-foreground leading-snug">{n.message}</p>
+                        <p className="text-sm text-foreground leading-snug">{getNotificationMessage(n)}</p>
                         <p className="text-xs text-muted-foreground mt-0.5">
                           {formatDistanceToNow(
                             new Date(n.created_at.endsWith('Z') ? n.created_at : n.created_at + 'Z'),
