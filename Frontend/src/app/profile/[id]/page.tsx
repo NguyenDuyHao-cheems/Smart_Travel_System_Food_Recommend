@@ -6,6 +6,7 @@ import { AppShell } from '../../../components/AppShell';
 import { PostCard, SocialPost } from '../../../components/social/PostCard';
 import { Loader2, ArrowLeft, Users, UserPlus, UserCheck } from 'lucide-react';
 import { toast } from 'sonner';
+import { useLanguage } from '../../../components/LanguageProvider';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -23,6 +24,7 @@ interface PublicProfile {
 export default function PublicProfilePage() {
   const { id } = useParams() as { id: string };
   const router = useRouter();
+  const { t, language } = useLanguage();
   
   const [profile, setProfile] = useState<PublicProfile | null>(null);
   const [posts, setPosts] = useState<SocialPost[]>([]);
@@ -43,7 +45,7 @@ export default function PublicProfilePage() {
         const profileRes = await fetch(`${BACKEND_URL}/api/v1/social/users/${id}/profile`, { headers });
         if (!profileRes.ok) {
           if (profileRes.status === 404) {
-            toast.error('Người dùng không tồn tại');
+            toast.error(t('publicProfile.userNotFound'));
             router.push('/feed');
             return;
           }
@@ -62,18 +64,18 @@ export default function PublicProfilePage() {
         }
       } catch (error) {
         console.error('Error fetching public profile:', error);
-        toast.error('Không thể tải thông tin người dùng.');
+        toast.error(t('publicProfile.loadError'));
       } finally {
         setIsLoading(false);
       }
     };
     fetchData();
-  }, [id, router]);
+  }, [id, router, language]);
 
   const handleToggleFollow = async () => {
     const token = localStorage.getItem('access_token');
     if (!token) {
-      toast.error('Vui lòng đăng nhập để theo dõi.');
+      toast.error(t('publicProfile.loginToFollow'));
       return;
     }
     
@@ -93,10 +95,11 @@ export default function PublicProfilePage() {
         throw new Error('Failed to follow');
       }
       const data = await res.json();
+      const profileName = profile?.full_name || profile?.username || t('publicProfile.guest');
       if (data.status === 'followed') {
-        toast.success(`Đã theo dõi ${profile?.full_name || profile?.username}`);
+        toast.success(t('publicProfile.followed').replace('{name}', profileName));
       } else {
-        toast.info(`Đã bỏ theo dõi ${profile?.full_name || profile?.username}`);
+        toast.info(t('publicProfile.unfollowed').replace('{name}', profileName));
       }
 
       // Re-fetch chính xác số followers từ server
@@ -112,14 +115,14 @@ export default function PublicProfilePage() {
       // Revert Optimistic Update
       setIsFollowing(currentStatus);
       setFollowersCount(prev => currentStatus ? prev + 1 : prev - 1);
-      toast.error('Có lỗi xảy ra, vui lòng thử lại.');
+      toast.error(t('publicProfile.followError'));
     }
   };
 
   const handleLikeToggle = async (postId: string, currentStatus: boolean) => {
     const token = localStorage.getItem('access_token');
     if (!token) {
-      toast.error('Vui lòng đăng nhập để thích bài viết.');
+      toast.error(t('publicProfile.loginToLike'));
       return;
     }
     try {
@@ -146,7 +149,7 @@ export default function PublicProfilePage() {
 
   if (!profile) return null;
 
-  const displayName = profile.full_name || profile.username || 'Khách';
+  const displayName = profile.full_name || profile.username || t('publicProfile.guest');
   const displayUsername = profile.username || 'anonymous';
   const initial = displayName.charAt(0).toUpperCase();
 
@@ -162,7 +165,7 @@ export default function PublicProfilePage() {
           className="mb-4 flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
         >
           <ArrowLeft className="w-5 h-5" />
-          <span className="font-medium">Quay lại</span>
+          <span className="font-medium">{t('publicProfile.back')}</span>
         </button>
 
         {/* Profile Card */}
@@ -192,12 +195,12 @@ export default function PublicProfilePage() {
                   {isFollowing ? (
                     <>
                       <UserCheck className="w-4 h-4" />
-                      Đang theo dõi
+                      {t('publicProfile.following')}
                     </>
                   ) : (
                     <>
                       <UserPlus className="w-4 h-4" />
-                      Theo dõi
+                      {t('publicProfile.follow')}
                     </>
                   )}
                 </button>
@@ -215,13 +218,13 @@ export default function PublicProfilePage() {
               <div className="flex flex-col">
                 <span className="font-bold text-lg">{followersCount}</span>
                 <span className="text-muted-foreground flex items-center gap-1">
-                  Người theo dõi
+                  {t('publicProfile.followers')}
                 </span>
               </div>
               <div className="flex flex-col">
                 <span className="font-bold text-lg">{profile.following_count}</span>
                 <span className="text-muted-foreground flex items-center gap-1">
-                  Đang theo dõi
+                  {t('publicProfile.following')}
                 </span>
               </div>
             </div>
@@ -230,15 +233,15 @@ export default function PublicProfilePage() {
 
         {/* User's Posts Feed */}
         <h2 className="text-xl font-bold mb-4 text-foreground flex items-center gap-2">
-          Bài viết của {displayName}
+          {t('publicProfile.postsOf').replace('{name}', displayName)}
         </h2>
         
         {posts.length === 0 ? (
           <div className="text-center py-16 bg-card border border-border rounded-xl shadow-sm">
             <div className="text-4xl mb-4 text-muted-foreground">📝</div>
-            <p className="text-base font-semibold text-foreground">Chưa có bài viết nào.</p>
+            <p className="text-base font-semibold text-foreground">{t('publicProfile.noPosts')}</p>
             <p className="text-sm text-muted-foreground mt-1">
-              Người dùng này chưa chia sẻ trải nghiệm nào.
+              {t('publicProfile.noPostsDesc')}
             </p>
           </div>
         ) : (

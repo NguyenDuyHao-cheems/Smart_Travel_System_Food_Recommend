@@ -14,8 +14,8 @@ const beVietnamPro = Be_Vietnam_Pro({
 });
 
 export const metadata: Metadata = {
-  title: "Wanderbite — Khám phá ẩm thực thông minh",
-  description: "Tìm kiếm món ăn và nhà hàng phù hợp với khẩu vị của bạn bằng AI.",
+  title: "Wanderbite - Smart Food Discovery",
+  description: "Find food and restaurants that match your taste with AI.",
 };
 
 export default function RootLayout({

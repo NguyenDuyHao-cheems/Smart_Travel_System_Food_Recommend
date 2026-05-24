@@ -7,6 +7,7 @@ import { useOptimizedLocation } from "../../hooks/useOptimizedLocation";
 import { Sparkles, Dices, ArrowRight, RefreshCw, Volume2, VolumeX, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
+import { useLanguage } from "../../components/LanguageProvider";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -29,6 +30,7 @@ const NEON_COLORS = [
 export default function LuckyWheelPage() {
   const router = useRouter();
   const { getOptimizedLocation } = useOptimizedLocation();
+  const { t, language } = useLanguage();
 
   const [dishes, setDishes] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -134,11 +136,11 @@ export default function LuckyWheelPage() {
           ]);
         }
       } else {
-        throw new Error("Không thể kết nối đến máy chủ.");
+        throw new Error(t("luckyWheelPage.serverError"));
       }
     } catch (err: any) {
       console.error("Error fetching lucky wheel dishes:", err);
-      setFetchError(err.message || "Lỗi tải món ăn");
+      setFetchError(err.message || t("luckyWheelPage.loadError"));
       // Fallback local list
       setDishes([
         "Phở Bò", "Bún Chả", "Bánh Mì", "Cơm Tấm", "Bún Đậu Mắm Tôm",
@@ -152,7 +154,7 @@ export default function LuckyWheelPage() {
 
   useEffect(() => {
     fetchDishes();
-  }, []);
+  }, [language]);
 
   // Spin function
   const handleSpin = () => {
@@ -216,17 +218,17 @@ export default function LuckyWheelPage() {
   const handleSearch = async () => {
     if (!winner) return;
     setIsSearching(true);
-    setSearchStatus("Đang xác định vị trí của bạn...");
+    setSearchStatus(t("luckyWheelPage.locating"));
 
     try {
       const gps = await getOptimizedLocation();
       if (!gps) {
-        toast.error("Vui lòng bật quyền truy cập GPS để tìm các quán ăn gần nhất.");
+        toast.error(t("luckyWheelPage.gpsRequired"));
         setIsSearching(false);
         return;
       }
 
-      setSearchStatus(`AI đang tìm kiếm "${winner}" phù hợp nhất...`);
+      setSearchStatus(t("luckyWheelPage.aiSearching").replace("{dish}", winner));
 
       const token = localStorage.getItem("access_token");
       const userId = localStorage.getItem("user_id");
@@ -253,7 +255,7 @@ export default function LuckyWheelPage() {
 
       if (res.ok) {
         const data = await res.json();
-        setSearchStatus("Đã tìm thấy các quán phù hợp! Đang di chuyển...");
+        setSearchStatus(t("luckyWheelPage.found"));
         
         if (typeof window !== "undefined") {
           sessionStorage.setItem("current_search_session_id", data.session_id);
@@ -262,11 +264,11 @@ export default function LuckyWheelPage() {
         
         router.push(`/result?q=${encodeURIComponent(winner)}`);
       } else {
-        throw new Error("Máy chủ phản hồi lỗi.");
+        throw new Error(t("luckyWheelPage.responseError"));
       }
     } catch (err: any) {
       console.error("Search failed:", err);
-      toast.error("Lỗi khi tìm kiếm quán ăn. Vui lòng thử lại!");
+      toast.error(t("luckyWheelPage.searchError"));
       setIsSearching(false);
     }
   };
@@ -309,10 +311,10 @@ export default function LuckyWheelPage() {
           </div>
           
           <h1 className="text-3xl md:text-5xl font-black tracking-tight text-[#3D312A] dark:text-[#E6DFD5] uppercase drop-shadow-sm">
-            VÒNG QUAY <span className="text-brand dark:text-[#E8735A]">MAY MẮN</span>
+            {t("luckyWheelPage.titlePrefix")} <span className="text-brand dark:text-[#E8735A]">{t("luckyWheelPage.titleHighlight")}</span>
           </h1>
           <p className="text-gray-500 dark:text-[#9A8A7A] max-w-md text-sm font-semibold">
-            Đắn đo không biết nên ăn món gì? Hãy để chiếc nón kỳ diệu retro quyết định giùm bạn!
+            {t("luckyWheelPage.subtitle")}
           </p>
 
           <button
@@ -322,12 +324,12 @@ export default function LuckyWheelPage() {
             {soundEnabled ? (
               <>
                 <Volume2 className="w-3.5 h-3.5 text-brand" />
-                <span>Âm thanh: BẬT</span>
+                <span>{t("luckyWheelPage.soundOn")}</span>
               </>
             ) : (
               <>
                 <VolumeX className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
-                <span>Âm thanh: TẮT</span>
+                <span>{t("luckyWheelPage.soundOff")}</span>
               </>
             )}
           </button>
@@ -338,7 +340,7 @@ export default function LuckyWheelPage() {
           <div className="mb-6 w-full max-w-md bg-amber-50 dark:bg-amber-900/10 border border-amber-300 dark:border-amber-900/40 text-amber-900 dark:text-amber-300 rounded-xl p-3.5 flex items-start gap-2.5 text-xs font-medium shadow-sm animate-fade-in">
             <AlertCircle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
             <div className="flex-1">
-              <span className="font-bold">Không tìm thấy địa điểm gần:</span> {fetchError}. Hệ thống đang sử dụng danh sách món ăn truyền thống mặc định.
+              <span className="font-bold">{t("luckyWheelPage.nearbyErrorTitle")}</span> {fetchError}. {t("luckyWheelPage.fallbackUsing")}
             </div>
           </div>
         )}
@@ -348,7 +350,7 @@ export default function LuckyWheelPage() {
           <div className="w-[340px] h-[340px] md:w-[420px] md:h-[420px] rounded-full border-4 border-dashed border-brand/30 flex flex-col items-center justify-center gap-3 animate-pulse bg-white/40 dark:bg-[#2A2420]/40 backdrop-blur-sm shadow-inner">
             <RefreshCw className="w-10 h-10 text-brand animate-spin" />
             <p className="text-xs font-bold uppercase tracking-wider text-[#3D312A]/70 dark:text-[#E6DFD5]/70">
-              Đang kết nối Arcade...
+              {t("luckyWheelPage.loading")}
             </p>
           </div>
         ) : (
@@ -485,17 +487,17 @@ export default function LuckyWheelPage() {
                   fontFamily: '"Segoe UI", Roboto, sans-serif',
                 }}
               >
-                {isSpinning ? "Đang quay..." : "QUAY NGAY"}
+                {isSpinning ? t("luckyWheelPage.spinning") : t("luckyWheelPage.spinNow")}
               </button>
             </div>
 
             {/* Neon Arcade Instruction Banner */}
             <div className="w-full max-w-sm text-center border border-dashed border-[#3D312A] dark:border-[#4D3D32] p-4 rounded-2xl bg-white/20 dark:bg-[#2A2420]/20 backdrop-blur-sm">
               <span className="text-[11px] font-extrabold uppercase text-[#7A6A5A] dark:text-[#9A8A7A] tracking-wider block mb-1">
-                Hướng dẫn sử dụng
+                {t("luckyWheelPage.instructionTitle")}
               </span>
               <p className="text-xs text-gray-500 dark:text-[#8A7A6A] leading-relaxed">
-                Nhấn <span className="font-bold text-brand dark:text-[#E8735A]">QUAY NGAY</span> để khởi động guồng quay. Hệ thống sẽ đề xuất các quán ăn gần nhất tương ứng với món ăn quay trúng.
+                {t("luckyWheelPage.instruction")} <span className="font-bold text-brand dark:text-[#E8735A]">{t("luckyWheelPage.spinNow")}</span> {t("luckyWheelPage.instructionRest")}
               </p>
             </div>
           </div>
@@ -524,7 +526,7 @@ export default function LuckyWheelPage() {
 
               {/* Congratulation label */}
               <h3 className="text-xs font-black uppercase tracking-widest text-[#FFFF33] mb-2">
-                Chúc mừng! Bạn đã quay trúng
+                {t("luckyWheelPage.winnerTitle")}
               </h3>
 
               {/* Winner Name */}
@@ -536,7 +538,7 @@ export default function LuckyWheelPage() {
               </div>
 
               <p className="text-xs text-gray-400 dark:text-[#9A8A7A] px-2 mb-6">
-                Hệ thống đã sẵn sàng tìm kiếm các nhà hàng phục vụ món <strong className="text-[#E6DFD5]">{winner}</strong> xung quanh tọa độ của bạn.
+                {t("luckyWheelPage.winnerDesc").replace("{dish}", winner)}
               </p>
 
               {/* Button Container */}
@@ -553,7 +555,7 @@ export default function LuckyWheelPage() {
                     </>
                   ) : (
                     <>
-                      <span>TÌM QUÁN ĂN NGAY</span>
+                      <span>{t("luckyWheelPage.findNow")}</span>
                       <ArrowRight className="w-4 h-4" />
                     </>
                   )}
@@ -567,7 +569,7 @@ export default function LuckyWheelPage() {
                   disabled={isSearching}
                   className="w-full py-3 rounded-2xl border border-[#4D3D32] hover:bg-white/5 text-gray-400 hover:text-white font-bold text-xs uppercase tracking-widest transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Quay lại vòng quay
+                  {t("luckyWheelPage.backToWheel")}
                 </button>
               </div>
             </motion.div>

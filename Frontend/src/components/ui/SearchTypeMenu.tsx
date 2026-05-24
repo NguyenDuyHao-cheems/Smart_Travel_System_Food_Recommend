@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, Search, Check } from 'lucide-react';
 import { SearchMode } from '../../hooks/useSearchState';
+import { useLanguage } from '../LanguageProvider';
 
 export interface SearchTypeMenuProps {
   mode: SearchMode;
@@ -14,14 +15,14 @@ export interface SearchTypeMenuProps {
 const OPTIONS = [
   {
     id: 'basic' as SearchMode,
-    label: 'Tìm kiếm cơ bản',
+    labelKey: 'searchType.basic',
     icon: Search,
     color: 'text-brand dark:text-[#E8735A]',
     bgHover: 'hover:bg-brand-muted dark:hover:bg-brand/10',
   },
   {
     id: 'emotion' as SearchMode,
-    label: 'Tìm kiếm cảm xúc',
+    labelKey: 'searchType.emotion',
     icon: Sparkles,
     color: 'text-brand dark:text-[#E8735A]',
     bgHover: 'hover:bg-brand-muted dark:hover:bg-brand/10',
@@ -29,6 +30,7 @@ const OPTIONS = [
 ];
 
 export function SearchTypeMenu({ mode, onChange, compact = false }: SearchTypeMenuProps) {
+  const { t } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -57,7 +59,7 @@ export function SearchTypeMenu({ mode, onChange, compact = false }: SearchTypeMe
             ? 'w-8 h-8 hover:bg-brand-muted dark:hover:bg-brand/10'
             : 'w-10 h-10 hover:bg-brand-muted dark:hover:bg-brand/10'
           }`}
-        title={`Chế độ: ${activeOption.label}`}
+        title={`${t('searchType.mode')}: ${t(activeOption.labelKey)}`}
       >
         <ActiveIcon
           className={`text-brand dark:text-[#E8735A] ${compact ? 'w-4 h-4' : 'w-5 h-5'}`}
@@ -95,7 +97,7 @@ export function SearchTypeMenu({ mode, onChange, compact = false }: SearchTypeMe
                       <Icon className={`w-4 h-4 ${opt.color}`} />
                     </div>
                     <span className={`flex-1 text-sm font-medium ${isSelected ? 'text-[#3D312A] dark:text-[#E6DFD5]' : 'text-[#7A6A5A] dark:text-[#9A8A7A]'}`}>
-                      {opt.label}
+                      {t(opt.labelKey)}
                     </span>
                     {isSelected && (
                       <Check className="w-4 h-4 text-brand dark:text-[#E8735A]" />
