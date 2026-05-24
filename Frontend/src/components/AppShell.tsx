@@ -112,9 +112,9 @@ export function AppShell({ children, healthStatus = "loading", headerAction }: A
 
       {/* ── Sticky header ── */}
       <header className="relative z-30 sticky top-0 bg-[#FDFBF7]/95 dark:bg-[#2A2420]/95 backdrop-blur-md border-b-2 border-[#3D312A]/20 dark:border-[#E6DFD5]/10">
-        <div className="flex items-center justify-between px-4 md:px-8 h-[64px]">
-          {/* Left: Hamburger & Logo */}
-          <div className="flex items-center gap-3">
+        <div className="grid grid-cols-[1fr_auto_1fr] items-center px-4 md:px-8 h-[64px]">
+          {/* Left: Hamburger */}
+          <div className="flex items-center justify-start">
             <button
               onClick={() => setDrawerOpen(true)}
               className="p-2 hover:bg-[#3D312A]/10 dark:hover:bg-[#E6DFD5]/10 rounded transition-colors cursor-pointer"
@@ -122,10 +122,13 @@ export function AppShell({ children, healthStatus = "loading", headerAction }: A
             >
               <Menu className="w-5 h-5 text-[#3D312A] dark:text-[#E6DFD5]" />
             </button>
+          </div>
 
-            <Link href="/" className="flex items-center">
+          {/* Center: Logo — always perfectly centered */}
+          <div className="flex items-center justify-center">
+            <Link href="/">
               <span
-                className="text-2xl md:text-3xl font-black text-brand dark:text-[#E8735A] tracking-wide select-none"
+                className="text-3xl md:text-4xl font-black text-brand dark:text-[#E8735A] tracking-wide select-none whitespace-nowrap"
                 style={{ fontFamily: '"DFVN Paper Kuto", "Segoe UI", Roboto, sans-serif' }}
               >
                 Wanderbite
@@ -134,13 +137,13 @@ export function AppShell({ children, healthStatus = "loading", headerAction }: A
           </div>
 
           {/* Right: Health dot + Location + Theme + User */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center justify-end gap-2 overflow-hidden">
             {headerAction}
 
             {/* Location Indicator Widget */}
             <button
               onClick={() => setIsLocationModalOpen(true)}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-full border-2 border-[#3D312A]/20 dark:border-[#E6DFD5]/10 hover:bg-[#3D312A]/5 dark:hover:bg-[#E6DFD5]/5 hover:border-[#3D312A]/40 dark:hover:border-[#E6DFD5]/20 transition-all text-xs font-semibold cursor-pointer max-w-[120px] sm:max-w-[180px] md:max-w-[280px]"
+              className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border-2 border-[#3D312A]/20 dark:border-[#E6DFD5]/10 hover:bg-[#3D312A]/5 dark:hover:bg-[#E6DFD5]/5 hover:border-[#3D312A]/40 dark:hover:border-[#E6DFD5]/20 transition-all text-xs font-semibold cursor-pointer min-w-0 max-w-[140px] md:max-w-[200px]"
               title="Nhấp để thay đổi vị trí của bạn"
             >
               <MapPin
@@ -154,18 +157,33 @@ export function AppShell({ children, healthStatus = "loading", headerAction }: A
                     : 'text-red-500'
                 }`}
               />
-              <span className="text-[#3D312A]/70 dark:text-[#E6DFD5]/80 truncate">
+              <span className="truncate text-[#3D312A]/70 dark:text-[#E6DFD5]/80">
                 {!mounted
                   ? 'Chưa định vị'
                   : address || (status === 'loading' ? 'Đang tìm...' : 'Chưa định vị')}
               </span>
             </button>
 
+            {/* Location icon-only on mobile */}
+            <button
+              onClick={() => setIsLocationModalOpen(true)}
+              className="sm:hidden p-2 hover:bg-[#3D312A]/10 dark:hover:bg-[#E6DFD5]/10 rounded transition-colors cursor-pointer flex-shrink-0"
+              title="Nhấp để thay đổi vị trí của bạn"
+            >
+              <MapPin className={`w-4 h-4 flex-shrink-0 ${
+                !mounted || status === 'success'
+                  ? 'text-brand dark:text-[#E8735A]'
+                  : status === 'loading'
+                  ? 'text-brand dark:text-[#E8735A] animate-pulse'
+                  : 'text-red-500'
+              }`} />
+            </button>
+
             {/* Itinerary badge */}
             {mounted && itineraryCount > 0 && (
               <Link
                 href="/itinerary"
-                className="relative flex items-center justify-center w-9 h-9 rounded-full bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-700/40 hover:bg-orange-100 dark:hover:bg-orange-900/40 transition-colors"
+                className="relative flex items-center justify-center w-9 h-9 rounded-full bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-700/40 hover:bg-orange-100 dark:hover:bg-orange-900/40 transition-colors flex-shrink-0"
                 title="Xem lộ trình"
               >
                 <Route className="w-4 h-4 text-orange-500" />
@@ -177,7 +195,7 @@ export function AppShell({ children, healthStatus = "loading", headerAction }: A
 
             {healthStatus !== "loading" && (
               <div
-                className={`w-2 h-2 rounded-full ${
+                className={`w-2 h-2 rounded-full flex-shrink-0 ${
                   healthStatus === "ok"
                     ? "bg-emerald-500 animate-pulse"
                     : healthStatus === "degraded"
