@@ -183,11 +183,14 @@ class SocialService:
 
     def _format_post_results(self, results, current_user_id: str = None) -> list[SocialPostResponse]:
         formatted = []
+        post_ids = [str(post.id) for post, _ in results]
+        liked_post_ids = set()
+        
+        if current_user_id and post_ids:
+            liked_post_ids = self.repo.check_likes_batch(current_user_id, post_ids)
+
         for post, user in results:
-            # Check if current user liked it
-            is_liked = False
-            if current_user_id:
-                is_liked = self.repo.check_like(current_user_id, post.id)
+            is_liked = str(post.id) in liked_post_ids
                 
             formatted.append(SocialPostResponse(
                 id=str(post.id),
