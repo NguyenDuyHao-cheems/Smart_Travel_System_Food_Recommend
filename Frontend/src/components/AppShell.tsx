@@ -113,24 +113,25 @@ export function AppShell({ children, healthStatus = "loading", headerAction }: A
       {/* ── Sticky header ── */}
       <header className="relative z-30 sticky top-0 bg-[#FDFBF7]/95 dark:bg-[#2A2420]/95 backdrop-blur-md border-b-2 border-[#3D312A]/20 dark:border-[#E6DFD5]/10">
         <div className="flex items-center justify-between px-4 md:px-8 h-[64px]">
-          {/* Left: Hamburger */}
-          <button
-            onClick={() => setDrawerOpen(true)}
-            className="p-2 hover:bg-[#3D312A]/10 dark:hover:bg-[#E6DFD5]/10 rounded transition-colors cursor-pointer"
-            aria-label="Mở menu"
-          >
-            <Menu className="w-5 h-5 text-[#3D312A] dark:text-[#E6DFD5]" />
-          </button>
-
-          {/* Center: Logo */}
-          <Link href="/" className="absolute left-1/2 -translate-x-1/2">
-            <span
-              className="text-3xl md:text-4xl font-black text-brand dark:text-[#E8735A] tracking-wide select-none"
-              style={{ fontFamily: '"DFVN Paper Kuto", "Segoe UI", Roboto, sans-serif' }}
+          {/* Left: Hamburger & Logo */}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setDrawerOpen(true)}
+              className="p-2 hover:bg-[#3D312A]/10 dark:hover:bg-[#E6DFD5]/10 rounded transition-colors cursor-pointer"
+              aria-label="Mở menu"
             >
-              Wanderbite
-            </span>
-          </Link>
+              <Menu className="w-5 h-5 text-[#3D312A] dark:text-[#E6DFD5]" />
+            </button>
+
+            <Link href="/" className="flex items-center">
+              <span
+                className="text-2xl md:text-3xl font-black text-brand dark:text-[#E8735A] tracking-wide select-none"
+                style={{ fontFamily: '"DFVN Paper Kuto", "Segoe UI", Roboto, sans-serif' }}
+              >
+                Wanderbite
+              </span>
+            </Link>
+          </div>
 
           {/* Right: Health dot + Location + Theme + User */}
           <div className="flex items-center gap-3">
