@@ -154,8 +154,7 @@ export function AdvancedFilters({
     filters.minPrice !== null || filters.maxPrice !== null,
     filters.minRating !== null,
     filters.vegetarianOnly,
-    selectedTags.length > 0,
-  ].filter(Boolean).length;
+  ].filter(Boolean).length + selectedTags.length;
 
   return (
     <div className="w-full flex flex-col gap-2 relative">

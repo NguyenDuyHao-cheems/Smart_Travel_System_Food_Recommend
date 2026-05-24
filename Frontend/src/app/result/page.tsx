@@ -646,7 +646,10 @@ function ResultPageContent() {
 
   const [searchQuery, setSearchQuery] = useState('');
   const { query: inputValue, setQuery: setInputValue, searchMode, setSearchMode } = useSearchState("");
-  const [budget, setBudget] = useState<BudgetOption>('auto');
+  const [budget, setBudget] = useState<BudgetOption>(() => {
+    const b = searchParams.get('budget');
+    return (b as BudgetOption) || 'auto';
+  });
   const { getOptimizedLocation } = useOptimizedLocation();
 
   const [fallbackApplied, setFallbackApplied] = useState(false);
@@ -667,6 +670,14 @@ function ResultPageContent() {
     // Save current URL as the last search URL for the Back button in settings
     if (typeof window !== 'undefined') {
       localStorage.setItem('last_search_url', window.location.pathname + window.location.search);
+    }
+  }, [searchParams]);
+
+  // Sync budget from URL
+  useEffect(() => {
+    const urlBudget = searchParams.get('budget');
+    if (urlBudget && urlBudget !== 'auto') {
+      setBudget(urlBudget as BudgetOption);
     }
   }, [searchParams]);
 
@@ -730,8 +741,7 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
     advFilters.minPrice !== null || advFilters.maxPrice !== null,
     advFilters.minRating !== null,
     advFilters.vegetarianOnly,
-    selectedTags.length > 0,
-  ].filter(Boolean).length;
+  ].filter(Boolean).length + selectedTags.length;
   const hasActiveAdvFilters = activeAdvFilterCount > 0;
   const [apiError, setApiError] = useState<string | null>(null);
 
@@ -1020,7 +1030,12 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
             window.history.replaceState(null, '', `/result?${params.toString()}`);
           }
         } else {
-          window.location.href = `/result?q=${encodeURIComponent(finalQuery)}`;
+          const params = new URLSearchParams();
+          params.set('q', finalQuery);
+          if (finalBudget !== 'auto') {
+            params.set('budget', String(finalBudget));
+          }
+          window.location.href = `/result?${params.toString()}`;
         }
       } else {
         throw new Error("Không thể kết nối với hệ thống AI.");

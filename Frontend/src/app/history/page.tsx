@@ -8,10 +8,19 @@ import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
 import { vi } from "date-fns/locale";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../../components/ui/dialog";
 
 export default function HistoryPage() {
   const [history, setHistory] = useState<SearchHistoryItem[]>([]);
   const [userId, setUserId] = useState<string | null>(null);
+  const [isClearModalOpen, setIsClearModalOpen] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -33,13 +42,12 @@ export default function HistoryPage() {
     toast.success("Đã xóa lịch sử");
   };
 
-  const handleClearAll = () => {
+  const confirmClearAll = () => {
     if (!userId) return;
-    if (confirm("Bạn có chắc muốn xóa toàn bộ lịch sử tìm kiếm?")) {
-      historyService.clearHistory(userId);
-      setHistory([]);
-      toast.success("Đã xóa toàn bộ lịch sử");
-    }
+    historyService.clearHistory(userId);
+    setHistory([]);
+    setIsClearModalOpen(false);
+    toast.success("Đã xóa toàn bộ lịch sử");
   };
 
   const handleSearchAgain = (item: SearchHistoryItem) => {
@@ -82,8 +90,8 @@ export default function HistoryPage() {
         </div>
         {history.length > 0 && (
           <button 
-            onClick={handleClearAll}
-            className="text-red-500 hover:text-red-600 text-sm font-semibold transition-colors flex items-center gap-1.5 px-3 py-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10"
+            onClick={() => setIsClearModalOpen(true)}
+            className="text-red-500 hover:text-red-600 text-sm font-semibold transition-colors flex items-center gap-1.5 px-3 py-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10 cursor-pointer"
           >
             <Trash2 className="w-4 h-4" /> Xóa tất cả
           </button>
@@ -141,6 +149,34 @@ export default function HistoryPage() {
           ))}
         </div>
       )}
+      {/* Modal Xóa Lịch Sử */}
+      <Dialog open={isClearModalOpen} onOpenChange={setIsClearModalOpen}>
+        <DialogContent className="sm:max-w-[360px] p-6 border-0 shadow-2xl rounded-3xl dark:bg-[#1C1816]">
+          <DialogHeader className="flex flex-col items-center justify-center pt-2">
+            <div className="w-16 h-16 rounded-full bg-red-100 dark:bg-red-500/10 flex items-center justify-center text-red-600 dark:text-red-500 mb-4">
+              <Trash2 className="w-8 h-8" />
+            </div>
+            <DialogTitle className="text-xl text-center font-bold text-gray-900 dark:text-[#E6DFD5]">Xóa lịch sử?</DialogTitle>
+            <DialogDescription className="text-center mt-2 text-sm text-gray-500 dark:text-[#9A8A7A]">
+              Hành động này không thể hoàn tác.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mt-6 flex gap-3 sm:justify-center">
+            <button
+              onClick={() => setIsClearModalOpen(false)}
+              className="flex-1 px-4 py-3 text-sm font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 dark:bg-[#3D312A] dark:text-[#E6DFD5] dark:hover:bg-[#4D3D32] rounded-xl transition-colors cursor-pointer"
+            >
+              Hủy
+            </button>
+            <button
+              onClick={confirmClearAll}
+              className="flex-1 px-4 py-3 text-sm font-bold bg-red-500 hover:bg-red-600 text-white rounded-xl transition-colors shadow-sm cursor-pointer"
+            >
+              Xóa ngay
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </PageLayout>
   );
 }
