@@ -186,7 +186,7 @@ export default function FriendsPage() {
       // Reload requests list
       loadRequests();
     } catch (err: any) {
-      toast.error(err.message || "Có lỗi xảy ra khi kết bạn");
+      toast.error(err.message || t("friends.addError"));
     } finally {
       setActionLoading(false);
     }
@@ -196,14 +196,14 @@ export default function FriendsPage() {
     try {
       setActionLoading(true);
       await friendService.acceptFriendRequest(requestId);
-      toast.success(`Đã đồng ý kết bạn với ${username}`);
+      toast.success(t("friends.acceptSuccess").replace("{target}", username));
       
       // Reload friends and requests lists
       const friendsData = await friendService.fetchFriends();
       setFriends(friendsData);
       loadRequests();
     } catch (err: any) {
-      toast.error(err.message || "Không thể đồng ý kết bạn");
+      toast.error(err.message || t("friends.acceptError"));
     } finally {
       setActionLoading(false);
     }
@@ -213,10 +213,10 @@ export default function FriendsPage() {
     try {
       setActionLoading(true);
       await friendService.declineFriendRequest(requestId);
-      toast.success(`Đã từ chối lời mời của ${username}`);
+      toast.success(t("friends.declineSuccess").replace("{target}", username));
       loadRequests();
     } catch (err: any) {
-      toast.error(err.message || "Không thể từ chối kết bạn");
+      toast.error(err.message || t("friends.declineError"));
     } finally {
       setActionLoading(false);
     }
@@ -226,10 +226,10 @@ export default function FriendsPage() {
     try {
       setActionLoading(true);
       await friendService.cancelFriendRequest(requestId);
-      toast.success("Đã hủy yêu cầu kết bạn");
+      toast.success(t("friends.cancelRequestSuccess"));
       loadRequests();
     } catch (err: any) {
-      toast.error(err.message || "Không thể hủy yêu cầu");
+      toast.error(err.message || t("friends.cancelRequestError"));
     } finally {
       setActionLoading(false);
     }
@@ -240,7 +240,7 @@ export default function FriendsPage() {
     try {
       setActionLoading(true);
       await friendService.addFriend(username);
-      toast.success(`Đã gửi lại yêu cầu kết bạn đến ${username}!`);
+      toast.success(t("friends.resendRequestSuccess").replace("{target}", username));
       loadRequests();
     } catch (err: any) {
       toast.error(err.message || t("friends.addError"));
@@ -426,15 +426,15 @@ export default function FriendsPage() {
             <div>
               <h2 className="text-xl font-bold text-[#3D312A] dark:text-[#E6DFD5] flex items-center gap-2">
                 <Inbox className="w-5 h-5 text-brand dark:text-[#E8735A]" />
-                Yêu cầu kết bạn
+                {t("friends.requestsTitle")}
                 {requests.received.length > 0 && (
                   <span className="px-2 py-0.5 text-xs font-black rounded-full bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 animate-pulse">
-                    {requests.received.length} mới
+                    {t("friends.newBadge").replace("{count}", String(requests.received.length))}
                   </span>
                 )}
               </h2>
               <p className="text-xs text-gray-500 dark:text-[#9A8A7A] mt-1">
-                Quản lý các lời mời kết bạn đã nhận hoặc các yêu cầu bạn đã gửi đi
+                {t("friends.requestsDesc")}
               </p>
             </div>
 
@@ -449,7 +449,7 @@ export default function FriendsPage() {
                 }`}
               >
                 <Inbox className="w-3.5 h-3.5" />
-                Lời mời đã nhận ({requests.received.length})
+                {t("friends.receivedTab").replace("{count}", String(requests.received.length))}
               </button>
               <button
                 onClick={() => setActiveRequestsTab("sent")}
@@ -460,7 +460,7 @@ export default function FriendsPage() {
                 }`}
               >
                 <Send className="w-3.5 h-3.5" />
-                Yêu cầu đã gửi ({requests.sent.length})
+                {t("friends.sentTab").replace("{count}", String(requests.sent.length))}
               </button>
             </div>
           </div>
@@ -469,13 +469,13 @@ export default function FriendsPage() {
           {requestsLoading ? (
             <div className="flex flex-col items-center justify-center py-12">
               <Loader2 className="w-8 h-8 animate-spin text-brand dark:text-[#E8735A] mb-2" />
-              <p className="text-gray-400 dark:text-[#9A8A7A] text-xs">Đang tải...</p>
+              <p className="text-gray-400 dark:text-[#9A8A7A] text-xs">{t("friends.loadingText")}</p>
             </div>
           ) : activeRequestsTab === "received" ? (
             requests.received.length === 0 ? (
               <div className="py-12 text-center text-gray-400 dark:text-[#8A7A6A] text-sm flex flex-col items-center justify-center">
                 <Inbox className="w-8 h-8 opacity-45 mb-2" />
-                Không có lời mời kết bạn nào
+                {t("friends.noReceivedRequests")}
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -510,7 +510,7 @@ export default function FriendsPage() {
                           className="px-3 py-1.5 bg-brand dark:bg-[#E8735A] hover:bg-brand-hover dark:hover:bg-[#d85e46] text-white text-xs font-bold rounded-lg flex items-center gap-1 transition-all cursor-pointer hover:scale-[1.02] disabled:opacity-50"
                         >
                           <UserCheck className="w-3.5 h-3.5" />
-                          Đồng ý
+                          {t("friends.acceptBtn")}
                         </button>
                         <button
                           onClick={() => handleDeclineRequest(req.id, req.sender_username || "")}
@@ -518,7 +518,7 @@ export default function FriendsPage() {
                           className="px-3 py-1.5 bg-gray-100 dark:bg-[#4D3D32] hover:bg-gray-200 dark:hover:bg-[#5D4D42] text-gray-600 dark:text-[#E6DFD5] text-xs font-bold rounded-lg flex items-center gap-1 transition-all cursor-pointer hover:scale-[1.02] disabled:opacity-50"
                         >
                           <UserX className="w-3.5 h-3.5" />
-                          Từ chối
+                          {t("friends.declineBtn")}
                         </button>
                       </div>
                     </div>
@@ -530,7 +530,7 @@ export default function FriendsPage() {
             requests.sent.length === 0 ? (
               <div className="py-12 text-center text-gray-400 dark:text-[#8A7A6A] text-sm flex flex-col items-center justify-center">
                 <Send className="w-8 h-8 opacity-45 mb-2" />
-                Không có yêu cầu kết bạn nào được gửi đi
+                {t("friends.noSentRequests")}
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -558,11 +558,11 @@ export default function FriendsPage() {
                           </p>
                           {req.status === "declined" ? (
                             <span className="text-[10px] text-red-500 font-bold bg-red-100/50 dark:bg-red-500/10 px-2 py-0.5 rounded-full mt-1 inline-block">
-                              Bị từ chối
+                              {t("friends.declinedStatus")}
                             </span>
                           ) : (
                             <span className="text-[10px] text-amber-600 font-bold bg-amber-100/50 dark:bg-amber-500/10 px-2 py-0.5 rounded-full mt-1 inline-block">
-                              Đang chờ duyệt
+                              {t("friends.pendingStatus")}
                             </span>
                           )}
                         </div>
@@ -573,7 +573,7 @@ export default function FriendsPage() {
                             onClick={() => handleAddFriendDirect(req.receiver_username || "")}
                             disabled={actionLoading}
                             className="p-2 text-[#E8735A] hover:bg-[#E8735A]/10 rounded-lg transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center"
-                            title="Gửi lại yêu cầu kết bạn"
+                            title={t("friends.resendRequestTooltip")}
                           >
                             <RefreshCw className="w-4 h-4" />
                           </button>
@@ -582,7 +582,7 @@ export default function FriendsPage() {
                           onClick={() => handleCancelRequest(req.id)}
                           disabled={actionLoading}
                           className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center"
-                          title="Hủy yêu cầu"
+                          title={t("friends.cancelRequestTooltip")}
                         >
                           <UserMinus className="w-4 h-4" />
                         </button>
