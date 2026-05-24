@@ -130,7 +130,7 @@ class RecommendationService:
         Nếu gặp Cold Start hoặc lỗi Server AI Engine, hệ thống tự động chuyển sang Popularity Fallback.
         """
         from app.services.ai_client import get_ai_client
-        ai_client = get_ai_client()
+        ai_client = await get_ai_client()
         
         # 1. Gọi AI Engine để lấy danh sách Restaurant IDs gợi ý
         recommended_ids = await ai_client.get_lightfm_recommendations(user.id, limit)
@@ -257,8 +257,7 @@ class RecommendationService:
         from app.domains.users.models import UserFriend, UserOnboarding
         from app.services.ai_client import embed_text
         from app.services.allergy_filter import (
-            fetch_allergen_map,
-            fetch_dish_detail_map,
+            fetch_allergy_data,
             annotate_allergy,
         )
 
@@ -497,8 +496,7 @@ class RecommendationService:
         applied_allergies_list = list(group_allergies)
         if applied_allergies_list:
             restaurant_ids = [c.id for c in raw_candidates]
-            allergen_map = fetch_allergen_map(db, restaurant_ids)
-            dish_detail_map = fetch_dish_detail_map(db, restaurant_ids)
+            allergen_map, dish_detail_map = fetch_allergy_data(db, restaurant_ids)
             safe_candidates, flagged_count = annotate_allergy(
                 raw_candidates, applied_allergies_list, allergen_map, dish_detail_map
             )

@@ -17,7 +17,8 @@ async def embed_text(text: str) -> Optional[List[float]]:
 
     Returns None nếu AI Engine không phản hồi hoặc trả về sai dimension.
     """
-    return await get_ai_client().embed_text(text)
+    ai_client = await get_ai_client()
+    return await ai_client.embed_text(text)
 
 
 class AIServiceClient:
@@ -188,7 +189,7 @@ class AIServiceClient:
 _client_instance: Optional[AIServiceClient] = None
 
 
-def get_ai_client() -> AIServiceClient:
+async def get_ai_client() -> AIServiceClient:
     """Singleton factory cho AIServiceClient."""
     global _client_instance
     if _client_instance is None:

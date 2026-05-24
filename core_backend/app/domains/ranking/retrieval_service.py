@@ -68,6 +68,9 @@ def extract_tag(query_text: str) -> Optional[str]:
 class RetrievalService:
     def __init__(self, db: Session):
         self.db = db
+        self._exact_match_res_ids = None
+        self._dish_vector_res_ids = None
+        self._tag_match_res_ids = {}
 
     def get_candidates(
         self,
@@ -162,12 +165,15 @@ class RetrievalService:
         tag_filter_applied = False
 
         if food_tag:
-            from .models import TagModel, RestaurantTagModel
-            tagged_res_ids = self.db.query(RestaurantTagModel.res_id).join(
-                TagModel, RestaurantTagModel.tag_id == TagModel.id
-            ).filter(TagModel.name == food_tag).all()
-            
-            tag_match_res_ids = [str(r[0]) for r in tagged_res_ids]
+            if food_tag in self._tag_match_res_ids:
+                tag_match_res_ids = self._tag_match_res_ids[food_tag]
+            else:
+                from .models import TagModel, RestaurantTagModel
+                tagged_res_ids = self.db.query(RestaurantTagModel.res_id).join(
+                    TagModel, RestaurantTagModel.tag_id == TagModel.id
+                ).filter(TagModel.name == food_tag).all()
+                tag_match_res_ids = [str(r[0]) for r in tagged_res_ids]
+                self._tag_match_res_ids[food_tag] = tag_match_res_ids
             
             if tag_match_res_ids:
                 tag_query = query.filter(RestaurantModel.id.in_(tag_match_res_ids))
@@ -186,29 +192,37 @@ class RetrievalService:
                 RestaurantModel.embedding_vector.isnot(None)
             ).order_by(distance)
             
-            # Tier 1: Exact keyword matching trên DishModel
-            exact_match_res_ids = []
-            search_term = cleaned_query if cleaned_query else query_text
-            if search_term:
-                tokens = [t.strip() for t in search_term.split() if len(t.strip()) > 0]
-                if tokens:
-                    filters = [DishModel.name.ilike(f"%{t}%") for t in tokens]
-                    exact_dishes = self.db.query(DishModel.res_id).filter(
-                        and_(*filters)
-                    ).limit(200).all()
-                    exact_match_res_ids = [str(r[0]) for r in exact_dishes]
+            # Tier 1: Exact keyword matching trên DishModel (instance cached)
+            if self._exact_match_res_ids is not None:
+                exact_match_res_ids = self._exact_match_res_ids
+            else:
+                exact_match_res_ids = []
+                search_term = cleaned_query if cleaned_query else query_text
+                if search_term:
+                    tokens = [t.strip() for t in search_term.split() if len(t.strip()) > 0]
+                    if tokens:
+                        filters = [DishModel.name.ilike(f"%{t}%") for t in tokens]
+                        exact_dishes = self.db.query(DishModel.res_id).filter(
+                            and_(*filters)
+                        ).limit(200).all()
+                        exact_match_res_ids = [str(r[0]) for r in exact_dishes]
+                self._exact_match_res_ids = exact_match_res_ids
             
-            # Tier 2: Vector search trên DishModel
-            dish_vector_res_ids = []
-            if len(query_vector) > 0:
-                dish_distance = DishModel.embedding_vector.cosine_distance(query_vector).label("dish_distance")
-                dish_matches = self.db.query(DishModel.res_id, dish_distance).filter(
-                    DishModel.embedding_vector.isnot(None)
-                ).order_by(dish_distance).limit(30).all()
-                
-                for row in dish_matches:
-                    if row[1] < 0.7:
-                        dish_vector_res_ids.append(str(row[0]))
+            # Tier 2: Vector search trên DishModel (instance cached)
+            if self._dish_vector_res_ids is not None:
+                dish_vector_res_ids = self._dish_vector_res_ids
+            else:
+                dish_vector_res_ids = []
+                if query_vector is not None and len(query_vector) > 0:
+                    dish_distance = DishModel.embedding_vector.cosine_distance(query_vector).label("dish_distance")
+                    dish_matches = self.db.query(DishModel.res_id, dish_distance).filter(
+                        DishModel.embedding_vector.isnot(None)
+                    ).order_by(dish_distance).limit(30).all()
+                    
+                    for row in dish_matches:
+                        if row[1] < 0.7:
+                            dish_vector_res_ids.append(str(row[0]))
+                self._dish_vector_res_ids = dish_vector_res_ids
             
             results = main_query.limit(_MAX_RETRIEVAL).all()
             candidates = []

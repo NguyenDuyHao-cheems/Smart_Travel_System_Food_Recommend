@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.services.user_services import get_user_allergies, get_user_preferences_vector
 from app.services.allergy_filter import (
     handle_fallback, 
-    fetch_allergen_map, fetch_dish_detail_map, annotate_allergy
+    fetch_allergy_data, annotate_allergy
 )
 from app.domains.ranking.retrieval_service import RetrievalService
 from app.domains.ranking.feature_service import FeatureService
@@ -126,10 +126,12 @@ async def recommend(
             "fallback_applied": False,
         }
 
-    # Pre-fetch allergens từ dishes cho tất cả restaurant candidates
+    # Pre-fetch allergens từ dishes cho tất cả restaurant candidates (combined query)
     restaurant_ids = [c.id for c in raw_candidates]
-    allergen_map = fetch_allergen_map(db, restaurant_ids) if user_allergies else {}
-    dish_detail_map = fetch_dish_detail_map(db, restaurant_ids) if user_allergies else {}
+    if user_allergies:
+        allergen_map, dish_detail_map = fetch_allergy_data(db, restaurant_ids)
+    else:
+        allergen_map, dish_detail_map = {}, {}
     
     # Thay vì filter (loại bỏ), ta annotate (gắn nhãn)
     safe_candidates, flagged_count = annotate_allergy(
@@ -177,7 +179,8 @@ async def recommend(
     
     try:
         from app.services.ai_client import get_ai_client
-        data = await get_ai_client().rank_candidates(
+        ai_client = await get_ai_client()
+        data = await ai_client.rank_candidates(
             user_id=user_id or "anonymous",
             candidates=featured,
             top_k=len(featured),

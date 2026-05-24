@@ -51,7 +51,7 @@ app.add_middleware(
 @app.get("/api/health")
 async def get_health_status():
     db_status = check_db_connection()
-    ai_client = get_ai_client()
+    ai_client = await get_ai_client()
     ai_status = await ai_client.check_health()
     
     is_healthy = db_status and ai_status
