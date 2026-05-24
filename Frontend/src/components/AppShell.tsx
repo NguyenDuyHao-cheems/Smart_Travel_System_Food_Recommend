@@ -112,9 +112,9 @@ export function AppShell({ children, healthStatus = "loading", headerAction }: A
 
       {/* ── Sticky header ── */}
       <header className="relative z-30 sticky top-0 bg-[#FDFBF7]/95 dark:bg-[#2A2420]/95 backdrop-blur-md border-b-2 border-[#3D312A]/20 dark:border-[#E6DFD5]/10">
-        <div className="grid grid-cols-[1fr_auto_1fr] items-center px-4 md:px-8 h-[64px]">
+        <div className="grid grid-cols-[auto_1fr_auto] sm:grid-cols-[1fr_auto_1fr] items-center px-4 md:px-8 h-[64px]">
           {/* Left: Hamburger */}
-          <div className="flex items-center justify-start">
+          <div className="flex items-center justify-start min-w-0">
             <button
               onClick={() => setDrawerOpen(true)}
               className="p-2 hover:bg-[#3D312A]/10 dark:hover:bg-[#E6DFD5]/10 rounded transition-colors cursor-pointer"
@@ -125,10 +125,10 @@ export function AppShell({ children, healthStatus = "loading", headerAction }: A
           </div>
 
           {/* Center: Logo — always perfectly centered */}
-          <div className="flex items-center justify-center">
+          <div className="flex items-center justify-center min-w-0">
             <Link href="/">
               <span
-                className="text-3xl md:text-4xl font-black text-brand dark:text-[#E8735A] tracking-wide select-none whitespace-nowrap"
+                className="text-[clamp(1.2rem,5.5vw,2rem)] md:text-4xl font-black text-brand dark:text-[#E8735A] tracking-wide select-none whitespace-nowrap"
                 style={{ fontFamily: '"DFVN Paper Kuto", "Segoe UI", Roboto, sans-serif' }}
               >
                 Wanderbite
@@ -137,7 +137,7 @@ export function AppShell({ children, healthStatus = "loading", headerAction }: A
           </div>
 
           {/* Right: Health dot + Location + Theme + User */}
-          <div className="flex items-center justify-end gap-2 overflow-hidden">
+          <div className="flex items-center justify-end gap-2 overflow-hidden min-w-0">
             {headerAction}
 
             {/* Location Indicator Widget - Text version (Desktop >= 1024px) */}
