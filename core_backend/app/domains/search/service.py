@@ -242,6 +242,7 @@ class SearchService:
             google_maps_url=getattr(model, "google_maps_url", None),
             allergen_warning=getattr(model, "allergen_warning", None),
             is_vegetarian=getattr(model, "is_vegetarian", False) or False,
+            tags=[t.name for t in model.tags if hasattr(t, 'name') and t.name] if hasattr(model, 'tags') and model.tags else [],
             sentiment_score=normalize_restaurant_sentiment(getattr(model, "sentiment_score", None)),
             sentiment_label=sentiment_label_for_score(getattr(model, "sentiment_score", None)),
             sentiment_review_count=getattr(model, "total_reviews", 0) or 0,
