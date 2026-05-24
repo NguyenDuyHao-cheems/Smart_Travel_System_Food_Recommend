@@ -69,6 +69,15 @@ def update_schema():
             user_id VARCHAR NOT NULL REFERENCES users(id),
             reaction VARCHAR,
             created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );""",
+        """CREATE TABLE IF NOT EXISTS user_friend_requests (
+            id UUID PRIMARY KEY,
+            sender_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            receiver_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            status VARCHAR NOT NULL DEFAULT 'pending',
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+            CONSTRAINT uq_sender_receiver UNIQUE (sender_id, receiver_id)
         );"""
     ]
     

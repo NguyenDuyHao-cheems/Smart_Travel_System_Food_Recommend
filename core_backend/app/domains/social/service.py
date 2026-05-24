@@ -2,7 +2,7 @@ from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 import requests
 from html.parser import HTMLParser
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, unquote, urlparse
 from cachetools import TTLCache
 
 from .models import SocialPost, SocialFollow, SocialLike, SocialNotification, SocialStory, SocialStoryView
@@ -10,6 +10,46 @@ from .schemas import SocialPostCreate, SocialPostResponse, StoryCreate, StoryRes
 from .repository import SocialRepository
 
 preview_cache = TTLCache(maxsize=1000, ttl=86400)
+
+def _normalize_preview_url(url: str) -> str:
+    normalized = url.strip()
+    for _ in range(2):
+        decoded = unquote(normalized)
+        if decoded == normalized:
+            break
+        normalized = decoded
+    return normalized
+
+def _extract_youtube_video_id(url: str) -> str | None:
+    parsed = urlparse(_normalize_preview_url(url))
+    host = parsed.netloc.lower()
+    if host.startswith("www."):
+        host = host[4:]
+
+    if host == "youtu.be":
+        return parsed.path.strip("/").split("/")[0] or None
+
+    if host in {"youtube.com", "m.youtube.com", "music.youtube.com"}:
+        if parsed.path == "/watch":
+            return parse_qs(parsed.query).get("v", [None])[0]
+        for prefix in ("/shorts/", "/embed/"):
+            if parsed.path.startswith(prefix):
+                return parsed.path.removeprefix(prefix).split("/")[0] or None
+
+    return None
+
+def _extract_github_repo_path(url: str) -> str | None:
+    parsed = urlparse(_normalize_preview_url(url))
+    host = parsed.netloc.lower()
+    if host.startswith("www."):
+        host = host[4:]
+    if host != "github.com":
+        return None
+
+    parts = [part for part in parsed.path.split("/") if part]
+    if len(parts) < 2:
+        return None
+    return f"{parts[0]}/{parts[1]}"
 
 class OGParser(HTMLParser):
     def __init__(self):
@@ -163,6 +203,9 @@ class SocialService:
                 "follow": f"{actor.full_name or actor.username} đã bắt đầu theo dõi bạn",
                 "like": f"{actor.full_name or actor.username} đã thích bài viết của bạn",
                 "reply": f"{actor.full_name or actor.username} đã trả lời bài viết của bạn",
+                "friend_request": f"{actor.full_name or actor.username} đã gửi lời mời kết bạn",
+                "friend_accept": f"{actor.full_name or actor.username} đã chấp nhận lời mời kết bạn",
+                "friend_decline": f"{actor.full_name or actor.username} đã từ chối lời mời kết bạn",
             }.get(notif.type, "Có thông báo mới")
             result.append({
                 "id": notif.id,
@@ -358,15 +401,19 @@ class SocialService:
         return {"status": "ok", "message": "Story deleted successfully"}
 
     def get_link_preview(self, url: str) -> dict:
-        if url in preview_cache:
-            return preview_cache[url]
+        normalized_url = _normalize_preview_url(url)
+        youtube_video_id = _extract_youtube_video_id(normalized_url)
+        github_repo_path = _extract_github_repo_path(normalized_url)
+
+        if normalized_url in preview_cache:
+            return preview_cache[normalized_url]
         
         try:
             headers = {
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
             }
             # Add timeout to avoid hanging the endpoint
-            response = requests.get(url, headers=headers, timeout=5)
+            response = requests.get(normalized_url, headers=headers, timeout=5)
             response.raise_for_status()
             
             parser = OGParser()
@@ -379,28 +426,40 @@ class SocialService:
             description = html.unescape(meta.get("og:description") or meta.get("description") or "")
             image_url = html.unescape(meta.get("og:image") or "")
             
-            parsed_uri = urlparse(url)
-            site_name = html.unescape(meta.get("og:site_name") or parsed_uri.netloc)
+            parsed_uri = urlparse(normalized_url)
+            site_name = html.unescape(meta.get("og:site_name") or ("YouTube" if youtube_video_id else "GitHub" if github_repo_path else parsed_uri.netloc))
+
+            if youtube_video_id:
+                title = title or "YouTube video"
+                image_url = image_url or f"https://img.youtube.com/vi/{youtube_video_id}/hqdefault.jpg"
+
+            if github_repo_path:
+                title = title or github_repo_path
+                image_url = image_url or f"https://opengraph.githubassets.com/wanderbite/{github_repo_path}"
             
             result = {
-                "url": url,
+                "url": normalized_url,
                 "title": title,
                 "description": description,
                 "image_url": image_url,
                 "site_name": site_name
             }
-            preview_cache[url] = result
+            preview_cache[normalized_url] = result
             return result
             
         except Exception as e:
-            print(f"Error fetching link preview for {url}: {e}")
-            parsed_uri = urlparse(url)
+            print(f"Error fetching link preview for {normalized_url}: {e}")
+            parsed_uri = urlparse(normalized_url)
             fallback = {
-                "url": url,
-                "title": parsed_uri.netloc,
+                "url": normalized_url,
+                "title": "YouTube video" if youtube_video_id else (github_repo_path or parsed_uri.netloc),
                 "description": "",
-                "image_url": "",
-                "site_name": parsed_uri.netloc
+                "image_url": (
+                    f"https://img.youtube.com/vi/{youtube_video_id}/hqdefault.jpg"
+                    if youtube_video_id
+                    else f"https://opengraph.githubassets.com/wanderbite/{github_repo_path}" if github_repo_path else ""
+                ),
+                "site_name": "YouTube" if youtube_video_id else ("GitHub" if github_repo_path else parsed_uri.netloc)
             }
-            preview_cache[url] = fallback
+            preview_cache[normalized_url] = fallback
             return fallback

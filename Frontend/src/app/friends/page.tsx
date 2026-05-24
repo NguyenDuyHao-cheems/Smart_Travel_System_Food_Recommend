@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { PageLayout } from "../../components/PageLayout";
-import { friendService, Friend } from "../../services/friendService";
+import { friendService, Friend, FriendRequest } from "../../services/friendService";
 import {
   Users,
   UserPlus,
@@ -13,10 +13,15 @@ import {
   Loader2,
   AlertCircle,
   Sparkles,
-  Info
+  Info,
+  UserCheck,
+  UserX,
+  Inbox,
+  Send,
+  RefreshCw
 } from "lucide-react";
 import { toast } from "sonner";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Dialog,
@@ -37,6 +42,8 @@ interface MyProfile {
 export default function FriendsPage() {
   const router = useRouter();
   const { t, language } = useLanguage();
+  const searchParams = useSearchParams();
+  const focusParam = searchParams.get("focus");
   
   // States
   const [friends, setFriends] = useState<Friend[]>([]);
@@ -46,12 +53,30 @@ export default function FriendsPage() {
   const [localSearch, setLocalSearch] = useState("");
   const [myProfile, setMyProfile] = useState<MyProfile | null>(null);
   
+  // Friend requests state
+  const [requests, setRequests] = useState<{ received: FriendRequest[]; sent: FriendRequest[] }>({ received: [], sent: [] });
+  const [requestsLoading, setRequestsLoading] = useState(true);
+  const [activeRequestsTab, setActiveRequestsTab] = useState<"received" | "sent">("received");
+  const [focusRequests, setFocusRequests] = useState(false);
+  
   // Unfriend dialog confirmation state
   const [unfriendTarget, setUnfriendTarget] = useState<Friend | null>(null);
   
   // Copy state feedbacks
   const [copiedId, setCopiedId] = useState(false);
   const [copiedUsername, setCopiedUsername] = useState(false);
+
+  const loadRequests = async (showLoading = true) => {
+    try {
+      if (showLoading) setRequestsLoading(true);
+      const data = await friendService.fetchFriendRequests();
+      setRequests(data);
+    } catch (err: any) {
+      console.error("Failed to load friend requests:", err);
+    } finally {
+      if (showLoading) setRequestsLoading(false);
+    }
+  };
 
   useEffect(() => {
     const userId = localStorage.getItem("user_id");
@@ -92,21 +117,54 @@ export default function FriendsPage() {
       }
     };
 
-    const loadFriends = async () => {
+    const loadFriends = async (showLoading = true) => {
       try {
-        setLoading(true);
+        if (showLoading) setLoading(true);
         const data = await friendService.fetchFriends();
         setFriends(data);
       } catch (err: any) {
         toast.error(err.message || t("friends.loadFailed"));
       } finally {
-        setLoading(false);
+        if (showLoading) setLoading(false);
       }
     };
 
     fetchProfile();
-    loadFriends();
+    loadFriends(true);
+    loadRequests(true);
   }, [router, t]);
+
+  // Poll friends and requests in the background every 8 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      friendService.fetchFriends().then(setFriends).catch(console.error);
+      loadRequests(false);
+    }, 8000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Handle focus scrolling on mount/params change
+  useEffect(() => {
+    if (focusParam === "requests") {
+      setFocusRequests(true);
+      // Wait slightly for DOM rendering
+      const timer = setTimeout(() => {
+        const el = document.getElementById("friend-requests-block");
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      }, 500);
+
+      const fadeTimer = setTimeout(() => {
+        setFocusRequests(false);
+      }, 3000);
+
+      return () => {
+        clearTimeout(timer);
+        clearTimeout(fadeTimer);
+      };
+    }
+  }, [focusParam, requestsLoading]);
 
   // Handle Add Friend
   const handleAddFriend = async (e: React.FormEvent) => {
@@ -125,9 +183,65 @@ export default function FriendsPage() {
       toast.success(t("friends.addSuccess").replace("{target}", target));
       setAddUsername("");
       
-      // Reload friends list
-      const data = await friendService.fetchFriends();
-      setFriends(data);
+      // Reload requests list
+      loadRequests();
+    } catch (err: any) {
+      toast.error(err.message || t("friends.addError"));
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleAcceptRequest = async (requestId: string, username: string) => {
+    try {
+      setActionLoading(true);
+      await friendService.acceptFriendRequest(requestId);
+      toast.success(t("friends.acceptSuccess").replace("{target}", username));
+      
+      // Reload friends and requests lists
+      const friendsData = await friendService.fetchFriends();
+      setFriends(friendsData);
+      loadRequests();
+    } catch (err: any) {
+      toast.error(err.message || t("friends.acceptError"));
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleDeclineRequest = async (requestId: string, username: string) => {
+    try {
+      setActionLoading(true);
+      await friendService.declineFriendRequest(requestId);
+      toast.success(t("friends.declineSuccess").replace("{target}", username));
+      loadRequests();
+    } catch (err: any) {
+      toast.error(err.message || t("friends.declineError"));
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleCancelRequest = async (requestId: string) => {
+    try {
+      setActionLoading(true);
+      await friendService.cancelFriendRequest(requestId);
+      toast.success(t("friends.cancelRequestSuccess"));
+      loadRequests();
+    } catch (err: any) {
+      toast.error(err.message || t("friends.cancelRequestError"));
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleAddFriendDirect = async (username: string) => {
+    if (!username) return;
+    try {
+      setActionLoading(true);
+      await friendService.addFriend(username);
+      toast.success(t("friends.resendRequestSuccess").replace("{target}", username));
+      loadRequests();
     } catch (err: any) {
       toast.error(err.message || t("friends.addError"));
     } finally {
@@ -297,6 +411,188 @@ export default function FriendsPage() {
               </div>
             )}
           </div>
+        </div>
+
+        {/* Friend Requests Block */}
+        <div
+          id="friend-requests-block"
+          className={`bg-[#FFFDF9] dark:bg-[#3D312A] p-6 md:p-8 rounded-3xl border transition-all duration-500 shadow-[0_4px_20px_rgba(0,0,0,0.02)] ${
+            focusRequests
+              ? "border-[#E8735A] ring-4 ring-[#E8735A]/20 dark:ring-[#E8735A]/10 scale-[1.01]"
+              : "border-[#3D312A]/10 dark:border-[#4D3D32]"
+          }`}
+        >
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 border-b border-gray-100 dark:border-[#4D3D32] pb-4">
+            <div>
+              <h2 className="text-xl font-bold text-[#3D312A] dark:text-[#E6DFD5] flex items-center gap-2">
+                <Inbox className="w-5 h-5 text-brand dark:text-[#E8735A]" />
+                {t("friends.requestsTitle")}
+                {requests.received.length > 0 && (
+                  <span className="px-2 py-0.5 text-xs font-black rounded-full bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 animate-pulse">
+                    {t("friends.newBadge").replace("{count}", String(requests.received.length))}
+                  </span>
+                )}
+              </h2>
+              <p className="text-xs text-gray-500 dark:text-[#9A8A7A] mt-1">
+                {t("friends.requestsDesc")}
+              </p>
+            </div>
+
+            {/* Tabs */}
+            <div className="flex bg-gray-100 dark:bg-[#2A2420] p-1 rounded-xl">
+              <button
+                onClick={() => setActiveRequestsTab("received")}
+                className={`px-4 py-2 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
+                  activeRequestsTab === "received"
+                    ? "bg-white dark:bg-[#3D312A] text-brand dark:text-[#E8735A] shadow-sm"
+                    : "text-gray-500 dark:text-[#8A7A6A] hover:text-foreground"
+                }`}
+              >
+                <Inbox className="w-3.5 h-3.5" />
+                {t("friends.receivedTab").replace("{count}", String(requests.received.length))}
+              </button>
+              <button
+                onClick={() => setActiveRequestsTab("sent")}
+                className={`px-4 py-2 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
+                  activeRequestsTab === "sent"
+                    ? "bg-white dark:bg-[#3D312A] text-brand dark:text-[#E8735A] shadow-sm"
+                    : "text-gray-500 dark:text-[#8A7A6A] hover:text-foreground"
+                }`}
+              >
+                <Send className="w-3.5 h-3.5" />
+                {t("friends.sentTab").replace("{count}", String(requests.sent.length))}
+              </button>
+            </div>
+          </div>
+
+          {/* List display */}
+          {requestsLoading ? (
+            <div className="flex flex-col items-center justify-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin text-brand dark:text-[#E8735A] mb-2" />
+              <p className="text-gray-400 dark:text-[#9A8A7A] text-xs">{t("friends.loadingText")}</p>
+            </div>
+          ) : activeRequestsTab === "received" ? (
+            requests.received.length === 0 ? (
+              <div className="py-12 text-center text-gray-400 dark:text-[#8A7A6A] text-sm flex flex-col items-center justify-center">
+                <Inbox className="w-8 h-8 opacity-45 mb-2" />
+                {t("friends.noReceivedRequests")}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {requests.received.map((req) => {
+                  const avatarUrl =
+                    req.sender_avatar ||
+                    `https://api.dicebear.com/7.x/avataaars/svg?seed=${req.sender_username}`;
+                  return (
+                    <div
+                      key={req.id}
+                      className="bg-white dark:bg-[#2A2420] p-4 rounded-2xl border border-gray-100 dark:border-[#4D3D32] flex items-center justify-between gap-3 shadow-sm hover:shadow-md transition-all"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <img
+                          src={avatarUrl}
+                          alt={req.sender_username || ""}
+                          className="w-10 h-10 rounded-full border border-gray-100 dark:border-[#4D3D32] bg-[#F4EAD5]/50 flex-shrink-0"
+                        />
+                        <div className="min-w-0">
+                          <h4 className="font-bold text-[#3D312A] dark:text-[#E6DFD5] text-sm truncate">
+                            {req.sender_fullname || req.sender_username}
+                          </h4>
+                          <p className="text-xs text-gray-400 dark:text-[#9A8A7A] truncate">
+                            @{req.sender_username}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex gap-2 flex-shrink-0">
+                        <button
+                          onClick={() => handleAcceptRequest(req.id, req.sender_username || "")}
+                          disabled={actionLoading}
+                          className="px-3 py-1.5 bg-brand dark:bg-[#E8735A] hover:bg-brand-hover dark:hover:bg-[#d85e46] text-white text-xs font-bold rounded-lg flex items-center gap-1 transition-all cursor-pointer hover:scale-[1.02] disabled:opacity-50"
+                        >
+                          <UserCheck className="w-3.5 h-3.5" />
+                          {t("friends.acceptBtn")}
+                        </button>
+                        <button
+                          onClick={() => handleDeclineRequest(req.id, req.sender_username || "")}
+                          disabled={actionLoading}
+                          className="px-3 py-1.5 bg-gray-100 dark:bg-[#4D3D32] hover:bg-gray-200 dark:hover:bg-[#5D4D42] text-gray-600 dark:text-[#E6DFD5] text-xs font-bold rounded-lg flex items-center gap-1 transition-all cursor-pointer hover:scale-[1.02] disabled:opacity-50"
+                        >
+                          <UserX className="w-3.5 h-3.5" />
+                          {t("friends.declineBtn")}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )
+          ) : (
+            requests.sent.length === 0 ? (
+              <div className="py-12 text-center text-gray-400 dark:text-[#8A7A6A] text-sm flex flex-col items-center justify-center">
+                <Send className="w-8 h-8 opacity-45 mb-2" />
+                {t("friends.noSentRequests")}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {requests.sent.map((req) => {
+                  const avatarUrl =
+                    req.receiver_avatar ||
+                    `https://api.dicebear.com/7.x/avataaars/svg?seed=${req.receiver_username}`;
+                  return (
+                    <div
+                      key={req.id}
+                      className="bg-white dark:bg-[#2A2420] p-4 rounded-2xl border border-gray-100 dark:border-[#4D3D32] flex items-center justify-between gap-3 shadow-sm hover:shadow-md transition-all"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <img
+                          src={avatarUrl}
+                          alt={req.receiver_username || ""}
+                          className="w-10 h-10 rounded-full border border-gray-100 dark:border-[#4D3D32] bg-[#F4EAD5]/50 flex-shrink-0"
+                        />
+                        <div className="min-w-0">
+                          <h4 className="font-bold text-[#3D312A] dark:text-[#E6DFD5] text-sm truncate">
+                            {req.receiver_fullname || req.receiver_username}
+                          </h4>
+                          <p className="text-xs text-gray-400 dark:text-[#9A8A7A] truncate">
+                            @{req.receiver_username}
+                          </p>
+                          {req.status === "declined" ? (
+                            <span className="text-[10px] text-red-500 font-bold bg-red-100/50 dark:bg-red-500/10 px-2 py-0.5 rounded-full mt-1 inline-block">
+                              {t("friends.declinedStatus")}
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-amber-600 font-bold bg-amber-100/50 dark:bg-amber-500/10 px-2 py-0.5 rounded-full mt-1 inline-block">
+                              {t("friends.pendingStatus")}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        {req.status === "declined" && (
+                          <button
+                            onClick={() => handleAddFriendDirect(req.receiver_username || "")}
+                            disabled={actionLoading}
+                            className="p-2 text-[#E8735A] hover:bg-[#E8735A]/10 rounded-lg transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center"
+                            title={t("friends.resendRequestTooltip")}
+                          >
+                            <RefreshCw className="w-4 h-4" />
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleCancelRequest(req.id)}
+                          disabled={actionLoading}
+                          className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center"
+                          title={t("friends.cancelRequestTooltip")}
+                        >
+                          <UserMinus className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )
+          )}
         </div>
 
         {/* Friends List Card container */}

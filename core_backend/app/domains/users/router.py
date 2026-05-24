@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from typing import List
 
-from .models import UserAccount, UserFriend, UserFavorite, UserCollection, UserCollectionItem
+from .models import UserAccount, UserFriend, UserFavorite, UserCollection, UserCollectionItem, FriendRequest
 from .schemas import (
     OnboardingRequest, OnboardingResponse, SignUpRequest, SignInRequest, 
     GoogleAuthRequest, AuthResponse, UserUpdateRequest,
@@ -10,7 +10,8 @@ from .schemas import (
     BadgeProgress, CulinaryVibe, RecentActivityResponse,
     FavoriteCreateRequest, FavoriteResponse, CollectionCreateRequest,
     CollectionUpdateRequest, CollectionItemCreateRequest, CollectionItemResponse,
-    CollectionResponse, AddFriendRequest, FriendResponse
+    CollectionResponse, AddFriendRequest, FriendResponse,
+    FriendRequestResponse, FriendRequestsListResponse
 )
 from .service import OnboardingService, AuthService, UserInteractionService
 from .repository import UserOnboardingRepository, UserAccountRepository, UserInteractionRepository
@@ -983,41 +984,262 @@ def add_friend(
     current_user: UserAccount = Depends(get_current_user),
 ):
     try:
+        from app.domains.social.models import SocialNotification
+
         # 1. Search for user by username (case-insensitive)
         target_user = db.query(UserAccount).filter(
             UserAccount.username.ilike(payload.username)
         ).first()
         
         if not target_user:
-            raise HTTPException(status_code=404, detail="User not found")
+            raise HTTPException(status_code=404, detail="Không tìm thấy người dùng này")
             
         # 2. Check if adding self
         if target_user.id == current_user.id:
-            raise HTTPException(status_code=400, detail="Cannot add yourself as a friend")
+            raise HTTPException(status_code=400, detail="Không thể kết bạn với chính mình")
             
         # 3. Check if already friends (A -> B)
-        existing = db.query(UserFriend).filter(
+        existing_friend = db.query(UserFriend).filter(
             UserFriend.user_id == str(current_user.id),
             UserFriend.friend_id == str(target_user.id)
         ).first()
         
-        if existing:
-            raise HTTPException(status_code=400, detail="Already friends")
+        if existing_friend:
+            raise HTTPException(status_code=400, detail="Hai người đã là bạn bè")
             
-        # 4. Create mutual friendship records (A -> B and B -> A)
-        link1 = UserFriend(user_id=str(current_user.id), friend_id=str(target_user.id))
-        link2 = UserFriend(user_id=str(target_user.id), friend_id=str(current_user.id))
+        # 4. Check for incoming request (target_user -> current_user)
+        incoming_req = db.query(FriendRequest).filter(
+            FriendRequest.sender_id == str(target_user.id),
+            FriendRequest.receiver_id == str(current_user.id)
+        ).first()
         
-        db.add(link1)
-        db.add(link2)
+        if incoming_req and incoming_req.status == "pending":
+            # Auto-accept the request
+            incoming_req.status = "accepted"
+            
+            link1 = UserFriend(user_id=str(current_user.id), friend_id=str(target_user.id))
+            link2 = UserFriend(user_id=str(target_user.id), friend_id=str(current_user.id))
+            db.add(link1)
+            db.add(link2)
+            
+            # Notify the sender
+            notif = SocialNotification(
+                user_id=str(target_user.id),
+                actor_id=str(current_user.id),
+                type="friend_accept"
+            )
+            db.add(notif)
+            db.commit()
+            return {"status": "success", "message": "Đã chấp nhận lời mời kết bạn và trở thành bạn bè"}
+
+        # 5. Check for outgoing request (current_user -> target_user)
+        outgoing_req = db.query(FriendRequest).filter(
+            FriendRequest.sender_id == str(current_user.id),
+            FriendRequest.receiver_id == str(target_user.id)
+        ).first()
+        
+        if outgoing_req:
+            if outgoing_req.status == "pending":
+                raise HTTPException(status_code=400, detail="Yêu cầu kết bạn đang chờ duyệt")
+            elif outgoing_req.status == "accepted":
+                raise HTTPException(status_code=400, detail="Hai người đã là bạn bè")
+            elif outgoing_req.status == "declined":
+                # Resend the declined request
+                outgoing_req.status = "pending"
+                from datetime import datetime, timezone
+                outgoing_req.created_at = datetime.now(timezone.utc)
+                
+                notif = SocialNotification(
+                    user_id=str(target_user.id),
+                    actor_id=str(current_user.id),
+                    type="friend_request"
+                )
+                db.add(notif)
+                db.commit()
+                return {"status": "success", "message": "Gửi yêu cầu kết bạn thành công"}
+        
+        # 6. Create new request
+        new_req = FriendRequest(
+            sender_id=str(current_user.id),
+            receiver_id=str(target_user.id),
+            status="pending"
+        )
+        db.add(new_req)
+        
+        notif = SocialNotification(
+            user_id=str(target_user.id),
+            actor_id=str(current_user.id),
+            type="friend_request"
+        )
+        db.add(notif)
         db.commit()
         
-        return {"status": "success", "message": "Friend added successfully"}
+        return {"status": "success", "message": "Gửi yêu cầu kết bạn thành công"}
     except HTTPException:
         raise
     except Exception as exc:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Failed to add friend: {exc}")
+
+
+@router.get("/friends/requests", response_model=FriendRequestsListResponse)
+def get_friend_requests(
+    db: Session = Depends(get_db),
+    current_user: UserAccount = Depends(get_current_user),
+) -> FriendRequestsListResponse:
+    try:
+        # Received pending requests (no join, direct filter)
+        received_reqs = db.query(FriendRequest).filter(
+            FriendRequest.receiver_id == str(current_user.id),
+            FriendRequest.status == "pending"
+        ).all()
+        
+        # Sent requests (pending or declined, no join, direct filter)
+        sent_reqs = db.query(FriendRequest).filter(
+            FriendRequest.sender_id == str(current_user.id),
+            FriendRequest.status.in_(["pending", "declined"])
+        ).all()
+        
+        received = []
+        for req in received_reqs:
+            sender = db.query(UserAccount).filter(UserAccount.id == req.sender_id).first()
+            if sender:
+                received.append(FriendRequestResponse(
+                    id=str(req.id),
+                    sender_id=str(req.sender_id),
+                    receiver_id=str(req.receiver_id),
+                    status=req.status,
+                    created_at=req.created_at,
+                    sender_username=sender.username,
+                    sender_fullname=sender.full_name,
+                    sender_avatar=sender.avatar_url
+                ))
+        
+        sent = []
+        for req in sent_reqs:
+            receiver = db.query(UserAccount).filter(UserAccount.id == req.receiver_id).first()
+            if receiver:
+                sent.append(FriendRequestResponse(
+                    id=str(req.id),
+                    sender_id=str(req.sender_id),
+                    receiver_id=str(req.receiver_id),
+                    status=req.status,
+                    created_at=req.created_at,
+                    receiver_username=receiver.username,
+                    receiver_fullname=receiver.full_name,
+                    receiver_avatar=receiver.avatar_url
+                ))
+        
+        return FriendRequestsListResponse(received=received, sent=sent)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to get friend requests: {exc}")
+
+
+@router.post("/friends/requests/{request_id}/accept", response_model=dict)
+def accept_friend_request(
+    request_id: str,
+    db: Session = Depends(get_db),
+    current_user: UserAccount = Depends(get_current_user),
+):
+    try:
+        from app.domains.social.models import SocialNotification
+
+        req = db.query(FriendRequest).filter(FriendRequest.id == request_id).first()
+        if not req:
+            raise HTTPException(status_code=404, detail="Yêu cầu kết bạn không tồn tại")
+            
+        if req.receiver_id != str(current_user.id):
+            raise HTTPException(status_code=403, detail="Không có quyền chấp nhận yêu cầu này")
+            
+        if req.status != "pending":
+            raise HTTPException(status_code=400, detail="Yêu cầu không còn ở trạng thái chờ duyệt")
+            
+        req.status = "accepted"
+        
+        # Create mutual friends
+        link1 = UserFriend(user_id=str(current_user.id), friend_id=str(req.sender_id))
+        link2 = UserFriend(user_id=str(req.sender_id), friend_id=str(current_user.id))
+        db.add(link1)
+        db.add(link2)
+        
+        # Send notification to the sender
+        notif = SocialNotification(
+            user_id=str(req.sender_id),
+            actor_id=str(current_user.id),
+            type="friend_accept"
+        )
+        db.add(notif)
+        db.commit()
+        
+        return {"status": "success", "message": "Đã chấp nhận kết bạn"}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to accept friend request: {exc}")
+
+
+@router.post("/friends/requests/{request_id}/decline", response_model=dict)
+def decline_friend_request(
+    request_id: str,
+    db: Session = Depends(get_db),
+    current_user: UserAccount = Depends(get_current_user),
+):
+    try:
+        from app.domains.social.models import SocialNotification
+
+        req = db.query(FriendRequest).filter(FriendRequest.id == request_id).first()
+        if not req:
+            raise HTTPException(status_code=404, detail="Yêu cầu kết bạn không tồn tại")
+            
+        if req.receiver_id != str(current_user.id):
+            raise HTTPException(status_code=403, detail="Không có quyền từ chối yêu cầu này")
+            
+        if req.status != "pending":
+            raise HTTPException(status_code=400, detail="Yêu cầu không còn ở trạng thái chờ duyệt")
+            
+        req.status = "declined"
+        
+        # Send notification to the sender
+        notif = SocialNotification(
+            user_id=str(req.sender_id),
+            actor_id=str(current_user.id),
+            type="friend_decline"
+        )
+        db.add(notif)
+        db.commit()
+        
+        return {"status": "success", "message": "Đã từ chối kết bạn"}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to decline friend request: {exc}")
+
+
+@router.delete("/friends/requests/{request_id}", response_model=dict)
+def delete_friend_request(
+    request_id: str,
+    db: Session = Depends(get_db),
+    current_user: UserAccount = Depends(get_current_user),
+):
+    try:
+        req = db.query(FriendRequest).filter(FriendRequest.id == request_id).first()
+        if not req:
+            raise HTTPException(status_code=404, detail="Yêu cầu kết bạn không tồn tại")
+            
+        if req.sender_id != str(current_user.id):
+            raise HTTPException(status_code=403, detail="Không có quyền hủy yêu cầu này")
+            
+        db.delete(req)
+        db.commit()
+        
+        return {"status": "success", "message": "Đã hủy yêu cầu kết bạn"}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to delete friend request: {exc}")
 
 
 @router.get("/friends", response_model=List[FriendResponse])
@@ -1055,6 +1277,8 @@ def remove_friend(
     current_user: UserAccount = Depends(get_current_user),
 ):
     try:
+        from sqlalchemy import or_
+
         # 1. Query A -> B
         link1 = db.query(UserFriend).filter(
             UserFriend.user_id == str(current_user.id),
@@ -1074,6 +1298,14 @@ def remove_friend(
             db.delete(link1)
         if link2:
             db.delete(link2)
+            
+        # 3. Clean up any friend requests between these two users
+        db.query(FriendRequest).filter(
+            or_(
+                (FriendRequest.sender_id == str(current_user.id)) & (FriendRequest.receiver_id == friend_id),
+                (FriendRequest.sender_id == friend_id) & (FriendRequest.receiver_id == str(current_user.id))
+            )
+        ).delete(synchronize_session=False)
             
         db.commit()
         return {"status": "success", "message": "Friend removed successfully"}

@@ -251,6 +251,31 @@ class FriendResponse(BaseModel):
         from_attributes = True
 
 
+class FriendRequestResponse(BaseModel):
+    id: str
+    sender_id: str
+    receiver_id: str
+    status: str
+    created_at: datetime
+    
+    sender_username: Optional[str] = None
+    sender_fullname: Optional[str] = None
+    sender_avatar: Optional[str] = None
+    
+    receiver_username: Optional[str] = None
+    receiver_fullname: Optional[str] = None
+    receiver_avatar: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+class FriendRequestsListResponse(BaseModel):
+    received: List[FriendRequestResponse]
+    sent: List[FriendRequestResponse]
+
+
+
 
 
 

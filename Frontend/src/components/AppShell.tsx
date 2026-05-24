@@ -166,10 +166,10 @@ export function AppShell({ children, healthStatus = "loading", headerAction }: A
               </span>
             </button>
 
-            {/* Location icon-only version (Tablet 640px to 1024px) */}
+            {/* Location icon-only version (Tablet 768px to 1024px) */}
             <button
               onClick={() => setIsLocationModalOpen(true)}
-              className="hidden sm:flex lg:hidden p-2 hover:bg-[#3D312A]/10 dark:hover:bg-[#E6DFD5]/10 rounded transition-colors cursor-pointer flex-shrink-0"
+              className="hidden md:max-lg:flex p-2 hover:bg-[#3D312A]/10 dark:hover:bg-[#E6DFD5]/10 rounded transition-colors cursor-pointer flex-shrink-0"
               title="Nhấp để thay đổi vị trí của bạn"
             >
               <MapPin className={`w-4 h-4 flex-shrink-0 ${
@@ -181,9 +181,9 @@ export function AppShell({ children, healthStatus = "loading", headerAction }: A
               }`} />
             </button>
 
-            {/* Itinerary badge - Hidden on mobile/high zoom (< 640px) */}
+            {/* Itinerary badge - Hidden on mobile/high zoom (< 768px) */}
             {mounted && itineraryCount > 0 && (
-              <div className="hidden sm:block flex-shrink-0">
+              <div className="hidden md:block flex-shrink-0">
                 <Link
                   href="/itinerary"
                   className="relative flex items-center justify-center w-9 h-9 rounded-full bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-700/40 hover:bg-orange-100 dark:hover:bg-orange-900/40 transition-colors"
@@ -199,7 +199,7 @@ export function AppShell({ children, healthStatus = "loading", headerAction }: A
 
             {healthStatus !== "loading" && (
               <div
-                className={`hidden sm:block w-2 h-2 rounded-full flex-shrink-0 ${
+                className={`hidden md:block w-2 h-2 rounded-full flex-shrink-0 ${
                   healthStatus === "ok"
                     ? "bg-emerald-500 animate-pulse"
                     : healthStatus === "degraded"
@@ -212,11 +212,11 @@ export function AppShell({ children, healthStatus = "loading", headerAction }: A
               />
             )}
             
-            <div className="hidden sm:block flex-shrink-0">
+            <div className="hidden md:block flex-shrink-0">
               <ThemeToggle />
             </div>
 
-            <div className="hidden sm:block flex-shrink-0">
+            <div className="hidden md:block flex-shrink-0">
               <NotificationPanel />
             </div>
 

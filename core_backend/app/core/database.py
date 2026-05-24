@@ -3,8 +3,9 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import sessionmaker
 from dotenv import load_dotenv
-
-load_dotenv()
+import sys
+is_testing = "pytest" in sys.modules or os.getenv("TESTING") == "1"
+load_dotenv(override=not is_testing)
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 
