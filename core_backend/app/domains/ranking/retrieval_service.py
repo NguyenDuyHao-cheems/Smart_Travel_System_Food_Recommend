@@ -7,6 +7,7 @@ Tách ra từ service.py monolithic để dễ test và maintain.
 
 import unicodedata
 import logging
+import math
 from typing import List, Optional
 
 from sqlalchemy.orm import Session
@@ -75,6 +76,9 @@ class RetrievalService:
         query_text: str = "",
         tag_name: Optional[str] = None,
         cleaned_query: str = "",
+        viewport_bounds: Optional[dict] = None,
+        map_center: Optional[List[float]] = None,
+        map_radius_km: Optional[float] = None,
     ):
         """
         Retrieval từ Postgres với semantic ordering (relevance-first).
@@ -106,6 +110,11 @@ class RetrievalService:
         query = self.db.query(RestaurantModel).filter(
             RestaurantModel.is_active == True
         )
+
+        if viewport_bounds:
+            query = self._apply_viewport_filter(query, viewport_bounds)
+        elif map_center and map_radius_km:
+            query = self._apply_radius_bounding_box(query, map_center, map_radius_km)
 
         # 2. Budget filter
         if budget and budget > 0:
@@ -221,9 +230,86 @@ class RetrievalService:
                 candidates.append(model)
                 
             candidates.sort(key=lambda x: x.distance)
-            return candidates
+            return self._filter_by_radius(candidates, map_center, map_radius_km)
         else:
             query = query.order_by(
                 RestaurantModel.rating_avg.desc().nullslast()
             )
-            return query.limit(_MAX_RETRIEVAL).all()
+            candidates = query.limit(_MAX_RETRIEVAL).all()
+            return self._filter_by_radius(candidates, map_center, map_radius_km)
+
+    @staticmethod
+    def _apply_viewport_filter(query, viewport_bounds: dict):
+        try:
+            north = float(viewport_bounds["north"])
+            south = float(viewport_bounds["south"])
+            east = float(viewport_bounds["east"])
+            west = float(viewport_bounds["west"])
+        except (KeyError, TypeError, ValueError):
+            return query
+
+        min_lat = min(south, north)
+        max_lat = max(south, north)
+
+        query = query.filter(
+            RestaurantModel.lat.isnot(None),
+            RestaurantModel.lng.isnot(None),
+            RestaurantModel.lat.between(min_lat, max_lat),
+        )
+
+        if west <= east:
+            return query.filter(RestaurantModel.lng.between(west, east))
+
+        return query.filter(
+            or_(
+                RestaurantModel.lng >= west,
+                RestaurantModel.lng <= east,
+            )
+        )
+
+    @staticmethod
+    def _apply_radius_bounding_box(query, map_center: List[float], radius_km: float):
+        try:
+            lat = float(map_center[0])
+            lng = float(map_center[1])
+            radius = float(radius_km)
+        except (TypeError, ValueError, IndexError):
+            return query
+
+        lat_delta = radius / 111.0
+        lng_delta = radius / max(111.0 * math.cos(math.radians(lat)), 1.0)
+
+        return query.filter(
+            RestaurantModel.lat.isnot(None),
+            RestaurantModel.lng.isnot(None),
+            RestaurantModel.lat.between(lat - lat_delta, lat + lat_delta),
+            RestaurantModel.lng.between(lng - lng_delta, lng + lng_delta),
+        )
+
+    @staticmethod
+    def _filter_by_radius(candidates, map_center: Optional[List[float]], radius_km: Optional[float]):
+        if not map_center or not radius_km:
+            return candidates
+
+        try:
+            center_lat = float(map_center[0])
+            center_lng = float(map_center[1])
+            radius = float(radius_km)
+        except (TypeError, ValueError, IndexError):
+            return candidates
+
+        return [
+            candidate for candidate in candidates
+            if candidate.lat is not None
+            and candidate.lng is not None
+            and RetrievalService._haversine_km(center_lat, center_lng, float(candidate.lat), float(candidate.lng)) <= radius
+        ]
+
+    @staticmethod
+    def _haversine_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
+        radius = 6371.0
+        p1, p2 = math.radians(lat1), math.radians(lat2)
+        dp = math.radians(lat2 - lat1)
+        dl = math.radians(lng2 - lng1)
+        a = math.sin(dp / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
+        return radius * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))

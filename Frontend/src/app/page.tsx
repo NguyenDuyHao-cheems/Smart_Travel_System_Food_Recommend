@@ -317,6 +317,7 @@ function HomeContent() {
           className="relative w-full overflow-hidden"
           style={{ minHeight: "calc(100vh - 64px)" }}
         >
+
           {/* ── Floating Food Decorations ── */}
 
           {/* Bánh canh — top-left */}

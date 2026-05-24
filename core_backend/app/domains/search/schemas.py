@@ -25,6 +25,14 @@ class SearchRecommendRequest(BaseModel):
     )
     top_k: Optional[int] = Field(24, description="Số lượng kết quả tối đa cần trả về")
 
+    map_center_lat: Optional[float] = Field(None, description="Optional map center latitude used for map-view distance calculation")
+    map_center_lng: Optional[float] = Field(None, description="Optional map center longitude used for map-view distance calculation")
+    map_north: Optional[float] = Field(None, description="Optional north latitude of the current map viewport")
+    map_south: Optional[float] = Field(None, description="Optional south latitude of the current map viewport")
+    map_east: Optional[float] = Field(None, description="Optional east longitude of the current map viewport")
+    map_west: Optional[float] = Field(None, description="Optional west longitude of the current map viewport")
+    map_radius_km: Optional[float] = Field(None, ge=0, description="Optional map radius in kilometers for circle-based map search")
+
 class AllergenDishWarning(BaseModel):
     """Thông tin chi tiết món ăn gây dị ứng trong 1 quán."""
     dish_name: str

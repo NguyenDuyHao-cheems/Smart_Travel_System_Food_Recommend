@@ -42,9 +42,10 @@ interface AppShellProps {
   children: React.ReactNode;
   /** Dot indicator: 'ok' | 'degraded' | 'error' | 'loading' */
   healthStatus?: "ok" | "degraded" | "error" | "loading";
+  headerAction?: React.ReactNode;
 }
 
-export function AppShell({ children, healthStatus = "loading" }: AppShellProps) {
+export function AppShell({ children, healthStatus = "loading", headerAction }: AppShellProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [showAuthExpiredModal, setShowAuthExpiredModal] = useState(false);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
@@ -133,6 +134,8 @@ export function AppShell({ children, healthStatus = "loading" }: AppShellProps) 
 
           {/* Right: Health dot + Location + Theme + User */}
           <div className="flex items-center gap-3">
+            {headerAction}
+
             {/* Location Indicator Widget */}
             <button
               onClick={() => setIsLocationModalOpen(true)}

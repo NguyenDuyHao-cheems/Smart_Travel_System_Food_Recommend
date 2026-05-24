@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, Suspense, useMemo, useRef } from 'react';
+import React, { useState, useEffect, Suspense, useMemo, useRef, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -16,6 +16,8 @@ import {
   Home,
   X,
   Route,
+  Map as MapIcon,
+  LogOut,
   SlidersHorizontal,
   RotateCcw,
 } from 'lucide-react';
@@ -38,6 +40,7 @@ import { RootState } from '../../store';
 import { addItem, removeItem } from '../../store/slices/itinerarySlice';
 import { SortSelector, type SortOption } from '../../components/SortSelector';
 import { AdvancedFilters, type AdvancedFilterState } from '../../components/AdvancedFilters';
+import { ResultMapView, type MapViewport } from '../../components/ResultMapView';
 
 export interface AllergenDishWarning {
   dish_name: string;
@@ -360,7 +363,7 @@ function HeroResultCard({ item, sessionId, searchMode, onAddCollection, isModalO
    Small Result Card (#2-#5)
    ───────────────────────────────────────────────────────────── */
 // [FIX-CONFLICT]: Tương tự HeroResultCard, bổ sung prop isModalOpen và state isInColl cho SmallResultCard
-function SmallResultCard({ item, index, sessionId, searchMode, onAddCollection, isModalOpen }: { item: RecommendResult; index: number; sessionId?: string; searchMode?: SearchMode; onAddCollection: (item: RecommendResult) => void; isModalOpen: boolean }) {
+function SmallResultCard({ item, index, rank, sessionId, searchMode, onAddCollection, isModalOpen }: { item: RecommendResult; index: number; rank?: number; sessionId?: string; searchMode?: SearchMode; onAddCollection: (item: RecommendResult) => void; isModalOpen: boolean }) {
   const router = useRouter();
   const tags = getTagsForItem(item, index);
   const matchColor = getMatchColor(item.match);
@@ -474,7 +477,7 @@ function SmallResultCard({ item, index, sessionId, searchMode, onAddCollection, 
       initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.05 }}
-      className="bg-white dark:bg-[#3D312A] rounded-2xl border border-gray-100 dark:border-[#4D3D32] shadow-sm dark:shadow-none overflow-hidden hover:shadow-lg dark:hover:border-gray-600 transition-all duration-300 cursor-pointer group"
+      className="bg-white dark:bg-[#3D312A] rounded-2xl border border-gray-100 dark:border-[#4D3D32] shadow-sm dark:shadow-none overflow-hidden hover:shadow-lg dark:hover:border-gray-600 transition-all duration-300 cursor-pointer group shrink-0"
       onClick={handleNavigate}
     >
       <div className="relative h-[180px] overflow-hidden">
@@ -486,7 +489,7 @@ function SmallResultCard({ item, index, sessionId, searchMode, onAddCollection, 
         <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent pointer-events-none" />
 
         <span className="absolute top-3 left-3 inline-flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold bg-gray-700/90 text-white backdrop-blur-sm">
-          {index + 2}
+          {rank !== undefined ? rank : index + 2}
         </span>
 
         {/* Heart, Bookmark & Route */}
@@ -603,9 +606,11 @@ function FeatureBar() {
 function ResultPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const urlQuery = searchParams.get('q') || '';
   let sessionIdFromUrl = searchParams.get('session_id') || '';
+  const isMapEntryWithoutSearch = searchParams.get('map') === '1' && !urlQuery && !sessionIdFromUrl;
   // [FIX-CONFLICT]: Lấy session_id từ sessionStorage (nếu URL không có) vì ta đã giấu nó đi
-  if (typeof window !== 'undefined' && !sessionIdFromUrl) {
+  if (typeof window !== 'undefined' && !sessionIdFromUrl && !isMapEntryWithoutSearch) {
     sessionIdFromUrl = sessionStorage.getItem('current_search_session_id') || '';
   }
 
@@ -624,6 +629,8 @@ function ResultPageContent() {
     const searchParams = new URLSearchParams(window.location.search);
     const q = searchParams.get('q');
     let sessionId = searchParams.get('session_id');
+    const mapEntryWithoutSearch = searchParams.get('map') === '1' && !q && !sessionId;
+    if (mapEntryWithoutSearch) return false;
     if (!sessionId) {
       sessionId = sessionStorage.getItem('current_search_session_id');
     }
@@ -667,6 +674,30 @@ function ResultPageContent() {
 
   const [distanceFilterEnabled, setDistanceFilterEnabled] = useState(false);
   const [distanceRadius, setDistanceRadius] = useState(2);
+  const [mapViewEnabled, setMapViewEnabled] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return new URLSearchParams(window.location.search).get('map') === '1';
+  });
+  const [showMapFilters, setShowMapFilters] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (selectedId) {
+      const element = document.getElementById(`restaurant-card-${selectedId}`);
+      if (element) {
+        element.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center',
+        });
+      }
+    }
+  }, [selectedId]);
+
+  useEffect(() => {
+    if (searchParams.get('map') === '1') {
+      setMapViewEnabled(true);
+    }
+  }, [searchParams]);
 
   const [collectionModalItem, setCollectionModalItem] = useState<RecommendResult | null>(null);
 
@@ -674,6 +705,9 @@ function ResultPageContent() {
     if (typeof window === 'undefined') return [];
     const searchParams = new URLSearchParams(window.location.search);
     let sessionId = searchParams.get('session_id');
+    const q = searchParams.get('q');
+    const mapEntryWithoutSearch = searchParams.get('map') === '1' && !q && !sessionId;
+    if (mapEntryWithoutSearch) return [];
     if (!sessionId) {
       sessionId = sessionStorage.getItem('current_search_session_id');
     }
@@ -700,6 +734,12 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
   ].filter(Boolean).length;
   const hasActiveAdvFilters = activeAdvFilterCount > 0;
   const [apiError, setApiError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (mapViewEnabled) {
+      setIsAdvancedFiltersOpen(false);
+    }
+  }, [mapViewEnabled]);
 
   const [isRestored, setIsRestored] = useState(false);
 
@@ -769,6 +809,11 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
 
   useEffect(() => {
     if (!sessionIdFromUrl) {
+      if (isMapEntryWithoutSearch) {
+        setSearchQuery('');
+        setInputValue('');
+        setResults([]);
+      }
       setIsLoading(false);
       return;
     }
@@ -824,7 +869,7 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
     };
 
     loadSession();
-  }, [sessionIdFromUrl, setInputValue]);
+  }, [isMapEntryWithoutSearch, sessionIdFromUrl, setInputValue]);
 
   // Sync coords ref when coords are initially fetched/loaded
   useEffect(() => {
@@ -856,7 +901,11 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
     }
   }, [coords, searchQuery]);
 
-  const handleSearch = async (overrideQuery?: string, overrideBudget?: BudgetOption) => {
+  const handleSearch = async (
+    overrideQuery?: string,
+    overrideBudget?: BudgetOption,
+    options?: { viewport?: MapViewport; stayOnPage?: boolean }
+  ) => {
     const finalQuery = (overrideQuery ?? inputValue).trim();
     const finalBudget = overrideBudget ?? budget;
 
@@ -869,7 +918,7 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
       setSearchLoadingMsg("Đang xác định vị trí của bạn...");
 
       const gps = await getOptimizedLocation();
-      if (!gps) {
+      if (!gps && !options?.viewport) {
         setApiError("Không thể xác định vị trí thực tế của bạn. Vui lòng kiểm tra quyền truy cập GPS để tiếp tục.");
         setIsSearching(false);
         return;
@@ -879,6 +928,8 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
       const token = localStorage.getItem('access_token');
       const userId = localStorage.getItem('user_id');
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      const requestLat = gps?.lat ?? options?.viewport?.centerLat;
+      const requestLng = gps?.lng ?? options?.viewport?.centerLng;
 
       const res = await fetch(`${apiUrl}/api/v1/search/recommend`, {
         method: 'POST',
@@ -888,12 +939,19 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
         },
         body: JSON.stringify({
           query: finalQuery,
-          lat: gps.lat,
-          lng: gps.lng,
+          lat: requestLat,
+          lng: requestLng,
           user_id: userId || undefined,
           budget: finalBudget === 'auto' ? undefined : parseInt(finalBudget, 10),
           search_mode: searchMode,
-          top_k: 24, // Xin dư ra 24 món để bù trừ khi lọc trùng tên
+          map_center_lat: options?.viewport?.centerLat,
+          map_center_lng: options?.viewport?.centerLng,
+          map_north: options?.viewport?.north,
+          map_south: options?.viewport?.south,
+          map_east: options?.viewport?.east,
+          map_west: options?.viewport?.west,
+          map_radius_km: options?.viewport?.radiusKm,
+          top_k: options?.viewport ? 48 : 24,
         }),
       });
 
@@ -914,8 +972,38 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
         if (typeof window !== 'undefined') {
           sessionStorage.setItem('current_search_session_id', data.session_id);
           sessionStorage.setItem('current_search_mode', searchMode);
+          sessionStorage.setItem(`session_data_${data.session_id}`, JSON.stringify({
+            query: finalQuery,
+            results: data.results || [],
+            fallback_applied: data.fallback_applied || false,
+            fallback_reason: data.fallback_reason || '',
+            applied_budget: data.applied_budget ?? null,
+            filtered_out_count: data.filtered_out_count || 0,
+            allergen_flagged_count: data.allergen_flagged_count || 0,
+            warning: data.warning || '',
+          }));
         }
-        window.location.href = `/result?q=${encodeURIComponent(finalQuery)}`;
+        if (options?.stayOnPage) {
+          setSearchQuery(finalQuery);
+          setInputValue(finalQuery);
+          setResults(data.results || []);
+          setFallbackApplied(data.fallback_applied || false);
+          setFallbackReason(data.fallback_reason || '');
+          setAppliedBudget(data.applied_budget ?? null);
+          setFilteredCount(data.filtered_out_count || 0);
+          setAllergyFlaggedCount(data.allergen_flagged_count || 0);
+          setAllergyWarning(data.warning || '');
+          if (typeof window !== 'undefined') {
+            const params = new URLSearchParams(window.location.search);
+            params.set('q', finalQuery);
+            if (mapViewEnabled) {
+              params.set('map', '1');
+            }
+            window.history.replaceState(null, '', `/result?${params.toString()}`);
+          }
+        } else {
+          window.location.href = `/result?q=${encodeURIComponent(finalQuery)}`;
+        }
       } else {
         throw new Error("Không thể kết nối với hệ thống AI.");
       }
@@ -926,6 +1014,12 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
       setIsSearching(false);
     }
   };
+
+  const handleViewportSearch = useCallback((viewport: MapViewport) => {
+    const queryForMap = (inputValue || searchQuery).trim();
+    if (!queryForMap) return;
+    handleSearch(queryForMap, budget, { viewport, stayOnPage: true });
+  }, [budget, inputValue, searchMode, searchQuery]);
 
   const displayResults = useMemo(() => {
     let filtered = results;
@@ -1011,80 +1105,145 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
 
   const heroItem = displayResults[0];
   const gridItems = displayResults.slice(1);
+  const fallbackMapCenter = coords || lastSearchCoordsRef.current;
+
+  const renderResultCards = (compact = false) => (
+    <>
+      {heroItem && (
+        <HeroResultCard
+          item={heroItem}
+          sessionId={sessionIdFromUrl}
+          searchMode={searchMode}
+          onAddCollection={setCollectionModalItem}
+          isModalOpen={!!collectionModalItem}
+        />
+      )}
+
+      {gridItems.length > 0 && (
+        <div className={`grid grid-cols-1 sm:grid-cols-2 ${compact ? 'lg:grid-cols-2' : 'lg:grid-cols-3'} gap-5`}>
+          {gridItems.map((item, idx) => (
+            <SmallResultCard
+              key={item.id || idx}
+              item={item}
+              index={idx}
+              sessionId={sessionIdFromUrl}
+              searchMode={searchMode}
+              onAddCollection={setCollectionModalItem}
+              isModalOpen={!!collectionModalItem}
+            />
+          ))}
+        </div>
+      )}
+
+      <FeatureBar />
+    </>
+  );
+  const mapFloatingButton = (
+    <button
+      type="button"
+      onClick={() => {
+        const next = !mapViewEnabled;
+        setMapViewEnabled(next);
+        if (typeof window !== 'undefined') {
+          const params = new URLSearchParams(window.location.search);
+          if (next) {
+            params.set('map', '1');
+          } else {
+            params.delete('map');
+          }
+          const queryString = params.toString();
+          window.history.replaceState(null, '', queryString ? `/result?${queryString}` : '/result');
+        }
+      }}
+      className={`fixed left-4 top-28 z-40 inline-flex items-center justify-center gap-2 h-11 px-4 rounded-full border-2 border-[#3D312A] shadow-[4px_4px_0px_rgba(61,49,42,1)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-[2px_2px_0px_rgba(61,49,42,1)] transition-all duration-150 cursor-pointer font-black text-xs uppercase tracking-wide ${
+        mapViewEnabled
+          ? 'bg-brand text-white hover:bg-brand-hover'
+          : 'bg-white dark:bg-[#3D312A] text-[#3D312A] dark:text-[#E6DFD5] hover:text-brand'
+      }`}
+      title={mapViewEnabled ? 'Thoát khỏi bản đồ' : 'Hiện bản đồ kết quả'}
+      aria-label={mapViewEnabled ? 'Thoát khỏi bản đồ' : 'Hiện bản đồ kết quả'}
+    >
+      {mapViewEnabled ? <LogOut className="w-4 h-4" /> : <MapIcon className="w-4 h-4" />}
+      <span>{mapViewEnabled ? 'Thoát bản đồ' : 'Bản đồ'}</span>
+    </button>
+  );
 
   return (
     <AppShell>
       {isSearching && <SearchLoadingOverlay message={searchLoadingMsg} />}
+      {mapFloatingButton}
 
-      <div className="border-b border-[#E6DFD5]/60 dark:border-[#3D312A]/60 bg-[#FDFBF7]/80 dark:bg-[#2A2420]/80 backdrop-blur-sm">
-        <div className="max-w-7xl mx-auto px-4 md:px-8 py-4 flex flex-col gap-3">
-          {/* Row 1: Budget and Distance Filters */}
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
-            <BudgetSelector
-              value={budget}
-              onChange={(newBudget) => {
-                setBudget(newBudget);
-                handleSearch(inputValue, newBudget);
-              }}
-            />
-            <DistanceFilter
-              enabled={distanceFilterEnabled}
-              onToggle={setDistanceFilterEnabled}
-              radius={distanceRadius}
-              onRadiusChange={setDistanceRadius}
-              totalCount={mounted ? results.length : 0}
-              filteredCount={mounted ? displayResults.length : 0}
-            />
-          </div>
+      {!mapViewEnabled && (
+        <div className="border-b border-[#E6DFD5]/60 dark:border-[#3D312A]/60 bg-[#FDFBF7]/80 dark:bg-[#2A2420]/80 backdrop-blur-sm">
+          <div className="max-w-7xl mx-auto px-4 md:px-8 py-4 flex flex-col gap-3">
+            {/* Row 1: Budget and Distance Filters */}
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
+              <BudgetSelector
+                value={budget}
+                onChange={(newBudget) => {
+                  setBudget(newBudget);
+                  handleSearch(inputValue, newBudget);
+                }}
+              />
+              <DistanceFilter
+                enabled={distanceFilterEnabled}
+                onToggle={setDistanceFilterEnabled}
+                radius={distanceRadius}
+                onRadiusChange={setDistanceRadius}
+                totalCount={mounted ? results.length : 0}
+                filteredCount={mounted ? displayResults.length : 0}
+              />
+            </div>
 
-          <div className="h-px bg-gray-200/50 dark:bg-[#3D312A]/50" />
+            <div className="h-px bg-gray-200/50 dark:bg-[#3D312A]/50" />
 
-          {/* Row 2: Sort Selector */}
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
-            <SortSelector
-              value={sortBy}
-              onChange={setSortBy}
-              hasCoordinates={mounted ? !!coords : false}
-            />
-          </div>
+            {/* Row 2: Sort Selector */}
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
+              <SortSelector
+                value={sortBy}
+                onChange={setSortBy}
+                hasCoordinates={mounted ? !!coords : false}
+              />
+            </div>
 
-          <div className="h-px bg-gray-200/50 dark:bg-[#3D312A]/50" />
+            <div className="h-px bg-gray-200/50 dark:bg-[#3D312A]/50" />
 
-          {/* Row 3: Advanced Filter Toggle Button and Reset */}
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setIsAdvancedFiltersOpen(prev => !prev)}
-              className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-semibold border transition-all duration-200 cursor-pointer ${
-                isAdvancedFiltersOpen || hasActiveAdvFilters
-                  ? 'bg-brand-muted dark:bg-brand/10 border-brand/40 dark:border-brand/30 text-brand-hover dark:text-[#E6DFD5] shadow-sm shadow-brand/5 dark:shadow-none'
-                  : 'bg-white dark:bg-[#3D312A] border-gray-200 dark:border-[#4D3D32] text-gray-600 dark:text-[#9A8A7A] hover:border-brand/70 hover:text-brand-hover'
-              }`}
-            >
-              <SlidersHorizontal className="w-3.5 h-3.5" />
-              Bộ lọc nâng cao
-              {activeAdvFilterCount > 0 && (
-                <span className="bg-brand text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-bold ml-0.5">
-                  {activeAdvFilterCount}
-                </span>
-              )}
-            </button>
-            {hasActiveAdvFilters && (
+            {/* Row 3: Advanced Filter Toggle Button and Reset */}
+            <div className="flex items-center gap-3">
               <button
                 type="button"
-                onClick={() => {
-                  setAdvFilters({ minPrice: null, maxPrice: null, minRating: null, vegetarianOnly: false });
-                  setSelectedTags([]);
-                }}
-                className="inline-flex items-center gap-1 text-[11px] font-bold text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 px-2.5 py-1 rounded-lg transition-all"
+                onClick={() => setIsAdvancedFiltersOpen(prev => !prev)}
+                className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-semibold border transition-all duration-200 cursor-pointer ${
+                  isAdvancedFiltersOpen || hasActiveAdvFilters
+                    ? 'bg-brand-muted dark:bg-brand/10 border-brand/40 dark:border-brand/30 text-brand-hover dark:text-[#E6DFD5] shadow-sm shadow-brand/5 dark:shadow-none'
+                    : 'bg-white dark:bg-[#3D312A] border-gray-200 dark:border-[#4D3D32] text-gray-600 dark:text-[#9A8A7A] hover:border-brand/70 hover:text-brand-hover'
+                }`}
               >
-                <RotateCcw className="w-3 h-3" />
-                Đặt lại
+                <SlidersHorizontal className="w-3.5 h-3.5" />
+                Bộ lọc nâng cao
+                {activeAdvFilterCount > 0 && (
+                  <span className="bg-brand text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-bold ml-0.5">
+                    {activeAdvFilterCount}
+                  </span>
+                )}
               </button>
-            )}
+              {hasActiveAdvFilters && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAdvFilters({ minPrice: null, maxPrice: null, minRating: null, vegetarianOnly: false });
+                    setSelectedTags([]);
+                  }}
+                  className="inline-flex items-center gap-1 text-[11px] font-bold text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 px-2.5 py-1 rounded-lg transition-all"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                  Đặt lại
+                </button>
+              )}
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 md:py-12 w-full flex flex-col lg:flex-row gap-0 lg:gap-8 items-start">
         {/* Left Sidebar for Filters (Collapsible) */}
@@ -1184,7 +1343,7 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
                       setQuery={setInputValue}
                       searchMode={searchMode}
                       setSearchMode={setSearchMode}
-                      onSearch={() => handleSearch()}
+                      onSearch={() => handleSearch(inputValue, undefined, mapViewEnabled ? { stayOnPage: true } : undefined)}
                       compact={true}
                     />
                   </div>
@@ -1211,6 +1370,121 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
                     Thử kết nối lại
                   </button>
                 </motion.div>
+              ) : mapViewEnabled ? (
+                <div className="flex flex-col xl:flex-row gap-6 items-stretch min-h-[calc(100vh-12rem)]">
+                  <div className="w-full xl:w-[450px] xl:shrink-0 flex flex-col gap-4">
+                    {results.length === 0 ? (
+                      <div className="py-16 text-center bg-white dark:bg-[#3D312A] rounded-3xl border border-gray-100 dark:border-[#4D3D32] shadow-sm">
+                        <div className="w-16 h-16 bg-gray-50 dark:bg-[#2A2420] rounded-full flex items-center justify-center mx-auto mb-5">
+                          <Search className="w-8 h-8 text-gray-400 dark:text-[#7A6A5A]" />
+                        </div>
+                        <h2 className="text-xl font-bold text-gray-800 dark:text-[#E6DFD5] mb-2">
+                          Nhập món ăn để tìm trên bản đồ
+                        </h2>
+                        <p className="text-sm text-gray-500 dark:text-[#9A8A7A] max-w-md mx-auto leading-relaxed">
+                          Tìm món ăn ở thanh tìm kiếm phía trên, sau đó chọn bán kính 2 km, 4 km hoặc 8 km trên bản đồ để lọc theo vùng.
+                        </p>
+                      </div>
+                    ) : (
+                      <>
+                        {/* Sort & Filter Controls Inside Left Panel */}
+                        <div className="flex items-center justify-between gap-3 bg-white dark:bg-[#3D312A] p-4 rounded-2xl border border-gray-100 dark:border-[#4D3D32] shadow-sm">
+                          <div className="flex-1">
+                            <SortSelector
+                              value={sortBy}
+                              onChange={setSortBy}
+                              hasCoordinates={!!coords}
+                            />
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setShowMapFilters(!showMapFilters)}
+                            className={`h-10 px-4 rounded-xl text-xs font-bold border transition-all flex items-center gap-2 ${
+                              showMapFilters
+                                ? 'bg-[#123D2A] border-[#123D2A] text-white'
+                                : 'bg-gray-50 dark:bg-[#3D312A] text-gray-600 dark:text-[#C8BFB0] border-gray-200 dark:border-[#4D3D32] hover:border-[#123D2A]/50'
+                            }`}
+                          >
+                            <SlidersHorizontal className="w-4 h-4" />
+                            <span>Bộ lọc</span>
+                          </button>
+                        </div>
+
+                        {/* Collapsible Advanced Filters panel */}
+                        {showMapFilters && (
+                          <div className="p-4 bg-white dark:bg-[#3D312A] rounded-2xl border border-gray-100 dark:border-[#4D3D32] shadow-sm flex flex-col gap-4">
+                            <div className="flex flex-col gap-2">
+                              <p className="text-[11px] font-bold text-gray-400 dark:text-[#9A8A7A] uppercase tracking-wide">Ngân sách & Khoảng cách</p>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <BudgetSelector
+                                  value={budget}
+                                  onChange={(newBudget) => {
+                                    setBudget(newBudget);
+                                    handleSearch(inputValue, newBudget);
+                                  }}
+                                />
+                                <DistanceFilter
+                                  enabled={distanceFilterEnabled}
+                                  onToggle={setDistanceFilterEnabled}
+                                  radius={distanceRadius}
+                                  onRadiusChange={setDistanceRadius}
+                                  totalCount={results.length}
+                                  filteredCount={displayResults.length}
+                                />
+                              </div>
+                            </div>
+                            <div className="h-px bg-gray-100 dark:bg-[#4D3D32]/40" />
+                            <div className="flex flex-col gap-2">
+                              <p className="text-[11px] font-bold text-gray-400 dark:text-[#9A8A7A] uppercase tracking-wide">Lọc nâng cao</p>
+                              <AdvancedFilters
+                                filters={advFilters}
+                                onChange={setAdvFilters}
+                                totalCount={results.length}
+                                filteredCount={displayResults.length}
+                              />
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Vertical list of restaurants */}
+                        <div className="flex flex-col gap-5 overflow-y-auto max-h-[70vh] pr-1 scrollbar-thin">
+                          {displayResults.map((item, idx) => (
+                            <div
+                              key={item.id || idx}
+                              id={`restaurant-card-${item.id}`}
+                              onClick={() => setSelectedId(item.id)}
+                              className={`transition-all duration-300 rounded-2xl ${
+                                selectedId === item.id
+                                  ? 'ring-2 ring-brand ring-offset-2 dark:ring-offset-[#2A2420]'
+                                  : ''
+                              }`}
+                            >
+                              <SmallResultCard
+                                item={item}
+                                index={idx}
+                                rank={idx + 1}
+                                sessionId={sessionIdFromUrl}
+                                searchMode={searchMode}
+                                onAddCollection={setCollectionModalItem}
+                                isModalOpen={!!collectionModalItem}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                  <div className="w-full xl:flex-1 h-[600px] xl:h-[750px] xl:sticky xl:top-24 order-first xl:order-none">
+                    <ResultMapView
+                      results={displayResults}
+                      fallbackCenter={fallbackMapCenter}
+                      isSearching={isSearching}
+                      onViewportSearch={handleViewportSearch}
+                      selectedId={selectedId}
+                      onSelectId={setSelectedId}
+                    />
+                  </div>
+                </div>
               ) : results.length === 0 ? (
                 <motion.div
                   initial={{ opacity: 0, scale: 0.95 }}
@@ -1237,23 +1511,7 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
                     Thử tìm từ khóa khác
                   </button>
                 </motion.div>
-              ) : (
-                <>
-                  {/* Hero Card #1 */}
-                  {heroItem && <HeroResultCard item={heroItem} sessionId={sessionIdFromUrl} searchMode={searchMode} onAddCollection={setCollectionModalItem} isModalOpen={!!collectionModalItem} />}
-
-                  {/* Small Cards Grid #2+ */}
-                  {gridItems.length > 0 && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                      {gridItems.map((item, idx) => (
-                        <SmallResultCard key={item.id || idx} item={item} index={idx} sessionId={sessionIdFromUrl} searchMode={searchMode} onAddCollection={setCollectionModalItem} isModalOpen={!!collectionModalItem} />
-                      ))}
-                    </div>
-                  )}
-
-                  <FeatureBar />
-                </>
-              )}
+              ) : renderResultCards(false)}
             </motion.div>
           )}
           </AnimatePresence>

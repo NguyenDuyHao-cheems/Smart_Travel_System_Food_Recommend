@@ -103,6 +103,28 @@ def test_get_candidates_skips_budget_filter_when_budget_is_zero():
     assert "split_part" not in sql
 
 
+def test_get_candidates_adds_viewport_filter_when_bounds_are_present():
+    db = DummySession()
+    service = RetrievalService(db)
+
+    service.get_candidates(
+        budget=0,
+        viewport_bounds={
+            "north": 10.9,
+            "south": 10.7,
+            "east": 106.9,
+            "west": 106.5,
+        },
+    )
+
+    sql = _compiled_filter_sql(db.query_obj)
+
+    assert "restaurants.lat IS NOT NULL" in sql
+    assert "restaurants.lng IS NOT NULL" in sql
+    assert "restaurants.lat BETWEEN 10.7 AND 10.9" in sql
+    assert "restaurants.lng BETWEEN 106.5 AND 106.9" in sql
+
+
 # -------------------------------------------------------------------
 # Semantic ordering tests (new — query_vector)
 # -------------------------------------------------------------------

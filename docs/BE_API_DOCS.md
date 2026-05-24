@@ -221,6 +221,9 @@ Response schema returned after successful onboarding.
 
 ### RecommendResult
 
+Map view uses optional `lat`, `lng`, and `distance_km` fields on each result.
+The display string `dist` remains available for existing UI cards.
+
 Schema này định dạng đầu ra bắt buộc của 1 quán ăn để thẻ UI hiển thị trên Frontend không bị vỡ.
 
 | Field    | Type      | Required | Description |
@@ -238,6 +241,14 @@ Schema này định dạng đầu ra bắt buộc của 1 quán ăn để thẻ 
 | `sentiment_review_count` | `integer` | | Review count backing the sentiment signal. |
 
 ### SearchRecommendRequest
+
+Map view search can also send optional viewport fields: `map_center_lat`,
+`map_center_lng`, `map_north`, `map_south`, `map_east`, `map_west`, and
+`map_radius_km`.
+When the map center is present, returned distances are calculated from that
+center. When all viewport bounds are present, candidates are filtered to that
+map view; when `map_radius_km` is present, candidates are also filtered inside
+that selected circle.
 
 Schema này dùng để hứng kết quả từ việc bắt GPS bên Frontend đẩy xuống qua API.
 
