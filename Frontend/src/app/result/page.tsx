@@ -1142,20 +1142,18 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
     <button
       type="button"
       onClick={() => {
-        setMapViewEnabled((current) => {
-          const next = !current;
-          if (typeof window !== 'undefined') {
-            const params = new URLSearchParams(window.location.search);
-            if (next) {
-              params.set('map', '1');
-            } else {
-              params.delete('map');
-            }
-            const queryString = params.toString();
-            window.history.replaceState(null, '', queryString ? `/result?${queryString}` : '/result');
+        const next = !mapViewEnabled;
+        setMapViewEnabled(next);
+        if (typeof window !== 'undefined') {
+          const params = new URLSearchParams(window.location.search);
+          if (next) {
+            params.set('map', '1');
+          } else {
+            params.delete('map');
           }
-          return next;
-        });
+          const queryString = params.toString();
+          window.history.replaceState(null, '', queryString ? `/result?${queryString}` : '/result');
+        }
       }}
       className={`fixed left-4 top-28 z-40 inline-flex items-center justify-center gap-2 h-11 px-4 rounded-full border-2 border-[#3D312A] shadow-[4px_4px_0px_rgba(61,49,42,1)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-[2px_2px_0px_rgba(61,49,42,1)] transition-all duration-150 cursor-pointer font-black text-xs uppercase tracking-wide ${
         mapViewEnabled
