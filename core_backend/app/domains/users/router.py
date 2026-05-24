@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
+from typing import List
 
-from .models import UserAccount, UserFavorite, UserCollection, UserCollectionItem
+from .models import UserAccount, UserFriend, UserFavorite, UserCollection, UserCollectionItem
 from .schemas import (
     OnboardingRequest, OnboardingResponse, SignUpRequest, SignInRequest, 
     GoogleAuthRequest, AuthResponse, UserUpdateRequest,
@@ -9,7 +10,7 @@ from .schemas import (
     BadgeProgress, CulinaryVibe, RecentActivityResponse,
     FavoriteCreateRequest, FavoriteResponse, CollectionCreateRequest,
     CollectionUpdateRequest, CollectionItemCreateRequest, CollectionItemResponse,
-    CollectionResponse
+    CollectionResponse, AddFriendRequest, FriendResponse
 )
 from .service import OnboardingService, AuthService, UserInteractionService
 from .repository import UserOnboardingRepository, UserAccountRepository, UserInteractionRepository
@@ -973,3 +974,112 @@ def remove_item_from_collection(
     except Exception as exc:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Failed to remove item from collection: {exc}")
+
+
+@router.post("/friends", response_model=dict)
+def add_friend(
+    payload: AddFriendRequest,
+    db: Session = Depends(get_db),
+    current_user: UserAccount = Depends(get_current_user),
+):
+    try:
+        # 1. Search for user by username (case-insensitive)
+        target_user = db.query(UserAccount).filter(
+            UserAccount.username.ilike(payload.username)
+        ).first()
+        
+        if not target_user:
+            raise HTTPException(status_code=404, detail="User not found")
+            
+        # 2. Check if adding self
+        if target_user.id == current_user.id:
+            raise HTTPException(status_code=400, detail="Cannot add yourself as a friend")
+            
+        # 3. Check if already friends (A -> B)
+        existing = db.query(UserFriend).filter(
+            UserFriend.user_id == str(current_user.id),
+            UserFriend.friend_id == str(target_user.id)
+        ).first()
+        
+        if existing:
+            raise HTTPException(status_code=400, detail="Already friends")
+            
+        # 4. Create mutual friendship records (A -> B and B -> A)
+        link1 = UserFriend(user_id=str(current_user.id), friend_id=str(target_user.id))
+        link2 = UserFriend(user_id=str(target_user.id), friend_id=str(current_user.id))
+        
+        db.add(link1)
+        db.add(link2)
+        db.commit()
+        
+        return {"status": "success", "message": "Friend added successfully"}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to add friend: {exc}")
+
+
+@router.get("/friends", response_model=List[FriendResponse])
+def list_friends(
+    db: Session = Depends(get_db),
+    current_user: UserAccount = Depends(get_current_user),
+) -> List[FriendResponse]:
+    try:
+        # Query all UserFriend records where user_id is the current user
+        friend_relations = db.query(UserFriend).filter(
+            UserFriend.user_id == str(current_user.id)
+        ).all()
+        
+        results = []
+        for rel in friend_relations:
+            # Query details of the friend
+            friend_profile = db.query(UserAccount).filter(UserAccount.id == rel.friend_id).first()
+            if friend_profile:
+                results.append(FriendResponse(
+                    friend_id=str(friend_profile.id),
+                    username=friend_profile.username,
+                    full_name=friend_profile.full_name,
+                    avatar_url=friend_profile.avatar_url,
+                    created_at=rel.created_at
+                ))
+        return results
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to list friends: {exc}")
+
+
+@router.delete("/friends/{friend_id}", response_model=dict)
+def remove_friend(
+    friend_id: str,
+    db: Session = Depends(get_db),
+    current_user: UserAccount = Depends(get_current_user),
+):
+    try:
+        # 1. Query A -> B
+        link1 = db.query(UserFriend).filter(
+            UserFriend.user_id == str(current_user.id),
+            UserFriend.friend_id == friend_id
+        ).first()
+        
+        # 2. Query B -> A
+        link2 = db.query(UserFriend).filter(
+            UserFriend.user_id == friend_id,
+            UserFriend.friend_id == str(current_user.id)
+        ).first()
+        
+        if not link1 and not link2:
+            raise HTTPException(status_code=404, detail="Friendship not found")
+            
+        if link1:
+            db.delete(link1)
+        if link2:
+            db.delete(link2)
+            
+        db.commit()
+        return {"status": "success", "message": "Friend removed successfully"}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to remove friend: {exc}")
+

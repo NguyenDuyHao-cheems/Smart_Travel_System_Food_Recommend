@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { X, AlertTriangle, RefreshCw, Sparkles } from "lucide-react";
+import { X, AlertTriangle, RefreshCw, Sparkles, MessageSquare } from "lucide-react";
 import { AppShell } from "../components/AppShell";
 import { UserDropdown } from "../components/UserDropdown";
 import { BudgetSelector, type BudgetOption } from "../components/BudgetSelector";
@@ -34,12 +34,12 @@ const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 /* ── Trending chips ── */
 const TRENDING = [
-  { id: 1, title: "Top Quán Nướng", emoji: "🥩", query: "quán nướng ngon" },
-  { id: 2, title: "Ăn Đêm", emoji: "🌃", query: "đồ ăn đêm muộn" },
-  { id: 3, title: "Đồ ăn Healthy", emoji: "🥑", query: "đồ ăn healthy ít calo" },
-  { id: 4, title: "Trà Sữa & Cà Phê", emoji: "🧋", query: "trà sữa cà phê ngon" },
-  { id: 5, title: "Bánh mì & Bún", emoji: "🍜", query: "bánh mì bún ngon" },
-  { id: 6, title: "Dimsum & Lẩu", emoji: "🥢", query: "dimsum lẩu ngon" },
+  { id: 1, title: "Top Quán Nướng", emoji: "🥩", query: "quán nướng ngon", tag: "nướng" },
+  { id: 2, title: "Ăn Đêm", emoji: "🌃", query: "đồ ăn đêm muộn", tag: null },
+  { id: 3, title: "Đồ ăn Healthy", emoji: "🥑", query: "đồ ăn healthy ít calo", tag: "healthy" },
+  { id: 4, title: "Trà Sữa & Cà Phê", emoji: "🧋", query: "trà sữa cà phê ngon", tag: "cà phê" },
+  { id: 5, title: "Bánh mì & Bún", emoji: "🍜", query: "bánh mì bún ngon", tag: "bún" },
+  { id: 6, title: "Dimsum & Lẩu", emoji: "🥢", query: "dimsum lẩu ngon", tag: "lẩu" },
 ];
 
 /* ─────────────────────────────────────────────── */
@@ -199,7 +199,7 @@ function HomeContent() {
   }, [healthStatus, checkHealth]);
 
   /* ── Search handler — GPS fallback, no reject ── */
-  const handleSearch = async (overrideQuery?: string) => {
+  const handleSearch = async (overrideQuery?: string, explicitTag?: string) => {
     const finalQuery = (overrideQuery ?? query).trim();
     if (!finalQuery) return;
 
@@ -238,6 +238,7 @@ function HomeContent() {
           budget: budget === "auto" ? undefined : parseInt(budget, 10),
           search_mode: searchMode,
           top_k: 24, // Xin dư ra 24 món để sau khi frontend lọc trùng tên (deduplicate) vẫn đảm bảo đủ 16 món hiển thị
+          tag_name: explicitTag || undefined,
         }),
       });
 
@@ -461,13 +462,29 @@ function HomeContent() {
                     key={t.id}
                     onClick={() => {
                       setQuery(t.query);
-                      handleSearch(t.query);
+                      handleSearch(t.query, t.tag ?? undefined);
                     }}
                     className="px-4 py-2 text-xs font-bold uppercase tracking-[1.5px] border-2 border-[#3D312A]/20 bg-white/80 dark:bg-[#2A2420]/80 hover:bg-brand hover:text-white hover:border-brand transition-all rounded-full shadow-sm cursor-pointer text-[#3D312A] dark:text-[#E6DFD5]"
                   >
                     {t.emoji} {t.title}
                   </button>
                 ))}
+              </div>
+              
+              {/* Feed Banner Button */}
+              <div className="mt-4 w-full max-w-lg">
+                <Link
+                  href="/feed"
+                  className="flex items-center justify-center gap-4 px-6 py-4 bg-gradient-to-r from-brand/90 to-rose-500/90 hover:from-brand hover:to-rose-500 text-white rounded-[24px] shadow-lg shadow-rose-500/20 hover:shadow-xl hover:shadow-rose-500/30 hover:-translate-y-1 transition-all cursor-pointer group border border-white/10"
+                >
+                  <div className="bg-white/20 p-2.5 rounded-xl group-hover:rotate-12 transition-transform">
+                    <MessageSquare className="w-6 h-6 text-white" />
+                  </div>
+                  <div className="text-left">
+                    <div className="font-black text-lg tracking-tight leading-tight">Khám phá Bảng tin 🌟</div>
+                    <div className="text-[13px] text-white/90 font-medium mt-0.5">Tham gia cộng đồng chia sẻ trải nghiệm ẩm thực!</div>
+                  </div>
+                </Link>
               </div>
             </div>
 

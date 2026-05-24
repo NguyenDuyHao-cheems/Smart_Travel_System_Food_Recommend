@@ -83,3 +83,11 @@ async def get_newspaper_menu(
     return await SearchService.get_newspaper_menu(db, lat, lng, user_id)
 
 
+@router.get("/search/tags", response_model=List[str])
+def get_all_tags(db: Session = Depends(get_db)):
+    """Lấy danh sách tất cả tag name có trong hệ thống để hiển thị bộ lọc."""
+    from app.domains.ranking.models import TagModel
+    tags = db.query(TagModel.name).order_by(TagModel.name).all()
+    return [t[0] for t in tags if t[0]]
+
+

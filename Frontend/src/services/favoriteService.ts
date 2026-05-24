@@ -17,7 +17,7 @@ export const favoriteService = {
       const token = localStorage.getItem("access_token");
       if (!token) return favoriteService.getFavorites(userId);
 
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
       const res = await fetch(`${apiUrl}/api/v1/users/favorites`, {
         headers: {
           "Authorization": `Bearer ${token}`
@@ -54,7 +54,7 @@ export const favoriteService = {
       const token = localStorage.getItem("access_token");
       if (!token) return;
 
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
       await fetch(`${apiUrl}/api/v1/users/favorites`, {
         method: "POST",
         headers: {
@@ -91,7 +91,7 @@ export const favoriteService = {
       const token = localStorage.getItem("access_token");
       if (!token) return;
 
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
       await fetch(`${apiUrl}/api/v1/users/favorites/${item.id}`, {
         method: "DELETE",
         headers: {

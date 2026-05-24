@@ -7,6 +7,26 @@ from .service import RestaurantService
 
 router = APIRouter()
 
+@router.get("/restaurants/search")
+async def search_restaurants(
+    q: str = "",
+    lat: float = None,
+    lng: float = None,
+    limit: int = 5,
+    db: Session = Depends(get_db)
+):
+    """Tìm kiếm quán ăn theo tên hoặc trả về quán gợi ý"""
+    from .repository import RestaurantRepository
+    restaurants = RestaurantRepository.search_restaurants(db, q, lat, lng, limit)
+    return [
+        {
+            "id": r.id,
+            "name": r.name,
+            "address": r.address,
+            "image_url": r.image_url,
+            "rating_avg": r.rating_avg
+        } for r in restaurants
+    ]
 
 @router.get("/restaurants/{id}", response_model=RestaurantDetailResponse)
 async def get_restaurant_detail(id: str, db: Session = Depends(get_db)):

@@ -58,6 +58,7 @@ class RecommendResult(BaseModel):
     google_maps_url: Optional[str] = None
     allergen_warning: Optional[List[AllergenDishWarning]] = None
     is_vegetarian: Optional[bool] = False
+    tags: List[str] = Field(default_factory=list, description="Danh sách tag phân loại của nhà hàng (vd: gà, phở, lẩu)")
     sentiment_score: Optional[float] = Field(
         None,
         ge=-1.0,
