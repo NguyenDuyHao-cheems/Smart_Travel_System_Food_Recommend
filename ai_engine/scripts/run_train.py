@@ -6,7 +6,7 @@ import warnings
 # Suppress LightFM OpenMP warning
 warnings.filterwarnings("ignore", category=UserWarning, module="lightfm")
 
-import requests
+import httpx
 import pandas as pd
 from lightfm import LightFM
 from lightfm.data import Dataset
@@ -151,7 +151,7 @@ def train_lightfm_model():
         try:
             reload_url = f"http://localhost:{settings.AI_SERVICE_PORT}/api/v1/admin/recommendations/reload"
             logger.info(f"Triggering hot-reload API: {reload_url}...")
-            res = requests.post(reload_url, json={}, timeout=5)
+            res = httpx.post(reload_url, json={}, timeout=5)
             if res.status_code == 200:
                 logger.info("Successfully triggered server hot-reload!")
             else:
