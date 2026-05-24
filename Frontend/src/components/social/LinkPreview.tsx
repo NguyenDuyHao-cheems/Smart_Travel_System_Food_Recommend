@@ -66,14 +66,33 @@ export function LinkPreview({ url }: LinkPreviewProps) {
     );
   }
 
-  if (error || !data || (!data.title && !data.image_url)) {
-    return null;
-  }
-
   let hostname = url;
   try {
     hostname = new URL(url).hostname;
   } catch (e) {}
+
+  if (error || !data || (!data.title && !data.image_url)) {
+    // Render a basic fallback card instead of returning null
+    return (
+      <a 
+        href={url} 
+        target="_blank" 
+        rel="noopener noreferrer"
+        className="block mt-3 w-full rounded-xl border border-border bg-card hover:bg-muted/10 active:scale-[0.99] transition-all overflow-hidden group shadow-sm hover:shadow-md"
+      >
+        <div className="p-3 sm:p-4 flex flex-col justify-center flex-1 min-w-0">
+          <h3 className="text-[14px] sm:text-[15px] font-bold text-foreground line-clamp-2 leading-snug group-hover:text-brand transition-colors">
+            {hostname}
+          </h3>
+          <div className="flex items-center gap-1.5 mt-auto pt-3 text-[10px] sm:text-[11px] text-muted-foreground uppercase font-bold tracking-wider">
+            <ExternalLink className="w-3 h-3" />
+            <span className="truncate">{hostname}</span>
+          </div>
+        </div>
+      </a>
+    );
+  }
+
 
   return (
     <a 
