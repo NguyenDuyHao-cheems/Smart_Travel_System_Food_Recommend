@@ -255,9 +255,9 @@ function HomeContent() {
           lat: gps.lat,
           lng: gps.lng,
           user_id: userId || undefined,
-          budget: budget === "auto" ? undefined : parseInt(budget, 10),
+          // Bỏ qua budget ở Backend để lấy mảng dữ liệu lớn (Zero-latency Client-side Filtering)
           search_mode: searchMode,
-          top_k: 24, // Xin dư ra 24 món để sau khi frontend lọc trùng tên (deduplicate) vẫn đảm bảo đủ 16 món hiển thị
+          top_k: 100, // Lấy 1 mẻ lớn 100 món để lọc trên Frontend
           tag_name: explicitTag || undefined,
         }),
       });
