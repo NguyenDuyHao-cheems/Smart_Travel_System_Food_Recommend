@@ -87,3 +87,66 @@ async def test_grpc_client_recreates_on_new_loop():
     
     await client.close()
 
+
+@pytest.mark.asyncio
+async def test_grpc_client_check_health_success():
+    from app.services.grpc_client import GRPCServiceClient
+    from unittest.mock import PropertyMock
+    
+    client = GRPCServiceClient("localhost:50051")
+    
+    mock_resp = MagicMock()
+    mock_resp.status = "online"
+    
+    mock_stub = MagicMock()
+    mock_stub.CheckHealth = AsyncMock(return_value=mock_resp)
+    
+    with patch.object(GRPCServiceClient, "stub", new_callable=PropertyMock, return_value=mock_stub):
+        res = await client.check_health()
+        assert res is True
+        mock_stub.CheckHealth.assert_called_once()
+        
+    await client.close()
+
+
+@pytest.mark.asyncio
+async def test_grpc_client_check_health_rpc_error():
+    import grpc
+    from app.services.grpc_client import GRPCServiceClient
+    from unittest.mock import PropertyMock
+    
+    client = GRPCServiceClient("localhost:50051")
+    
+    class FakeRpcError(grpc.RpcError, grpc.Call):
+        def code(self):
+            return grpc.StatusCode.UNAVAILABLE
+        def details(self):
+            return "Connection refused"
+            
+    mock_stub = MagicMock()
+    mock_stub.CheckHealth = AsyncMock(side_effect=FakeRpcError())
+    
+    with patch.object(GRPCServiceClient, "stub", new_callable=PropertyMock, return_value=mock_stub):
+        res = await client.check_health()
+        assert res is False
+        
+    await client.close()
+
+
+@pytest.mark.asyncio
+async def test_grpc_client_check_health_general_exception():
+    from app.services.grpc_client import GRPCServiceClient
+    from unittest.mock import PropertyMock
+    
+    client = GRPCServiceClient("localhost:50051")
+    
+    mock_stub = MagicMock()
+    mock_stub.CheckHealth = AsyncMock(side_effect=Exception("General failure"))
+    
+    with patch.object(GRPCServiceClient, "stub", new_callable=PropertyMock, return_value=mock_stub):
+        res = await client.check_health()
+        assert res is False
+        
+    await client.close()
+
+
