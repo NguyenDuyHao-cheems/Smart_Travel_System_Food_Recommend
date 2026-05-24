@@ -26,7 +26,8 @@ const TAG_GROUPS: TagGroupDef[] = [
   { label: 'Đồ uống/Tráng miệng', emoji: '🧋', members: ['trà sữa', 'cà phê', 'đồ uống', 'tráng miệng', 'dessert'] },
   { label: 'Quốc tế', emoji: '🌍', members: ['sushi', 'pizza', 'burger'] },
   { label: 'Bữa ăn/Khác', emoji: '🌿', members: ['món chay', 'ăn sáng', 'ăn tối', 'ăn trưa', 'ăn vặt', 'ăn khuya'] },
-  { label: 'Đánh giá', emoji: '⭐', members: ['đánh giá cao', 'giá rẻ'] },
+  { label: 'Đánh giá', emoji: '⭐', members: ['đánh giá cao', 'nhiều đánh giá'] },
+  { label: 'Phân khúc', emoji: '💵', members: ['giá rẻ', 'tầm trung', 'cao cấp'] },
 ];
 
 const TAG_EMOJI_MAP: Record<string, string> = {
@@ -39,7 +40,8 @@ const TAG_EMOJI_MAP: Record<string, string> = {
   'cháo': '🥣', 'healthy': '🥗', 'món chay': '🌿',
   'ăn sáng': '🌅', 'ăn trưa': '☀️', 'ăn tối': '🌙',
   'ăn vặt': '🍿', 'ăn khuya': '🌃',
-  'đánh giá cao': '⭐', 'giá rẻ': '💰',
+  'đánh giá cao': '⭐', 'nhiều đánh giá': '💬',
+  'giá rẻ': '💰', 'tầm trung': '💵', 'cao cấp': '💎',
 };
 
 function getTagEmoji(tagName: string): string {
@@ -52,8 +54,8 @@ interface AdvancedFiltersProps {
   totalCount: number;
   filteredCount: number;
   availableTags?: string[];
-  selectedTag?: string | null;
-  onTagSelect?: (tag: string | null) => void;
+  selectedTags?: string[];
+  onTagsChange?: (tags: string[]) => void;
   isOpen?: boolean;
   onToggle?: (isOpen: boolean) => void;
 }
@@ -64,8 +66,8 @@ export function AdvancedFilters({
   totalCount,
   filteredCount,
   availableTags = [],
-  selectedTag = null,
-  onTagSelect,
+  selectedTags = [],
+  onTagsChange,
   isOpen: externalIsOpen,
   onToggle
 }: AdvancedFiltersProps) {
@@ -138,7 +140,7 @@ export function AdvancedFilters({
     setLocalMinPrice('');
     setLocalMaxPrice('');
     onChange({ minPrice: null, maxPrice: null, minRating: null, vegetarianOnly: false });
-    onTagSelect?.(null);
+    onTagsChange?.([]);
   };
 
   const hasActiveFilters =
@@ -146,13 +148,13 @@ export function AdvancedFilters({
     filters.maxPrice !== null ||
     filters.minRating !== null ||
     filters.vegetarianOnly ||
-    selectedTag !== null;
+    selectedTags.length > 0;
 
   const activeCount = [
     filters.minPrice !== null || filters.maxPrice !== null,
     filters.minRating !== null,
     filters.vegetarianOnly,
-    selectedTag !== null,
+    selectedTags.length > 0,
   ].filter(Boolean).length;
 
   return (
@@ -275,9 +277,9 @@ export function AdvancedFilters({
                       Lọc theo loại món
                     </span>
                     <button
-                      onClick={() => onTagSelect?.(null)}
+                      onClick={() => onTagsChange?.([])}
                       className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold transition-all duration-200 cursor-pointer border ${
-                        selectedTag === null
+                        selectedTags.length === 0
                           ? 'bg-brand text-white border-brand shadow-sm shadow-brand/20'
                           : 'bg-gray-50 dark:bg-[#3D312A] text-gray-500 dark:text-[#C8BFB0] border-gray-100 dark:border-[#4D3D32] hover:border-brand/40 hover:text-brand'
                       }`}
@@ -295,12 +297,18 @@ export function AdvancedFilters({
                         </span>
                         <div className="flex flex-wrap gap-1.5">
                           {group.tags.map((tag) => {
-                            const isActive = selectedTag === tag;
+                            const isActive = selectedTags.includes(tag.toLowerCase());
                             const emoji = getTagEmoji(tag);
                             return (
                               <button
                                 key={tag}
-                                onClick={() => onTagSelect?.(isActive ? null : tag)}
+                                onClick={() => {
+                                  if (isActive) {
+                                    onTagsChange?.(selectedTags.filter(t => t !== tag.toLowerCase()));
+                                  } else {
+                                    onTagsChange?.([...selectedTags, tag.toLowerCase()]);
+                                  }
+                                }}
                                 className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all duration-200 whitespace-nowrap cursor-pointer border ${
                                   isActive
                                     ? 'bg-brand text-white border-brand shadow-md shadow-brand/20'

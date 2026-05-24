@@ -691,15 +691,69 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
     vegetarianOnly: false,
   });
   const [isAdvancedFiltersOpen, setIsAdvancedFiltersOpen] = useState(false);
-  const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const activeAdvFilterCount = [
     advFilters.minPrice !== null || advFilters.maxPrice !== null,
     advFilters.minRating !== null,
     advFilters.vegetarianOnly,
-    selectedTag !== null,
+    selectedTags.length > 0,
   ].filter(Boolean).length;
   const hasActiveAdvFilters = activeAdvFilterCount > 0;
   const [apiError, setApiError] = useState<string | null>(null);
+
+  const [isRestored, setIsRestored] = useState(false);
+
+  // Restore filter state from sessionStorage on mount
+  useEffect(() => {
+    if (typeof window === 'undefined' || !sessionIdFromUrl) return;
+
+    const saved = sessionStorage.getItem(`search_state_${sessionIdFromUrl}`);
+    if (saved) {
+      try {
+        const state = JSON.parse(saved);
+        if (state.advFilters) setAdvFilters(state.advFilters);
+        if (state.selectedTags) {
+          setSelectedTags(state.selectedTags);
+        } else if (state.selectedTag) {
+          setSelectedTags([state.selectedTag]);
+        }
+        if (state.isAdvancedFiltersOpen !== undefined) setIsAdvancedFiltersOpen(state.isAdvancedFiltersOpen);
+        if (state.sortBy) setSortBy(state.sortBy);
+        if (state.distanceFilterEnabled !== undefined) setDistanceFilterEnabled(state.distanceFilterEnabled);
+        if (state.distanceRadius !== undefined) setDistanceRadius(state.distanceRadius);
+        if (state.budget) setBudget(state.budget);
+      } catch (e) {
+        console.error("Error restoring filter state:", e);
+      }
+    }
+    setIsRestored(true);
+  }, [sessionIdFromUrl]);
+
+  // Save filter state to sessionStorage when parameters change
+  useEffect(() => {
+    if (!isRestored || !sessionIdFromUrl || typeof window === 'undefined') return;
+
+    const state = {
+      advFilters,
+      selectedTags,
+      isAdvancedFiltersOpen,
+      sortBy,
+      distanceFilterEnabled,
+      distanceRadius,
+      budget,
+    };
+    sessionStorage.setItem(`search_state_${sessionIdFromUrl}`, JSON.stringify(state));
+  }, [
+    isRestored,
+    sessionIdFromUrl,
+    advFilters,
+    selectedTags,
+    isAdvancedFiltersOpen,
+    sortBy,
+    distanceFilterEnabled,
+    distanceRadius,
+    budget,
+  ]);
 
   // Tự động thu thập tất cả tag duy nhất có trong kết quả trả về từ API
   const availableTags = useMemo(() => {
@@ -877,9 +931,11 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
     let filtered = results;
 
     // Apply tag filter (client-side)
-    if (selectedTag) {
+    if (selectedTags.length > 0) {
       filtered = filtered.filter((r) =>
-        r.tags?.some((t) => t.toLowerCase() === selectedTag.toLowerCase())
+        selectedTags.every((selTag) =>
+          r.tags?.some((t) => t.toLowerCase() === selTag.toLowerCase())
+        )
       );
     }
 
@@ -951,7 +1007,7 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
 
     // Cắt lấy đúng 16 món để hiển thị (1 hero + 15 small)
     return sorted.slice(0, 16);
-  }, [results, distanceFilterEnabled, distanceRadius, sortBy, advFilters, selectedTag]);
+  }, [results, distanceFilterEnabled, distanceRadius, sortBy, advFilters, selectedTags]);
 
   const heroItem = displayResults[0];
   const gridItems = displayResults.slice(1);
@@ -1018,7 +1074,7 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
                 type="button"
                 onClick={() => {
                   setAdvFilters({ minPrice: null, maxPrice: null, minRating: null, vegetarianOnly: false });
-                  setSelectedTag(null);
+                  setSelectedTags([]);
                 }}
                 className="inline-flex items-center gap-1 text-[11px] font-bold text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 px-2.5 py-1 rounded-lg transition-all"
               >
@@ -1040,8 +1096,8 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
               totalCount={mounted ? results.length : 0}
               filteredCount={mounted ? displayResults.length : 0}
               availableTags={mounted ? availableTags : []}
-              selectedTag={selectedTag}
-              onTagSelect={setSelectedTag}
+              selectedTags={selectedTags}
+              onTagsChange={setSelectedTags}
               isOpen={true} // The component itself is always 'open' visually, the container hides it
             />
           </div>
