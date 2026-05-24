@@ -161,7 +161,7 @@ class FriendRequest(Base):
     """
     Stores pending or declined friend requests between users.
     """
-    __tablename__ = "friend_requests"
+    __tablename__ = "user_friend_requests"
 
     id = Column(UUID(as_uuid=False), primary_key=True, default=lambda: str(uuid.uuid4()))
     sender_id = Column(UUID(as_uuid=False), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)

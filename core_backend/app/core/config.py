@@ -1,7 +1,8 @@
 import os
 from dotenv import load_dotenv
-
-load_dotenv()
+import sys
+is_testing = "pytest" in sys.modules or os.getenv("TESTING") == "1"
+load_dotenv(override=not is_testing)
 
 class Settings:
     AI_ENGINE_BASE_URL: str = os.getenv("AI_ENGINE_BASE_URL", "http://localhost:8001")
