@@ -257,8 +257,9 @@ class RecommendationService:
         from app.domains.users.models import UserFriend, UserOnboarding
         from app.services.ai_client import embed_text
         from app.services.allergy_filter import (
-            filter_allergy,
             fetch_allergen_map,
+            fetch_dish_detail_map,
+            annotate_allergy,
         )
 
         # 1. Verify friend_ids are actual friends of user
@@ -376,6 +377,7 @@ class RecommendationService:
 
         raw_candidates = []
         is_global_fallback = False
+        results_contain_warnings = False
         steps = [0.15, 0.3, 0.6, 1.0]
         max_lat_range = radius / 111.0
         max_lng_range = radius / 109.0
@@ -397,6 +399,11 @@ class RecommendationService:
             if budget_expr is not None:
                 base_query = base_query.filter(budget_expr)
 
+            # Apply inline allergy filter
+            if group_allergies:
+                from app.services.allergy_filter import apply_inline_allergy_filter
+                base_query = apply_inline_allergy_filter(db, base_query, list(group_allergies))
+
             if average_vector:
                 temp_candidates = base_query.order_by(
                     RestaurantModel.embedding_vector.cosine_distance(average_vector)
@@ -416,9 +423,49 @@ class RecommendationService:
             else:
                 raw_candidates = temp_candidates
 
-        # Fallback globally if no restaurants within bounding box
-        if not raw_candidates:
-            is_global_fallback = True
+        # Progressive Spatial Relaxation: expand radius up to 50km if results < 16
+        if len(raw_candidates) < 16:
+            for next_radius in [15.0, 30.0, 50.0]:
+                if next_radius <= radius:
+                    continue
+                lat_val = next_radius / 111.0
+                lng_val = next_radius / 109.0
+                base_query = db.query(RestaurantModel).filter(
+                    RestaurantModel.lat.between(lat - lat_val, lat + lat_val),
+                    RestaurantModel.lng.between(lng - lng_val, lng + lng_val),
+                    RestaurantModel.is_active == True
+                )
+                if group_is_vegetarian:
+                    base_query = base_query.filter(RestaurantModel.is_vegetarian == True)
+                if budget_expr is not None:
+                    base_query = base_query.filter(budget_expr)
+                if group_allergies:
+                    from app.services.allergy_filter import apply_inline_allergy_filter
+                    base_query = apply_inline_allergy_filter(db, base_query, list(group_allergies))
+
+                if average_vector:
+                    temp_candidates = base_query.order_by(
+                        RestaurantModel.embedding_vector.cosine_distance(average_vector)
+                    ).limit(150).all()
+                else:
+                    temp_candidates = base_query.filter(
+                        RestaurantModel.rating_avg.isnot(None),
+                        RestaurantModel.total_reviews > 5
+                    ).order_by(
+                        desc(RestaurantModel.rating_avg),
+                        desc(RestaurantModel.total_reviews)
+                    ).limit(150).all()
+
+                if len(temp_candidates) >= 16:
+                    raw_candidates = temp_candidates
+                    radius = next_radius
+                    break
+                else:
+                    raw_candidates = temp_candidates
+                    radius = next_radius
+
+        # Fallback globally if no restaurants within bounding box or still < 16 results
+        if len(raw_candidates) < 16:
             fallback_query = db.query(RestaurantModel).filter(
                 RestaurantModel.is_active == True
             )
@@ -427,7 +474,8 @@ class RecommendationService:
             if budget_expr is not None:
                 fallback_query = fallback_query.filter(budget_expr)
 
-            raw_candidates = fallback_query.filter(
+            # High warning fallback mode: query without allergy filtering
+            unfiltered_candidates = fallback_query.filter(
                 RestaurantModel.rating_avg.isnot(None),
                 RestaurantModel.total_reviews > 5
             ).order_by(
@@ -435,16 +483,24 @@ class RecommendationService:
                 desc(RestaurantModel.total_reviews)
             ).limit(150).all()
 
-        # 6. Apply hard allergy filter
+            if len(unfiltered_candidates) >= 16:
+                raw_candidates = unfiltered_candidates
+                is_global_fallback = True
+                if group_allergies:
+                    results_contain_warnings = True
+            else:
+                # If even unfiltered query has < 16 results, keep raw_candidates (safe candidates) to prioritize safety
+                pass
+
+        # 6. Apply allergy filtering / annotation
         safe_candidates = raw_candidates
         applied_allergies_list = list(group_allergies)
         if applied_allergies_list:
             restaurant_ids = [c.id for c in raw_candidates]
             allergen_map = fetch_allergen_map(db, restaurant_ids)
-            safe_candidates, removed_candidates = filter_allergy(
-                candidates=raw_candidates,
-                user_allergies=applied_allergies_list,
-                allergen_map=allergen_map
+            dish_detail_map = fetch_dish_detail_map(db, restaurant_ids)
+            safe_candidates, flagged_count = annotate_allergy(
+                raw_candidates, applied_allergies_list, allergen_map, dish_detail_map
             )
 
         # 7. Formulate RecommendResult
@@ -498,7 +554,7 @@ class RecommendationService:
                 img=model.image_url or "/images/default_food.jpg",
                 total_reviews=getattr(model, "total_reviews", 0) or 0,
                 google_maps_url=getattr(model, "google_maps_url", None),
-                allergen_warning=None,
+                allergen_warning=getattr(model, "allergen_warning", None),
                 is_vegetarian=getattr(model, "is_vegetarian", False) or False
             )
             results.append(res)
@@ -509,7 +565,8 @@ class RecommendationService:
             "results": final_results,
             "group_size": len(all_member_ids),
             "applied_vegetarian_filter": group_is_vegetarian,
-            "applied_allergies": applied_allergies_list
+            "applied_allergies": applied_allergies_list,
+            "results_contain_warnings": results_contain_warnings
         }
 
 

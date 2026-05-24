@@ -1,6 +1,8 @@
 from typing import List, Dict, Any, Tuple, Union, Optional
+from sqlalchemy import cast, String, or_, not_, and_
 from sqlalchemy.orm import Session
 from app.domains.ranking.models import DishModel
+
 
 ALLERGY_MAP = {
     "peanut": ["peanut", "groundnut", "satay", "lạc", "đậu phộng", "sa tế"],
@@ -25,6 +27,65 @@ ALLERGY_MAP = {
     "đậu nành": ["soy", "đậu nành", "tương", "tofu", "đậu hũ"],
     "đậu hũ": ["soy", "đậu nành", "tương", "tofu", "đậu hũ"]
 }
+
+def get_allergy_keywords(user_allergies: List[str]) -> List[str]:
+    """Translate user allergies to mapped keywords using ALLERGY_MAP."""
+    if not user_allergies:
+        return []
+    keywords = []
+    for allergy in user_allergies:
+        if allergy:
+            allergy_norm = allergy.lower().strip()
+            keywords.extend(ALLERGY_MAP.get(allergy_norm, [allergy_norm]))
+    return list(set(keywords))
+
+def get_unsafe_dish_filter(db: Session, keywords: List[str]) -> Optional[Any]:
+    """
+    Returns a SQLAlchemy filter clause for DishModel that matches any of the allergy keywords.
+    Optimized for PostgreSQL JSONB GIN index, with fallback for SQLite.
+    """
+    if not keywords:
+        return None
+
+    dialect = db.bind.dialect.name
+    if dialect == "postgresql":
+        from sqlalchemy.dialects.postgresql import JSONB
+        return cast(DishModel.allergens, JSONB).has_any(keywords)
+    else:
+        # SQLite fallback: cast to String and check with ILIKE/LIKE
+        return or_(*[cast(DishModel.allergens, String).ilike(f"%{kw}%") for kw in keywords])
+
+def apply_inline_allergy_filter(db: Session, query, user_allergies: List[str]):
+    """
+    Applies inline allergy filtering to a RestaurantModel query.
+    Excludes restaurants that have dishes, but all of them are unsafe.
+    """
+    if not user_allergies:
+        return query
+
+    keywords = get_allergy_keywords(user_allergies)
+    if not keywords:
+        return query
+
+    unsafe_clause = get_unsafe_dish_filter(db, keywords)
+    if unsafe_clause is None:
+        return query
+
+    from app.domains.ranking.models import RestaurantModel
+    # Query for restaurant IDs that have at least one safe dish
+    safe_res_ids = db.query(DishModel.res_id).filter(not_(unsafe_clause)).distinct()
+    # Query for restaurant IDs that have any dishes
+    any_res_ids = db.query(DishModel.res_id).distinct()
+
+    # Exclude restaurants that have dishes but no safe dishes
+    return query.filter(
+        not_(
+            and_(
+                RestaurantModel.id.in_(any_res_ids),
+                RestaurantModel.id.not_in(safe_res_ids)
+            )
+        )
+    )
 
 def normalize(text: Optional[str]) -> str:
     """Normalize text by converting to lowercase and stripping whitespace."""

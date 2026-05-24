@@ -29,7 +29,10 @@ class AIServiceClient:
         self.base_url = base_url
         self.grpc_target = grpc_target
         self._http_client = httpx.AsyncClient(base_url=base_url, timeout=_TIMEOUT)
-        self._grpc_client = GRPCServiceClient(target=grpc_target)
+        if settings.ENABLE_GRPC:
+            self._grpc_client = GRPCServiceClient(target=grpc_target)
+        else:
+            self._grpc_client = None
 
     async def check_health(self) -> bool:
         """Trả về True nếu AI Engine đang hoạt động (Thử gRPC trước nếu bật, sau đó HTTP)."""
@@ -174,7 +177,8 @@ class AIServiceClient:
 
     async def close(self):
         await self._http_client.aclose()
-        await self._grpc_client.close()
+        if self._grpc_client is not None:
+            await self._grpc_client.close()
 
 
 # ---------------------------------------------------------------------------

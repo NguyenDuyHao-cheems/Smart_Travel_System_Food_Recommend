@@ -131,7 +131,8 @@ async def get_group_recommendations(
             results=res["results"],
             group_size=res["group_size"],
             applied_vegetarian_filter=res["applied_vegetarian_filter"],
-            applied_allergies=res["applied_allergies"]
+            applied_allergies=res["applied_allergies"],
+            results_contain_warnings=res.get("results_contain_warnings", False)
         )
     except Exception as e:
         raise HTTPException(

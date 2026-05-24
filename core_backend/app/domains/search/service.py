@@ -138,7 +138,8 @@ class SearchService:
             "applied_budget": effective_budget,
             "filtered_out_count": filtered_out_count,
             "allergen_flagged_count": allergen_flagged_count,
-            "warning": warning
+            "warning": warning,
+            "results_contain_warnings": recommend_results.get("results_contain_warnings", False),
         }
 
         session_obj = SearchSession(
@@ -164,6 +165,7 @@ class SearchService:
             filtered_out_count=filtered_out_count,
             allergen_flagged_count=allergen_flagged_count,
             warning=warning,
+            results_contain_warnings=recommend_results.get("results_contain_warnings", False),
         )
 
     @staticmethod
@@ -226,6 +228,7 @@ class SearchService:
             filtered_out_count=data.get("filtered_out_count", 0),
             allergen_flagged_count=data.get("allergen_flagged_count", 0),
             warning=data.get("warning"),
+            results_contain_warnings=data.get("results_contain_warnings", False),
             created_at=obj.created_at,
         )
 

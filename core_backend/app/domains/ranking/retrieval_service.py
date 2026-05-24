@@ -79,6 +79,7 @@ class RetrievalService:
         viewport_bounds: Optional[dict] = None,
         map_center: Optional[List[float]] = None,
         map_radius_km: Optional[float] = None,
+        user_allergies: Optional[List[str]] = None,
     ):
         """
         Retrieval từ Postgres với semantic ordering (relevance-first).
@@ -110,6 +111,10 @@ class RetrievalService:
         query = self.db.query(RestaurantModel).filter(
             RestaurantModel.is_active == True
         )
+
+        if user_allergies:
+            from app.services.allergy_filter import apply_inline_allergy_filter
+            query = apply_inline_allergy_filter(self.db, query, user_allergies)
 
         if viewport_bounds:
             query = self._apply_viewport_filter(query, viewport_bounds)
