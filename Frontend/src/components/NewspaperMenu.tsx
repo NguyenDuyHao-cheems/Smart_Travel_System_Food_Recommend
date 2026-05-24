@@ -6,6 +6,7 @@ import Link from "next/link";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { useWeather } from "../hooks/useWeather";
 import { RootState } from "../store";
+import { useLanguage } from "./LanguageProvider";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -34,6 +35,7 @@ interface NewspaperMenuResponse {
 }
 
 export default function NewspaperMenu() {
+  const { language, t } = useLanguage();
   const [isMounted, setIsMounted] = useState(false);
   const [menu, setMenu] = useState<NewspaperMenuResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -130,6 +132,24 @@ export default function NewspaperMenu() {
 
   const weatherDescription = weatherInfo?.description || "trời dịu mát";
 
+  const translateWeatherDescription = useCallback((desc: string) => {
+    if (language !== "en") return desc;
+    const lower = desc.toLowerCase();
+    if (lower.includes("mưa phùn")) return "drizzle";
+    if (lower.includes("mưa rào")) return "showers";
+    if (lower.includes("mưa tuyết")) return "sleet";
+    if (lower.includes("mưa")) return "rainy weather";
+    if (lower.includes("quang")) return "clear weather";
+    if (lower.includes("sương mù")) return "foggy weather";
+    if (lower.includes("giông") || lower.includes("bão")) return "thunderstorms";
+    if (lower.includes("mây")) return "cloudy weather";
+    if (lower.includes("nắng")) return "sunny weather";
+    if (lower.includes("se lạnh")) return "chilly weather";
+    if (lower.includes("oi bức")) return "hot weather";
+    if (lower.includes("dịu mát")) return "cool weather";
+    return "mild weather";
+  }, [language]);
+
   const weatherAdjective = useMemo(() => {
     if (!weatherInfo) return "hấp dẫn";
     const descLower = weatherInfo.description.toLowerCase();
@@ -158,6 +178,17 @@ export default function NewspaperMenu() {
     return "hấp dẫn";
   }, [weatherInfo]);
 
+  const weatherAdjectiveTrans = useMemo(() => {
+    const adj = weatherAdjective; // 'hấp dẫn', 'ấm lòng', 'thanh mát', 'đậm đà'
+    if (language === 'en') {
+      if (adj === 'ấm lòng') return 'heartwarming';
+      if (adj === 'thanh mát') return 'refreshing';
+      if (adj === 'đậm đà') return 'flavorful';
+      return 'attractive';
+    }
+    return adj;
+  }, [weatherAdjective, language]);
+
   // Geographic context parsing
   const city = useMemo(() => {
     if (!address) return "vị trí của bạn";
@@ -168,6 +199,13 @@ export default function NewspaperMenu() {
     }
     return address;
   }, [address]);
+
+  const cityTrans = useMemo(() => {
+    if (city === "vị trí của bạn") {
+      return language === 'en' ? "your location" : "vị trí của bạn";
+    }
+    return city;
+  }, [city, language]);
 
   // Date generators
   const dateInfo = useMemo(() => {
@@ -185,9 +223,48 @@ export default function NewspaperMenu() {
       timeSlot = "tối";
     }
 
-    const dateStr = `${dayName}, ngày ${String(d.getDate()).padStart(2, "0")} tháng ${String(d.getMonth() + 1).padStart(2, "0")} năm ${d.getFullYear()}`;
+    let dateStr = "";
+    if (language === "en") {
+      dateStr = d.toLocaleDateString("en-US", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+    } else {
+      dateStr = `${dayName}, ngày ${String(d.getDate()).padStart(2, "0")} tháng ${String(d.getMonth() + 1).padStart(2, "0")} năm ${d.getFullYear()}`;
+    }
+
     return { timeSlot, dayName, dateStr };
-  }, []);
+  }, [language]);
+
+  const timeSlotTrans = useMemo(() => {
+    const slot = dateInfo.timeSlot; // 'sáng', 'trưa', 'chiều', 'tối'
+    if (language === 'en') {
+      if (slot === 'sáng') return 'morning';
+      if (slot === 'trưa') return 'lunchtime';
+      if (slot === 'chiều') return 'afternoon';
+      return 'evening';
+    }
+    return slot;
+  }, [dateInfo.timeSlot, language]);
+
+  const dayNameTrans = useMemo(() => {
+    const day = dateInfo.dayName;
+    if (language === 'en') {
+      const daysMap: Record<string, string> = {
+        "Chủ Nhật": "Sunday",
+        "thứ Hai": "Monday",
+        "thứ Ba": "Tuesday",
+        "thứ Tư": "Wednesday",
+        "thứ Năm": "Thursday",
+        "thứ Sáu": "Friday",
+        "thứ Bảy": "Saturday"
+      };
+      return daysMap[day] || day;
+    }
+    return day;
+  }, [dateInfo.dayName, language]);
 
   const handleRefresh = async () => {
     if (isRefreshing) return;
@@ -233,7 +310,7 @@ export default function NewspaperMenu() {
       <div className="relative w-full min-h-[480px] bg-[#FAF6EE] dark:bg-[#332B25] border border-[#d2c2ad] dark:border-[#4d3d32] shadow-md rounded-lg p-6 text-[#3D312A] dark:text-[#E6DFD5] mb-8 font-serif transition-colors duration-300 flex flex-col justify-between">
         <div className="text-center">
           <span className="text-[10px] tracking-widest font-mono uppercase text-[#3D312A]/70 dark:text-[#E6DFD5]/70 block mb-1">
-            Ấm Thực Bản Tin
+            {t("newspaper.title")}
           </span>
           <h1 
             className="text-4xl md:text-5xl font-bold uppercase tracking-wide text-[#2B221E] dark:text-[#F3EDE2] leading-none mb-3"
@@ -242,9 +319,9 @@ export default function NewspaperMenu() {
             Wanderbite Daily
           </h1>
           <div className="border-t-4 border-b border-[#3D312A] dark:border-[#E6DFD5] py-2 my-3 flex flex-wrap justify-between items-center text-[10px] md:text-xs tracking-wider font-mono uppercase text-[#3D312A]/80 dark:text-[#E6DFD5]/80">
-            <span>BẢN TIN SỐ: #W-{dateInfo.dayName.replace(" ", "")}</span>
+            <span>{t("newspaper.issue").replace("{day}", dayNameTrans.replace(" ", ""))}</span>
             <span className="font-bold">{dateInfo.dateStr}</span>
-            <span>GIÁ: 0đ (Miễn phí)</span>
+            <span>{t("newspaper.price")}</span>
           </div>
         </div>
 
@@ -254,13 +331,13 @@ export default function NewspaperMenu() {
             className="text-xl font-bold mb-2 text-[#2B221E] dark:text-[#F3EDE2]"
             style={{ fontFamily: '"DFVN Paper Kuto", "Segoe UI", Roboto, sans-serif' }}
           >
-            Bản tin trống
+            {t("newspaper.empty")}
           </h3>
           <p className="text-sm italic text-[#3D312A]/80 dark:text-[#E6DFD5]/80 max-w-md">
-            {menu.message || "Không tìm thấy quán ăn nào phù hợp trong bán kính hoạt động quanh vị trí của bạn."}
+            {menu.message || (language === 'en' ? "No suitable restaurants found within your search radius." : "Không tìm thấy quán ăn nào phù hợp trong bán kính hoạt động quanh vị trí của bạn.")}
           </p>
           <p className="text-xs font-mono text-[#3D312A]/60 dark:text-[#E6DFD5]/60 mt-4">
-            (Thử cấp quyền vị trí GPS chính xác hơn hoặc nhấn nút Stamp bên dưới để thử lại)
+            {t("newspaper.gpsHint")}
           </p>
         </div>
 
@@ -269,12 +346,12 @@ export default function NewspaperMenu() {
           onClick={handleRefresh}
           disabled={isRefreshing}
           className="absolute bottom-3 right-3 md:bottom-5 md:right-5 bg-transparent border-2 border-dashed border-[#8A3324] hover:border-[#8A3324]/80 text-[#8A3324] dark:border-[#E27A67] dark:text-[#E27A67] rounded-full p-2 font-mono text-[8px] uppercase font-bold tracking-wider select-none hover:scale-105 active:scale-95 transition-all duration-300 rotate-12 cursor-pointer flex flex-col items-center justify-center w-24 h-24 text-center z-10"
-          title="Ấn để xem bản tin ẩm thực khác"
+          title={t("newspaper.stampBtn")}
         >
           <span className={`text-[8px] tracking-widest ${isRefreshing ? "animate-spin" : ""}`}>
-            XEM
+            {language === 'en' ? "VIEW" : "XEM"}
           </span>
-          <span className="text-[9px] mt-0.5 font-bold">BẢN TIN KHÁC</span>
+          <span className="text-[9px] mt-0.5 font-bold">{language === 'en' ? "ANOTHER" : "BẢN TIN KHÁC"}</span>
           <span className="text-[6px] tracking-normal text-[#8A3324]/60 dark:text-[#E27A67]/60 mt-1 block">
             ★ ★ ★
           </span>
@@ -289,7 +366,7 @@ export default function NewspaperMenu() {
       {/* Newspaper Top section */}
       <div className="text-center">
         <span className="text-[10px] tracking-widest font-mono uppercase text-[#3D312A]/70 dark:text-[#E6DFD5]/70 block mb-1">
-          Ấm Thực Bản Tin
+          {t("newspaper.title")}
         </span>
         
         {/* Title / Masthead */}
@@ -302,9 +379,9 @@ export default function NewspaperMenu() {
 
         {/* Double borders metadata panel */}
         <div className="border-t-4 border-b border-[#3D312A] dark:border-[#E6DFD5] py-2 my-3 flex flex-wrap justify-between items-center text-[10px] md:text-xs tracking-wider font-mono uppercase text-[#3D312A]/80 dark:text-[#E6DFD5]/80">
-          <span>BẢN TIN SỐ: #W-{dateInfo.dayName.replace(" ", "")}</span>
+          <span>{t("newspaper.issue").replace("{day}", dayNameTrans.replace(" ", ""))}</span>
           <span className="font-bold">{dateInfo.dateStr}</span>
-          <span>GIÁ: 0đ (Miễn phí)</span>
+          <span>{t("newspaper.price")}</span>
         </div>
 
         {menu?.is_fallback && menu.message && (
@@ -320,7 +397,12 @@ export default function NewspaperMenu() {
           className="text-xl md:text-2xl font-bold text-[#2B221E] dark:text-[#F3EDE2] italic leading-tight"
           style={{ fontFamily: '"DFVN Paper Kuto", "Segoe UI", Roboto, sans-serif' }}
         >
-          &ldquo;Wanderbite, bản tin {dateInfo.timeSlot} {dateInfo.dayName}. Thực đơn {weatherAdjective} cho ngày {weatherDescription.toLowerCase()} tại {city}&rdquo;
+          &ldquo;{t("newspaper.headlineQuote")
+            .replace("{time}", timeSlotTrans)
+            .replace("{day}", dayNameTrans)
+            .replace("{adj}", weatherAdjectiveTrans)
+            .replace("{weather}", translateWeatherDescription(weatherDescription).toLowerCase())
+            .replace("{city}", cityTrans)}&rdquo;
         </h2>
       </div>
 
@@ -328,9 +410,9 @@ export default function NewspaperMenu() {
       <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-[#3D312A]/20 dark:divide-[#E6DFD5]/20 mt-6 gap-6 md:gap-0">
         {items.map((item, idx) => {
           const slotLabels = {
-            breakfast: "Bữa Sáng (06h - 10h)",
-            lunch: "Bữa Trưa (11h - 14h)",
-            dinner: "Bữa Tối (17h - 21h)"
+            breakfast: t("newspaper.breakfast"),
+            lunch: t("newspaper.lunch"),
+            dinner: t("newspaper.dinner")
           };
 
           return (
@@ -346,7 +428,7 @@ export default function NewspaperMenu() {
                   ✦ {slotLabels[item.slot]}
                 </span>
                 <span className="text-[10px] font-mono text-[#3D312A]/60 dark:text-[#E6DFD5]/60">
-                  Phần {idx + 1}
+                  {t("newspaper.customSlot").replace("{slot}", String(idx + 1))}
                 </span>
               </div>
 
@@ -380,14 +462,14 @@ export default function NewspaperMenu() {
               {item.suggested_dish_name && (
                 <div className="mt-auto bg-[#3D312A]/5 dark:bg-[#E6DFD5]/5 border border-dashed border-[#3D312A]/20 dark:border-[#E6DFD5]/20 rounded p-3 text-xs leading-snug">
                   <div className="font-mono uppercase font-bold text-[9px] text-[#3D312A]/60 dark:text-[#E6DFD5]/60 mb-1">
-                    Gợi ý món ngon:
+                    {t("newspaper.suggestTitle")}
                   </div>
                   <div className="font-semibold text-sm text-[#2B221E] dark:text-[#F3EDE2]">
                     {item.suggested_dish_name}
                   </div>
                   {item.suggested_dish_price && (
                     <div className="font-mono text-[#8A3324] dark:text-[#E27A67] mt-0.5">
-                      Giá chỉ: {item.suggested_dish_price.toLocaleString("vi-VN")}đ
+                      {t("newspaper.priceOnly")} {item.suggested_dish_price.toLocaleString("vi-VN")}đ
                     </div>
                   )}
                 </div>
@@ -396,10 +478,10 @@ export default function NewspaperMenu() {
               {/* Operating Time and Address metadata */}
               <div className="text-[10px] text-[#3D312A]/70 dark:text-[#E6DFD5]/70 font-mono mt-3 space-y-1">
                 {(item.open_time && item.close_time) && (
-                  <div>Mở cửa: {item.open_time.slice(0, 5)} - {item.close_time.slice(0, 5)}</div>
+                  <div>{t("newspaper.openTime")} {item.open_time.slice(0, 5)} - {item.close_time.slice(0, 5)}</div>
                 )}
                 {item.address && (
-                  <div className="line-clamp-2">Địa chỉ: {item.address}</div>
+                  <div className="line-clamp-2">{t("newspaper.address")} {item.address}</div>
                 )}
               </div>
             </div>
@@ -412,12 +494,12 @@ export default function NewspaperMenu() {
         onClick={handleRefresh}
         disabled={isRefreshing}
         className="absolute bottom-3 right-3 md:bottom-5 md:right-5 bg-transparent border-2 border-dashed border-[#8A3324] hover:border-[#8A3324]/80 text-[#8A3324] dark:border-[#E27A67] dark:text-[#E27A67] rounded-full p-2 font-mono text-[8px] uppercase font-bold tracking-wider select-none hover:scale-105 active:scale-95 transition-all duration-300 rotate-12 cursor-pointer flex flex-col items-center justify-center w-24 h-24 text-center z-10"
-        title="Ấn để xem bản tin ẩm thực khác"
+        title={t("newspaper.stampBtn")}
       >
         <span className={`text-[8px] tracking-widest ${isRefreshing ? "animate-spin" : ""}`}>
-          XEM
+          {language === 'en' ? "VIEW" : "XEM"}
         </span>
-        <span className="text-[9px] mt-0.5 font-bold">BẢN TIN KHÁC</span>
+        <span className="text-[9px] mt-0.5 font-bold">{language === 'en' ? "ANOTHER" : "BẢN TIN KHÁC"}</span>
         <span className="text-[6px] tracking-normal text-[#8A3324]/60 dark:text-[#E27A67]/60 mt-1 block">
           ★ ★ ★
         </span>

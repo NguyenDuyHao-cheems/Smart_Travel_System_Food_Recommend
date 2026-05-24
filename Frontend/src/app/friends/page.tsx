@@ -26,6 +26,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../../components/ui/dialog";
+import { useLanguage } from "../../components/LanguageProvider";
 
 interface MyProfile {
   id: string;
@@ -35,6 +36,7 @@ interface MyProfile {
 
 export default function FriendsPage() {
   const router = useRouter();
+  const { t, language } = useLanguage();
   
   // States
   const [friends, setFriends] = useState<Friend[]>([]);
@@ -55,7 +57,7 @@ export default function FriendsPage() {
     const userId = localStorage.getItem("user_id");
     const storedUsername = localStorage.getItem("user_email");
     if (!userId) {
-      toast.error("Vui lòng đăng nhập để xem danh sách bạn bè");
+      toast.error(t("friends.pleaseLogin"));
       router.push("/auth");
       return;
     }
@@ -96,7 +98,7 @@ export default function FriendsPage() {
         const data = await friendService.fetchFriends();
         setFriends(data);
       } catch (err: any) {
-        toast.error(err.message || "Không thể tải danh sách bạn bè");
+        toast.error(err.message || t("friends.loadFailed"));
       } finally {
         setLoading(false);
       }
@@ -104,7 +106,7 @@ export default function FriendsPage() {
 
     fetchProfile();
     loadFriends();
-  }, [router]);
+  }, [router, t]);
 
   // Handle Add Friend
   const handleAddFriend = async (e: React.FormEvent) => {
@@ -113,21 +115,21 @@ export default function FriendsPage() {
     if (!target) return;
 
     if (myProfile && target.toLowerCase() === myProfile.username.toLowerCase()) {
-      toast.error("Không thể tự kết bạn với chính mình!");
+      toast.error(t("friends.cantAddSelf"));
       return;
     }
 
     try {
       setActionLoading(true);
       await friendService.addFriend(target);
-      toast.success(`Đã kết bạn với ${target}!`);
+      toast.success(t("friends.addSuccess").replace("{target}", target));
       setAddUsername("");
       
       // Reload friends list
       const data = await friendService.fetchFriends();
       setFriends(data);
     } catch (err: any) {
-      toast.error(err.message || "Có lỗi xảy ra khi kết bạn");
+      toast.error(err.message || t("friends.addError"));
     } finally {
       setActionLoading(false);
     }
@@ -140,13 +142,13 @@ export default function FriendsPage() {
     try {
       setActionLoading(true);
       await friendService.removeFriend(unfriendTarget.friend_id);
-      toast.success(`Đã hủy kết bạn với ${unfriendTarget.full_name || unfriendTarget.username}`);
+      toast.success(t("friends.removeSuccess").replace("{target}", unfriendTarget.full_name || unfriendTarget.username));
       
       // Update local state
       setFriends(friends.filter(f => f.friend_id !== unfriendTarget.friend_id));
       setUnfriendTarget(null);
     } catch (err: any) {
-      toast.error(err.message || "Không thể hủy kết bạn");
+      toast.error(err.message || t("friends.removeError"));
     } finally {
       setActionLoading(false);
     }
@@ -155,11 +157,11 @@ export default function FriendsPage() {
   // Copy to Clipboard Helpers
   const copyToClipboard = (text: string, type: "id" | "username") => {
     if (typeof navigator === "undefined" || !navigator.clipboard) {
-      toast.error("Trình duyệt không hỗ trợ sao chép");
+      toast.error(t("friends.copyBrowserError"));
       return;
     }
     navigator.clipboard.writeText(text);
-    toast.success("Đã sao chép vào bộ nhớ tạm");
+    toast.success(t("friends.copySuccess"));
     
     if (type === "id") {
       setCopiedId(true);
@@ -185,10 +187,10 @@ export default function FriendsPage() {
         <div>
           <h1 className="text-3xl font-black text-[#3D312A] dark:text-[#E6DFD5] flex items-center gap-3">
             <Users className="w-8 h-8 text-brand dark:text-[#E8735A]" />
-            Bạn bè
+            {t("friends.title")}
           </h1>
           <p className="text-gray-500 dark:text-[#9A8A7A] mt-2">
-            Kết nối với bạn bè để cùng nhau chia sẻ những địa điểm ăn uống thú vị
+            {t("friends.desc")}
           </p>
         </div>
 
@@ -198,13 +200,13 @@ export default function FriendsPage() {
           <div className="md:col-span-7 bg-[#FFFDF9] dark:bg-[#3D312A] p-6 rounded-3xl border border-[#3D312A]/10 dark:border-[#4D3D32] shadow-[0_4px_20px_rgba(0,0,0,0.02)]">
             <div className="flex items-center gap-2 mb-4">
               <UserPlus className="w-5 h-5 text-brand dark:text-[#E8735A]" />
-              <h2 className="font-bold text-[#3D312A] dark:text-[#E6DFD5] text-lg">Kết bạn mới</h2>
+              <h2 className="font-bold text-[#3D312A] dark:text-[#E6DFD5] text-lg">{t("friends.addNewFriend")}</h2>
             </div>
             
             <form onSubmit={handleAddFriend} className="flex gap-3">
               <input
                 type="text"
-                placeholder="Nhập tên tài khoản của bạn bè (username)..."
+                placeholder={t("friends.placeholderUsername")}
                 value={addUsername}
                 onChange={(e) => setAddUsername(e.target.value)}
                 className="flex-1 px-4 py-3 rounded-xl border border-gray-200 dark:border-[#4D3D32] bg-gray-50/50 dark:bg-[#2A2420] text-gray-900 dark:text-[#E6DFD5] focus:outline-none focus:ring-2 focus:ring-brand/30 dark:focus:ring-brand-on-dark/30 transition-all font-medium placeholder-gray-400 dark:placeholder-[#6A5A4A]"
@@ -219,13 +221,13 @@ export default function FriendsPage() {
                 ) : (
                   <UserPlus className="w-4 h-4" />
                 )}
-                Thêm
+                {t("friends.addBtn")}
               </button>
             </form>
             
             <p className="text-xs text-gray-400 dark:text-[#8A7A6A] mt-3 flex items-start gap-1">
               <Info className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
-              <span>Kết bạn là mối quan hệ song phương. Khi kết bạn thành công, cả hai sẽ tự động hiển thị trong danh sách của nhau.</span>
+              <span>{t("friends.biDirectionalInfo")}</span>
             </p>
           </div>
 
@@ -234,10 +236,10 @@ export default function FriendsPage() {
             <div>
               <div className="flex items-center gap-2 mb-3">
                 <Sparkles className="w-5 h-5 text-amber-500" />
-                <h2 className="font-bold text-[#3D312A] dark:text-[#E6DFD5] text-lg">Tài khoản của bạn</h2>
+                <h2 className="font-bold text-[#3D312A] dark:text-[#E6DFD5] text-lg">{t("friends.yourAccount")}</h2>
               </div>
               <p className="text-xs text-gray-500 dark:text-[#9A8A7A] mb-4">
-                Chia sẻ thông tin này để bạn bè dễ dàng kết nối với bạn
+                {t("friends.yourAccountDesc")}
               </p>
             </div>
 
@@ -247,7 +249,7 @@ export default function FriendsPage() {
                 <div className="flex items-center justify-between p-3 rounded-xl bg-gray-50 dark:bg-[#2A2420] border border-gray-100 dark:border-[#4D3D32]">
                   <div className="overflow-hidden">
                     <span className="text-[10px] uppercase font-bold tracking-wider text-gray-400 dark:text-[#6A5A4A] block">
-                      Tên tài khoản (username)
+                      {t("friends.usernameLabel")}
                     </span>
                     <span className="font-bold text-[#3D312A] dark:text-[#E6DFD5] text-sm block truncate">
                       {myProfile.username}
@@ -256,7 +258,7 @@ export default function FriendsPage() {
                   <button
                     onClick={() => copyToClipboard(myProfile.username, "username")}
                     className="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-[#4D3D32] transition-colors cursor-pointer text-gray-500 dark:text-gray-400"
-                    title="Sao chép tên tài khoản"
+                    title={t("friends.copyUsernameTooltip")}
                   >
                     {copiedUsername ? (
                       <Check className="w-4 h-4 text-emerald-500" />
@@ -270,7 +272,7 @@ export default function FriendsPage() {
                 <div className="flex items-center justify-between p-3 rounded-xl bg-gray-50 dark:bg-[#2A2420] border border-gray-100 dark:border-[#4D3D32]">
                   <div className="overflow-hidden">
                     <span className="text-[10px] uppercase font-bold tracking-wider text-gray-400 dark:text-[#6A5A4A] block">
-                      Mã người dùng (User ID)
+                      {t("friends.userIdLabel")}
                     </span>
                     <span className="font-mono text-xs text-gray-500 dark:text-[#9A8A7A] block truncate max-w-[200px]">
                       {myProfile.id}
@@ -279,7 +281,7 @@ export default function FriendsPage() {
                   <button
                     onClick={() => copyToClipboard(myProfile.id, "id")}
                     className="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-[#4D3D32] transition-colors cursor-pointer text-gray-500 dark:text-gray-400"
-                    title="Sao chép mã người dùng"
+                    title={t("friends.copyUserIdTooltip")}
                   >
                     {copiedId ? (
                       <Check className="w-4 h-4 text-emerald-500" />
@@ -303,7 +305,7 @@ export default function FriendsPage() {
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
             <div>
               <h2 className="text-xl font-bold text-[#3D312A] dark:text-[#E6DFD5] flex items-center gap-2">
-                Danh sách bạn bè
+                {t("friends.friendsListTitle")}
                 <span className="px-2.5 py-0.5 text-xs font-black rounded-full bg-brand-muted dark:bg-[#A91B0D]/20 text-brand dark:text-[#E8735A]">
                   {friends.length}
                 </span>
@@ -316,7 +318,7 @@ export default function FriendsPage() {
                 <Search className="w-4 h-4 text-gray-400 dark:text-[#8A7A6A] absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
-                  placeholder="Tìm bạn bè..."
+                  placeholder={t("friends.searchPlaceholder")}
                   value={localSearch}
                   onChange={(e) => setLocalSearch(e.target.value)}
                   className="w-full pl-9 pr-4 py-2 text-sm rounded-xl border border-gray-200 dark:border-[#4D3D32] bg-gray-50/50 dark:bg-[#2A2420] text-gray-900 dark:text-[#E6DFD5] focus:outline-none focus:ring-2 focus:ring-brand/30 dark:focus:ring-brand-on-dark/30 transition-all placeholder-gray-400 dark:placeholder-[#6A5A4A]"
@@ -329,22 +331,22 @@ export default function FriendsPage() {
           {loading ? (
             <div className="flex flex-col items-center justify-center py-24">
               <Loader2 className="w-10 h-10 animate-spin text-brand dark:text-[#E8735A] mb-3" />
-              <p className="text-gray-400 dark:text-[#9A8A7A] text-sm">Đang tải danh sách...</p>
+              <p className="text-gray-400 dark:text-[#9A8A7A] text-sm">{t("friends.loadingText")}</p>
             </div>
           ) : friends.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-center">
               <div className="w-16 h-16 rounded-full bg-brand-muted dark:bg-[#A91B0D]/10 flex items-center justify-center text-brand dark:text-[#E8735A] mb-4">
                 <Users className="w-8 h-8" />
               </div>
-              <h3 className="text-lg font-bold text-gray-700 dark:text-[#E6DFD5] mb-2">Chưa có bạn bè</h3>
+              <h3 className="text-lg font-bold text-gray-700 dark:text-[#E6DFD5] mb-2">{t("friends.noFriendsTitle")}</h3>
               <p className="text-gray-500 dark:text-[#9A8A7A] max-w-sm mb-6 text-sm">
-                Tìm kiếm và thêm bạn bè bằng tên tài khoản của họ để cùng chia sẻ danh sách địa điểm ăn uống thú vị nhé!
+                {t("friends.noFriendsDesc")}
               </p>
             </div>
           ) : filteredFriends.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-center">
               <AlertCircle className="w-12 h-12 text-gray-300 dark:text-[#6A5A4A] mb-3" />
-              <p className="text-gray-500 dark:text-[#9A8A7A] text-sm">Không tìm thấy bạn bè nào khớp với kết quả tìm kiếm.</p>
+              <p className="text-gray-500 dark:text-[#9A8A7A] text-sm">{t("friends.noMatchText")}</p>
             </div>
           ) : (
             <motion.div 
@@ -386,7 +388,7 @@ export default function FriendsPage() {
                             @{friend.username}
                           </p>
                           <span className="text-[9px] text-gray-400 dark:text-[#7A6A5A] block mt-1 font-medium">
-                            Bạn bè từ {new Date(friend.created_at).toLocaleDateString("vi-VN")}
+                            {t("friends.friendSince")} {new Date(friend.created_at).toLocaleDateString(language === "en" ? "en-US" : "vi-VN")}
                           </span>
                         </div>
                       </div>
@@ -395,7 +397,7 @@ export default function FriendsPage() {
                       <button
                         onClick={() => setUnfriendTarget(friend)}
                         className="p-2.5 rounded-xl text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-all cursor-pointer opacity-80 group-hover:opacity-100 sm:opacity-0 sm:group-hover:opacity-100 flex-shrink-0"
-                        title="Hủy kết bạn"
+                        title={t("friends.unfriendTooltip")}
                       >
                         <UserMinus className="w-4.5 h-4.5" />
                       </button>
@@ -414,14 +416,10 @@ export default function FriendsPage() {
           <DialogHeader>
             <DialogTitle className="text-xl text-red-600 dark:text-red-400 flex items-center gap-2 font-black">
               <AlertCircle className="w-5 h-5 text-red-500" />
-              Hủy kết bạn
+              {t("friends.unfriendConfirmTitle")}
             </DialogTitle>
             <DialogDescription className="mt-2 text-gray-600 dark:text-gray-300">
-              Bạn có chắc chắn muốn hủy kết bạn với{" "}
-              <span className="font-bold text-[#3D312A] dark:text-[#E6DFD5]">
-                {unfriendTarget?.full_name || unfriendTarget?.username}
-              </span>
-              ? Cả hai sẽ không còn trong danh sách bạn bè của nhau nữa.
+              {t("friends.unfriendConfirmDesc").replace("{target}", unfriendTarget?.full_name || unfriendTarget?.username || "")}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="mt-6 flex gap-3 justify-end">
@@ -429,7 +427,7 @@ export default function FriendsPage() {
               onClick={() => setUnfriendTarget(null)}
               className="px-5 py-2.5 text-sm font-bold text-gray-500 hover:text-gray-700 dark:text-[#9A8A7A] dark:hover:text-gray-200 transition-colors cursor-pointer"
             >
-              Hủy bỏ
+              {t("friends.cancelBtn")}
             </button>
             <button
               onClick={handleConfirmUnfriend}
@@ -439,7 +437,7 @@ export default function FriendsPage() {
               {actionLoading ? (
                 <Loader2 className="w-4 h-4 animate-spin inline mr-1" />
               ) : (
-                "Xác nhận xóa"
+                t("friends.confirmDeleteBtn")
               )}
             </button>
           </DialogFooter>

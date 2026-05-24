@@ -7,15 +7,17 @@ import { StoryList } from '../../components/social/StoryList';
 import { UserSearchPanel } from '../../components/social/UserSearchPanel';
 import { Sparkles, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useLanguage } from '../../components/LanguageProvider';
 
 const FEED_TABS = [
-  { key: 'for_you', label: 'Dành cho bạn' },
-  { key: 'following', label: 'Đang theo dõi' },
+  { key: 'for_you' },
+  { key: 'following' },
 ];
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 export default function FeedPage() {
+  const { t } = useLanguage();
   const [posts, setPosts] = useState<SocialPost[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('for_you');
@@ -52,7 +54,7 @@ export default function FeedPage() {
   const handleCreatePost = async (content: string, mediaUrls: string[], resId?: string, mood?: string | null) => {
     const token = localStorage.getItem('access_token');
     if (!token) {
-      toast.error('Vui lòng đăng nhập để đăng bài viết.');
+      toast.error(t("feed.pleaseLogin"));
       return;
     }
     
@@ -81,14 +83,14 @@ export default function FeedPage() {
       if (res.ok) {
         const newPost = await res.json();
         setPosts((prev) => [newPost, ...prev]);
-        toast.success('Đăng bài thành công!');
+        toast.success(t("feed.postSuccess"));
       } else if (res.status === 401) {
-        toast.error('Vui lòng đăng nhập để đăng bài viết.');
+        toast.error(t("feed.pleaseLogin"));
       } else {
-        toast.error('Không thể đăng bài lúc này.');
+        toast.error(t("feed.postFailed"));
       }
     } catch {
-      toast.error('Lỗi kết nối máy chủ.');
+      toast.error(t("feed.connError"));
     }
   };
 
@@ -100,7 +102,7 @@ export default function FeedPage() {
             {/* Feed Header */}
             <div className="flex items-center py-1">
               <h1 className="text-3xl font-black text-[#3D312A] dark:text-[#E6DFD5] tracking-tight">
-                Bảng tin
+                {t("feed.title")}
               </h1>
             </div>
 
@@ -134,7 +136,7 @@ export default function FeedPage() {
                         : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50'
                     }`}
                   >
-                    {tab.label}
+                    {tab.key === 'following' ? t("feed.following") : t("feed.forYou")}
                   </button>
                 ))}
               </div>
@@ -144,14 +146,14 @@ export default function FeedPage() {
             {isLoading ? (
               <div className="flex flex-col items-center justify-center py-16 gap-3">
                 <Loader2 className="w-8 h-8 text-brand animate-spin" />
-                <p className="text-sm text-muted-foreground">Đang tải bảng tin...</p>
+                <p className="text-sm text-muted-foreground">{t("feed.loading")}</p>
               </div>
             ) : posts.length === 0 ? (
               <div className="text-center py-20 bg-card border border-border rounded-xl shadow-sm">
                 <div className="text-5xl mb-4">🍜</div>
-                <p className="text-base font-semibold text-foreground">Chưa có bài viết nào.</p>
+                <p className="text-base font-semibold text-foreground">{t("feed.noPosts")}</p>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Hãy theo dõi thêm foodie hoặc tự chia sẻ trải nghiệm ăn uống của bạn!
+                  {t("feed.noPostsDesc")}
                 </p>
               </div>
             ) : (

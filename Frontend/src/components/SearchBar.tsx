@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { Search, Sparkles } from 'lucide-react';
 import { SearchTypeMenu } from './ui/SearchTypeMenu';
 import { SearchMode } from '../hooks/useSearchState';
+import { useLanguage } from './LanguageProvider';
 
 interface SearchBarProps {
   query: string;
@@ -14,13 +15,6 @@ interface SearchBarProps {
   compact?: boolean;
 }
 
-const PLACEHOLDERS = [
-  "Một tô phở bò nóng hổi...",
-  "Đồ ăn vặt dưới 50k...",
-  "Món Thái cay xé lưỡi...",
-  "Trà sữa trân châu đường đen...",
-];
-
 export function SearchBar({
   query,
   setQuery,
@@ -29,6 +23,7 @@ export function SearchBar({
   onSearch,
   compact = false,
 }: SearchBarProps) {
+  const { language, t } = useLanguage();
   const [placeholderText, setPlaceholderText] = useState("");
   const [phIndex, setPhIndex] = useState(0);
   const [charIndex, setCharIndex] = useState(0);
@@ -38,7 +33,19 @@ export function SearchBar({
   useEffect(() => {
     if (compact) return;
 
-    const currentPhrase = PLACEHOLDERS[phIndex];
+    const placeholders = language === 'en' ? [
+      "A bowl of hot beef pho...",
+      "Snacks under 50k...",
+      "Spicy Thai food...",
+      "Brown sugar boba milk tea...",
+    ] : [
+      "Một tô phở bò nóng hổi...",
+      "Đồ ăn vặt dưới 50k...",
+      "Món Thái cay xé lưỡi...",
+      "Trà sữa trân châu đường đen...",
+    ];
+
+    const currentPhrase = placeholders[phIndex] || "";
     const typingSpeed = isDeleting ? 40 : 80;
 
     const timer = setTimeout(() => {
@@ -46,7 +53,7 @@ export function SearchBar({
         setTimeout(() => setIsDeleting(true), 1500);
       } else if (isDeleting && charIndex === 0) {
         setIsDeleting(false);
-        setPhIndex((prev) => (prev + 1) % PLACEHOLDERS.length);
+        setPhIndex((prev) => (prev + 1) % placeholders.length);
       } else {
         setCharIndex((prev) => prev + (isDeleting ? -1 : 1));
         setPlaceholderText(currentPhrase.substring(0, charIndex + (isDeleting ? -1 : 1)));
@@ -54,7 +61,7 @@ export function SearchBar({
     }, typingSpeed);
 
     return () => clearTimeout(timer);
-  }, [charIndex, isDeleting, phIndex, compact]);
+  }, [charIndex, isDeleting, phIndex, compact, language]);
 
   /* ── Compact mode (result page) ── */
   if (compact) {
@@ -71,7 +78,7 @@ export function SearchBar({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           className="flex-1 bg-transparent border-none outline-none py-3 px-3 text-[14px] text-[#3D312A] dark:text-[#3D312A] placeholder:text-[#9A8A7A] font-normal relative z-10"
-          placeholder="Bạn muốn ăn gì hôm nay?"
+          placeholder={t("searchBar.placeholderCompact")}
         />
         <div className="flex items-center p-1.5">
           <button
@@ -79,7 +86,7 @@ export function SearchBar({
             className="flex items-center gap-2 bg-brand hover:bg-brand-hover text-white px-5 py-2.5 rounded-full font-bold text-[13px] uppercase tracking-wide border-l-2 border-[#3D312A] transition-colors cursor-pointer whitespace-nowrap relative z-10"
           >
             <Search className="w-4 h-4" />
-            <span className="hidden sm:inline">Tìm lại</span>
+            <span className="hidden sm:inline">{t("searchBar.findAgain")}</span>
           </button>
         </div>
       </form>
@@ -103,7 +110,7 @@ export function SearchBar({
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder={placeholderText || "Mô tả món ăn bạn muốn..."}
+          placeholder={placeholderText || t("searchBar.placeholderFull")}
           className="flex-1 bg-transparent border-none outline-none py-4 px-3 text-[15px] text-[#3D312A] dark:text-[#3D312A] placeholder:text-[#9A8A7A] font-normal relative z-10"
         />
 
@@ -113,7 +120,7 @@ export function SearchBar({
           className="flex items-center gap-2 bg-brand hover:bg-brand-hover text-white px-8 py-3 rounded-full font-bold text-[14px] uppercase tracking-wide border-l-2 border-[#3D312A] transition-colors cursor-pointer whitespace-nowrap relative z-10"
         >
           <Search className="w-4 h-4" />
-          Tìm kiếm
+          {t("searchBar.search")}
         </button>
       </form>
     </div>
