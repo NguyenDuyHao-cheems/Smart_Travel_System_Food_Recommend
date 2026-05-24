@@ -99,7 +99,7 @@ export function UserDropdown({
         <div className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center bg-gradient-to-tr from-brand to-brand-hover shadow-sm ring-2 ring-brand-muted dark:ring-brand/20">
           <img src={avatarUrl} alt={username} className="w-full h-full object-cover" />
         </div>
-        <span className="text-sm font-semibold text-[#3D312A] dark:text-[#E6DFD5] hidden sm:block">
+        <span className="text-sm font-semibold text-[#3D312A] dark:text-[#E6DFD5] hidden lg:block">
           {username}
         </span>
         <ChevronDown
