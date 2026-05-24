@@ -509,6 +509,7 @@ class SearchService:
         user_id: str | None = None,
     ) -> NewspaperMenuResponse:
         import random
+        from sqlalchemy import desc
         from app.domains.ranking.models import RestaurantModel, DishModel
         from app.domains.users.models import UserOnboarding
 
@@ -553,7 +554,17 @@ class SearchService:
                 RestaurantModel.lat.between(lat - lat_range, lat + lat_range),
                 RestaurantModel.lng.between(lng - lng_range, lng + lng_range)
             )
-            raw_candidates = local_query.limit(150).all()
+            candidate_ids = [
+                r[0] for r in local_query.with_entities(RestaurantModel.id)
+                .order_by(desc(RestaurantModel.rating_avg), desc(RestaurantModel.total_reviews))
+                .limit(100)
+                .all()
+            ]
+            if candidate_ids:
+                sampled_ids = random.sample(candidate_ids, min(len(candidate_ids), 50))
+                raw_candidates = db.query(RestaurantModel).filter(RestaurantModel.id.in_(sampled_ids)).all()
+            else:
+                raw_candidates = []
 
             # Python precise Haversine filtering
             candidates_10km = []
@@ -584,7 +595,17 @@ class SearchService:
                 message = "Không tìm thấy quán ăn nào trong vòng 20km xung quanh vị trí của bạn."
         else:
             # Fallback to global if coordinates are missing (cannot compute distance)
-            candidates = query.limit(150).all()
+            candidate_ids = [
+                r[0] for r in query.with_entities(RestaurantModel.id)
+                .order_by(desc(RestaurantModel.rating_avg), desc(RestaurantModel.total_reviews))
+                .limit(100)
+                .all()
+            ]
+            if candidate_ids:
+                sampled_ids = random.sample(candidate_ids, min(len(candidate_ids), 50))
+                candidates = db.query(RestaurantModel).filter(RestaurantModel.id.in_(sampled_ids)).all()
+            else:
+                candidates = []
             is_fallback = True
             radius_km = 0.0
             message = "Không có thông tin vị trí. Bản tin hiển thị các quán ăn nổi bật toàn quốc."

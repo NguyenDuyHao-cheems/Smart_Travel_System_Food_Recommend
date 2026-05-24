@@ -504,7 +504,10 @@ async def test_get_newspaper_menu_service_logic():
         lat=10.87,
         lng=106.80
     )
-    mock_restaurant_query.limit.return_value.all.return_value = [mock_r1, mock_r2]
+    mock_restaurant_query.with_entities.return_value.order_by.return_value.limit.return_value.all.return_value = [
+        (mock_r1.id,), (mock_r2.id,)
+    ]
+    mock_restaurant_query.all.return_value = [mock_r1, mock_r2]
     
     # Mock dish query
     mock_dish_query = MagicMock()
@@ -552,7 +555,10 @@ async def test_get_newspaper_menu_fallback_20km():
         lat=10.99,
         lng=106.80
     )
-    mock_restaurant_query.limit.return_value.all.return_value = [mock_r1]
+    mock_restaurant_query.with_entities.return_value.order_by.return_value.limit.return_value.all.return_value = [
+        (mock_r1.id,)
+    ]
+    mock_restaurant_query.all.return_value = [mock_r1]
     
     # Mock dish query
     mock_dish_query = MagicMock()
@@ -596,7 +602,10 @@ async def test_get_newspaper_menu_empty():
         lat=11.20,
         lng=106.80
     )
-    mock_restaurant_query.limit.return_value.all.return_value = [mock_r1]
+    mock_restaurant_query.with_entities.return_value.order_by.return_value.limit.return_value.all.return_value = [
+        (mock_r1.id,)
+    ]
+    mock_restaurant_query.all.return_value = [mock_r1]
     
     # Mock dish query
     mock_dish_query = MagicMock()
