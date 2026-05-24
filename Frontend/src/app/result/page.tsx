@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 import { AppShell } from '../../components/AppShell';
 import { LoadingState } from '../../components/ui/LoadingState';
-import { BudgetSelector, type BudgetOption } from '../../components/BudgetSelector';
+import { BudgetSelector, type BudgetOption, budgetToRange } from '../../components/BudgetSelector';
 import { DistanceFilter } from '../../components/DistanceFilter';
 import { SearchLoadingOverlay } from '../../components/ui/SearchLoadingOverlay';
 import { SearchBar } from '../../components/SearchBar';
@@ -38,6 +38,7 @@ import { useOptimizedLocation } from '../../hooks/useOptimizedLocation';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '../../store';
 import { addItem, removeItem } from '../../store/slices/itinerarySlice';
+import { setRawResults } from '../../store/slices/searchSlice';
 import { SortSelector, type SortOption } from '../../components/SortSelector';
 import { AdvancedFilters, type AdvancedFilterState } from '../../components/AdvancedFilters';
 import { ResultMapView, type MapViewport } from '../../components/ResultMapView';
@@ -603,6 +604,35 @@ function FeatureBar() {
   );
 }
 
+const isPriceInRange = (priceStr: string, min: number, max: number): boolean => {
+  if (!priceStr || priceStr.toLowerCase().includes('liên hệ')) return false;
+
+  // Trường hợp 1: Có chứa ký tự 'k' (ví dụ: "30k - 50k")
+  const matches = priceStr.match(/(\d+)k/gi);
+  if (matches) {
+    const values = matches.map(m => parseInt(m.replace(/k/i, '')) * 1000);
+    const itemMin = Math.min(...values);
+    const itemMax = Math.max(...values);
+    return itemMax >= min && itemMin <= max;
+  }
+
+  // Trường hợp 2: Số đầy đủ (ví dụ: "30.000 - 50.000", "30,000đ")
+  // Xoá bỏ dấu chấm, phẩy phân cách hàng nghìn
+  const normalizedStr = priceStr.replace(/[.,]/g, '');
+  const digitMatches = normalizedStr.match(/\d+/g);
+  
+  if (digitMatches) {
+    const values = digitMatches.map(m => parseInt(m)).filter(v => v >= 1000);
+    if (values.length > 0) {
+      const itemMin = Math.min(...values);
+      const itemMax = Math.max(...values);
+      return itemMax >= min && itemMin <= max;
+    }
+  }
+
+  return false;
+};
+
 function ResultPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -614,6 +644,8 @@ function ResultPageContent() {
     sessionIdFromUrl = sessionStorage.getItem('current_search_session_id') || '';
   }
 
+  const dispatch = useDispatch();
+  const rawResults = useSelector((state: RootState) => state.search.rawResults);
   const coords = useSelector((state: RootState) => state.location.coords);
   const lastSearchCoordsRef = useRef<{ lat: number; lng: number } | null>(null);
 
@@ -646,7 +678,16 @@ function ResultPageContent() {
 
   const [searchQuery, setSearchQuery] = useState('');
   const { query: inputValue, setQuery: setInputValue, searchMode, setSearchMode } = useSearchState("");
-  const [budget, setBudget] = useState<BudgetOption>('auto');
+  const [budget, setBudget] = useState<BudgetOption>(() => {
+    if (typeof window === 'undefined') return 'auto';
+    const params = new URLSearchParams(window.location.search);
+    const b = params.get('budget');
+    if (b && ['30000', '50000', '100000', '200000'].includes(b)) {
+      return b as BudgetOption;
+    }
+    // TODO: Onboarding Integration - If not in URL, fetch from user profile
+    return 'auto';
+  });
   const { getOptimizedLocation } = useOptimizedLocation();
 
   const [fallbackApplied, setFallbackApplied] = useState(false);
@@ -656,6 +697,19 @@ function ResultPageContent() {
   const [filteredCount, setFilteredCount] = useState(0);
   const [allergenFlaggedCount, setAllergyFlaggedCount] = useState(0);
   const [allergyWarning, setAllergyWarning] = useState<string>('');
+
+  // Sync budget to URL when it changes
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      if (budget === 'auto') {
+        url.searchParams.delete('budget');
+      } else {
+        url.searchParams.set('budget', budget);
+      }
+      window.history.replaceState({}, '', url.pathname + url.search);
+    }
+  }, [budget]);
 
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
@@ -701,22 +755,28 @@ function ResultPageContent() {
 
   const [collectionModalItem, setCollectionModalItem] = useState<RecommendResult | null>(null);
 
-  const [results, setResults] = useState<RecommendResult[]>(() => {
-    if (typeof window === 'undefined') return [];
-    const searchParams = new URLSearchParams(window.location.search);
-    let sessionId = searchParams.get('session_id');
-    const q = searchParams.get('q');
-    const mapEntryWithoutSearch = searchParams.get('map') === '1' && !q && !sessionId;
-    if (mapEntryWithoutSearch) return [];
-    if (!sessionId) {
-      sessionId = sessionStorage.getItem('current_search_session_id');
+  useEffect(() => {
+    if (rawResults.length === 0 && typeof window !== 'undefined') {
+      const searchParams = new URLSearchParams(window.location.search);
+      let sessionId = searchParams.get('session_id');
+      const q = searchParams.get('q');
+      const mapEntryWithoutSearch = searchParams.get('map') === '1' && !q && !sessionId;
+      if (!mapEntryWithoutSearch) {
+        if (!sessionId) {
+          sessionId = sessionStorage.getItem('current_search_session_id');
+        }
+        if (sessionId) {
+          const cached = sessionStorage.getItem(`session_data_${sessionId}`);
+          if (cached) {
+            const parsed = JSON.parse(cached);
+            if (parsed.results) {
+              dispatch(setRawResults(parsed.results));
+            }
+          }
+        }
+      }
     }
-    if (sessionId) {
-      const cached = sessionStorage.getItem(`session_data_${sessionId}`);
-      if (cached) return JSON.parse(cached).results || [];
-    }
-    return [];
-  });
+  }, [dispatch]);
 const [sortBy, setSortBy] = useState<SortOption>('recommend');
   const [advFilters, setAdvFilters] = useState<AdvancedFilterState>({
     minPrice: null,
@@ -795,14 +855,21 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
     budget,
   ]);
 
+  const results = useMemo(() => {
+    if (budget === 'auto') return rawResults;
+    const range = budgetToRange(budget);
+    if (!range) return rawResults;
+    return rawResults.filter(item => isPriceInRange(item.price, range.min, range.max));
+  }, [rawResults, budget]);
+
   // Tự động thu thập tất cả tag duy nhất có trong kết quả trả về từ API
   const availableTags = useMemo(() => {
     const tagsSet = new Set<string>();
-    results.forEach((r) => {
+    rawResults.forEach((r) => {
       r.tags?.forEach((t) => tagsSet.add(t));
     });
     return Array.from(tagsSet);
-  }, [results]);
+  }, [rawResults]);
 
   const [isSearching, setIsSearching] = useState(false);
   const [searchLoadingMsg, setSearchLoadingMsg] = useState("Đang phân tích sở thích của bạn...");
@@ -822,7 +889,7 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
       if (isMapEntryWithoutSearch) {
         setSearchQuery('');
         setInputValue('');
-        setResults([]);
+        dispatch(setRawResults([]));
       }
       setIsLoading(false);
       return;
@@ -835,7 +902,7 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
         const data = JSON.parse(cached);
         setSearchQuery(data.query);
         setInputValue(data.query);
-        setResults(data.results || []);
+        dispatch(setRawResults(data.results || []));
         setFallbackApplied(data.fallback_applied || false);
         setFallbackReason(data.fallback_reason || '');
         setAppliedBudget(data.applied_budget ?? null);
@@ -858,7 +925,7 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
           sessionStorage.setItem(`session_data_${sessionIdFromUrl}`, JSON.stringify(data));
           setSearchQuery(data.query);
           setInputValue(data.query);
-          setResults(data.results || []);
+          dispatch(setRawResults(data.results || []));
           setFallbackApplied(data.fallback_applied || false);
           setFallbackReason(data.fallback_reason || '');
           setAppliedBudget(data.applied_budget ?? null);
@@ -960,7 +1027,7 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
           lat: requestLat,
           lng: requestLng,
           user_id: userId || undefined,
-          budget: finalBudget === 'auto' ? undefined : parseInt(finalBudget, 10),
+          // Bỏ qua budget ở Backend để lấy mảng dữ liệu lớn
           search_mode: searchMode,
           map_center_lat: options?.viewport?.centerLat,
           map_center_lng: options?.viewport?.centerLng,
@@ -969,7 +1036,7 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
           map_east: options?.viewport?.east,
           map_west: options?.viewport?.west,
           map_radius_km: options?.viewport?.radiusKm,
-          top_k: options?.viewport ? 48 : 24,
+          top_k: 100, // Lấy 1 mẻ lớn 100 món để lọc trên Frontend
         }),
       });
 
@@ -1004,7 +1071,7 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
         if (options?.stayOnPage) {
           setSearchQuery(finalQuery);
           setInputValue(finalQuery);
-          setResults(data.results || []);
+          dispatch(setRawResults(data.results || []));
           setFallbackApplied(data.fallback_applied || false);
           setFallbackReason(data.fallback_reason || '');
           setAppliedBudget(data.applied_budget ?? null);
@@ -1204,7 +1271,6 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
                 value={budget}
                 onChange={(newBudget) => {
                   setBudget(newBudget);
-                  handleSearch(inputValue, newBudget);
                 }}
               />
               <DistanceFilter
@@ -1442,7 +1508,6 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
                                   value={budget}
                                   onChange={(newBudget) => {
                                     setBudget(newBudget);
-                                    handleSearch(inputValue, newBudget);
                                   }}
                                 />
                                 <DistanceFilter
