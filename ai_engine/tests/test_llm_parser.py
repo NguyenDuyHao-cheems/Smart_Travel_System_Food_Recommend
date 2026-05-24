@@ -119,6 +119,17 @@ class TestCallGemini:
             with pytest.raises(httpx.HTTPStatusError):
                 await _call_gemini("test")
 
+    @pytest.mark.asyncio
+    async def test_disconnected_returns_none_in_call_gemini(self):
+        """Khi request báo disconnected -> _call_gemini trả về None."""
+        from app.nlp.llm_parser import _call_gemini
+
+        mock_request = AsyncMock()
+        mock_request.is_disconnected = AsyncMock(return_value=True)
+
+        result = await _call_gemini("test", request=mock_request)
+        assert result is None
+
 
 # ---------------------------------------------------------------------------
 # Tests for clean_query_with_gemini (fallback logic)
@@ -179,3 +190,19 @@ class TestCleanQueryWithGemini:
                 result = await clean_query_with_gemini("mình muốn ăn phở bò")
 
         assert result == "phở bò"
+
+    @pytest.mark.asyncio
+    async def test_disconnected_aborts_gemini_call(self):
+        """Khi request báo disconnected -> huỷ gọi Gemini API và trả về text gốc."""
+        from app.nlp.llm_parser import clean_query_with_gemini
+
+        mock_request = AsyncMock()
+        mock_request.is_disconnected = AsyncMock(return_value=True)
+
+        with patch("app.nlp.llm_parser.settings") as mock_settings:
+            mock_settings.GEMINI_API_KEY = "test-key"
+            mock_settings.GEMINI_MODEL_NAME = "gemini-2.0-flash"
+            result = await clean_query_with_gemini("phở bò", request=mock_request)
+
+        assert result == "phở bò"
+        mock_request.is_disconnected.assert_called_once()

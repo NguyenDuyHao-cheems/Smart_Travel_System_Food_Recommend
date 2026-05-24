@@ -620,5 +620,28 @@ async def test_get_newspaper_menu_empty():
     assert "20km" in response.message
 
 
+@pytest.mark.asyncio
+async def test_process_recommend_query_disconnected(db_session):
+    """Khi client disconnected -> process_recommend_query ném HTTPException 499."""
+    from fastapi import HTTPException
+
+    mock_ai = AsyncMock()
+    mock_request = AsyncMock()
+    mock_request.is_disconnected = AsyncMock(return_value=True)
+
+    request = SearchRecommendRequest(
+        query="Tôi muốn ăn mì cay",
+        lat=10.8700,
+        lng=106.8031,
+    )
+
+    service = SearchService(mock_ai)
+    with pytest.raises(HTTPException) as exc_info:
+        await service.process_recommend_query(request, db_session, http_request=mock_request)
+
+    assert exc_info.value.status_code == 499
+    assert "Client Closed Request" in exc_info.value.detail
+
+
 
 

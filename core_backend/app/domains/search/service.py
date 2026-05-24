@@ -3,8 +3,9 @@ import uuid as _uuid
 import shortuuid
 
 
-from fastapi import HTTPException
+from fastapi import HTTPException, Request
 from sqlalchemy.orm import Session
+from typing import Optional
 
 from .schemas import (
     AIResponseData,
@@ -42,6 +43,7 @@ class SearchService:
         self,
         request: SearchRecommendRequest,
         db: Session,
+        http_request: Optional[Request] = None,
     ) -> SessionCreateResponse:
         """
         Pipeline recommend:
@@ -51,6 +53,10 @@ class SearchService:
           4. Lưu session vào DB (query, lat, lng, budget, results_json).
           5. Trả về SessionCreateResponse: session_id + results.
         """
+        if http_request and await http_request.is_disconnected():
+            logger.info("Client disconnected before calling AI Engine. Aborting recommendation pipeline.")
+            raise HTTPException(status_code=499, detail="Client Closed Request")
+
         ai_response = await self.ai_client.extract_intent_and_vectorize(request.query)
         if not ai_response:
             raise HTTPException(status_code=503, detail="AI engine is currently unavailable.")

@@ -807,6 +807,16 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
   const [isSearching, setIsSearching] = useState(false);
   const [searchLoadingMsg, setSearchLoadingMsg] = useState("Đang phân tích sở thích của bạn...");
 
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  const handleCancelSearch = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    setIsSearching(false);
+  };
+
   useEffect(() => {
     if (!sessionIdFromUrl) {
       if (isMapEntryWithoutSearch) {
@@ -914,10 +924,17 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
     setIsSearching(true);
     setApiError(null);
 
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     try {
       setSearchLoadingMsg("Đang xác định vị trí của bạn...");
 
       const gps = await getOptimizedLocation();
+      if (controller.signal.aborted) return;
       if (!gps && !options?.viewport) {
         setApiError("Không thể xác định vị trí thực tế của bạn. Vui lòng kiểm tra quyền truy cập GPS để tiếp tục.");
         setIsSearching(false);
@@ -937,6 +954,7 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
+        signal: controller.signal,
         body: JSON.stringify({
           query: finalQuery,
           lat: requestLat,
@@ -1008,9 +1026,13 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
         throw new Error("Không thể kết nối với hệ thống AI.");
       }
     } catch (err: any) {
+      if (err.name === 'AbortError') return;
       const msg = err?.message || "Lỗi kết nối AI. Vui lòng thử lại.";
       setApiError(msg);
     } finally {
+      if (abortControllerRef.current === controller) {
+        abortControllerRef.current = null;
+      }
       setIsSearching(false);
     }
   };
@@ -1170,7 +1192,7 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
 
   return (
     <AppShell>
-      {isSearching && <SearchLoadingOverlay message={searchLoadingMsg} />}
+      {isSearching && <SearchLoadingOverlay message={searchLoadingMsg} onCancel={handleCancelSearch} />}
       {mapFloatingButton}
 
       {!mapViewEnabled && (
