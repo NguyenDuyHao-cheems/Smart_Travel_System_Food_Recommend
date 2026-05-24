@@ -7,7 +7,7 @@ và đảm bảo tính nhất quán với schema CandidateWithFeatures.
 
 import re
 
-import numpy as np
+import math
 from typing import List
 
 from app.services.review_sentiment import normalize_restaurant_sentiment
@@ -110,8 +110,8 @@ class FeatureService:
     def _haversine_meters(self, lat1: float, lng1: float, lat2: float, lng2: float) -> int:
         """Tính khoảng cách Haversine tính bằng mét (int)."""
         R = 6_371_000  # bán kính Trái Đất (mét)
-        p1, p2 = np.radians(lat1), np.radians(lat2)
-        dp = np.radians(lat2 - lat1)
-        dl = np.radians(lng2 - lng1)
-        a = np.sin(dp / 2) ** 2 + np.cos(p1) * np.cos(p2) * np.sin(dl / 2) ** 2
-        return int(R * 2 * np.arctan2(np.sqrt(a), np.sqrt(1 - a)))
+        p1, p2 = math.radians(lat1), math.radians(lat2)
+        dp = math.radians(lat2 - lat1)
+        dl = math.radians(lng2 - lng1)
+        a = math.sin(dp / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
+        return int(R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a)))

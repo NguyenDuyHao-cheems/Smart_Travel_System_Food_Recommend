@@ -32,16 +32,19 @@ import {
   Check
 } from "lucide-react";
 import { AppShell } from "../../components/AppShell";
+import { useLanguage } from "../../components/LanguageProvider";
 
 type TabType = "account" | "personalization" | "appearance" | "notifications" | "privacy" | "location" | "connections";
 
 export default function SettingsPage() {
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<TabType>("account");
   const [mounted, setMounted] = useState(false);
   const [username, setUsername] = useState<string | null>(null);
   const [avatar, setAvatar] = useState<string | null>(null);
   const [cover, setCover] = useState<string | null>(null);
   const [accountEmail, setAccountEmail] = useState<string | null>(null);
+
 
   useEffect(() => {
     setMounted(true);
@@ -96,7 +99,7 @@ export default function SettingsPage() {
     try {
       const token = localStorage.getItem("access_token");
       if (!token || token === "undefined" || token === "null") {
-        alert("Vui lòng đăng nhập lại để thực hiện thay đổi!");
+        alert(t("settings.pleaseLoginAgain"));
         return false;
       }
 
@@ -117,12 +120,12 @@ export default function SettingsPage() {
           localStorage.removeItem("user_avatar");
           localStorage.removeItem("user_id");
           localStorage.removeItem("login_method");
-          alert("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại!");
+          alert(t("settings.sessionExpiredAlert"));
           window.location.href = "/auth";
           return false;
         }
         const errorData = await res.json();
-        throw new Error(errorData.detail || "Cập nhật thất bại!");
+        throw new Error(errorData.detail || t("settings.updateProfileFailed"));
       }
 
       // Update local state and localStorage on success
@@ -146,7 +149,7 @@ export default function SettingsPage() {
       return true;
     } catch (err: any) {
       console.error(err);
-      alert(err.message || "Có lỗi xảy ra khi lưu vào Database!");
+      alert(err.message || t("settings.savingError"));
       return false;
     }
   };
@@ -166,7 +169,7 @@ export default function SettingsPage() {
         },
       });
 
-      if (!res.ok) throw new Error("Xóa tài khoản thất bại!");
+      if (!res.ok) throw new Error(t("settings.deleteAccountFailed"));
 
       // Clear everything and redirect
       localStorage.clear();
@@ -174,22 +177,22 @@ export default function SettingsPage() {
       return true;
     } catch (err: any) {
       console.error(err);
-      toast.error(err.message || "Có lỗi xảy ra khi xóa tài khoản!");
+      toast.error(err.message || t("settings.deleteAccountFailed"));
       return false;
     }
   };
 
   const tabs = [
-    { id: "account", label: "Tài khoản", icon: User },
-    { id: "personalization", label: "Cá nhân hóa", icon: Sparkles },
-    { id: "appearance", label: "Giao diện", icon: Palette },
-    { id: "privacy", label: "Quyền riêng tư", icon: Shield },
+    { id: "account", label: t("settings.tabAccount"), icon: User },
+    { id: "personalization", label: t("settings.tabPersonalization"), icon: Sparkles },
+    { id: "appearance", label: t("settings.tabAppearance"), icon: Palette },
+    { id: "privacy", label: t("settings.tabPrivacy"), icon: Shield },
   ];
 
   return (
     <AppShell>
       <div className="max-w-6xl mx-auto px-4 md:px-8 py-8">
-        <h1 className="text-2xl font-black text-[#3D312A] dark:text-[#E6DFD5] mb-8 tracking-tight uppercase">Cài đặt</h1>
+        <h1 className="text-2xl font-black text-[#3D312A] dark:text-[#E6DFD5] mb-8 tracking-tight uppercase">{t("settings.title")}</h1>
 
         <div className="flex gap-8">
           {/* Left Tabs */}
@@ -243,8 +246,8 @@ export default function SettingsPage() {
                     <div className="w-16 h-16 bg-brand-muted dark:bg-brand/10 rounded-full flex items-center justify-center mx-auto mb-4 text-brand dark:text-[#E8735A]">
                       <Settings className="w-8 h-8" />
                     </div>
-                    <h3 className="text-lg font-bold text-[#3D312A] dark:text-[#E6DFD5] mb-2">Tính năng đang phát triển</h3>
-                    <p className="text-[#7A6A5A] dark:text-[#9A8A7A] text-sm">Tính năng này sẽ sớm ra mắt!</p>
+                    <h3 className="text-lg font-bold text-[#3D312A] dark:text-[#E6DFD5] mb-2">{t("settings.featuresUnderDevelopmentTitle")}</h3>
+                    <p className="text-[#7A6A5A] dark:text-[#9A8A7A] text-sm">{t("settings.featuresUnderDevelopmentDesc")}</p>
                   </div>
                 )}
               </motion.div>
@@ -333,6 +336,7 @@ function AccountSettings({
   onPasswordChange: (newPass: string) => Promise<boolean>,
   onDeleteAccount: () => Promise<boolean>
 }) {
+  const { t } = useLanguage();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const coverFileInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -356,7 +360,7 @@ function AccountSettings({
     if (typeof window !== 'undefined' && userId) {
       navigator.clipboard.writeText(userId);
       setCopied(true);
-      toast.success("Đã sao chép User ID!");
+      toast.success(t("settings.copiedUserId"));
       setTimeout(() => setCopied(false), 2000);
     }
   };
@@ -405,17 +409,17 @@ function AccountSettings({
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
     if (passwords.new !== passwords.confirm) {
-      toast.error("Mật khẩu mới và xác nhận mật khẩu không khớp!");
+      toast.error(t("settings.passwordsDoNotMatch"));
       return;
     }
     if (passwords.new.length < 8) {
-      toast.error("Mật khẩu phải có ít nhất 8 ký tự!");
+      toast.error(t("settings.passwordMinLength"));
       return;
     }
     
     const success = await onPasswordChange(passwords.new);
     if (success) {
-      toast.success("Đổi mật khẩu thành công!");
+      toast.success(t("settings.passwordChangeSuccess"));
       setShowPasswordModal(false);
       setPasswords({ old: "", new: "", confirm: "" });
     }
@@ -430,7 +434,7 @@ function AccountSettings({
     const file = event.target.files?.[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) {
-        toast.error("File quá lớn! Vui lòng chọn ảnh dưới 5MB.");
+        toast.error(t("settings.maxFileSizeError"));
         return;
       }
 
@@ -442,7 +446,7 @@ function AccountSettings({
           setImageSrc(optimizedBase64);
           setTempOriginalImage(optimizedBase64);
         } catch (e) {
-          console.error("Lỗi tối ưu dung lượng ảnh:", e);
+          console.error(t("settings.imageOptimizationError"), e);
           setImageSrc(base64String);
           setTempOriginalImage(base64String);
         }
@@ -461,7 +465,7 @@ function AccountSettings({
     const file = event.target.files?.[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) {
-        toast.error("File quá lớn! Vui lòng chọn ảnh dưới 5MB.");
+        toast.error(t("settings.maxFileSizeError"));
         return;
       }
 
@@ -472,7 +476,7 @@ function AccountSettings({
           const optimizedBase64 = await resizeBase64Image(base64String, 1200);
           setCoverImageSrc(optimizedBase64);
         } catch (e) {
-          console.error("Lỗi tối ưu dung lượng ảnh:", e);
+          console.error(t("settings.imageOptimizationError"), e);
           setCoverImageSrc(base64String);
         }
         setCoverZoom(1);
@@ -778,7 +782,7 @@ function AccountSettings({
       const croppedBase64 = canvas.toDataURL("image/jpeg", 0.85);
       const success = await onCoverChange(croppedBase64);
       if (success !== false) {
-        toast.success("Đã cập nhật ảnh bìa thành công!");
+        toast.success(t("settings.coverUpdateSuccess"));
         setShowCoverCropModal(false);
         setCoverImageSrc(null);
       }
@@ -863,7 +867,7 @@ function AccountSettings({
             try {
               localStorage.setItem(historyKey, JSON.stringify(history));
             } catch (historyErr) {
-              console.warn("Lịch sử đầy, tiến hành dọn dẹp dung lượng...");
+              console.warn(t("settings.quotaExceededCleaning"));
               // Remove old items one by one and retry
               while (history.length > 1) {
                 history.pop();
@@ -875,18 +879,18 @@ function AccountSettings({
             }
           }
         } catch (err) {
-          console.error("Lỗi lưu trữ cục bộ:", err);
+          console.error(t("settings.localStoreError"), err);
           try {
             localStorage.removeItem(historyKey);
             if (tempOriginalImage) {
               localStorage.setItem(originalAvatarKey, tempOriginalImage);
             }
           } catch (_) {
-            console.error("Không thể ghi vào localStorage ngay cả khi đã dọn dẹp!");
+            console.error(t("settings.cannotWriteLocalStore"));
           }
         }
 
-        toast.success("Đã cập nhật ảnh đại diện thành công!");
+        toast.success(t("settings.avatarUpdateSuccess"));
         setShowCropModal(false);
         setImageSrc(null);
       }
@@ -951,7 +955,7 @@ function AccountSettings({
     if (tempName.trim()) {
       const success = await onNameChange(tempName);
       if (success !== false) {
-        toast.success("Đã cập nhật tên thành công!");
+        toast.success(t("settings.nameUpdateSuccess"));
       }
     }
   };
@@ -996,8 +1000,8 @@ function AccountSettings({
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
               className="relative w-full max-w-[480px] bg-white dark:bg-[#2A2420] rounded-[32px] p-8 shadow-2xl border border-gray-100 dark:border-[#3D312A] z-10"
             >
-              <h3 className="text-xl font-black text-gray-900 dark:text-[#E6DFD5] mb-2 uppercase tracking-tight text-left">Chỉnh sửa ảnh bìa</h3>
-              <p className="text-sm text-gray-500 dark:text-[#9A8A7A] mb-6 text-left">Phóng to, xoay hoặc kéo ảnh để căn giữa vùng cắt chữ nhật (tỷ lệ 3:1).</p>
+              <h3 className="text-xl font-black text-gray-900 dark:text-[#E6DFD5] mb-2 uppercase tracking-tight text-left">{t("settings.editCoverTitle")}</h3>
+              <p className="text-sm text-gray-500 dark:text-[#9A8A7A] mb-6 text-left">{t("settings.editCoverDesc")}</p>
 
               {/* Crop Viewport area */}
               <div className="flex justify-center mb-6">
@@ -1014,7 +1018,7 @@ function AccountSettings({
                 >
                   <img
                     src={coverImageSrc}
-                    alt="Cắt ảnh bìa"
+                    alt={t("settings.coverPhoto")}
                     draggable={false}
                     onLoad={handleCoverImageLoad}
                     style={{
@@ -1035,7 +1039,7 @@ function AccountSettings({
                 {/* Zoom */}
                 <div className="space-y-2">
                   <div className="flex justify-between text-xs font-bold text-gray-500 dark:text-[#9A8A7A] uppercase tracking-wider">
-                    <span>Thu phóng</span>
+                    <span>{t("settings.zoom")}</span>
                     <span>{coverZoom.toFixed(1)}x</span>
                   </div>
                   <input 
@@ -1052,7 +1056,7 @@ function AccountSettings({
                 {/* Rotation */}
                 <div className="space-y-2">
                   <div className="flex justify-between text-xs font-bold text-gray-500 dark:text-[#9A8A7A] uppercase tracking-wider">
-                    <span>Xoay ảnh</span>
+                    <span>{t("settings.rotate")}</span>
                     <span>{coverRotation}°</span>
                   </div>
                   <input 
@@ -1077,14 +1081,14 @@ function AccountSettings({
                   }}
                   className="flex-1 py-3.5 text-gray-500 dark:text-[#9A8A7A] text-sm font-bold rounded-2xl hover:bg-gray-50 dark:hover:bg-[#3D312A] transition-colors cursor-pointer"
                 >
-                  Hủy
+                  {t("settings.cancel")}
                 </button>
                 <button 
                   type="button"
                   onClick={handleCoverCropSave}
                   className="flex-1 py-3.5 bg-brand text-white text-sm font-bold rounded-2xl hover:bg-brand-hover transition-all shadow-lg shadow-brand/20 dark:shadow-none cursor-pointer"
                 >
-                  Xác nhận cắt
+                  {t("settings.confirmCrop")}
                 </button>
               </div>
             </motion.div>
@@ -1112,8 +1116,8 @@ function AccountSettings({
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
               className="relative w-full max-w-[480px] bg-white dark:bg-[#2A2420] rounded-[32px] p-8 shadow-2xl border border-gray-100 dark:border-[#3D312A] z-10"
             >
-              <h3 className="text-xl font-black text-gray-900 dark:text-[#E6DFD5] mb-2 uppercase tracking-tight">Chỉnh sửa ảnh đại diện</h3>
-              <p className="text-sm text-gray-500 dark:text-[#9A8A7A] mb-6">Phóng to, xoay hoặc kéo ảnh để căn giữa vùng cắt hình tròn.</p>
+              <h3 className="text-xl font-black text-gray-900 dark:text-[#E6DFD5] mb-2 uppercase tracking-tight">{t("settings.editAvatarTitle")}</h3>
+              <p className="text-sm text-gray-500 dark:text-[#9A8A7A] mb-6">{t("settings.editAvatarDesc")}</p>
 
               {/* Crop Canvas/Viewport area */}
               <div className="flex justify-center mb-6">
@@ -1130,7 +1134,7 @@ function AccountSettings({
                 >
                   <img
                     src={imageSrc}
-                    alt="Cắt ảnh"
+                    alt={t("settings.avatarLabel")}
                     draggable={false}
                     onLoad={handleImageLoad}
                     style={{
@@ -1151,7 +1155,7 @@ function AccountSettings({
                 {/* Zoom */}
                 <div className="space-y-2">
                   <div className="flex justify-between text-xs font-bold text-gray-500 dark:text-[#9A8A7A] uppercase tracking-wider">
-                    <span>Thu phóng</span>
+                    <span>{t("settings.zoom")}</span>
                     <span>{zoom.toFixed(1)}x</span>
                   </div>
                   <input 
@@ -1168,7 +1172,7 @@ function AccountSettings({
                 {/* Rotation */}
                 <div className="space-y-2">
                   <div className="flex justify-between text-xs font-bold text-gray-500 dark:text-[#9A8A7A] uppercase tracking-wider">
-                    <span>Xoay ảnh</span>
+                    <span>{t("settings.rotate")}</span>
                     <span>{rotation}°</span>
                   </div>
                   <input 
@@ -1193,14 +1197,14 @@ function AccountSettings({
                   }}
                   className="flex-1 py-3.5 text-gray-500 dark:text-[#9A8A7A] text-sm font-bold rounded-2xl hover:bg-gray-50 dark:hover:bg-[#3D312A] transition-colors cursor-pointer"
                 >
-                  Hủy
+                  {t("settings.cancel")}
                 </button>
                 <button 
                   type="button"
                   onClick={handleCropSave}
                   className="flex-1 py-3.5 bg-brand text-white text-sm font-bold rounded-2xl hover:bg-brand-hover transition-all shadow-lg shadow-brand/20 dark:shadow-none cursor-pointer"
                 >
-                  Xác nhận cắt
+                  {t("settings.confirmCrop")}
                 </button>
               </div>
             </motion.div>
@@ -1225,12 +1229,12 @@ function AccountSettings({
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
               className="relative w-full max-w-md bg-white dark:bg-[#3D312A] rounded-[32px] p-8 shadow-2xl border border-gray-100 dark:border-[#3D312A]"
             >
-              <h3 className="text-xl font-bold text-gray-900 dark:text-[#E6DFD5] mb-2">Đổi mật khẩu</h3>
-              <p className="text-sm text-gray-500 dark:text-[#9A8A7A] mb-8">Vui lòng nhập mật khẩu hiện tại và mật khẩu mới của bạn.</p>
+              <h3 className="text-xl font-bold text-gray-900 dark:text-[#E6DFD5] mb-2">{t("settings.changePassword")}</h3>
+              <p className="text-sm text-gray-500 dark:text-[#9A8A7A] mb-8">{t("settings.changePasswordDesc")}</p>
 
               <form onSubmit={handlePasswordChange} className="space-y-5">
                 <div>
-                  <label className="text-[13px] font-bold text-gray-400 uppercase tracking-wider block mb-2">Mật khẩu hiện tại</label>
+                  <label className="text-[13px] font-bold text-gray-400 uppercase tracking-wider block mb-2">{t("settings.currentPassword")}</label>
                   <input 
                     type="password" 
                     required
@@ -1240,7 +1244,7 @@ function AccountSettings({
                   />
                 </div>
                 <div>
-                  <label className="text-[13px] font-bold text-gray-400 uppercase tracking-wider block mb-2">Mật khẩu mới</label>
+                  <label className="text-[13px] font-bold text-gray-400 uppercase tracking-wider block mb-2">{t("settings.newPassword")}</label>
                   <input 
                     type="password" 
                     required
@@ -1250,7 +1254,7 @@ function AccountSettings({
                   />
                 </div>
                 <div>
-                  <label className="text-[13px] font-bold text-gray-400 uppercase tracking-wider block mb-2">Xác nhận mật khẩu mới</label>
+                  <label className="text-[13px] font-bold text-gray-400 uppercase tracking-wider block mb-2">{t("settings.confirmNewPassword")}</label>
                   <input 
                     type="password" 
                     required
@@ -1266,13 +1270,13 @@ function AccountSettings({
                     onClick={() => setShowPasswordModal(false)}
                     className="flex-1 py-3.5 text-gray-500 dark:text-[#9A8A7A] text-sm font-bold rounded-2xl hover:bg-gray-50 dark:hover:bg-[#3D312A] transition-colors"
                   >
-                    Hủy
+                    {t("settings.cancel")}
                   </button>
                   <button 
                     type="submit"
                     className="flex-1 py-3.5 bg-brand text-white text-sm font-bold rounded-2xl hover:bg-brand-hover transition-all shadow-lg shadow-brand/20 dark:shadow-none"
                   >
-                    Cập nhật
+                    {t("settings.updateBtn")}
                   </button>
                 </div>
               </form>
@@ -1301,10 +1305,9 @@ function AccountSettings({
               <div className="w-16 h-16 bg-red-50 dark:bg-red-500/10 rounded-2xl flex items-center justify-center text-red-500 mb-6">
                 <Trash2 className="w-8 h-8" />
               </div>
-              <h3 className="text-xl font-bold text-gray-900 dark:text-[#E6DFD5] mb-2">Xác nhận xóa tài khoản?</h3>
+              <h3 className="text-xl font-bold text-gray-900 dark:text-[#E6DFD5] mb-2">{t("settings.confirmDeleteTitle")}</h3>
               <p className="text-sm text-gray-500 dark:text-[#9A8A7A] mb-8">
-                Hành động này <span className="text-red-500 font-bold uppercase">không thể hoàn tác</span>. 
-                Tất cả dữ liệu, lịch sử và tùy chỉnh của bạn sẽ bị xóa vĩnh viễn khỏi hệ thống.
+                {t("settings.confirmDeleteDesc")}
               </p>
 
               <div className="flex gap-3">
@@ -1313,13 +1316,13 @@ function AccountSettings({
                   onClick={() => setShowDeleteModal(false)}
                   className="flex-1 py-3.5 text-gray-500 dark:text-[#9A8A7A] text-sm font-bold rounded-2xl hover:bg-gray-50 dark:hover:bg-[#3D312A] transition-colors"
                 >
-                  Hủy
+                  {t("settings.cancel")}
                 </button>
                 <button 
                   onClick={handleAccountDeletion}
                   className="flex-1 py-3.5 bg-red-500 text-white text-sm font-bold rounded-2xl hover:bg-red-600 transition-all shadow-lg shadow-red-200 dark:shadow-none"
                 >
-                  Xác nhận xóa
+                  {t("settings.confirmDeleteBtn")}
                 </button>
               </div>
             </motion.div>
@@ -1347,7 +1350,7 @@ function AccountSettings({
               {/* Modal Header */}
               <div className="flex items-center justify-between pb-4 border-b border-gray-100 dark:border-[#3D312A] mb-6">
                 <div className="w-9" />
-                <h3 className="text-lg font-black text-[#3D312A] dark:text-[#E6DFD5] uppercase tracking-tight text-center">Chọn ảnh đại diện</h3>
+                <h3 className="text-lg font-black text-[#3D312A] dark:text-[#E6DFD5] uppercase tracking-tight text-center">{t("settings.selectAvatarTitle")}</h3>
                 <button 
                   onClick={() => setShowHistoryModal(false)}
                   className="w-9 h-9 rounded-full bg-[#FDFBF7] dark:bg-[#3D312A] hover:bg-[#F4EAD5] dark:hover:bg-gray-700 flex items-center justify-center text-[#7A6A5A] dark:text-[#C8BFB0] border border-[#E6DFD5] dark:border-[#4D3D32] transition-colors cursor-pointer"
@@ -1366,7 +1369,7 @@ function AccountSettings({
                   className="flex-1 py-3.5 bg-brand hover:bg-brand-hover text-white font-bold text-sm rounded-2xl flex items-center justify-center gap-2 shadow-sm hover:shadow-md transition-all cursor-pointer"
                 >
                   <Plus className="w-5 h-5" />
-                  Tải ảnh lên
+                  {t("settings.uploadPhotoBtn")}
                 </button>
                 {avatar && (
                   <button 
@@ -1409,7 +1412,7 @@ function AccountSettings({
 
               {/* Suggested Photos Section */}
               <div className="mb-6">
-                <h4 className="text-[13px] font-bold text-gray-400 dark:text-[#9A8A7A] uppercase tracking-wider block mb-3 pl-1">Ảnh đã tải lên</h4>
+                <h4 className="text-[13px] font-bold text-gray-400 dark:text-[#9A8A7A] uppercase tracking-wider block mb-3 pl-1">{t("settings.uploadedPhotos")}</h4>
                 {avatarHistory.length > 0 ? (
                   <div className="flex gap-3 overflow-x-auto pb-3 scrollbar-none">
                     {avatarHistory.map((item: any, idx: number) => (
@@ -1428,7 +1431,7 @@ function AccountSettings({
                       >
                         <img 
                           src={item.cropped} 
-                          alt={`Lịch sử ${idx}`} 
+                          alt={`${t("sidebar.history")} ${idx}`} 
                           className="w-full h-full object-cover"
                         />
                       </div>
@@ -1436,7 +1439,7 @@ function AccountSettings({
                   </div>
                 ) : (
                   <div className="text-center py-10 bg-[#FDFBF7] dark:bg-[#3D312A]/30 rounded-2xl border border-dashed border-[#E6DFD5] dark:border-[#4D3D32]">
-                    <p className="text-sm text-[#7A6A5A] dark:text-[#9A8A7A]">Bạn chưa đăng bức ảnh đại diện nào trước đây.</p>
+                    <p className="text-sm text-[#7A6A5A] dark:text-[#9A8A7A]">{t("settings.noUploadedPhotos")}</p>
                   </div>
                 )}
               </div>
@@ -1446,7 +1449,7 @@ function AccountSettings({
                 onClick={() => setShowHistoryModal(false)}
                 className="w-full py-3.5 bg-[#FDFBF7] dark:bg-[#3D312A] hover:bg-[#F4EAD5] dark:hover:bg-gray-700 text-[#7A6A5A] dark:text-[#C8BFB0] text-sm font-bold rounded-2xl border border-[#E6DFD5] dark:border-[#4D3D32] transition-colors cursor-pointer"
               >
-                Xem thêm
+                {t("settings.viewMore")}
               </button>
             </motion.div>
           </div>
@@ -1457,20 +1460,20 @@ function AccountSettings({
       <div className="bg-white dark:bg-[#3D312A] rounded-[32px] p-8 shadow-sm border border-gray-100 dark:border-[#3D312A] relative overflow-hidden">
         <div className="flex justify-between items-start mb-8">
           <div>
-            <h2 className="text-lg font-bold text-gray-900 dark:text-[#E6DFD5] mb-1">Tài khoản</h2>
-            <p className="text-sm text-gray-500 dark:text-[#9A8A7A]">Quản lý thông tin tài khoản và bảo mật.</p>
+            <h2 className="text-lg font-bold text-gray-900 dark:text-[#E6DFD5] mb-1">{t("settings.accountTitle")}</h2>
+            <p className="text-sm text-gray-500 dark:text-[#9A8A7A]">{t("settings.accountSubtitle")}</p>
           </div>
         </div>
 
         {/* Cover Photo Section */}
         <div className="mb-8">
-          <label className="text-[13px] font-bold text-gray-400 uppercase tracking-wider block mb-3 pl-1">Ảnh bìa</label>
+          <label className="text-[13px] font-bold text-gray-400 uppercase tracking-wider block mb-3 pl-1">{t("settings.coverPhoto")}</label>
           <div className="relative group rounded-3xl overflow-hidden border border-gray-100 dark:border-[#4D3D32] bg-gray-50 dark:bg-[#2A2420] h-36 flex items-center justify-center">
             {cover ? (
               <img src={cover} alt="Cover" className="w-full h-full object-cover" />
             ) : (
               <div className="absolute inset-0 bg-gradient-to-r from-brand via-pink-500 to-red-500 opacity-90 flex items-center justify-center">
-                <div className="text-white text-xs font-bold uppercase tracking-wider opacity-60">Chưa có ảnh bìa</div>
+                <div className="text-white text-xs font-bold uppercase tracking-wider opacity-60">{t("settings.noCoverPhoto")}</div>
               </div>
             )}
             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
@@ -1480,12 +1483,12 @@ function AccountSettings({
                 className="px-4 py-2 bg-white/20 hover:bg-white/35 backdrop-blur-md text-white font-bold text-xs rounded-xl flex items-center gap-2 border border-white/20 transition-all cursor-pointer"
               >
                 <Camera className="w-4 h-4" />
-                Thay đổi ảnh bìa
+                {t("settings.changeCoverBtn")}
               </button>
             </div>
           </div>
           <div className="mt-2 pl-1">
-            <p className="text-[11px] text-gray-400">JPG, PNG tối đa 5MB. Tỷ lệ chuẩn 3:1.</p>
+            <p className="text-[11px] text-gray-400">{t("settings.coverRules")}</p>
           </div>
         </div>
 
@@ -1493,7 +1496,7 @@ function AccountSettings({
           {/* Avatar Column */}
           <div className="flex flex-col items-center md:items-start w-full">
             <div className="flex flex-col items-center w-fit">
-              <label className="text-[13px] font-bold text-gray-400 uppercase tracking-wider mb-4">Ảnh đại diện</label>
+              <label className="text-[13px] font-bold text-gray-400 uppercase tracking-wider mb-4">{t("settings.avatarLabel")}</label>
               <div className="relative group">
                 <div 
                   onClick={() => setShowHistoryModal(true)}
@@ -1518,13 +1521,13 @@ function AccountSettings({
                 </button>
               </div>
               <div className="mt-4 text-center">
-                <p className="text-[11px] text-gray-400 mb-2">JPG, PNG tối đa 5MB</p>
+                <p className="text-[11px] text-gray-400 mb-2">{t("settings.avatarRules")}</p>
                 <div className="flex gap-2 justify-center flex-wrap">
                   <button 
                     onClick={() => setShowHistoryModal(true)}
                     className="px-4 py-2 bg-gray-50 dark:bg-[#3D312A] text-gray-700 dark:text-[#C8BFB0] text-xs font-bold rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer border border-gray-100 dark:border-[#4D3D32]"
                   >
-                    Thay đổi ảnh
+                    {t("settings.changeAvatarBtn")}
                   </button>
                   {avatar && (
                     <button 
@@ -1559,7 +1562,7 @@ function AccountSettings({
                       }}
                       className="px-4 py-2 bg-brand/10 text-brand dark:text-[#E8735A] text-xs font-bold rounded-xl hover:bg-brand/20 transition-colors cursor-pointer border border-brand/25"
                     >
-                      Chỉnh sửa
+                      {t("settings.editBtn")}
                     </button>
                   )}
                 </div>
@@ -1570,20 +1573,20 @@ function AccountSettings({
           {/* Form Column */}
           <div className="space-y-5">
             <div>
-              <label className="text-[13px] font-bold text-gray-400 uppercase tracking-wider block mb-2">Họ và tên</label>
+              <label className="text-[13px] font-bold text-gray-400 uppercase tracking-wider block mb-2">{t("settings.fullNameLabel")}</label>
               <div className="flex gap-2">
                 <input 
                   type="text" 
                   value={tempName}
                   onChange={(e) => setTempName(e.target.value)}
-                  placeholder="Nhập họ và tên..."
+                  placeholder={t("settings.fullNamePlaceholder")}
                   className="flex-1 bg-gray-50 dark:bg-[#3D312A] border border-gray-100 dark:border-[#4D3D32] rounded-2xl px-5 py-3.5 text-sm font-medium text-gray-900 dark:text-[#E6DFD5] focus:ring-2 focus:ring-brand/20 focus:border-brand outline-none transition-all"
                 />
                 <button 
                   onClick={handleSaveName}
                   className="px-6 py-2 bg-brand text-white text-xs font-bold rounded-2xl hover:bg-brand-hover transition-all shadow-md shadow-brand/20 dark:shadow-none active:scale-95 cursor-pointer flex-shrink-0"
                 >
-                  Lưu
+                  {t("settings.saveBtn")}
                 </button>
               </div>
             </div>
@@ -1618,7 +1621,7 @@ function AccountSettings({
                   className="px-5 py-2 bg-brand/10 hover:bg-brand/20 dark:bg-brand/20 dark:hover:bg-brand/35 text-brand dark:text-[#E8735A] text-xs font-bold rounded-2xl transition-all shadow-sm active:scale-95 cursor-pointer flex-shrink-0 flex items-center justify-center gap-1.5 border border-brand/20"
                 >
                   {copied ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
-                  {copied ? "Đã chép" : "Sao chép"}
+                  {copied ? t("settings.copied") : t("settings.copy")}
                 </button>
               </div>
             </div>
@@ -1634,8 +1637,8 @@ function AccountSettings({
                 <img src="https://www.google.com/favicon.ico" className="w-6 h-6 grayscale opacity-70" alt="Google" />
               </div>
               <div>
-                <h4 className="text-sm font-bold text-gray-800 dark:text-[#E6DFD5]">Tài khoản liên kết Google</h4>
-                <p className="text-[12px] text-gray-500 dark:text-[#9A8A7A]">Bạn đang sử dụng tài khoản liên kết Google. Mọi cài đặt bảo mật và quản lý tài khoản sẽ được thực hiện tại trang cá nhân Google của bạn.</p>
+                <h4 className="text-sm font-bold text-gray-800 dark:text-[#E6DFD5]">{t("settings.googleLinkedAccount")}</h4>
+                <p className="text-[12px] text-gray-500 dark:text-[#9A8A7A]">{t("settings.googleLinkedAccountDesc")}</p>
               </div>
             </div>
           ) : (
@@ -1648,8 +1651,8 @@ function AccountSettings({
                   <Lock className="w-5 h-5" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-bold text-gray-800 dark:text-[#E6DFD5]">Đổi mật khẩu</h4>
-                  <p className="text-[12px] text-gray-500 dark:text-[#9A8A7A]">Cập nhật mật khẩu định kỳ để bảo vệ tài khoản.</p>
+                  <h4 className="text-sm font-bold text-gray-800 dark:text-[#E6DFD5]">{t("settings.changePassword")}</h4>
+                  <p className="text-[12px] text-gray-500 dark:text-[#9A8A7A]">{t("settings.changePasswordSubtitle")}</p>
                 </div>
               </div>
               <div className="w-10 h-10 rounded-xl flex items-center justify-center text-gray-400 group-hover:text-brand group-hover:bg-white dark:group-hover:bg-[#3D312A] transition-all">
@@ -1666,15 +1669,15 @@ function AccountSettings({
                   <Trash2 className="w-5 h-5" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-bold text-gray-800 dark:text-[#E6DFD5]">Xóa tài khoản</h4>
-                  <p className="text-[11px] text-gray-500 dark:text-[#9A8A7A]">Hành động này không thể hoàn tác. Tất cả dữ liệu của bạn trên hệ thống sẽ bị xóa vĩnh viễn.</p>
+                  <h4 className="text-sm font-bold text-gray-800 dark:text-[#E6DFD5]">{t("settings.confirmDeleteBtn")}</h4>
+                  <p className="text-[11px] text-gray-500 dark:text-[#9A8A7A]">{t("settings.deleteAccountSubtitle")}</p>
                 </div>
               </div>
               <button 
                 onClick={() => setShowDeleteModal(true)}
                 className="px-4 py-2 bg-white dark:bg-[#3D312A] border border-red-100 dark:border-red-500/20 text-red-600 dark:text-red-400 text-xs font-bold rounded-xl hover:bg-red-600 hover:text-white transition-all cursor-pointer shadow-sm active:scale-95"
               >
-                Xóa tài khoản
+                {t("settings.confirmDeleteBtn")}
               </button>
             </div>
           ) : (
@@ -1683,8 +1686,8 @@ function AccountSettings({
                 <Trash2 className="w-5 h-5" />
               </div>
               <div>
-                <h4 className="text-sm font-bold text-gray-800 dark:text-[#E6DFD5]">Xóa tài khoản</h4>
-                <p className="text-[11px] text-gray-500 dark:text-[#9A8A7A]">Bạn đang sử dụng tài khoản liên kết Google. Mọi cài đặt bảo mật và quản lý tài khoản sẽ được thực hiện tại trang cá nhân Google của bạn.</p>
+                <h4 className="text-sm font-bold text-gray-800 dark:text-[#E6DFD5]">{t("settings.confirmDeleteBtn")}</h4>
+                <p className="text-[11px] text-gray-500 dark:text-[#9A8A7A]">{t("settings.googleLinkedAccountDesc")}</p>
               </div>
             </div>
           )}
@@ -1696,55 +1699,95 @@ function AccountSettings({
 
 function AppearanceSettings() {
   const { theme, setTheme } = useTheme();
+  const { t, language, setLanguage } = useLanguage();
+  const [langDropdownOpen, setLangDropdownOpen] = useState(false);
 
   const themes = [
-    { id: "light", label: "Sáng", icon: Sun, desc: "Trải nghiệm sáng" },
-    { id: "dark", label: "Tối", icon: Moon, desc: "Dễ nhìn ban đêm" },
-    { id: "system", label: "Hệ thống", icon: Monitor, desc: "Theo cài đặt máy" },
+    { id: "light", label: t("settings.themeLight"), icon: Sun, desc: t("settings.themeLightDesc") },
+    { id: "dark", label: t("settings.themeDark"), icon: Moon, desc: t("settings.themeDarkDesc") },
+    { id: "system", label: t("settings.themeSystem"), icon: Monitor, desc: t("settings.themeSystemDesc") },
   ];
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       {/* Theme Selection */}
       <div className="bg-white dark:bg-[#3D312A] rounded-[32px] p-8 shadow-sm border border-gray-100 dark:border-[#3D312A]">
-        <h2 className="text-lg font-bold text-gray-900 dark:text-[#E6DFD5] mb-1">Giao diện</h2>
-        <p className="text-sm text-gray-500 dark:text-[#9A8A7A] mb-8">Tùy chỉnh giao diện ứng dụng theo sở thích.</p>
+        <h2 className="text-lg font-bold text-gray-900 dark:text-[#E6DFD5] mb-1">{t("settings.theme")}</h2>
+        <p className="text-sm text-gray-500 dark:text-[#9A8A7A] mb-8">{t("settings.themeDesc")}</p>
         
         <div className="flex gap-4">
-          {themes.map((t) => (
+          {themes.map((tItem) => (
             <button
-              key={t.id}
-              onClick={() => setTheme(t.id)}
+              key={tItem.id}
+              onClick={() => setTheme(tItem.id)}
               className={`flex-1 p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-3 cursor-pointer ${
-                theme === t.id
+                theme === tItem.id
                   ? "border-brand bg-brand-muted/30 dark:bg-brand/10"
                   : "border-gray-50 dark:border-[#3D312A] hover:border-gray-200 dark:hover:border-gray-700"
               }`}
             >
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${theme === t.id ? "text-brand dark:text-[#E8735A] bg-white shadow-sm" : "text-gray-400 bg-gray-50 dark:bg-[#3D312A]"}`}>
-                <t.icon className="w-5 h-5" />
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${theme === tItem.id ? "text-brand dark:text-[#E8735A] bg-white shadow-sm" : "text-gray-400 bg-gray-50 dark:bg-[#3D312A]"}`}>
+                <tItem.icon className="w-5 h-5" />
               </div>
               <div className="text-center">
-                <p className={`text-xs font-bold ${theme === t.id ? "text-gray-900 dark:text-[#E6DFD5]" : "text-gray-500"}`}>{t.label}</p>
-                <p className="text-[10px] text-gray-400 mt-0.5">{t.desc}</p>
+                <p className={`text-xs font-bold ${theme === tItem.id ? "text-gray-900 dark:text-[#E6DFD5]" : "text-gray-500"}`}>{tItem.label}</p>
+                <p className="text-[10px] text-gray-400 mt-0.5">{tItem.desc}</p>
               </div>
             </button>
           ))}
         </div>
 
         <div className="mt-8 pt-8 border-t border-gray-50 dark:border-[#3D312A]">
-          <label className="text-[13px] font-bold text-gray-400 uppercase tracking-wider block mb-3">Ngôn ngữ</label>
+          <label className="text-[13px] font-bold text-gray-400 uppercase tracking-wider block mb-3">{t("settings.language")}</label>
           <div className="relative">
-            <div 
-              onClick={() => toast.info('Tính năng này sẽ sớm ra mắt')}
+            <button 
+              onClick={() => setLangDropdownOpen(!langDropdownOpen)}
               className="w-full bg-gray-50 dark:bg-[#3D312A] border border-gray-100 dark:border-[#4D3D32] rounded-2xl px-5 py-3.5 flex items-center justify-between cursor-pointer group"
             >
               <div className="flex items-center gap-3">
-                <Globe className="w-5 h-5 text-gray-400" />
-                <span className="text-sm font-bold text-gray-800 dark:text-[#E6DFD5]">Tiếng Việt</span>
+                <Globe className="w-5 h-5 text-brand dark:text-[#E8735A]" />
+                <span className="text-sm font-bold text-gray-800 dark:text-[#E6DFD5]">
+                  {language === "vi" ? "Tiếng Việt" : "English"}
+                </span>
               </div>
-              <ChevronRight className="w-4 h-4 text-gray-400 group-hover:translate-x-1 transition-transform" />
-            </div>
+              <ChevronRight className={`w-4 h-4 text-gray-400 transition-transform ${langDropdownOpen ? "rotate-90" : "group-hover:translate-x-1"}`} />
+            </button>
+
+            <AnimatePresence>
+              {langDropdownOpen && (
+                <>
+                  <div className="fixed inset-0 z-10" onClick={() => setLangDropdownOpen(false)} />
+                  <motion.div 
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 10 }}
+                    className="absolute left-0 right-0 mt-2 bg-white dark:bg-[#3D312A] border border-gray-100 dark:border-[#4D3D32] rounded-2xl p-2 shadow-lg z-20 flex flex-col gap-1 overflow-hidden"
+                  >
+                    {[
+                      { code: "vi", name: "Tiếng Việt" },
+                      { code: "en", name: "English" },
+                    ].map((langItem) => (
+                      <button
+                        key={langItem.code}
+                        onClick={() => {
+                          setLanguage(langItem.code as any);
+                          setLangDropdownOpen(false);
+                          toast.success(langItem.code === "vi" ? "Đã chuyển đổi sang Tiếng Việt!" : "Language switched to English!");
+                        }}
+                        className={`w-full px-4 py-3 rounded-xl text-left text-sm font-bold transition-colors cursor-pointer flex items-center justify-between ${
+                          language === langItem.code 
+                            ? "bg-brand/10 text-brand dark:text-[#E8735A]" 
+                            : "text-gray-700 dark:text-[#E6DFD5] hover:bg-gray-50 dark:hover:bg-[#4D3D32]"
+                        }`}
+                      >
+                        <span>{langItem.name}</span>
+                        {language === langItem.code && <Check className="w-4 h-4 text-brand dark:text-[#E8735A]" />}
+                      </button>
+                    ))}
+                  </motion.div>
+                </>
+              )}
+            </AnimatePresence>
           </div>
         </div>
       </div>
@@ -1752,16 +1795,19 @@ function AppearanceSettings() {
   );
 }
 
+
 function PrivacySettings() {
+  const { t } = useLanguage();
+
   return (
     <div className="bg-white dark:bg-[#3D312A] rounded-[32px] p-8 shadow-sm border border-gray-100 dark:border-[#3D312A]">
-      <h2 className="text-lg font-bold text-gray-900 dark:text-[#E6DFD5] mb-1">Quyền riêng tư</h2>
-      <p className="text-sm text-gray-500 dark:text-[#9A8A7A] mb-8">Quản lý quyền và dữ liệu cá nhân của bạn.</p>
+      <h2 className="text-lg font-bold text-gray-900 dark:text-[#E6DFD5] mb-1">{t("settings.privacyTitle")}</h2>
+      <p className="text-sm text-gray-500 dark:text-[#9A8A7A] mb-8">{t("settings.privacySubtitle")}</p>
 
       <div className="space-y-4">
         {[
-          { icon: MapPin, title: "Cho phép truy cập vị trí", desc: "Wanderbite cần quyền này để gợi ý món ăn gần bạn.", active: true },
-          { icon: ShieldCheck, title: "Cho phép dùng dữ liệu cá nhân hóa AI", desc: "Giúp AI hiểu bạn hơn để đưa ra gợi ý chính xác và phù hợp.", active: false }
+          { icon: MapPin, title: t("settings.allowLocation"), desc: t("settings.allowLocationDesc"), active: true },
+          { icon: ShieldCheck, title: t("settings.allowAIPersonalization"), desc: t("settings.allowAIPersonalizationDesc"), active: false }
         ].map((item, idx) => (
           <div key={idx} className="flex items-center justify-between p-5 rounded-3xl bg-gray-50/50 dark:bg-[#3D312A]/30 border border-gray-50 dark:border-[#3D312A]">
             <div className="flex items-center gap-4">
@@ -1774,7 +1820,7 @@ function PrivacySettings() {
               </div>
             </div>
             <div 
-              onClick={() => toast.info('Tính năng này sẽ sớm ra mắt')}
+              onClick={() => toast.info(t("settings.featureComingSoon"))}
               className={`w-12 h-6 rounded-full relative cursor-pointer transition-colors ${item.active ? 'bg-brand' : 'bg-gray-200 dark:bg-[#4D3D32]'}`}
             >
               <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${item.active ? 'left-7' : 'left-1'}`} />
@@ -1797,36 +1843,37 @@ interface PersonalizationData {
 }
 
 const DIETARY_OPTS = [
-  { id: 'vegan', label: 'Thuần chay' },
-  { id: 'vegetarian', label: 'Ăn chay' },
-  { id: 'halal', label: 'Halal' }
+  { id: 'vegan', label: 'Thuần chay', labelKey: 'settings.dietaryVegan' },
+  { id: 'vegetarian', label: 'Ăn chay', labelKey: 'settings.dietaryVegetarian' },
+  { id: 'halal', label: 'Halal', labelKey: 'settings.dietaryHalal' }
 ];
 
 const ALLERGY_OPTS = [
-  { id: 'milk', label: 'Sữa' },
-  { id: 'egg', label: 'Trứng' },
-  { id: 'gluten', label: 'Gluten' },
-  { id: 'seafood', label: 'Hải sản' },
-  { id: 'fish', label: 'Cá' },
-  { id: 'peanut', label: 'Đậu phộng' },
-  { id: 'soy', label: 'Đậu nành' }
+  { id: 'milk', label: 'Sữa', labelKey: 'settings.allergyMilk' },
+  { id: 'egg', label: 'Trứng', labelKey: 'settings.allergyEgg' },
+  { id: 'gluten', label: 'Gluten', labelKey: 'settings.allergyGluten' },
+  { id: 'seafood', label: 'Hải sản', labelKey: 'settings.allergySeafood' },
+  { id: 'fish', label: 'Cá', labelKey: 'settings.allergyFish' },
+  { id: 'peanut', label: 'Đậu phộng', labelKey: 'settings.allergyPeanut' },
+  { id: 'soy', label: 'Đậu nành', labelKey: 'settings.allergySoy' }
 ];
 
 const SPICY_OPTIONS = [
-  { id: 'none', label: '0% Cay' },
-  { id: 'mild', label: '25% Cay' },
-  { id: 'medium', label: '50% Cay' },
-  { id: 'hot', label: '75% Cay' },
-  { id: 'extra_hot', label: 'MAX LEVEL' },
+  { id: 'none', label: '0% Cay', labelKey: 'settings.spicyNone' },
+  { id: 'mild', label: '25% Cay', labelKey: 'settings.spicyMild' },
+  { id: 'medium', label: '50% Cay', labelKey: 'settings.spicyMedium' },
+  { id: 'hot', label: '75% Cay', labelKey: 'settings.spicyHot' },
+  { id: 'extra_hot', label: 'MAX LEVEL', labelKey: 'settings.spicyExtraHot' },
 ];
 
 const BUDGET_OPTIONS = [
-  { id: 'low', label: 'Bình dân', desc: 'Dưới 50k - Học sinh/Sinh viên' },
-  { id: 'medium', label: 'Tầm trung', desc: '50k - 200k - Ăn ngon, view ổn' },
-  { id: 'high', label: 'Cao cấp', desc: 'Trên 200k - Sang trọng, Fine dining' },
+  { id: 'low', label: 'Bình dân', desc: 'Dưới 50k - Học sinh/Sinh viên', labelKey: 'settings.budgetLow', descKey: 'settings.budgetLowDesc' },
+  { id: 'medium', label: 'Tầm trung', desc: '50k - 200k - Ăn ngon, view ổn', labelKey: 'settings.budgetMedium', descKey: 'settings.budgetMediumDesc' },
+  { id: 'high', label: 'Cao cấp', desc: 'Trên 200k - Sang trọng, Fine dining', labelKey: 'settings.budgetHigh', descKey: 'settings.budgetHighDesc' },
 ];
 
 function PersonalizationSettings() {
+  const { t } = useLanguage();
   const [formData, setFormData] = useState<PersonalizationData>({
     favorite_dishes: [],
     spicy_level: '',
@@ -1922,7 +1969,7 @@ function PersonalizationSettings() {
   const handleAddDish = () => {
     if (newDish.trim()) {
       if (formData.favorite_dishes.includes(newDish.trim())) {
-        toast.info("Món ăn này đã có trong danh sách!");
+        toast.info(t("settings.dishAlreadyAdded"));
         return;
       }
       setFormData(prev => ({
@@ -1942,23 +1989,23 @@ function PersonalizationSettings() {
 
   const handleSave = async () => {
     if (formData.favorite_dishes.length < 3) {
-      toast.error("Vui lòng chọn hoặc tự nhập ít nhất 3 món ăn yêu thích!");
+      toast.error(t("settings.atLeastThreeDishes"));
       return;
     }
     if (!formData.spicy_level) {
-      toast.error("Vui lòng chọn mức độ cay!");
+      toast.error(t("settings.selectSpicy"));
       return;
     }
     if (!formData.budget) {
-      toast.error("Vui lòng chọn ngân sách!");
+      toast.error(t("settings.selectBudget"));
       return;
     }
     if (!formData.location) {
-      toast.error("Vui lòng điền khu vực sinh sống!");
+      toast.error(t("settings.enterLocation"));
       return;
     }
     if (!formData.age || formData.age < 13 || formData.age > 120) {
-      toast.error("Độ tuổi chưa hợp lệ (13 - 120)!");
+      toast.error(t("settings.invalidAge"));
       return;
     }
 
@@ -1989,13 +2036,13 @@ function PersonalizationSettings() {
         body: JSON.stringify(payload)
       });
       if (res.ok) {
-        toast.success("Cập nhật sở thích khẩu vị AI thành công!");
+        toast.success(t("settings.updatePreferencesSuccess"));
       } else {
-        toast.error("Cập nhật thất bại!");
+        toast.error(t("settings.updatePreferencesFailed"));
       }
     } catch (err) {
       console.error(err);
-      toast.error("Có lỗi xảy ra khi lưu!");
+      toast.error(t("settings.savingError"));
     } finally {
       setSaving(false);
     }
@@ -2006,20 +2053,20 @@ function PersonalizationSettings() {
   return (
     <div className="bg-white dark:bg-[#3D312A] rounded-[32px] p-8 shadow-sm border border-gray-100 dark:border-[#3D312A] space-y-6">
       <div>
-        <h2 className="text-lg font-bold text-gray-900 dark:text-[#E6DFD5] mb-1">Cá nhân hóa AI</h2>
-        <p className="text-sm text-gray-500 dark:text-[#9A8A7A]">Thiết lập sở thích ăn uống để AI gợi ý chuẩn vị nhất cho bạn.</p>
+        <h2 className="text-lg font-bold text-gray-900 dark:text-[#E6DFD5] mb-1">{t("settings.aiPersonalizationTitle")}</h2>
+        <p className="text-sm text-gray-500 dark:text-[#9A8A7A]">{t("settings.aiPersonalizationDesc")}</p>
       </div>
 
       <div className="space-y-6">
         {/* Favorite Dishes */}
         <div>
-          <label className="text-[13px] font-bold text-gray-400 uppercase tracking-wider block mb-2">Món ăn yêu thích (Chọn hoặc tự nhập ít nhất 3 món)</label>
+          <label className="text-[13px] font-bold text-gray-400 uppercase tracking-wider block mb-2">{t("settings.favoriteDishesLabel")}</label>
           <div className="flex gap-2 mb-3">
             <input 
               type="text" 
               value={newDish}
               onChange={(e) => setNewDish(e.target.value)}
-              placeholder="Nhập tên món ăn ví dụ: Bún chả..."
+              placeholder={t("settings.placeholderDish")}
               className="flex-1 bg-gray-50 dark:bg-[#2A2420]/50 border border-gray-100 dark:border-[#4D3D32] rounded-2xl px-5 py-3 text-sm font-medium text-gray-900 dark:text-[#E6DFD5] focus:ring-4 focus:ring-brand/10 dark:focus:ring-[#E8735A]/10 focus:border-brand dark:focus:border-[#E8735A] outline-none transition-all"
               onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddDish())}
             />
@@ -2027,7 +2074,7 @@ function PersonalizationSettings() {
               onClick={handleAddDish}
               className="px-6 py-2 bg-brand hover:bg-brand-hover text-white text-sm font-bold rounded-2xl transition-all shadow-md active:scale-95 cursor-pointer shrink-0"
             >
-              Thêm
+              {t("settings.addDishBtn")}
             </button>
           </div>
 
@@ -2048,7 +2095,7 @@ function PersonalizationSettings() {
 
           {/* Suggested tags */}
           <div className="space-y-1.5">
-            <p className="text-[11px] text-gray-400">Gợi ý phổ biến:</p>
+            <p className="text-[11px] text-gray-400">{t("settings.popularSuggestions")}</p>
             <div className="flex flex-wrap gap-1.5">
               {SUGGESTED_DISHES.map((dish, idx) => {
                 const isSelected = formData.favorite_dishes.includes(dish);
@@ -2075,7 +2122,7 @@ function PersonalizationSettings() {
 
         {/* Spicy Preference */}
         <div>
-          <label className="text-[13px] font-bold text-gray-400 uppercase tracking-wider block mb-2">Độ cay ưu tiên</label>
+          <label className="text-[13px] font-bold text-gray-400 uppercase tracking-wider block mb-2">{t("settings.spicyLabel")}</label>
           <div className="flex flex-wrap gap-2">
             {SPICY_OPTIONS.map((opt) => (
               <button
@@ -2083,11 +2130,11 @@ function PersonalizationSettings() {
                 onClick={() => setFormData(prev => ({ ...prev, spicy_level: opt.id }))}
                 className={`px-4 py-2.5 rounded-2xl text-xs font-bold border transition-all cursor-pointer ${
                   formData.spicy_level === opt.id
-                    ? "bg-red-600 text-white border-red-650 shadow-md shadow-red-500/20 dark:bg-red-500 dark:border-red-500 dark:shadow-[0_0_15px_rgba(239,68,68,0.55)]"
+                    ? "bg-red-600 text-white border-red-650 shadow-md shadow-red-500/20 dark:bg-red-50 dark:border-red-500 dark:shadow-[0_0_15px_rgba(239,68,68,0.55)]"
                     : "bg-[#FDFBF7] dark:bg-[#2A2420]/80 text-[#7A6A5A] dark:text-[#E6DFD5] border-[#E6DFD5] dark:border-[#4D3D32] hover:border-red-500 hover:text-red-500 dark:hover:border-red-500 dark:hover:text-red-400"
                 }`}
               >
-                {opt.label}
+                {t(opt.labelKey)}
               </button>
             ))}
           </div>
@@ -2095,7 +2142,7 @@ function PersonalizationSettings() {
 
         {/* Budget Preference */}
         <div>
-          <label className="text-[13px] font-bold text-gray-400 uppercase tracking-wider block mb-2">Mức giá trung bình</label>
+          <label className="text-[13px] font-bold text-gray-400 uppercase tracking-wider block mb-2">{t("settings.budgetLabel")}</label>
           <div className="flex flex-col gap-2">
             {BUDGET_OPTIONS.map((opt) => (
               <button
@@ -2107,8 +2154,8 @@ function PersonalizationSettings() {
                     : "bg-[#FDFBF7] dark:bg-[#2A2420]/80 text-[#7A6A5A] dark:text-[#E6DFD5] border-[#E6DFD5] dark:border-[#4D3D32] hover:bg-[#F4EAD5] hover:dark:bg-[#3D312A] hover:border-brand dark:hover:border-[#E8735A]"
                 }`}
               >
-                <div className="font-bold text-sm">{opt.label}</div>
-                <div className="text-xs text-gray-400 mt-1">{opt.desc}</div>
+                <div className="font-bold text-sm">{t(opt.labelKey)}</div>
+                <div className="text-xs text-gray-400 mt-1">{t(opt.descKey)}</div>
               </button>
             ))}
           </div>
@@ -2116,7 +2163,7 @@ function PersonalizationSettings() {
 
         {/* Dietary Restrictions */}
         <div>
-          <label className="text-[13px] font-bold text-gray-400 uppercase tracking-wider block mb-2">Chế độ ăn kiêng</label>
+          <label className="text-[13px] font-bold text-gray-400 uppercase tracking-wider block mb-2">{t("settings.dietaryLabel")}</label>
           <div className="flex flex-wrap gap-2">
             {DIETARY_OPTS.map((opt) => {
               const isSelected = formData.dietary_restrictions.includes(opt.id);
@@ -2130,7 +2177,7 @@ function PersonalizationSettings() {
                       : "bg-[#FDFBF7] dark:bg-[#2A2420]/80 text-[#7A6A5A] dark:text-[#E6DFD5] border-[#E6DFD5] dark:border-[#4D3D32] hover:bg-[#F4EAD5] hover:dark:bg-[#3D312A] hover:border-emerald-500 hover:text-emerald-500 dark:hover:border-emerald-500 dark:hover:text-emerald-400"
                   }`}
                 >
-                  {opt.label}
+                  {t(opt.labelKey)}
                 </button>
               );
             })}
@@ -2139,7 +2186,7 @@ function PersonalizationSettings() {
 
         {/* Allergies */}
         <div>
-          <label className="text-[13px] font-bold text-gray-400 uppercase tracking-wider block mb-2">Dị ứng thực phẩm</label>
+          <label className="text-[13px] font-bold text-gray-400 uppercase tracking-wider block mb-2">{t("settings.allergyLabel")}</label>
           <div className="flex flex-wrap gap-2">
             {ALLERGY_OPTS.map((opt) => {
               const isSelected = formData.allergies.includes(opt.id);
@@ -2153,7 +2200,7 @@ function PersonalizationSettings() {
                       : "bg-[#FDFBF7] dark:bg-[#2A2420]/80 text-[#7A6A5A] dark:text-[#E6DFD5] border-[#E6DFD5] dark:border-[#4D3D32] hover:bg-[#F4EAD5] hover:dark:bg-[#3D312A] hover:border-red-500 hover:text-red-500 dark:hover:border-red-500 dark:hover:text-red-400"
                   }`}
                 >
-                  {opt.label}
+                  {t(opt.labelKey)}
                 </button>
               );
             })}
@@ -2163,22 +2210,22 @@ function PersonalizationSettings() {
         {/* Location & Age */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="text-[13px] font-bold text-gray-400 uppercase tracking-wider block mb-2">Khu vực sinh sống</label>
+            <label className="text-[13px] font-bold text-gray-400 uppercase tracking-wider block mb-2">{t("settings.locationLabel")}</label>
             <input 
               type="text" 
               value={formData.location}
               onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
-              placeholder="Ví dụ: Quận 1, TP. HCM..."
+              placeholder={t("settings.placeholderLocation")}
               className="w-full bg-gray-50 dark:bg-[#2A2420]/50 border border-gray-100 dark:border-[#4D3D32] rounded-2xl px-5 py-3.5 text-sm font-medium text-gray-900 dark:text-[#E6DFD5] focus:ring-4 focus:ring-brand/10 dark:focus:ring-[#E8735A]/10 focus:border-brand dark:focus:border-[#E8735A] outline-none transition-all"
             />
           </div>
           <div>
-            <label className="text-[13px] font-bold text-gray-400 uppercase tracking-wider block mb-2">Độ tuổi</label>
+            <label className="text-[13px] font-bold text-gray-400 uppercase tracking-wider block mb-2">{t("settings.ageLabel")}</label>
             <input 
               type="number" 
               value={formData.age}
               onChange={(e) => setFormData(prev => ({ ...prev, age: e.target.value ? parseInt(e.target.value) : '' }))}
-              placeholder="Nhập tuổi..."
+              placeholder={t("settings.placeholderAge")}
               className="w-full bg-gray-50 dark:bg-[#2A2420]/50 border border-gray-100 dark:border-[#4D3D32] rounded-2xl px-5 py-3.5 text-sm font-medium text-gray-900 dark:text-[#E6DFD5] focus:ring-4 focus:ring-brand/10 dark:focus:ring-[#E8735A]/10 focus:border-brand dark:focus:border-[#E8735A] outline-none transition-all"
             />
           </div>
@@ -2192,7 +2239,7 @@ function PersonalizationSettings() {
           className="px-6 py-3 bg-brand hover:bg-brand-hover disabled:opacity-50 text-white text-sm font-bold rounded-2xl transition-all shadow-md active:scale-95 cursor-pointer flex items-center gap-2"
         >
           <Sparkles className="w-4 h-4" />
-          {saving ? "Đang đồng bộ..." : "Cập nhật sở thích AI"}
+          {saving ? t("settings.savingInProgress") : t("settings.syncWithAI")}
         </button>
       </div>
     </div>

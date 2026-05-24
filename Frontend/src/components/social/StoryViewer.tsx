@@ -4,10 +4,11 @@ import { X, ChevronLeft, ChevronRight, MoreHorizontal, Play, Pause, Volume2, Vol
 import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
 import { toast } from 'sonner';
+import { useLanguage } from '../LanguageProvider';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
-interface Story {
+export interface Story {
   id: string;
   user_id: string;
   media_url: string;
@@ -41,6 +42,7 @@ interface StoryViewerProps {
 const STORY_DURATION_MS = 5000; // 5 seconds per story
 
 export function StoryViewer({ stories, initialIndex, onClose, onDelete }: StoryViewerProps) {
+  const { t } = useLanguage();
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [progress, setProgress] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
@@ -57,7 +59,7 @@ export function StoryViewer({ stories, initialIndex, onClose, onDelete }: StoryV
   const [isLoadingViewers, setIsLoadingViewers] = useState(false);
   const viewedStoriesRef = useRef<Set<string>>(new Set());
   const lastUpdateRef = useRef<number>(Date.now());
-  const requestRef = useRef<number>();
+  const requestRef = useRef<number | undefined>(undefined);
 
   useEffect(() => {
     setMounted(true);
@@ -316,7 +318,7 @@ export function StoryViewer({ stories, initialIndex, onClose, onDelete }: StoryV
                         className="w-full flex items-center gap-2 px-4 py-3 text-sm text-red-500 hover:bg-muted transition-colors text-left font-medium disabled:opacity-50"
                       >
                         {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                        {isDeleting ? "Đang xóa..." : "Xóa Story"}
+                        {isDeleting ? t('storyViewer.deleting') : t('storyViewer.deleteStory')}
                       </button>
                     </motion.div>
                   )}
@@ -460,7 +462,7 @@ export function StoryViewer({ stories, initialIndex, onClose, onDelete }: StoryV
                 <div className="flex items-center gap-2">
                   <Eye className="w-5 h-5 text-gray-500" />
                   <h3 className="font-bold text-gray-900">
-                    Người xem ({localViews[currentStory.id] || currentStory.views_count || 0})
+                    {t('storyViewer.viewers')} ({localViews[currentStory.id] || currentStory.views_count || 0})
                   </h3>
                 </div>
                 <button 
@@ -478,7 +480,7 @@ export function StoryViewer({ stories, initialIndex, onClose, onDelete }: StoryV
                   </div>
                 ) : viewersList.length === 0 ? (
                   <div className="text-center text-gray-500 py-8">
-                    Chưa có ai xem Story này.
+                    {t('storyViewer.noViewers')}
                   </div>
                 ) : (
                   <div className="space-y-4">

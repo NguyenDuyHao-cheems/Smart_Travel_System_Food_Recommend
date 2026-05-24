@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { SlidersHorizontal, Star, Leaf, DollarSign, RotateCcw, Tag, X } from 'lucide-react';
+import { useLanguage } from './LanguageProvider';
 
 export interface AdvancedFilterState {
   minPrice: number | null;
@@ -44,6 +45,48 @@ const TAG_EMOJI_MAP: Record<string, string> = {
   'giá rẻ': '💰', 'tầm trung': '💵', 'cao cấp': '💎',
 };
 
+const TAG_GROUP_LABELS_EN: Record<string, string> = {
+  'Thịt': 'Meat',
+  'Cơm/Cháo': 'Rice/Porridge',
+  'Nước/Lẩu': 'Noodles/Hotpot',
+  'Hải sản/Nướng': 'Seafood/Grill',
+  'Đồ uống/Tráng miệng': 'Drinks/Dessert',
+  'Quốc tế': 'International',
+  'Bữa ăn/Khác': 'Meals/Other',
+  'Đánh giá': 'Rating',
+  'Phân khúc': 'Price Segment',
+  'Khác': 'Other',
+};
+
+const TAG_LABELS_EN: Record<string, string> = {
+  'gà': 'chicken',
+  'bò': 'beef',
+  'heo': 'pork',
+  'cơm': 'rice',
+  'cháo': 'porridge',
+  'phở': 'pho',
+  'bún': 'vermicelli',
+  'mì': 'noodles',
+  'lẩu': 'hotpot',
+  'hải sản': 'seafood',
+  'nướng': 'grill',
+  'trà sữa': 'milk tea',
+  'cà phê': 'coffee',
+  'đồ uống': 'drinks',
+  'tráng miệng': 'dessert',
+  'món chay': 'vegetarian',
+  'ăn sáng': 'breakfast',
+  'ăn trưa': 'lunch',
+  'ăn tối': 'dinner',
+  'ăn vặt': 'snacks',
+  'ăn khuya': 'late-night',
+  'đánh giá cao': 'highly rated',
+  'nhiều đánh giá': 'many reviews',
+  'giá rẻ': 'budget',
+  'tầm trung': 'mid-range',
+  'cao cấp': 'premium',
+};
+
 function getTagEmoji(tagName: string): string {
   return TAG_EMOJI_MAP[tagName.toLowerCase()] || '✨';
 }
@@ -71,8 +114,11 @@ export function AdvancedFilters({
   isOpen: externalIsOpen,
   onToggle
 }: AdvancedFiltersProps) {
+  const { language, t } = useLanguage();
   const [localIsOpen, setLocalIsOpen] = useState(false);
   const isOpen = externalIsOpen !== undefined ? externalIsOpen : localIsOpen;
+  const labelForGroup = (label: string) => language === 'en' ? TAG_GROUP_LABELS_EN[label] || label : label;
+  const labelForTag = (tag: string) => language === 'en' ? TAG_LABELS_EN[tag.toLowerCase()] || tag : tag;
 
   const toggleOpen = () => {
     if (onToggle) {
@@ -154,8 +200,7 @@ export function AdvancedFilters({
     filters.minPrice !== null || filters.maxPrice !== null,
     filters.minRating !== null,
     filters.vegetarianOnly,
-    selectedTags.length > 0,
-  ].filter(Boolean).length;
+  ].filter(Boolean).length + selectedTags.length;
 
   return (
     <div className="w-full flex flex-col gap-2 relative">
@@ -165,11 +210,11 @@ export function AdvancedFilters({
               <div className="flex flex-col gap-2">
                 <span className="text-xs font-bold text-gray-700 dark:text-[#E6DFD5] flex items-center gap-1.5">
                   <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
-                  Đánh giá tối thiểu
+                  {t('filters.minRating')}
                 </span>
                 <div className="flex flex-wrap gap-1.5">
                   {[
-                    { label: 'Tất cả', value: null },
+                    { label: t('filters.all'), value: null },
                     { label: '4.0 ⭐+', value: 4.0 },
                     { label: '4.5 ⭐+', value: 4.5 },
                     { label: '4.8 ⭐+', value: 4.8 },
@@ -194,7 +239,7 @@ export function AdvancedFilters({
               <div className="flex flex-col gap-2">
                 <span className="text-xs font-bold text-gray-700 dark:text-[#E6DFD5] flex items-center gap-1.5">
                   <Leaf className="w-4 h-4 text-emerald-500" />
-                  Chế độ ăn uống
+                  {t('filters.dietary')}
                 </span>
                 <label className="flex items-center gap-2 p-2 rounded-xl border border-gray-100 dark:border-[#4D3D32] bg-gray-50/50 dark:bg-[#4D3D32]/40 hover:bg-emerald-50/20 dark:hover:bg-emerald-950/10 cursor-pointer transition-all">
                   <input
@@ -205,7 +250,7 @@ export function AdvancedFilters({
                   />
                   <div className="flex flex-col">
                     <span className="text-[11px] font-bold text-gray-800 dark:text-[#E6DFD5]">
-                      🌿 Chỉ hiển thị quán chay
+                      🌿 {t('filters.vegetarianOnly')}
                     </span>
                   </div>
                 </label>
@@ -215,14 +260,14 @@ export function AdvancedFilters({
               <div className="flex flex-col gap-2">
                 <span className="text-xs font-bold text-gray-700 dark:text-[#E6DFD5] flex items-center gap-1.5">
                   <DollarSign className="w-4 h-4 text-green-500" />
-                  Khoảng giá (VND)
+                  {t('filters.priceRange')}
                 </span>
                 <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
                   <input
                     type="number"
                     min="0"
                     step="10000"
-                    placeholder="Từ"
+                    placeholder={t('filters.from')}
                     value={localMinPrice}
                     onChange={(e) => setLocalMinPrice(e.target.value)}
                     className="w-full sm:flex-1 px-3 py-1.5 text-xs rounded-xl border border-gray-200 dark:border-[#5A4A3A] bg-gray-50 dark:bg-[#4D3D32] dark:text-[#E6DFD5] focus:outline-none focus:ring-1 focus:ring-brand/50"
@@ -232,7 +277,7 @@ export function AdvancedFilters({
                     type="number"
                     min="0"
                     step="10000"
-                    placeholder="Đến"
+                    placeholder={t('filters.to')}
                     value={localMaxPrice}
                     onChange={(e) => setLocalMaxPrice(e.target.value)}
                     className="w-full sm:flex-1 px-3 py-1.5 text-xs rounded-xl border border-gray-200 dark:border-[#5A4A3A] bg-gray-50 dark:bg-[#4D3D32] dark:text-[#E6DFD5] focus:outline-none focus:ring-1 focus:ring-brand/50"
@@ -242,7 +287,7 @@ export function AdvancedFilters({
                     onClick={handlePriceApply}
                     className="w-full sm:w-auto px-4 py-1.5 text-xs font-bold rounded-xl bg-brand text-white hover:bg-brand-hover transition-colors shadow-sm cursor-pointer"
                   >
-                    Lọc
+                    {t('filters.apply')}
                   </button>
                   {/* Presets inline */}
                   <div className="flex items-center gap-1.5 ml-auto">
@@ -274,7 +319,7 @@ export function AdvancedFilters({
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-gray-700 dark:text-[#E6DFD5] flex items-center gap-1.5">
                       <Tag className="w-4 h-4 text-brand dark:text-[#E8735A]" />
-                      Lọc theo loại món
+                      {t('filters.foodType')}
                     </span>
                     <button
                       onClick={() => onTagsChange?.([])}
@@ -284,7 +329,7 @@ export function AdvancedFilters({
                           : 'bg-gray-50 dark:bg-[#3D312A] text-gray-500 dark:text-[#C8BFB0] border-gray-100 dark:border-[#4D3D32] hover:border-brand/40 hover:text-brand'
                       }`}
                     >
-                      🏷️ Tất cả
+                      🏷️ {t('filters.all')}
                     </button>
                   </div>
 
@@ -293,7 +338,7 @@ export function AdvancedFilters({
                     {groupedTags.map((group) => (
                       <div key={group.label} className="flex flex-col gap-2">
                         <span className="text-[10px] font-bold text-gray-400 dark:text-[#7A6A5A] uppercase tracking-wider flex items-center gap-1">
-                          {group.emoji} {group.label}
+                          {group.emoji} {labelForGroup(group.label)}
                         </span>
                         <div className="flex flex-wrap gap-1.5">
                           {group.tags.map((tag) => {
@@ -315,7 +360,7 @@ export function AdvancedFilters({
                                     : 'bg-gray-50 dark:bg-[#3D312A] text-gray-600 dark:text-[#C8BFB0] border-gray-100 dark:border-[#4D3D32] hover:border-brand/40 hover:text-brand'
                                 }`}
                               >
-                                {emoji} {tag}
+                                {emoji} {labelForTag(tag)}
                               </button>
                             );
                           })}

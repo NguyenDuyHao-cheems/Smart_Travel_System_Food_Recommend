@@ -22,6 +22,7 @@ import { AppShell } from "../../components/AppShell";
 import { useRouter } from "next/navigation";
 import { AttendanceCalendarModal } from "../../components/AttendanceCalendarModal";
 import { toast } from "sonner";
+import { useLanguage } from "../../components/LanguageProvider";
 
 interface RecentActivity {
   title: string;
@@ -93,6 +94,7 @@ const BADGE_CONFIGS: Record<string, {
 };
 
 export default function ProfilePage() {
+  const { language, t } = useLanguage();
   const router = useRouter();
   const [username, setUsername] = useState<string | null>(null);
   const [avatar, setAvatar] = useState<string | null>(null);
@@ -125,6 +127,53 @@ export default function ProfilePage() {
     location: string;
     age: number | '';
   } | null>(null);
+
+  const translateRelativeTime = React.useCallback((timeAgo: string) => {
+    if (language !== "en") return timeAgo;
+    const lower = timeAgo.toLowerCase();
+    if (lower.includes("vừa xong") || lower.includes("mới đây")) return "Just now";
+    if (lower.includes("giây trước")) return lower.replace("giây trước", " seconds ago");
+    if (lower.includes("phút trước")) return lower.replace("phút trước", " minutes ago");
+    if (lower.includes("giờ trước")) return lower.replace("giờ trước", " hours ago");
+    if (lower.includes("ngày trước")) return lower.replace("ngày trước", " days ago");
+    if (lower.includes("tuần trước")) return lower.replace("tuần trước", " weeks ago");
+    if (lower.includes("tháng trước")) return lower.replace("tháng trước", " months ago");
+    if (lower.includes("năm trước")) return lower.replace("năm trước", " years ago");
+    return timeAgo;
+  }, [language]);
+
+  const translateActivityTitle = React.useCallback((title: string, activity: RecentActivity) => {
+    if (language !== "en") return title;
+    
+    // Pattern checks
+    if (title.startsWith("Thích quán ") && activity.res_name) {
+      return `Liked ${activity.res_name}`;
+    }
+    if (title.startsWith("Lưu quán ") && activity.res_name && activity.collection_name) {
+      return `Saved ${activity.res_name} to collection "${activity.collection_name}"`;
+    }
+    if (title.startsWith("Đã ghé thăm quán ") && activity.res_name) {
+      return `Visited ${activity.res_name}`;
+    }
+    if (title.startsWith("Đánh giá ") && activity.res_name) {
+      const match = title.match(/Đánh giá (\d+)\s*sao/i);
+      const stars = match ? match[1] : "5";
+      return `Rated ${stars} stars for ${activity.res_name}`;
+    }
+    if (title.startsWith("Xóa quán ") && activity.res_name) {
+      return `Removed ${activity.res_name} from favorites`;
+    }
+    if (title.startsWith("Xóa bình luận") && activity.res_name) {
+      return `Deleted comment at ${activity.res_name}`;
+    }
+    
+    // Fallback translations of generic terms:
+    let trans = title;
+    trans = trans.replace("Yêu thích", "Favorites");
+    trans = trans.replace("Xóa bình luận", "Deleted comment");
+    return trans;
+  }, [language]);
+
   const handleActivityClick = (activity: RecentActivity) => {
     if (activity.icon_type === "heart" && activity.res_name) {
       router.push(`/favorites?highlight=${encodeURIComponent(activity.res_name)}`);
@@ -172,7 +221,7 @@ export default function ProfilePage() {
       try {
         const token = localStorage.getItem("access_token");
         if (!token) {
-          toast.error("Vui lòng đăng nhập để xem trang cá nhân!");
+          toast.error(t("profile.loginRequired"));
           router.push("/auth");
           return;
         }
@@ -190,7 +239,12 @@ export default function ProfilePage() {
             const day = date.getDate();
             const month = date.getMonth() + 1;
             const year = date.getFullYear();
-            setJoinDate(`ngày ${day} tháng ${month}, ${year}`);
+            if (language === "en") {
+              const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+              setJoinDate(`${monthNames[date.getMonth()]} ${day}, ${year}`);
+            } else {
+              setJoinDate(`ngày ${day} tháng ${month}, ${year}`);
+            }
           }
           if (data.cover_url) {
             setCover(data.cover_url);
@@ -314,7 +368,7 @@ export default function ProfilePage() {
                         <div 
                           onClick={() => setIsBadgeModalOpen(true)}
                           className={`absolute -bottom-2 -right-2 w-10 h-10 ${activeConfig.bgClass} border-4 border-white dark:border-[#3D312A] rounded-2xl flex items-center justify-center shadow-lg cursor-pointer hover:scale-110 active:scale-95 transition-all duration-200 select-none`}
-                          title="Chọn huy hiệu hiển thị"
+                          title={t("profile.badgeTitleSelect") || "Chọn huy hiệu hiển thị"}
                         >
                           <Award className="w-5 h-5 text-white" />
                         </div>
@@ -340,27 +394,27 @@ export default function ProfilePage() {
                           <span 
                             onClick={() => setIsBadgeModalOpen(true)}
                             className={`px-2.5 py-0.5 rounded-full ${activeConfig.colorClass} font-bold text-[10px] uppercase tracking-wider cursor-pointer hover:scale-105 active:scale-95 transition-all duration-200 shadow-sm flex items-center gap-1 select-none`}
-                            title="Click để đổi danh hiệu"
+                            title={t("profile.badgeChangeTitle") || "Click để đổi danh hiệu"}
                           >
                             <span>{activeConfig.emoji}</span>
-                            <span>{activeConfig.label}</span>
+                            <span>{t(`profile.badges.${currentActiveBadge}.label`)}</span>
                           </span>
                         ) : (
                           <span 
                             onClick={() => setIsBadgeModalOpen(true)}
                             className="px-2.5 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 font-bold text-[10px] uppercase tracking-wider cursor-pointer hover:scale-105 active:scale-95 transition-all duration-200 shadow-sm flex items-center gap-1 select-none"
-                            title="Click để chọn danh hiệu"
+                            title={t("profile.badgeSelectTitle") || "Click để chọn danh hiệu"}
                           >
-                            Chưa có danh hiệu
+                            {t("profile.noTitle")}
                           </span>
                         );
                       })()}
-                      • Tham gia từ {joinDate || "tháng 5, 2024"}
+                      • {t("profile.joinedFrom")} {joinDate || (language === 'en' ? "May, 2024" : "tháng 5, 2024")}
                     </p>
                     <p className="text-gray-500 dark:text-[#9A8A7A] font-medium flex items-center gap-2 text-sm mt-2">
-                      <span className="flex items-center gap-1 cursor-pointer hover:text-brand transition-colors"><strong className="text-gray-900 dark:text-[#E6DFD5]">{followingCount}</strong> Đang theo dõi</span>
+                      <span className="flex items-center gap-1 cursor-pointer hover:text-brand transition-colors"><strong className="text-gray-900 dark:text-[#E6DFD5]">{followingCount}</strong> {t("profile.following")}</span>
                       <span>•</span>
-                      <span className="flex items-center gap-1 cursor-pointer hover:text-brand transition-colors"><strong className="text-gray-900 dark:text-[#E6DFD5]">{followersCount}</strong> Người theo dõi</span>
+                      <span className="flex items-center gap-1 cursor-pointer hover:text-brand transition-colors"><strong className="text-gray-900 dark:text-[#E6DFD5]">{followersCount}</strong> {t("profile.followers")}</span>
                     </p>
                   </div>
                   
@@ -369,7 +423,7 @@ export default function ProfilePage() {
                       onClick={() => router.push("/settings")}
                       className="px-6 py-2.5 bg-brand text-white text-sm font-bold rounded-2xl hover:bg-brand-hover transition-all shadow-md shadow-brand/20 dark:shadow-none active:scale-95 cursor-pointer"
                     >
-                      Chỉnh sửa hồ sơ
+                      {t("profile.editProfile")}
                     </button>
                     <button 
                       onClick={() => setIsCalendarOpen(true)}
@@ -385,9 +439,9 @@ export default function ProfilePage() {
             {/* Stats Row */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
               {[
-                { label: "Khám phá", value: discoveriesCount, icon: MapPin, color: "text-blue-500", bg: "bg-blue-50 dark:bg-blue-500/10" },
-                { label: "Yêu thích", value: favoritesCount, icon: Heart, color: "text-red-500", bg: "bg-red-50 dark:bg-red-500/10" },
-                { label: "Đánh giá", value: reviewsCount, icon: MessageSquare, color: "text-emerald-500", bg: "bg-emerald-50 dark:bg-emerald-500/10" },
+                { label: t("profile.stats.discoveries"), value: discoveriesCount, icon: MapPin, color: "text-blue-500", bg: "bg-blue-50 dark:bg-blue-500/10" },
+                { label: t("profile.stats.favorites"), value: favoritesCount, icon: Heart, color: "text-red-500", bg: "bg-red-50 dark:bg-red-500/10" },
+                { label: t("profile.stats.reviews"), value: reviewsCount, icon: MessageSquare, color: "text-emerald-500", bg: "bg-emerald-50 dark:bg-emerald-500/10" },
                 { label: "Streak", value: streakCount, icon: Flame, color: "text-brand dark:text-[#E8735A]", bg: "bg-brand-muted dark:bg-brand/10" },
               ].map((stat, idx) => (
                 <div key={idx} className="bg-white dark:bg-[#3D312A] p-6 rounded-[32px] border border-gray-100 dark:border-[#3D312A] shadow-sm flex flex-col items-center text-center">
@@ -406,7 +460,7 @@ export default function ProfilePage() {
                 <div className="bg-white dark:bg-[#3D312A] rounded-[32px] p-8 shadow-sm border border-gray-100 dark:border-[#3D312A]">
                   <h3 className="text-lg font-bold text-gray-900 dark:text-[#E6DFD5] mb-6 flex items-center gap-2">
                     <Trophy className="w-5 h-5 text-brand dark:text-[#E8735A]" />
-                    Huy hiệu của bạn
+                    {t("profile.badgesTitle")}
                   </h3>
                   <div className="grid grid-cols-3 gap-4 text-center">
                     {Object.entries(BADGE_CONFIGS).map(([badgeIcon, badge], idx) => {
@@ -426,16 +480,16 @@ export default function ProfilePage() {
                             )}
                             <span className="relative z-10">{badgeIcon}</span>
                           </div>
-                          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{badge.label}</span>
+                          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{t(`profile.badges.${badgeIcon}.label`)}</span>
                           
                           {/* Premium Tooltip */}
                           <div className="absolute bottom-full mb-2 bg-black/85 dark:bg-[#3D312A]/95 text-white text-[11px] font-medium px-2.5 py-1.5 rounded-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 whitespace-nowrap shadow-xl border border-white/10 pointer-events-none">
                             {info.unlocked ? (
-                              <span className="text-yellow-400 font-bold flex items-center gap-1">🌟 Đã mở khóa!</span>
+                              <span className="text-yellow-400 font-bold flex items-center gap-1">🌟 {t("profile.badgeUnlocked")}</span>
                             ) : (
                               isZen 
-                                ? <span className="text-gray-300 font-bold">🧘 Ăn chay để mở khóa</span>
-                                : <span className="text-gray-300">Tiến độ: <strong className="text-brand dark:text-[#E8735A] font-extrabold">{info.progress}</strong>/{info.target}</span>
+                                ? <span className="text-gray-300 font-bold">🧘 {t("profile.badgeZenUnlock")}</span>
+                                : <span className="text-gray-300">{t("profile.progress")}: <strong className="text-brand dark:text-[#E8735A] font-extrabold">{info.progress}</strong>/{info.target}</span>
                             )}
                           </div>
                         </div>
@@ -447,7 +501,7 @@ export default function ProfilePage() {
                 <div className="bg-white dark:bg-[#3D312A] rounded-[32px] p-8 shadow-sm border border-gray-100 dark:border-[#3D312A]">
                   <h3 className="text-lg font-bold text-gray-900 dark:text-[#E6DFD5] mb-6 flex items-center gap-2">
                     <TrendingUp className="w-5 h-5 text-brand dark:text-[#E8735A]" />
-                    Gu ẩm thực
+                    {t("profile.foodTaste")}
                   </h3>
                   <div className="space-y-4">
                     {(() => {
@@ -459,6 +513,17 @@ export default function ProfilePage() {
                         if (label.includes("🥗")) return "bg-emerald-500 dark:bg-emerald-400";
                         if (label.includes("🍰")) return "bg-pink-500 dark:bg-pink-400";
                         return "bg-brand";
+                      };
+
+                      const getCulinaryVibeLabel = (l: string) => {
+                        if (language !== "en") return l;
+                        if (l.includes("🍜")) return "Soups & Stews 🍜";
+                        if (l.includes("🥩")) return "BBQ & Grilled 🥩";
+                        if (l.includes("🍲")) return "Hotpot 🍲";
+                        if (l.includes("🍤")) return "Fried & Stir-fried 🍤";
+                        if (l.includes("🥗")) return "Steamed & Salad (Healthy) 🥗";
+                        if (l.includes("🍰")) return "Sweets & Desserts 🍰";
+                        return l;
                       };
 
                       const defaultVibes = [
@@ -475,7 +540,7 @@ export default function ProfilePage() {
                       return displayVibes.map((item, idx) => (
                         <div key={idx}>
                           <div className="flex justify-between text-xs font-bold mb-1.5 text-gray-600 dark:text-[#9A8A7A]">
-                            <span>{item.label}</span>
+                            <span>{getCulinaryVibeLabel(item.label)}</span>
                             <span className="text-brand dark:text-[#E8735A]">{item.percent}%</span>
                           </div>
                           <div className="h-2.5 bg-gray-100 dark:bg-gray-800/40 rounded-full overflow-hidden">
@@ -497,13 +562,14 @@ export default function ProfilePage() {
                   <div className="bg-white dark:bg-[#3D312A] rounded-[32px] p-8 shadow-sm border border-gray-100 dark:border-[#3D312A] space-y-5">
                     <h3 className="text-lg font-bold text-gray-900 dark:text-[#E6DFD5] flex items-center gap-2">
                       <Sparkles className="w-5 h-5 text-brand dark:text-[#E8735A]" />
-                      Khẩu vị & Dinh dưỡng AI
+                      {t("profile.personalization.title")}
                     </h3>
+
                     
                     {/* Favorite Dishes */}
                     {personalization.favorite_dishes && personalization.favorite_dishes.length > 0 && (
                       <div>
-                        <span className="text-[11px] font-black text-gray-400 dark:text-[#9A8A7A] uppercase tracking-wider block mb-2">Món ăn yêu thích</span>
+                        <span className="text-[11px] font-black text-gray-400 dark:text-[#9A8A7A] uppercase tracking-wider block mb-2">{t("profile.personalization.favoriteDishes")}</span>
                         <div className="flex flex-wrap gap-1.5">
                           {personalization.favorite_dishes.map((dish, i) => (
                             <span key={i} className="px-2.5 py-1 bg-brand/5 border border-brand/20 dark:border-brand/10 text-brand dark:text-[#E8735A] text-xs font-bold rounded-xl">
@@ -517,7 +583,7 @@ export default function ProfilePage() {
                     {/* Dietary Restrictions */}
                     {personalization.dietary_restrictions && personalization.dietary_restrictions.length > 0 && (
                        <div>
-                         <span className="text-[11px] font-black text-gray-400 dark:text-[#9A8A7A] uppercase tracking-wider block mb-2">Chế độ ăn kiêng</span>
+                         <span className="text-[11px] font-black text-gray-400 dark:text-[#9A8A7A] uppercase tracking-wider block mb-2">{t("profile.personalization.dietaryRestrictions")}</span>
                          <div className="flex flex-wrap gap-1.5">
                            {personalization.dietary_restrictions.map((diet, i) => (
                              <span key={i} className="px-2.5 py-1 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-100 dark:border-emerald-500/20 text-emerald-600 dark:text-emerald-300 text-xs font-bold rounded-xl shadow-sm dark:shadow-[0_0_8px_rgba(52,211,153,0.15)]">
@@ -531,7 +597,7 @@ export default function ProfilePage() {
                      {/* Allergies */}
                      {personalization.allergies && personalization.allergies.length > 0 && (
                        <div>
-                         <span className="text-[11px] font-black text-gray-400 dark:text-[#9A8A7A] uppercase tracking-wider block mb-2">Dị ứng của bạn</span>
+                         <span className="text-[11px] font-black text-gray-400 dark:text-[#9A8A7A] uppercase tracking-wider block mb-2">{t("profile.personalization.allergies")}</span>
                          <div className="flex flex-wrap gap-1.5">
                            {personalization.allergies.map((allergy, i) => (
                              <span key={i} className="px-2.5 py-1 bg-red-50 dark:bg-red-500/10 border border-red-100 dark:border-red-500/20 text-red-600 dark:text-red-300 text-xs font-bold rounded-xl shadow-sm dark:shadow-[0_0_8px_rgba(239,68,68,0.15)]">
@@ -545,35 +611,35 @@ export default function ProfilePage() {
                     {/* Budget & Spicy & Age */}
                     <div className="grid grid-cols-2 gap-3 pt-2 border-t border-gray-50 dark:border-gray-800">
                       <div>
-                        <span className="text-[10px] font-bold text-gray-400 dark:text-[#9A8A7A] uppercase tracking-wider block">Ưu tiên cay</span>
+                        <span className="text-[10px] font-bold text-gray-400 dark:text-[#9A8A7A] uppercase tracking-wider block">{t("profile.personalization.spicyLevel")}</span>
                         <span className="text-xs font-bold text-gray-800 dark:text-[#E6DFD5] block mt-0.5">
-                          {personalization.spicy_level === 'none' && '🌶️ Không cay'}
-                          {personalization.spicy_level === 'mild' && '🌶️ Cay ít (25%)'}
-                          {personalization.spicy_level === 'medium' && '🌶️ Cay vừa (50%)'}
-                          {personalization.spicy_level === 'hot' && '🌶️ Cay nồng (75%)'}
-                          {personalization.spicy_level === 'extra_hot' && '🌶️ Siêu cay'}
-                          {!personalization.spicy_level && 'Chưa cập nhật'}
+                          {personalization.spicy_level === 'none' && `🌶️ ${t("profile.personalization.spicyLevelNone")}`}
+                          {personalization.spicy_level === 'mild' && `🌶️ ${t("profile.personalization.spicyLevelMild")}`}
+                          {personalization.spicy_level === 'medium' && `🌶️ ${t("profile.personalization.spicyLevelMedium")}`}
+                          {personalization.spicy_level === 'hot' && `🌶️ ${t("profile.personalization.spicyLevelHot")}`}
+                          {personalization.spicy_level === 'extra_hot' && `🌶️ ${t("profile.personalization.spicyLevelExtra")}`}
+                          {!personalization.spicy_level && t("profile.personalization.notUpdated")}
                         </span>
                       </div>
                       <div>
-                        <span className="text-[10px] font-bold text-gray-400 dark:text-[#9A8A7A] uppercase tracking-wider block">Ngân sách</span>
+                        <span className="text-[10px] font-bold text-gray-400 dark:text-[#9A8A7A] uppercase tracking-wider block">{t("profile.personalization.budget")}</span>
                         <span className="text-xs font-bold text-gray-800 dark:text-[#E6DFD5] block mt-0.5">
-                          {personalization.budget === 'low' && '💵 Bình dân'}
-                          {personalization.budget === 'medium' && '💵 Tầm trung'}
-                          {personalization.budget === 'high' && '💵 Cao cấp'}
-                          {!personalization.budget && 'Chưa cập nhật'}
+                          {personalization.budget === 'low' && `💵 ${t("profile.personalization.budgetLow")}`}
+                          {personalization.budget === 'medium' && `💵 ${t("profile.personalization.budgetMedium")}`}
+                          {personalization.budget === 'high' && `💵 ${t("profile.personalization.budgetHigh")}`}
+                          {!personalization.budget && t("profile.personalization.notUpdated")}
                         </span>
                       </div>
                       <div className="mt-2">
-                        <span className="text-[10px] font-bold text-gray-400 dark:text-[#9A8A7A] uppercase tracking-wider block">Khu vực</span>
+                        <span className="text-[10px] font-bold text-gray-400 dark:text-[#9A8A7A] uppercase tracking-wider block">{t("profile.personalization.region")}</span>
                         <span className="text-xs font-bold text-gray-800 dark:text-[#E6DFD5] truncate block mt-0.5">
-                          📍 {personalization.location || 'Chưa cập nhật'}
+                          📍 {personalization.location || t("profile.personalization.notUpdated")}
                         </span>
                       </div>
                       <div className="mt-2">
-                        <span className="text-[10px] font-bold text-gray-400 dark:text-[#9A8A7A] uppercase tracking-wider block">Độ tuổi</span>
+                        <span className="text-[10px] font-bold text-gray-400 dark:text-[#9A8A7A] uppercase tracking-wider block">{t("profile.personalization.age")}</span>
                         <span className="text-xs font-bold text-gray-800 dark:text-[#E6DFD5] block mt-0.5">
-                          {personalization.age ? `🎂 ${personalization.age} tuổi` : 'Chưa cập nhật'}
+                          {personalization.age ? `🎂 ${personalization.age} ${t("profile.personalization.yearsOld")}` : t("profile.personalization.notUpdated")}
                         </span>
                       </div>
                     </div>
@@ -581,20 +647,20 @@ export default function ProfilePage() {
                 )}
               </div>
 
-              {/* Right Column: Activity */}
-              <div className="lg:col-span-2 space-y-8">
+              {/* Right Column: Recent Activity */}
+              <div className="lg:col-span-2">
                 <div className="bg-white dark:bg-[#3D312A] rounded-[32px] p-8 shadow-sm border border-gray-100 dark:border-[#3D312A]">
                   <h3 className="text-lg font-bold text-gray-900 dark:text-[#E6DFD5] mb-6 flex items-center gap-2">
                     <Clock className="w-5 h-5 text-brand dark:text-[#E8735A]" />
-                    Hoạt động gần đây
+                    {t("profile.recentActivity")}
                   </h3>
                   
                   {recentActivities.length === 0 ? (
                     <div className="text-center py-10 bg-gray-50 dark:bg-[#2A2420]/30 rounded-3xl border border-dashed border-gray-200 dark:border-[#4D3D32] px-6">
                       <Clock className="w-10 h-10 text-gray-400 mx-auto mb-3 opacity-60" />
-                      <p className="text-sm font-semibold text-gray-700 dark:text-[#C8BFB0] mb-1">Không có hoạt động gần đây</p>
+                      <p className="text-sm font-semibold text-gray-700 dark:text-[#C8BFB0] mb-1">{t("profile.noActivity")}</p>
                       <p className="text-xs text-gray-400 max-w-sm mx-auto leading-relaxed">
-                        Bạn chưa thực hiện hành động nào trong 3 ngày qua. Hãy bắt đầu trải nghiệm ứng dụng bằng cách xem thông tin, thích món ăn hay lưu trữ vào bộ sưu tập nhé!
+                        {t("profile.noActivityDesc")}
                       </p>
                     </div>
                   ) : (
@@ -630,8 +696,8 @@ export default function ProfilePage() {
                                   <Icon className="w-5 h-5" />
                                 </div>
                                 <div className="flex-1 border-b border-gray-50 dark:border-[#3D312A] pb-4 group-last:border-0">
-                                  <h4 className="text-sm font-bold text-gray-800 dark:text-[#E6DFD5] mb-0.5">{activity.title}</h4>
-                                  <span className="text-[11px] text-gray-400">{activity.time_ago}</span>
+                                  <h4 className="text-sm font-bold text-gray-800 dark:text-[#E6DFD5] mb-0.5">{translateActivityTitle(activity.title, activity)}</h4>
+                                  <span className="text-[11px] text-gray-400">{translateRelativeTime(activity.time_ago)}</span>
                                 </div>
                                 <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-brand transition-colors self-center" />
                               </div>
@@ -645,7 +711,7 @@ export default function ProfilePage() {
                           onClick={() => setVisibleActivitiesCount(prev => Math.min(prev + 5, 15))}
                           className="w-full mt-6 py-3 text-xs font-bold text-gray-400 hover:text-brand hover:bg-gray-50 dark:hover:bg-[#2A2420]/30 rounded-2xl transition-all tracking-widest uppercase cursor-pointer text-center"
                         >
-                          Xem thêm hoạt động
+                          {t("profile.seeMoreActivity")}
                         </button>
                       )}
                     </>
@@ -682,10 +748,10 @@ export default function ProfilePage() {
               <div className="px-6 pt-6 pb-4 border-b border-gray-50 dark:border-[#4D3D32] flex justify-between items-center">
                 <div>
                   <h3 className="text-xl font-black text-gray-900 dark:text-[#E6DFD5] tracking-tight">
-                    Chọn Danh Hiệu Hiển Thị
+                    {t("profile.modal.title")}
                   </h3>
                   <p className="text-xs text-gray-500 dark:text-[#9A8A7A] mt-0.5">
-                    Danh hiệu được chọn sẽ xuất hiện dưới tên và làm đẹp cho Avatar của bạn
+                    {t("profile.modal.subtitle")}
                   </p>
                 </div>
                 <button 
@@ -711,12 +777,12 @@ export default function ProfilePage() {
                     return (
                       <>
                         <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-2">
-                          <span>🌟</span> Danh hiệu đã sở hữu ({unlockedBadges.length})
+                          <span>🌟</span> {t("profile.modal.owned")} ({unlockedBadges.length})
                         </h4>
                         {unlockedBadges.length === 0 ? (
                           <div className="text-center py-6 bg-gray-50 dark:bg-[#2A2420]/30 rounded-2xl border border-dashed border-gray-200 dark:border-[#4D3D32]">
-                            <p className="text-sm text-gray-400 font-semibold">Bạn chưa mở khóa danh hiệu nào</p>
-                            <p className="text-xs text-gray-400 mt-1 px-4">Hãy tiếp tục tương tác và tìm kiếm để tích lũy huy hiệu nhé!</p>
+                            <p className="text-sm text-gray-400 font-semibold">{t("profile.modal.noBadges")}</p>
+                            <p className="text-xs text-gray-400 mt-1 px-4">{t("profile.modal.noBadgesDesc")}</p>
                           </div>
                         ) : (
                           <div className="grid grid-cols-1 gap-3">
@@ -748,12 +814,12 @@ export default function ProfilePage() {
                                   </div>
                                   <div className="flex-1 min-w-0">
                                     <h5 className="text-sm font-black text-gray-900 dark:text-[#E6DFD5] flex items-center gap-1.5">
-                                      {cfg.label}
+                                      {t(`profile.badges.${badgeKey}.label`)}
                                       {isSelected && (
-                                        <span className="px-2 py-0.5 rounded-full bg-brand/10 text-brand text-[9px] font-bold">Đang hiển thị</span>
+                                        <span className="px-2 py-0.5 rounded-full bg-brand/10 text-brand text-[9px] font-bold">{t("profile.modal.active")}</span>
                                       )}
                                     </h5>
-                                    <p className="text-xs text-gray-500 dark:text-[#9A8A7A] truncate mt-0.5">{cfg.description}</p>
+                                    <p className="text-xs text-gray-500 dark:text-[#9A8A7A] truncate mt-0.5">{t(`profile.badges.${badgeKey}.description`)}</p>
                                   </div>
                                   <div className={`w-5 h-5 rounded-full border flex items-center justify-center flex-shrink-0 transition-colors ${
                                     isSelected 
@@ -780,7 +846,7 @@ export default function ProfilePage() {
                     return (
                       <>
                         <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-2">
-                          <span>🔒</span> Chưa sở hữu ({Object.keys(BADGE_CONFIGS).length - unlockedBadges.length})
+                          <span>🔒</span> {t("profile.modal.locked")} ({Object.keys(BADGE_CONFIGS).length - unlockedBadges.length})
                         </h4>
                         <div className="grid grid-cols-1 gap-3">
                           {Object.keys(BADGE_CONFIGS).map((badgeKey) => {
@@ -798,7 +864,7 @@ export default function ProfilePage() {
                                 </div>
                                 <div className="flex-1 min-w-0">
                                   <h5 className="text-sm font-bold text-gray-700 dark:text-[#9A8A7A] flex items-center gap-1.5">
-                                    {cfg.label}
+                                    {t(`profile.badges.${badgeKey}.label`)}
                                   </h5>
                                   {/* Progress bar */}
                                   <div className="mt-2 flex items-center gap-2">

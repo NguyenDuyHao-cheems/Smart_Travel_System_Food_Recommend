@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { ChevronLeft, ChevronRight, X, Calendar as CalendarIcon, Flame } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { createPortal } from "react-dom";
+import { useLanguage } from "./LanguageProvider";
 
 interface AttendanceCalendarModalProps {
   isOpen: boolean;
@@ -12,6 +13,7 @@ interface AttendanceCalendarModalProps {
 }
 
 export function AttendanceCalendarModal({ isOpen, onClose, activeDates }: AttendanceCalendarModalProps) {
+  const { language, t } = useLanguage();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [mounted, setMounted] = useState(false);
 
@@ -85,13 +87,17 @@ export function AttendanceCalendarModal({ isOpen, onClose, activeDates }: Attend
     setCurrentDate(new Date(year, month + 1, 1));
   };
 
-  const monthNames = [
+  const monthNames = language === "en" ? [
+    "January", "February", "March", "April",
+    "May", "June", "July", "August",
+    "September", "October", "November", "December"
+  ] : [
     "Tháng 1", "Tháng 2", "Tháng 3", "Tháng 4",
     "Tháng 5", "Tháng 6", "Tháng 7", "Tháng 8",
     "Tháng 9", "Tháng 10", "Tháng 11", "Tháng 12"
   ];
 
-  const weekdayNames = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
+  const weekdayNames = language === "en" ? ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] : ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
 
   // Count active days in the current month
   const activeDaysInMonth = activeDates.filter(dateStr => {
@@ -127,10 +133,10 @@ export function AttendanceCalendarModal({ isOpen, onClose, activeDates }: Attend
               </div>
               <div>
                 <h3 className="text-base font-black text-gray-900 dark:text-[#E6DFD5] tracking-tight leading-none mb-1">
-                  Lịch Chuyên Cần
+                  {t('attendance.title')}
                 </h3>
                 <p className="text-[10px] text-gray-500 dark:text-[#9A8A7A]">
-                  Tần suất hoạt động trên hệ thống
+                  {t('attendance.subtitle')}
                 </p>
               </div>
             </div>
@@ -151,15 +157,15 @@ export function AttendanceCalendarModal({ isOpen, onClose, activeDates }: Attend
               </div>
               <div>
                 <p className="text-[10px] font-semibold text-gray-500 dark:text-[#9A8A7A]">
-                  Tháng này bạn đã hoạt động
+                  {t('attendance.thisMonth')}
                 </p>
                 <p className="text-sm font-black text-gray-900 dark:text-[#E6DFD5]">
-                  {activeDaysInMonth} ngày chuyên cần
+                  {activeDaysInMonth} {t('attendance.activeDays')}
                 </p>
               </div>
             </div>
             <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold uppercase tracking-wider">
-              {activeDaysInMonth > 5 ? "Tích Cực" : "Khởi Đầu"}
+              {activeDaysInMonth > 5 ? t('attendance.active') : t('attendance.starting')}
             </span>
           </div>
 
@@ -235,11 +241,11 @@ export function AttendanceCalendarModal({ isOpen, onClose, activeDates }: Attend
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 relative flex">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
               </span>
-              <span>ĐÃ TRUY CẬP</span>
+              <span>{t('attendance.visited')}</span>
             </div>
             <div className="flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-gray-200 dark:bg-gray-700" />
-              <span>CHƯA CÓ HOẠT ĐỘNG</span>
+              <span>{t('attendance.noActivity')}</span>
             </div>
           </div>
         </motion.div>

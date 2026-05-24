@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { X, MapPin, Search, Loader2, Check, Compass } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useLanguage } from './LanguageProvider';
 
 interface InteractiveMapModalProps {
   isOpen: boolean;
@@ -27,6 +28,7 @@ export function InteractiveMapModal({
   initialRadius,
   onConfirm
 }: InteractiveMapModalProps) {
+  const { t } = useLanguage();
   const [leafletLoaded, setLeafletLoaded] = useState(false);
   const [selectedPos, setSelectedPos] = useState<{ lat: number; lng: number } | null>(null);
   const [radius, setRadius] = useState<number>(initialRadius || 5.0);
@@ -254,7 +256,7 @@ export function InteractiveMapModal({
             circleRef.current.setLatLng([newLat, newLng]);
           }
         } else {
-          alert('Không tìm thấy địa điểm này. Vui lòng thử tìm kiếm khác!');
+          alert(t('interactiveMap.notFound'));
         }
       }
     } catch (err) {
@@ -286,7 +288,7 @@ export function InteractiveMapModal({
         <div className="flex items-center justify-between px-6 py-4 border-b border-[#E6DFD5]/60 dark:border-[#3D312A]/60 bg-gray-50 dark:bg-[#2F2824]">
           <div className="flex items-center gap-2">
             <Compass className="w-5 h-5 text-brand dark:text-[#E8735A]" />
-            <h3 className="text-lg font-bold text-[#3D312A] dark:text-[#E6DFD5]">Chọn vùng tìm kiếm quán</h3>
+            <h3 className="text-lg font-bold text-[#3D312A] dark:text-[#E6DFD5]">{t('interactiveMap.title')}</h3>
           </div>
           <button
             onClick={onClose}
@@ -305,7 +307,7 @@ export function InteractiveMapModal({
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Nhập địa điểm, quận, thành phố..."
+                placeholder={t('interactiveMap.searchPlaceholder')}
                 className="w-full pl-10 pr-4 py-2.5 bg-gray-50 dark:bg-[#3D312A]/40 border border-gray-200 dark:border-[#4D3D32] rounded-2xl text-sm text-[#3D312A] dark:text-[#E6DFD5] focus:outline-none focus:border-brand dark:focus:border-brand-hover transition-colors"
               />
               <Search className="absolute left-3.5 top-3 w-4.5 h-4.5 text-gray-400" />
@@ -318,7 +320,7 @@ export function InteractiveMapModal({
               {searching ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
-                'Tìm kiếm'
+                t('interactiveMap.search')
               )}
             </button>
           </form>
@@ -328,7 +330,7 @@ export function InteractiveMapModal({
             {!leafletLoaded ? (
               <div className="flex flex-col items-center justify-center">
                 <Loader2 className="w-8 h-8 animate-spin text-brand dark:text-[#E8735A] mb-2" />
-                <span className="text-xs text-gray-400 dark:text-[#9A8A7A]">Đang tải bản đồ trực quan...</span>
+                <span className="text-xs text-gray-400 dark:text-[#9A8A7A]">{t('interactiveMap.loadingMap')}</span>
               </div>
             ) : (
               <div id="group-recommend-map" ref={mapContainerRef} className="w-full h-full z-10" />
@@ -336,7 +338,7 @@ export function InteractiveMapModal({
             
             {/* Guide overlay */}
             <div className="absolute bottom-4 right-4 z-20 bg-white/90 dark:bg-[#2A2420]/90 backdrop-blur-sm px-3 py-1.5 rounded-xl border border-gray-200 dark:border-[#4D3D32] text-[10px] text-gray-500 dark:text-[#9A8A7A] pointer-events-none shadow-sm font-medium">
-              💡 Click bản đồ hoặc kéo thả Marker đỏ để dời vùng tìm kiếm.
+              {t('interactiveMap.guide')}
             </div>
           </div>
 
@@ -344,7 +346,7 @@ export function InteractiveMapModal({
           <div className="p-4 rounded-2xl bg-orange-50/20 dark:bg-[#3D312A]/30 border border-orange-100/50 dark:border-[#4D3D32] space-y-2">
             <div className="flex justify-between items-center">
               <span className="text-xs font-bold text-[#3D312A] dark:text-[#E6DFD5] flex items-center gap-1.5">
-                📏 Bán kính tìm kiếm hiện tại:
+                📏 {t('interactiveMap.radiusLabel')}
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-brand/10 dark:bg-[#E8735A]/10 text-brand dark:text-[#E8735A]">
                   {radius} km
                 </span>
@@ -375,12 +377,12 @@ export function InteractiveMapModal({
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5">
                 <span className="text-[10px] font-bold text-gray-400 dark:text-[#9A8A7A] uppercase tracking-wider">
-                  Vùng tìm kiếm được chọn
+                  {t('interactiveMap.selectedArea')}
                 </span>
                 {geocoding && <Loader2 className="w-3 h-3 animate-spin text-brand" />}
               </div>
               <h4 className="text-xs font-bold text-[#3D312A] dark:text-[#E6DFD5] leading-snug truncate">
-                {currentAddress || 'Đang xác định địa chỉ...'}
+                {currentAddress || t('interactiveMap.detectingAddress')}
               </h4>
               {selectedPos && (
                 <p className="text-[10px] text-[#7A6A5A] dark:text-[#9A8A7A] mt-1 font-mono">
@@ -398,7 +400,7 @@ export function InteractiveMapModal({
             onClick={onClose}
             className="flex-1 py-3 rounded-2xl border border-gray-200 dark:border-[#4D3D32] text-sm font-semibold text-gray-500 dark:text-[#9A8A7A] hover:bg-gray-100 dark:hover:bg-[#3D312A] transition-all cursor-pointer text-center"
           >
-            Hủy
+            {t('interactiveMap.cancel')}
           </button>
           <button
             type="button"
@@ -407,7 +409,7 @@ export function InteractiveMapModal({
             className="flex-1 py-3 rounded-2xl bg-[#3D312A] dark:bg-brand text-white hover:bg-[#4D3D32] dark:hover:bg-brand-hover text-sm font-bold shadow-md transition-all cursor-pointer text-center flex items-center justify-center gap-2 disabled:opacity-50"
           >
             <Check className="w-4 h-4 stroke-[3]" />
-            Xác nhận vùng tìm kiếm
+            {t('interactiveMap.confirm')}
           </button>
         </div>
       </div>

@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 import { AppShell } from '../../components/AppShell';
 import { LoadingState } from '../../components/ui/LoadingState';
-import { BudgetSelector, type BudgetOption } from '../../components/BudgetSelector';
+import { BudgetSelector, type BudgetOption, budgetToRange } from '../../components/BudgetSelector';
 import { DistanceFilter } from '../../components/DistanceFilter';
 import { SearchLoadingOverlay } from '../../components/ui/SearchLoadingOverlay';
 import { SearchBar } from '../../components/SearchBar';
@@ -38,9 +38,11 @@ import { useOptimizedLocation } from '../../hooks/useOptimizedLocation';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '../../store';
 import { addItem, removeItem } from '../../store/slices/itinerarySlice';
+import { setRawResults } from '../../store/slices/searchSlice';
 import { SortSelector, type SortOption } from '../../components/SortSelector';
 import { AdvancedFilters, type AdvancedFilterState } from '../../components/AdvancedFilters';
 import { ResultMapView, type MapViewport } from '../../components/ResultMapView';
+import { useLanguage } from '../../components/LanguageProvider';
 
 export interface AllergenDishWarning {
   dish_name: string;
@@ -94,6 +96,38 @@ const DEFAULT_TAG_STYLES = [
   { emoji: '🌿', bgLight: 'bg-emerald-50', bgDark: 'dark:bg-emerald-500/10', text: 'text-emerald-600 dark:text-emerald-400', border: 'border-emerald-100 dark:border-emerald-500/20' }
 ];
 
+const RESULT_TAG_LABELS_EN: Record<string, string> = {
+  'trà sữa': 'milk tea',
+  'bò': 'beef',
+  'đánh giá cao': 'highly rated',
+  'cao cấp': 'premium',
+  'cà phê': 'coffee',
+  'mở khuya': 'open late',
+  'hải sản': 'seafood',
+  'nướng': 'grill',
+  'gà': 'chicken',
+  'heo': 'pork',
+  'cơm': 'rice',
+  'phở': 'pho',
+  'bún': 'vermicelli',
+  'mì': 'noodles',
+  'lẩu': 'hotpot',
+  'món chay': 'vegetarian',
+  'giá rẻ': 'budget',
+  'tầm trung': 'mid-range',
+};
+
+function translateResultTag(label: string, language: 'vi' | 'en') {
+  return language === 'en' ? RESULT_TAG_LABELS_EN[label.toLowerCase()] || label : label;
+}
+
+function translateResultReason(reason: string, language: 'vi' | 'en') {
+  if (language !== 'en') return reason;
+  return reason
+    .replace(/Đánh giá xuất sắc/g, 'Excellent rating')
+    .replace(/Đánh giá cao/g, 'Highly rated');
+}
+
 function getTagsForItem(item: RecommendResult, index: number): VibeTag[] {
   if (item.tags && Array.isArray(item.tags) && item.tags.length > 0) {
     return item.tags.map((t: string, i: number) => {
@@ -135,6 +169,7 @@ function parsePrice(priceStr: string): number {
    Hero Result Card (#1 — AI TOP PICK)
    ───────────────────────────────────────────────────────────── */
 function HeroResultCard({ item, sessionId, searchMode, onAddCollection, isModalOpen }: { item: RecommendResult; sessionId?: string; searchMode?: SearchMode; onAddCollection: (item: RecommendResult) => void; isModalOpen: boolean }) {
+  const { language, t } = useLanguage();
   const router = useRouter();
   const generateSlug = (name: string) => {
     return name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
@@ -175,7 +210,7 @@ function HeroResultCard({ item, sessionId, searchMode, onAddCollection, isModalO
     e.stopPropagation();
     if (isInItinerary) {
       dispatch(removeItem(item.id));
-      toast.success('Đã xóa khỏi lộ trình');
+      toast.success(t('result.removedItineraryToast'));
     } else {
       dispatch(addItem({
         id: item.id,
@@ -189,9 +224,9 @@ function HeroResultCard({ item, sessionId, searchMode, onAddCollection, isModalO
         reason: item.reason,
         google_maps_url: item.google_maps_url
       }));
-      toast.success('Đã thêm vào lộ trình', {
+      toast.success(t('result.addedItineraryToast'), {
         action: {
-          label: 'Xem',
+          label: t('result.view'),
           onClick: () => router.push('/itinerary')
         }
       });
@@ -214,13 +249,13 @@ function HeroResultCard({ item, sessionId, searchMode, onAddCollection, isModalO
   const toggleFav = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!userId) {
-      toast.error('Vui lòng đăng nhập để lưu yêu thích');
+      toast.error(t('result.loginToSaveFavorite'));
       return;
     }
     if (isFav) {
       favoriteService.removeFavorite(userId, item.name);
       setIsFav(false);
-      toast.success('Đã xóa khỏi yêu thích');
+      toast.success(t('result.removedFavoriteToast'));
 
       interactionService.logInteraction({
         res_id: item.id,
@@ -230,7 +265,7 @@ function HeroResultCard({ item, sessionId, searchMode, onAddCollection, isModalO
     } else {
       favoriteService.addFavorite(userId, item);
       setIsFav(true);
-      toast.success('Đã thêm vào yêu thích');
+      toast.success(t('result.addedFavoriteToast'));
 
       interactionService.logInteraction({
         res_id: item.id,
@@ -263,7 +298,7 @@ function HeroResultCard({ item, sessionId, searchMode, onAddCollection, isModalO
             </span>
             {item.allergen_warning && item.allergen_warning.length > 0 && (
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-500/30">
-                <AlertTriangle className="w-3.5 h-3.5" /> {item.allergen_warning.length} món cần lưu ý
+                <AlertTriangle className="w-3.5 h-3.5" /> {item.allergen_warning.length} {t('result.itemsToNote')}
               </span>
             )}
           </div>
@@ -288,7 +323,7 @@ function HeroResultCard({ item, sessionId, searchMode, onAddCollection, isModalO
               </span>
               {item.total_reviews !== undefined && item.total_reviews > 0 && (
                 <span className="text-xs text-gray-400 dark:text-[#7A6A5A] font-medium">
-                  ({item.total_reviews} đánh giá)
+                  ({item.total_reviews} {t('result.reviews')})
                 </span>
               )}
             </div>
@@ -296,14 +331,14 @@ function HeroResultCard({ item, sessionId, searchMode, onAddCollection, isModalO
 
           {item.reason && (
             <p className="text-sm text-gray-500 dark:text-[#9A8A7A] leading-relaxed mb-6 max-w-md">
-              {item.reason}
+              {translateResultReason(item.reason, language)}
             </p>
           )}
 
           <div className="flex flex-wrap gap-2">
             {getTagsForItem(item, 0).map(tag => (
               <span key={tag.label} className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium ${tag.bgLight} ${tag.bgDark} ${tag.text} border ${tag.border}`}>
-                {tag.emoji} {tag.label}
+                {tag.emoji} {translateResultTag(tag.label, language)}
               </span>
             ))}
           </div>
@@ -325,7 +360,7 @@ function HeroResultCard({ item, sessionId, searchMode, onAddCollection, isModalO
             <button
               onClick={toggleItinerary}
               className={`w-10 h-10 rounded-full bg-white/90 dark:bg-[#2A2420]/80 border border-gray-200 dark:border-[#4D3D32] flex items-center justify-center hover:scale-110 transition-all cursor-pointer shadow-sm ${isInItinerary ? 'bg-orange-50 dark:bg-orange-950/40 border-orange-200 dark:border-orange-500/30' : ''}`}
-              title={isInItinerary ? "Xóa khỏi lộ trình" : "Thêm vào lộ trình"}
+              title={isInItinerary ? t('result.removeItinerary') : t('result.addItinerary')}
             >
               <Route className={`w-5 h-5 ${isInItinerary ? 'text-orange-500 fill-current' : 'text-gray-400'}`} />
             </button>
@@ -334,7 +369,7 @@ function HeroResultCard({ item, sessionId, searchMode, onAddCollection, isModalO
                 e.stopPropagation();
                 // [FIX-CONFLICT]: Ngăn không cho mở Modal nếu món ăn đã có trong bộ sưu tập (tránh thêm trùng lặp), hiển thị toast với icon Bookmark
                 if (isInColl) {
-                  toast.info("Món ăn này đã có trong bộ sưu tập của bạn.", {
+                  toast.info(t('result.alreadyInCollection'), {
                     icon: <Bookmark className="w-4 h-4" />
                   });
                   return;
@@ -342,7 +377,7 @@ function HeroResultCard({ item, sessionId, searchMode, onAddCollection, isModalO
                 onAddCollection(item);
               }}
               className={`w-10 h-10 rounded-full bg-white/90 dark:bg-[#2A2420]/80 border border-gray-200 dark:border-[#4D3D32] flex items-center justify-center hover:scale-110 transition-all cursor-pointer shadow-sm ${isInColl ? 'hover:bg-yellow-50' : 'hover:bg-brand-muted'}`}
-              title={isInColl ? "Đã có trong bộ sưu tập" : "Thêm vào bộ sưu tập"}
+              title={isInColl ? t('result.alreadyInCollectionShort') : t('result.addCollection')}
             >
               <Bookmark className={`w-5 h-5 ${isInColl ? 'text-yellow-500 fill-current' : 'text-brand dark:text-[#E8735A]'}`} />
             </button>
@@ -364,6 +399,7 @@ function HeroResultCard({ item, sessionId, searchMode, onAddCollection, isModalO
    ───────────────────────────────────────────────────────────── */
 // [FIX-CONFLICT]: Tương tự HeroResultCard, bổ sung prop isModalOpen và state isInColl cho SmallResultCard
 function SmallResultCard({ item, index, rank, sessionId, searchMode, onAddCollection, isModalOpen }: { item: RecommendResult; index: number; rank?: number; sessionId?: string; searchMode?: SearchMode; onAddCollection: (item: RecommendResult) => void; isModalOpen: boolean }) {
+  const { language, t } = useLanguage();
   const router = useRouter();
   const tags = getTagsForItem(item, index);
   const matchColor = getMatchColor(item.match);
@@ -407,7 +443,7 @@ function SmallResultCard({ item, index, rank, sessionId, searchMode, onAddCollec
     e.stopPropagation();
     if (isInItinerary) {
       dispatch(removeItem(item.id));
-      toast.success('Đã xóa khỏi lộ trình');
+      toast.success(t('result.removedItineraryToast'));
     } else {
       dispatch(addItem({
         id: item.id,
@@ -421,9 +457,9 @@ function SmallResultCard({ item, index, rank, sessionId, searchMode, onAddCollec
         reason: item.reason,
         google_maps_url: item.google_maps_url
       }));
-      toast.success('Đã thêm vào lộ trình', {
+      toast.success(t('result.addedItineraryToast'), {
         action: {
-          label: 'Xem',
+          label: t('result.view'),
           onClick: () => router.push('/itinerary')
         }
       });
@@ -446,13 +482,13 @@ function SmallResultCard({ item, index, rank, sessionId, searchMode, onAddCollec
   const toggleFav = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!userId) {
-      toast.error('Vui lòng đăng nhập để lưu yêu thích');
+      toast.error(t('result.loginToSaveFavorite'));
       return;
     }
     if (isFav) {
       favoriteService.removeFavorite(userId, item.name);
       setIsFav(false);
-      toast.success('Đã xóa khỏi yêu thích');
+      toast.success(t('result.removedFavoriteToast'));
 
       interactionService.logInteraction({
         res_id: item.id,
@@ -462,7 +498,7 @@ function SmallResultCard({ item, index, rank, sessionId, searchMode, onAddCollec
     } else {
       favoriteService.addFavorite(userId, item);
       setIsFav(true);
-      toast.success('Đã thêm vào yêu thích');
+      toast.success(t('result.addedFavoriteToast'));
 
       interactionService.logInteraction({
         res_id: item.id,
@@ -497,14 +533,14 @@ function SmallResultCard({ item, index, rank, sessionId, searchMode, onAddCollec
           <button
             onClick={toggleItinerary}
             className={`w-8 h-8 rounded-full bg-white/90 dark:bg-[#2A2420]/80 flex items-center justify-center hover:scale-110 transition-all cursor-pointer shadow-sm ${isInItinerary ? 'bg-orange-50 dark:bg-orange-950/40 border-orange-200 dark:border-orange-500/30' : ''}`}
-            title={isInItinerary ? "Xóa khỏi lộ trình" : "Thêm vào lộ trình"}
+            title={isInItinerary ? t('result.removeItinerary') : t('result.addItinerary')}
           >
             <Route className={`w-4 h-4 ${isInItinerary ? 'text-orange-500 fill-current' : 'text-gray-400'}`} />
           </button>
           <button
             onClick={toggleFav}
             className="w-8 h-8 rounded-full bg-white/90 dark:bg-[#2A2420]/80 flex items-center justify-center hover:scale-110 transition-all cursor-pointer shadow-sm"
-            title="Lưu yêu thích"
+            title={t('result.saveFavorite')}
           >
             <Heart className={`w-4 h-4 ${isFav ? 'text-red-500 fill-current' : 'text-gray-400'}`} />
           </button>
@@ -513,7 +549,7 @@ function SmallResultCard({ item, index, rank, sessionId, searchMode, onAddCollec
               e.stopPropagation();
               // [FIX-CONFLICT]: Ngăn không cho mở Modal nếu món ăn đã có trong bộ sưu tập (tránh thêm trùng lặp), hiển thị toast với icon Bookmark
               if (isInColl) {
-                toast.info("Món ăn này đã có trong bộ sưu tập của bạn.", {
+                toast.info(t('result.alreadyInCollection'), {
                   icon: <Bookmark className="w-4 h-4" />
                 });
                 return;
@@ -521,7 +557,7 @@ function SmallResultCard({ item, index, rank, sessionId, searchMode, onAddCollec
               onAddCollection(item);
             }}
             className={`w-8 h-8 rounded-full bg-white/90 dark:bg-[#2A2420]/80 flex items-center justify-center hover:scale-110 transition-all cursor-pointer shadow-sm ${isInColl ? 'hover:bg-yellow-50' : 'hover:bg-brand-muted'}`}
-            title={isInColl ? "Đã có trong bộ sưu tập" : "Thêm vào bộ sưu tập"}
+            title={isInColl ? t('result.alreadyInCollectionShort') : t('result.addCollection')}
           >
             <Bookmark className={`w-4 h-4 ${isInColl ? 'text-yellow-500 fill-current' : 'text-brand dark:text-[#E8735A]'}`} />
           </button>
@@ -533,7 +569,7 @@ function SmallResultCard({ item, index, rank, sessionId, searchMode, onAddCollec
           </span>
           {item.allergen_warning && item.allergen_warning.length > 0 && (
             <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-500 text-white shadow-sm border border-amber-600">
-              ⚠️ {item.allergen_warning.length} lưu ý
+              ⚠️ {item.allergen_warning.length} {t('result.notes')}
             </span>
           )}
           {item.dist && (
@@ -555,13 +591,13 @@ function SmallResultCard({ item, index, rank, sessionId, searchMode, onAddCollec
         )}
         {item.reason && (
           <p className="text-xs text-gray-500 dark:text-[#9A8A7A] leading-relaxed mb-3 line-clamp-2">
-            {item.reason}
+            {translateResultReason(item.reason, language)}
           </p>
         )}
         <div className="flex flex-wrap gap-1.5">
           {tags.map(tag => (
             <span key={tag.label} className={`px-2 py-1 rounded-full text-[10px] font-medium ${tag.bgLight} ${tag.bgDark} ${tag.text} border ${tag.border}`}>
-              {tag.emoji} {tag.label}
+              {tag.emoji} {translateResultTag(tag.label, language)}
             </span>
           ))}
         </div>
@@ -603,7 +639,37 @@ function FeatureBar() {
   );
 }
 
+const isPriceInRange = (priceStr: string, min: number, max: number): boolean => {
+  if (!priceStr || priceStr.toLowerCase().includes('liên hệ')) return false;
+
+  // Trường hợp 1: Có chứa ký tự 'k' (ví dụ: "30k - 50k")
+  const matches = priceStr.match(/(\d+)k/gi);
+  if (matches) {
+    const values = matches.map(m => parseInt(m.replace(/k/i, '')) * 1000);
+    const itemMin = Math.min(...values);
+    const itemMax = Math.max(...values);
+    return itemMax >= min && itemMin <= max;
+  }
+
+  // Trường hợp 2: Số đầy đủ (ví dụ: "30.000 - 50.000", "30,000đ")
+  // Xoá bỏ dấu chấm, phẩy phân cách hàng nghìn
+  const normalizedStr = priceStr.replace(/[.,]/g, '');
+  const digitMatches = normalizedStr.match(/\d+/g);
+  
+  if (digitMatches) {
+    const values = digitMatches.map(m => parseInt(m)).filter(v => v >= 1000);
+    if (values.length > 0) {
+      const itemMin = Math.min(...values);
+      const itemMax = Math.max(...values);
+      return itemMax >= min && itemMin <= max;
+    }
+  }
+
+  return false;
+};
+
 function ResultPageContent() {
+  const { t } = useLanguage();
   const router = useRouter();
   const searchParams = useSearchParams();
   const urlQuery = searchParams.get('q') || '';
@@ -614,6 +680,8 @@ function ResultPageContent() {
     sessionIdFromUrl = sessionStorage.getItem('current_search_session_id') || '';
   }
 
+  const dispatch = useDispatch();
+  const rawResults = useSelector((state: RootState) => state.search.rawResults);
   const coords = useSelector((state: RootState) => state.location.coords);
   const lastSearchCoordsRef = useRef<{ lat: number; lng: number } | null>(null);
 
@@ -646,7 +714,14 @@ function ResultPageContent() {
 
   const [searchQuery, setSearchQuery] = useState('');
   const { query: inputValue, setQuery: setInputValue, searchMode, setSearchMode } = useSearchState("");
-  const [budget, setBudget] = useState<BudgetOption>('auto');
+  const [budget, setBudget] = useState<BudgetOption>(() => {
+    if (typeof window === 'undefined') return 'auto';
+    const b = searchParams.get('budget');
+    if (b && ['30000', '50000', '100000', '200000'].includes(b)) {
+      return b as BudgetOption;
+    }
+    return 'auto';
+  });
   const { getOptimizedLocation } = useOptimizedLocation();
 
   const [fallbackApplied, setFallbackApplied] = useState(false);
@@ -656,6 +731,19 @@ function ResultPageContent() {
   const [filteredCount, setFilteredCount] = useState(0);
   const [allergenFlaggedCount, setAllergyFlaggedCount] = useState(0);
   const [allergyWarning, setAllergyWarning] = useState<string>('');
+
+  // Sync budget to URL when it changes
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      if (budget === 'auto') {
+        url.searchParams.delete('budget');
+      } else {
+        url.searchParams.set('budget', budget);
+      }
+      window.history.replaceState({}, '', url.pathname + url.search);
+    }
+  }, [budget]);
 
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
@@ -667,6 +755,14 @@ function ResultPageContent() {
     // Save current URL as the last search URL for the Back button in settings
     if (typeof window !== 'undefined') {
       localStorage.setItem('last_search_url', window.location.pathname + window.location.search);
+    }
+  }, [searchParams]);
+
+  // Sync budget from URL
+  useEffect(() => {
+    const urlBudget = searchParams.get('budget');
+    if (urlBudget && urlBudget !== 'auto') {
+      setBudget(urlBudget as BudgetOption);
     }
   }, [searchParams]);
 
@@ -701,22 +797,28 @@ function ResultPageContent() {
 
   const [collectionModalItem, setCollectionModalItem] = useState<RecommendResult | null>(null);
 
-  const [results, setResults] = useState<RecommendResult[]>(() => {
-    if (typeof window === 'undefined') return [];
-    const searchParams = new URLSearchParams(window.location.search);
-    let sessionId = searchParams.get('session_id');
-    const q = searchParams.get('q');
-    const mapEntryWithoutSearch = searchParams.get('map') === '1' && !q && !sessionId;
-    if (mapEntryWithoutSearch) return [];
-    if (!sessionId) {
-      sessionId = sessionStorage.getItem('current_search_session_id');
+  useEffect(() => {
+    if (rawResults.length === 0 && typeof window !== 'undefined') {
+      const searchParams = new URLSearchParams(window.location.search);
+      let sessionId = searchParams.get('session_id');
+      const q = searchParams.get('q');
+      const mapEntryWithoutSearch = searchParams.get('map') === '1' && !q && !sessionId;
+      if (!mapEntryWithoutSearch) {
+        if (!sessionId) {
+          sessionId = sessionStorage.getItem('current_search_session_id');
+        }
+        if (sessionId) {
+          const cached = sessionStorage.getItem(`session_data_${sessionId}`);
+          if (cached) {
+            const parsed = JSON.parse(cached);
+            if (parsed.results) {
+              dispatch(setRawResults(parsed.results));
+            }
+          }
+        }
+      }
     }
-    if (sessionId) {
-      const cached = sessionStorage.getItem(`session_data_${sessionId}`);
-      if (cached) return JSON.parse(cached).results || [];
-    }
-    return [];
-  });
+  }, [dispatch]);
 const [sortBy, setSortBy] = useState<SortOption>('recommend');
   const [advFilters, setAdvFilters] = useState<AdvancedFilterState>({
     minPrice: null,
@@ -730,8 +832,7 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
     advFilters.minPrice !== null || advFilters.maxPrice !== null,
     advFilters.minRating !== null,
     advFilters.vegetarianOnly,
-    selectedTags.length > 0,
-  ].filter(Boolean).length;
+  ].filter(Boolean).length + selectedTags.length;
   const hasActiveAdvFilters = activeAdvFilterCount > 0;
   const [apiError, setApiError] = useState<string | null>(null);
 
@@ -795,17 +896,24 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
     budget,
   ]);
 
+  const results = useMemo(() => {
+    if (budget === 'auto') return rawResults;
+    const range = budgetToRange(budget);
+    if (!range) return rawResults;
+    return rawResults.filter(item => isPriceInRange(item.price, range.min, range.max));
+  }, [rawResults, budget]);
+
   // Tự động thu thập tất cả tag duy nhất có trong kết quả trả về từ API
   const availableTags = useMemo(() => {
     const tagsSet = new Set<string>();
-    results.forEach((r) => {
+    rawResults.forEach((r) => {
       r.tags?.forEach((t) => tagsSet.add(t));
     });
     return Array.from(tagsSet);
-  }, [results]);
+  }, [rawResults]);
 
   const [isSearching, setIsSearching] = useState(false);
-  const [searchLoadingMsg, setSearchLoadingMsg] = useState("Đang phân tích sở thích của bạn...");
+  const [searchLoadingMsg, setSearchLoadingMsg] = useState(t('result.loadingAnalyzing'));
 
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -822,7 +930,7 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
       if (isMapEntryWithoutSearch) {
         setSearchQuery('');
         setInputValue('');
-        setResults([]);
+        dispatch(setRawResults([]));
       }
       setIsLoading(false);
       return;
@@ -835,7 +943,7 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
         const data = JSON.parse(cached);
         setSearchQuery(data.query);
         setInputValue(data.query);
-        setResults(data.results || []);
+        dispatch(setRawResults(data.results || []));
         setFallbackApplied(data.fallback_applied || false);
         setFallbackReason(data.fallback_reason || '');
         setAppliedBudget(data.applied_budget ?? null);
@@ -858,7 +966,7 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
           sessionStorage.setItem(`session_data_${sessionIdFromUrl}`, JSON.stringify(data));
           setSearchQuery(data.query);
           setInputValue(data.query);
-          setResults(data.results || []);
+          dispatch(setRawResults(data.results || []));
           setFallbackApplied(data.fallback_applied || false);
           setFallbackReason(data.fallback_reason || '');
           setAppliedBudget(data.applied_budget ?? null);
@@ -866,13 +974,13 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
           setAllergyFlaggedCount(data.allergen_flagged_count || 0);
           setAllergyWarning(data.warning || '');
         } else if (res.status === 404) {
-          setApiError('Không tìm thấy phiên tìm kiếm. Link có thể đã hết hạn hoặc không tồn tại.');
+          setApiError(t('result.sessionNotFound'));
         } else {
-          setApiError('Lỗi khi tải kết quả. Vui lòng thử lại.');
+          setApiError(t('result.loadResultsError'));
         }
       } catch (err) {
         console.error("Load session error:", err);
-        setApiError('Không thể kết nối đến máy chủ.');
+        setApiError(t('result.serverConnectionError'));
       } finally {
         setIsLoading(false);
       }
@@ -931,17 +1039,17 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
     abortControllerRef.current = controller;
 
     try {
-      setSearchLoadingMsg("Đang xác định vị trí của bạn...");
+      setSearchLoadingMsg(t('result.loadingLocation'));
 
       const gps = await getOptimizedLocation();
       if (controller.signal.aborted) return;
       if (!gps && !options?.viewport) {
-        setApiError("Không thể xác định vị trí thực tế của bạn. Vui lòng kiểm tra quyền truy cập GPS để tiếp tục.");
+        setApiError(t('result.gpsRequiredError'));
         setIsSearching(false);
         return;
       }
 
-      setSearchLoadingMsg("AI đang phân tích khẩu vị của bạn...");
+      setSearchLoadingMsg(t('result.loadingAnalyzing'));
       const token = localStorage.getItem('access_token');
       const userId = localStorage.getItem('user_id');
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
@@ -960,7 +1068,7 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
           lat: requestLat,
           lng: requestLng,
           user_id: userId || undefined,
-          budget: finalBudget === 'auto' ? undefined : parseInt(finalBudget, 10),
+          // Bỏ qua budget ở Backend để lấy mảng dữ liệu lớn
           search_mode: searchMode,
           map_center_lat: options?.viewport?.centerLat,
           map_center_lng: options?.viewport?.centerLng,
@@ -969,7 +1077,7 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
           map_east: options?.viewport?.east,
           map_west: options?.viewport?.west,
           map_radius_km: options?.viewport?.radiusKm,
-          top_k: options?.viewport ? 48 : 24,
+          top_k: 100, // Lấy 1 mẻ lớn 100 món để lọc trên Frontend
         }),
       });
 
@@ -985,7 +1093,7 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
             searchMode
           );
         }
-        setSearchLoadingMsg("Đã có kết quả mới! Đang chuẩn bị...");
+        setSearchLoadingMsg(t('result.loadingPreparing'));
         // [FIX-CONFLICT]: Ẩn session_id và mode vào sessionStorage, đẩy query q lên URL
         if (typeof window !== 'undefined') {
           sessionStorage.setItem('current_search_session_id', data.session_id);
@@ -1004,7 +1112,7 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
         if (options?.stayOnPage) {
           setSearchQuery(finalQuery);
           setInputValue(finalQuery);
-          setResults(data.results || []);
+          dispatch(setRawResults(data.results || []));
           setFallbackApplied(data.fallback_applied || false);
           setFallbackReason(data.fallback_reason || '');
           setAppliedBudget(data.applied_budget ?? null);
@@ -1020,14 +1128,19 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
             window.history.replaceState(null, '', `/result?${params.toString()}`);
           }
         } else {
-          window.location.href = `/result?q=${encodeURIComponent(finalQuery)}`;
+          const params = new URLSearchParams();
+          params.set('q', finalQuery);
+          if (finalBudget !== 'auto') {
+            params.set('budget', String(finalBudget));
+          }
+          window.location.href = `/result?${params.toString()}`;
         }
       } else {
-        throw new Error("Không thể kết nối với hệ thống AI.");
+        throw new Error(t('result.aiConnectionError'));
       }
     } catch (err: any) {
       if (err.name === 'AbortError') return;
-      const msg = err?.message || "Lỗi kết nối AI. Vui lòng thử lại.";
+      const msg = err?.message || t('result.aiConnectionRetry');
       setApiError(msg);
     } finally {
       if (abortControllerRef.current === controller) {
@@ -1182,11 +1295,11 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
           ? 'bg-brand text-white hover:bg-brand-hover'
           : 'bg-white dark:bg-[#3D312A] text-[#3D312A] dark:text-[#E6DFD5] hover:text-brand'
       }`}
-      title={mapViewEnabled ? 'Thoát khỏi bản đồ' : 'Hiện bản đồ kết quả'}
-      aria-label={mapViewEnabled ? 'Thoát khỏi bản đồ' : 'Hiện bản đồ kết quả'}
+      title={mapViewEnabled ? t('result.exitMapTitle') : t('result.showMapTitle')}
+      aria-label={mapViewEnabled ? t('result.exitMapTitle') : t('result.showMapTitle')}
     >
       {mapViewEnabled ? <LogOut className="w-4 h-4" /> : <MapIcon className="w-4 h-4" />}
-      <span>{mapViewEnabled ? 'Thoát bản đồ' : 'Bản đồ'}</span>
+      <span>{mapViewEnabled ? t('result.exitMap') : t('result.map')}</span>
     </button>
   );
 
@@ -1204,7 +1317,6 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
                 value={budget}
                 onChange={(newBudget) => {
                   setBudget(newBudget);
-                  handleSearch(inputValue, newBudget);
                 }}
               />
               <DistanceFilter
@@ -1242,7 +1354,7 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
                 }`}
               >
                 <SlidersHorizontal className="w-3.5 h-3.5" />
-                Bộ lọc nâng cao
+                {t('result.advancedFilters')}
                 {activeAdvFilterCount > 0 && (
                   <span className="bg-brand text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-bold ml-0.5">
                     {activeAdvFilterCount}
@@ -1259,7 +1371,7 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
                   className="inline-flex items-center gap-1 text-[11px] font-bold text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 px-2.5 py-1 rounded-lg transition-all"
                 >
                   <RotateCcw className="w-3 h-3" />
-                  Đặt lại
+                  {t('result.reset')}
                 </button>
               )}
             </div>
@@ -1310,12 +1422,12 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
                     <Info className="w-5 h-5 text-yellow-600 dark:text-yellow-500 flex-shrink-0 mt-0.5" />
                     <div>
                       <p className="text-sm text-yellow-800 dark:text-yellow-200 leading-relaxed mb-2">
-                        <strong>AI đã mở rộng phạm vi tìm kiếm:</strong> {fallbackReason || 'Không tìm thấy kết quả chính xác theo yêu cầu khắt khe, chúng tôi đã mở rộng phạm vi và ngân sách để gợi ý cho bạn!'}
+                        <strong>{t('result.fallbackTitle')}</strong> {fallbackReason || t('result.fallbackDesc')}
                       </p>
                       <div className="flex flex-wrap gap-2">
                         {appliedBudget != null && (
                           <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-yellow-100 dark:bg-yellow-500/20 text-yellow-700 dark:text-yellow-300">
-                            💰 Ngân sách: {appliedBudget.toLocaleString('vi-VN')}đ
+                            💰 {t('result.budget')}: {appliedBudget.toLocaleString('vi-VN')}đ
                           </span>
                         )}
                       </div>
@@ -1326,7 +1438,7 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
                   <div className="mb-6 flex items-start gap-3 p-4 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 shadow-sm">
                     <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-500 flex-shrink-0 mt-0.5" />
                     <p className="text-sm text-amber-900 dark:text-amber-200 leading-relaxed">
-                      <strong>Lưu ý Dị ứng:</strong> Có {allergenFlaggedCount} quán ăn có chứa thành phần gây dị ứng cho bạn. AI đã đánh dấu rõ <strong>"⚠️ Cảnh báo"</strong> trên từng quán để bạn dễ dàng nhận biết.
+                      <strong>{t('result.allergyNoticeTitle')}</strong> {t('result.allergyNoticeDesc').replace('{count}', String(allergenFlaggedCount))}
                     </p>
                   </div>
                 )}
@@ -1335,14 +1447,14 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
                   <div className="mb-6 px-5 py-3 rounded-full bg-[#F0F7FF] dark:bg-blue-500/5 border border-[#E1EFFE] dark:border-blue-500/20 flex items-center gap-3 relative shadow-sm">
                     <Sparkles className="w-5 h-5 text-blue-500 flex-shrink-0" />
                     <p className="text-[13px] md:text-sm text-gray-600 dark:text-blue-200 pr-10 whitespace-nowrap">
-                      Bạn đang tìm kiếm với tư cách khách.{" "}
+                      {t('result.guestSearching')}{" "}
                       <button
                         onClick={() => router.push('/auth')}
                         className="font-bold text-blue-600 dark:text-blue-400 underline hover:text-blue-700 transition-colors"
                       >
-                        Đăng nhập ngay
+                        {t('result.loginNow')}
                       </button>
-                      {" "}để AI đề xuất món ăn chính xác theo khẩu vị và chế độ ăn của riêng bạn!
+                      {" "}{t('result.loginBenefit')}
                     </p>
                     <button
                       onClick={() => setShowGuestNotice(false)}
@@ -1356,7 +1468,7 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
                 <div className="flex flex-col gap-3 mb-5">
                   <div className="flex justify-between items-center px-1">
                     <button onClick={() => router.push('/')} className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-brand transition-colors">
-                      <Home className="w-4 h-4" /> Quay lại trang chủ
+                      <Home className="w-4 h-4" /> {t('result.backHome')}
                     </button>
                   </div>
                   <div className="relative group flex">
@@ -1382,14 +1494,14 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
                     <Brain className="w-8 h-8 text-red-500" />
                   </div>
                   <h2 className="text-xl font-bold text-red-600 dark:text-red-400 mb-2">
-                    Lỗi kết nối
+                    {t('result.connectionError')}
                   </h2>
                   <p className="text-red-500 dark:text-red-300/60 max-w-sm mx-auto mb-6">{apiError}</p>
                   <button
                     onClick={() => window.location.reload()}
                     className="px-6 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-full transition-all font-medium shadow-md"
                   >
-                    Thử kết nối lại
+                    {t('result.retryConnection')}
                   </button>
                 </motion.div>
               ) : mapViewEnabled ? (
@@ -1401,10 +1513,10 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
                           <Search className="w-8 h-8 text-gray-400 dark:text-[#7A6A5A]" />
                         </div>
                         <h2 className="text-xl font-bold text-gray-800 dark:text-[#E6DFD5] mb-2">
-                          Nhập món ăn để tìm trên bản đồ
+                          {t('result.mapEmptyTitle')}
                         </h2>
                         <p className="text-sm text-gray-500 dark:text-[#9A8A7A] max-w-md mx-auto leading-relaxed">
-                          Tìm món ăn ở thanh tìm kiếm phía trên, sau đó chọn bán kính 2 km, 4 km hoặc 8 km trên bản đồ để lọc theo vùng.
+                          {t('result.mapEmptyDesc')}
                         </p>
                       </div>
                     ) : (
@@ -1428,7 +1540,7 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
                             }`}
                           >
                             <SlidersHorizontal className="w-4 h-4" />
-                            <span>Bộ lọc</span>
+                            <span>{t('result.filters')}</span>
                           </button>
                         </div>
 
@@ -1436,13 +1548,12 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
                         {showMapFilters && (
                           <div className="p-4 bg-white dark:bg-[#3D312A] rounded-2xl border border-gray-100 dark:border-[#4D3D32] shadow-sm flex flex-col gap-4">
                             <div className="flex flex-col gap-2">
-                              <p className="text-[11px] font-bold text-gray-400 dark:text-[#9A8A7A] uppercase tracking-wide">Ngân sách & Khoảng cách</p>
+                              <p className="text-[11px] font-bold text-gray-400 dark:text-[#9A8A7A] uppercase tracking-wide">{t('result.budgetDistance')}</p>
                               <div className="flex flex-wrap items-center gap-2">
                                 <BudgetSelector
                                   value={budget}
                                   onChange={(newBudget) => {
                                     setBudget(newBudget);
-                                    handleSearch(inputValue, newBudget);
                                   }}
                                 />
                                 <DistanceFilter
@@ -1457,7 +1568,7 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
                             </div>
                             <div className="h-px bg-gray-100 dark:bg-[#4D3D32]/40" />
                             <div className="flex flex-col gap-2">
-                              <p className="text-[11px] font-bold text-gray-400 dark:text-[#9A8A7A] uppercase tracking-wide">Lọc nâng cao</p>
+                              <p className="text-[11px] font-bold text-gray-400 dark:text-[#9A8A7A] uppercase tracking-wide">{t('result.advancedFilterShort')}</p>
                               <AdvancedFilters
                                 filters={advFilters}
                                 onChange={setAdvFilters}
@@ -1517,10 +1628,10 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
                     <Search className="w-10 h-10 text-gray-400 dark:text-[#7A6A5A]" />
                   </div>
                   <h2 className="text-2xl font-bold text-gray-800 dark:text-[#E6DFD5] mb-3">
-                    Không tìm thấy món nào!
+                    {t('result.noResultsTitle')}
                   </h2>
                   <p className="text-gray-500 dark:text-[#9A8A7A] max-w-md mx-auto mb-8 leading-relaxed">
-                    Rất tiếc, AI không tìm thấy kết quả nào phù hợp với yêu cầu hiện tại. Thử thay đổi từ khóa hoặc mở rộng ngân sách xem sao nhé?
+                    {t('result.noResultsDesc')}
                   </p>
                   <button
                     onClick={() => {
@@ -1530,7 +1641,7 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
                     }}
                     className="px-6 py-2.5 bg-brand-muted dark:bg-brand/10 hover:bg-brand-muted dark:hover:bg-brand/20 text-brand-hover dark:text-[#E6DFD5] rounded-full transition-all font-semibold"
                   >
-                    Thử tìm từ khóa khác
+                    {t('result.tryAnotherKeyword')}
                   </button>
                 </motion.div>
               ) : renderResultCards(false)}
@@ -1552,7 +1663,7 @@ export default function ResultPage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen bg-white dark:bg-[#2A2420] flex items-center justify-center">
-        <div className="text-[#9A8A7A] dark:text-[#7A6A5A] animate-pulse font-medium">Đang tải dữ liệu...</div>
+        <div className="text-[#9A8A7A] dark:text-[#7A6A5A] animate-pulse font-medium">Loading data...</div>
       </div>
     }>
       <ResultPageContent />

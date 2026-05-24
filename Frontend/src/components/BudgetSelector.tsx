@@ -1,5 +1,7 @@
 'use client';
 
+import { useLanguage } from './LanguageProvider';
+
 /**
  * BudgetSelector — Segmented control chọn ngân sách
  * Dùng chung cho Home page và Result page
@@ -21,10 +23,11 @@ const BUDGET_OPTIONS: { label: string; value: BudgetOption }[] = [
 ];
 
 export function BudgetSelector({ value, onChange }: BudgetSelectorProps) {
+  const { t } = useLanguage();
   return (
     <div className="flex items-center justify-start gap-1 flex-wrap">
       <span className="text-xs font-bold text-gray-500 dark:text-[#9A8A7A] mr-1 whitespace-nowrap">
-        Ngân sách
+        {t("budgetSelector.label")}
       </span>
       {BUDGET_OPTIONS.map((opt) => (
         <button

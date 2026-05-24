@@ -2,6 +2,7 @@
 
 import React, { useRef, useEffect, useState } from 'react';
 import { Tag, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useLanguage } from './LanguageProvider';
 
 /* ── Emoji mapping for common Vietnamese food tags ── */
 const TAG_EMOJI_MAP: Record<string, string> = {
@@ -27,6 +28,24 @@ const TAG_EMOJI_MAP: Record<string, string> = {
   'dessert': '🍰',
 };
 
+const TAG_LABELS_EN: Record<string, string> = {
+  'gà': 'chicken',
+  'bò': 'beef',
+  'heo': 'pork',
+  'cơm': 'rice',
+  'phở': 'pho',
+  'bún': 'vermicelli',
+  'mì': 'noodles',
+  'hải sản': 'seafood',
+  'lẩu': 'hotpot',
+  'nướng': 'grill',
+  'trà sữa': 'milk tea',
+  'cà phê': 'coffee',
+  'tráng miệng': 'dessert',
+  'cháo': 'porridge',
+  'món chay': 'vegetarian',
+};
+
 function getTagEmoji(tagName: string): string {
   const key = tagName.toLowerCase();
   return TAG_EMOJI_MAP[key] || '✨';
@@ -42,6 +61,7 @@ interface TagFilterProps {
 }
 
 export function TagFilter({ tags, selectedTag, onSelect }: TagFilterProps) {
+  const { language, t } = useLanguage();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
@@ -75,7 +95,7 @@ export function TagFilter({ tags, selectedTag, onSelect }: TagFilterProps) {
       {/* Label */}
       <span className="flex-shrink-0 flex items-center gap-1.5 text-xs font-bold text-gray-400 dark:text-[#9A8A7A] uppercase tracking-wider whitespace-nowrap">
         <Tag className="w-3.5 h-3.5" />
-        Lọc:
+        {t('tagFilter.label')}
       </span>
 
       {/* Left scroll arrow */}
@@ -83,7 +103,7 @@ export function TagFilter({ tags, selectedTag, onSelect }: TagFilterProps) {
         <button
           onClick={() => scroll('left')}
           className="flex-shrink-0 w-7 h-7 rounded-full bg-white dark:bg-[#3D312A] border border-gray-100 dark:border-[#4D3D32] flex items-center justify-center shadow-sm hover:shadow-md transition-all cursor-pointer z-10"
-          aria-label="Cuộn trái"
+          aria-label={t('tagFilter.scrollLeft')}
         >
           <ChevronLeft className="w-4 h-4 text-gray-500 dark:text-[#9A8A7A]" />
         </button>
@@ -104,7 +124,7 @@ export function TagFilter({ tags, selectedTag, onSelect }: TagFilterProps) {
               : 'bg-white dark:bg-[#3D312A] text-gray-600 dark:text-[#C8BFB0] border-gray-100 dark:border-[#4D3D32] hover:border-brand/40 hover:text-brand'
           }`}
         >
-          🏷️ Tất cả
+          🏷️ {t('tagFilter.all')}
         </button>
 
         {/* Tag chips */}
@@ -121,7 +141,7 @@ export function TagFilter({ tags, selectedTag, onSelect }: TagFilterProps) {
                   : 'bg-white dark:bg-[#3D312A] text-gray-600 dark:text-[#C8BFB0] border-gray-100 dark:border-[#4D3D32] hover:border-brand/40 hover:text-brand'
               }`}
             >
-              {emoji} {tag}
+              {emoji} {language === 'en' ? TAG_LABELS_EN[tag.toLowerCase()] || tag : tag}
             </button>
           );
         })}
@@ -132,7 +152,7 @@ export function TagFilter({ tags, selectedTag, onSelect }: TagFilterProps) {
         <button
           onClick={() => scroll('right')}
           className="flex-shrink-0 w-7 h-7 rounded-full bg-white dark:bg-[#3D312A] border border-gray-100 dark:border-[#4D3D32] flex items-center justify-center shadow-sm hover:shadow-md transition-all cursor-pointer z-10"
-          aria-label="Cuộn phải"
+          aria-label={t('tagFilter.scrollRight')}
         >
           <ChevronRight className="w-4 h-4 text-gray-500 dark:text-[#9A8A7A]" />
         </button>

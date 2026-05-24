@@ -6,6 +6,7 @@ import { ImagePlus, MapPin, X, Loader2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { toast } from 'sonner';
 import { LinkPreview } from './LinkPreview';
+import { useLanguage } from '../LanguageProvider';
 
 interface CreatePostModalProps {
   isOpen: boolean;
@@ -14,6 +15,7 @@ interface CreatePostModalProps {
 }
 
 export function CreatePostModal({ isOpen, onClose, onSubmit }: CreatePostModalProps) {
+  const { t } = useLanguage();
   const [content, setContent] = useState('');
   const [mediaUrls, setMediaUrls] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -46,10 +48,10 @@ export function CreatePostModal({ isOpen, onClose, onSubmit }: CreatePostModalPr
         .getPublicUrl(filePath);
 
       setMediaUrls(prev => [...prev, publicUrl]);
-      toast.success('Tải ảnh lên thành công!');
+      toast.success(t('createPost.uploadSuccess'));
     } catch (err: any) {
       console.error('Upload error:', err);
-      toast.error(`Lỗi tải ảnh lên: ${err.message || 'Không rõ nguyên nhân'}`);
+      toast.error(`${t('createPost.uploadError')}: ${err.message || t('createPost.unknownError')}`);
     } finally {
       setIsUploading(false);
       e.target.value = '';
@@ -74,12 +76,12 @@ export function CreatePostModal({ isOpen, onClose, onSubmit }: CreatePostModalPr
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Tạo bài viết mới</DialogTitle>
+          <DialogTitle>{t('createPost.title')}</DialogTitle>
         </DialogHeader>
         
         <div className="py-4">
           <Textarea 
-            placeholder="Bạn đang nghĩ gì về món ăn này?" 
+            placeholder={t('createPost.placeholder')}
             value={content}
             onChange={(e) => setContent(e.target.value)}
             className="min-h-[120px] resize-none border-none focus-visible:ring-0 text-base"
@@ -131,11 +133,11 @@ export function CreatePostModal({ isOpen, onClose, onSubmit }: CreatePostModalPr
               onClick={() => fileInputRef.current?.click()} 
               disabled={isUploading}
               className="p-2 hover:bg-muted rounded-full transition-colors tooltip disabled:opacity-50 disabled:cursor-not-allowed" 
-              title="Thêm Ảnh/Video"
+              title={t('createPost.addMedia')}
             >
               <ImagePlus className="w-5 h-5 text-primary" />
             </button>
-            <button className="p-2 hover:bg-muted rounded-full transition-colors tooltip" title="Gắn thẻ Quán ăn">
+            <button className="p-2 hover:bg-muted rounded-full transition-colors tooltip" title={t('createPost.tagRestaurant')}>
               <MapPin className="w-5 h-5 text-rose-500" />
             </button>
           </div>
@@ -145,7 +147,7 @@ export function CreatePostModal({ isOpen, onClose, onSubmit }: CreatePostModalPr
             disabled={(!content.trim() && mediaUrls.length === 0) || isSubmitting || isUploading}
             className="rounded-full px-6 font-semibold"
           >
-            {isSubmitting ? "Đang đăng..." : "Đăng bài"}
+            {isSubmitting ? t('createPost.submitting') : t('createPost.submit')}
           </Button>
         </div>
       </DialogContent>

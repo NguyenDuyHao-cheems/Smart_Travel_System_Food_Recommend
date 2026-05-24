@@ -3,7 +3,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Bell, BellDot, Heart, MessageCircle, UserPlus, UserCheck, UserX, X, Check } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { formatDistanceToNow } from 'date-fns';
-import { vi } from 'date-fns/locale';
+import { enUS, vi } from 'date-fns/locale';
+import { useLanguage } from '../LanguageProvider';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -28,6 +29,7 @@ const TYPE_ICON = {
 
 export function NotificationPanel() {
   const router = useRouter();
+  const { t, language } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -120,7 +122,7 @@ export function NotificationPanel() {
       <button
         onClick={handleOpen}
         className="relative flex items-center justify-center w-9 h-9 rounded-full border border-border hover:bg-muted/60 transition-colors"
-        title="Thông báo"
+        title={t('notifications.title')}
       >
         {unreadCount > 0
           ? <BellDot className="w-5 h-5 text-brand" />
@@ -140,7 +142,7 @@ export function NotificationPanel() {
           <div className="absolute right-0 top-11 z-50 w-[320px] bg-card border border-border rounded-xl shadow-xl overflow-hidden">
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-              <span className="text-sm font-bold text-foreground">Thông báo</span>
+              <span className="text-sm font-bold text-foreground">{t('notifications.title')}</span>
               <button onClick={() => setIsOpen(false)}>
                 <X className="w-4 h-4 text-muted-foreground hover:text-foreground" />
               </button>
@@ -151,7 +153,7 @@ export function NotificationPanel() {
               {notifications.length === 0 ? (
                 <div className="py-10 text-center">
                   <Bell className="w-8 h-8 text-muted-foreground mx-auto mb-2 opacity-40" />
-                  <p className="text-sm text-muted-foreground">Chưa có thông báo nào</p>
+                  <p className="text-sm text-muted-foreground">{t('notifications.empty')}</p>
                 </div>
               ) : (
                 notifications.map(n => {
@@ -177,7 +179,7 @@ export function NotificationPanel() {
                         <p className="text-xs text-muted-foreground mt-0.5">
                           {formatDistanceToNow(
                             new Date(n.created_at.endsWith('Z') ? n.created_at : n.created_at + 'Z'),
-                            { addSuffix: true, locale: vi }
+                            { addSuffix: true, locale: language === 'en' ? enUS : vi }
                           )}
                         </p>
                       </div>
@@ -198,7 +200,7 @@ export function NotificationPanel() {
                   className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
                 >
                   <Check className="w-3.5 h-3.5" />
-                  Đánh dấu tất cả đã đọc
+                  {t('notifications.markAllRead')}
                 </button>
               </div>
             )}

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Request, BackgroundTasks
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
@@ -35,6 +35,7 @@ async def process_search_query(
 async def recommend_food_with_gps(
     request_data: SearchRecommendRequest,
     request: Request,
+    background_tasks: BackgroundTasks,
     search_service: SearchService = Depends(get_search_service_dep),
     db: Session = Depends(get_db),
 ):
@@ -42,7 +43,7 @@ async def recommend_food_with_gps(
     Nhận query + GPS, chạy AI pipeline, lưu session vào DB.
     Trả về: { session_id, results, fallback_applied, ... }
     """
-    return await search_service.process_recommend_query(request_data, db, request)
+    return await search_service.process_recommend_query(request_data, db, request, background_tasks)
 
 
 @router.get("/search/sessions/{session_id}", response_model=SessionDataResponse)
