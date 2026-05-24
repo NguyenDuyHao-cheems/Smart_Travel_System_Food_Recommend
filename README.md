@@ -97,7 +97,20 @@ uvicorn app.main:app --port 8000 --reload
 cd ai_engine
 python -m venv venv
 . venv/Scripts/activate
-pip install -r requirements.txt
+```
+
+* **Trên Windows**: Vì thư viện `lightfm-next` cần biên dịch phần mở rộng C++, nếu gặp lỗi thiếu file `io.h` hoặc `rc.exe`, hãy chạy script hỗ trợ cài đặt tự động:
+  ```cmd
+  install_deps_windows.bat
+  ```
+  *(Hoặc chạy lệnh `pip install -r requirements.txt` trong Developer Command Prompt của Visual Studio).*
+
+* **Trên Linux/Mac/WSL**:
+  ```bash
+  pip install -r requirements.txt
+  ```
+
+```bash
 uvicorn app.main:app --port 8001 --reload
 ```
 
