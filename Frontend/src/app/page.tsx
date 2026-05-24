@@ -280,7 +280,12 @@ function HomeContent() {
           sessionStorage.setItem('current_search_session_id', data.session_id);
           sessionStorage.setItem('current_search_mode', searchMode);
         }
-        router.push(`/result?q=${encodeURIComponent(finalQuery)}`);
+        const params = new URLSearchParams();
+        params.set("q", finalQuery);
+        if (budget !== 'auto') {
+          params.set("budget", String(budget));
+        }
+        router.push(`/result?${params.toString()}`);
       } else {
         const errData = await res.json().catch(() => ({}));
         throw new Error(errData.detail || t("home.connError"));

@@ -57,6 +57,18 @@ export function UserDropdown({
     localStorage.removeItem("username");
     localStorage.removeItem("user_avatar");
     localStorage.removeItem("food_recsys_userid");
+    
+    // Clear group recommendation session data to prevent bleed between accounts
+    localStorage.removeItem("group_recs");
+    localStorage.removeItem("group_rec_stats");
+    localStorage.removeItem("group_rec_has_searched");
+    localStorage.removeItem("group_rec_selected_friends");
+    localStorage.removeItem("group_rec_custom_coords");
+    localStorage.removeItem("group_rec_custom_address");
+    localStorage.removeItem("group_rec_budget");
+    localStorage.removeItem("group_rec_enable_budget");
+    localStorage.removeItem("group_rec_radius");
+    
     setUsername(null);
     setAvatar(null);
     router.push("/auth");
