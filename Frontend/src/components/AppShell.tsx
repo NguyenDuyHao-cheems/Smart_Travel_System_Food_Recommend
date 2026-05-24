@@ -114,34 +114,38 @@ export function AppShell({ children, healthStatus = "loading", headerAction }: A
 
       {/* ── Sticky header ── */}
       <header className="relative z-30 sticky top-0 bg-[#FDFBF7]/95 dark:bg-[#2A2420]/95 backdrop-blur-md border-b-2 border-[#3D312A]/20 dark:border-[#E6DFD5]/10">
-        <div className="flex items-center justify-between px-4 md:px-8 h-[64px]">
+        <div className="grid grid-cols-[auto_1fr_auto] sm:grid-cols-[1fr_auto_1fr] items-center px-4 md:px-8 h-[64px]">
           {/* Left: Hamburger */}
-          <button
-            onClick={() => setDrawerOpen(true)}
-            className="p-2 hover:bg-[#3D312A]/10 dark:hover:bg-[#E6DFD5]/10 rounded transition-colors cursor-pointer"
-            aria-label={t("appshell.openMenu")}
-          >
-            <Menu className="w-5 h-5 text-[#3D312A] dark:text-[#E6DFD5]" />
-          </button>
-
-          {/* Center: Logo */}
-          <Link href="/" className="absolute left-1/2 -translate-x-1/2">
-            <span
-              className="text-3xl md:text-4xl font-black text-brand dark:text-[#E8735A] tracking-wide select-none"
-              style={{ fontFamily: '"DFVN Paper Kuto", "Segoe UI", Roboto, sans-serif' }}
+          <div className="flex items-center justify-start min-w-0">
+            <button
+              onClick={() => setDrawerOpen(true)}
+              className="p-2 hover:bg-[#3D312A]/10 dark:hover:bg-[#E6DFD5]/10 rounded transition-colors cursor-pointer"
+              aria-label={t("appshell.openMenu")}
             >
-              Wanderbite
-            </span>
-          </Link>
+              <Menu className="w-5 h-5 text-[#3D312A] dark:text-[#E6DFD5]" />
+            </button>
+          </div>
+
+          {/* Center: Logo — always perfectly centered */}
+          <div className="flex items-center justify-center min-w-0">
+            <Link href="/">
+              <span
+                className="text-[clamp(1.2rem,5.5vw,2rem)] md:text-4xl font-black text-brand dark:text-[#E8735A] tracking-wide select-none whitespace-nowrap"
+                style={{ fontFamily: '"DFVN Paper Kuto", "Segoe UI", Roboto, sans-serif' }}
+              >
+                Wanderbite
+              </span>
+            </Link>
+          </div>
 
           {/* Right: Health dot + Location + Theme + User */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center justify-end gap-2 overflow-hidden min-w-0">
             {headerAction}
 
-            {/* Location Indicator Widget */}
+            {/* Location Indicator Widget - Text version (Desktop >= 1024px) */}
             <button
               onClick={() => setIsLocationModalOpen(true)}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-full border-2 border-[#3D312A]/20 dark:border-[#E6DFD5]/10 hover:bg-[#3D312A]/5 dark:hover:bg-[#E6DFD5]/5 hover:border-[#3D312A]/40 dark:hover:border-[#E6DFD5]/20 transition-all text-xs font-semibold cursor-pointer max-w-[120px] sm:max-w-[180px] md:max-w-[280px]"
+              className="hidden lg:flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border-2 border-[#3D312A]/20 dark:border-[#E6DFD5]/10 hover:bg-[#3D312A]/5 dark:hover:bg-[#E6DFD5]/5 hover:border-[#3D312A]/40 dark:hover:border-[#E6DFD5]/20 transition-all text-xs font-semibold cursor-pointer min-w-0 max-w-[200px]"
               title={t("appshell.locationTitle")}
             >
               <MapPin
@@ -155,30 +159,47 @@ export function AppShell({ children, healthStatus = "loading", headerAction }: A
                     : 'text-red-500'
                 }`}
               />
-              <span className="text-[#3D312A]/70 dark:text-[#E6DFD5]/80 truncate">
+              <span className="truncate text-[#3D312A]/70 dark:text-[#E6DFD5]/80">
                 {!mounted
                   ? t("appshell.notPositioned")
                   : address || (status === 'loading' ? t("appshell.finding") : t("appshell.notPositioned"))}
               </span>
             </button>
 
-            {/* Itinerary badge */}
+            {/* Location icon-only version (Tablet 640px to 1024px) */}
+            <button
+              onClick={() => setIsLocationModalOpen(true)}
+              className="hidden sm:flex lg:hidden p-2 hover:bg-[#3D312A]/10 dark:hover:bg-[#E6DFD5]/10 rounded transition-colors cursor-pointer flex-shrink-0"
+              title="Nhấp để thay đổi vị trí của bạn"
+            >
+              <MapPin className={`w-4 h-4 flex-shrink-0 ${
+                !mounted || status === 'success'
+                  ? 'text-brand dark:text-[#E8735A]'
+                  : status === 'loading'
+                  ? 'text-brand dark:text-[#E8735A] animate-pulse'
+                  : 'text-red-500'
+              }`} />
+            </button>
+
+            {/* Itinerary badge - Hidden on mobile/high zoom (< 640px) */}
             {mounted && itineraryCount > 0 && (
-              <Link
-                href="/itinerary"
-                className="relative flex items-center justify-center w-9 h-9 rounded-full bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-700/40 hover:bg-orange-100 dark:hover:bg-orange-900/40 transition-colors"
-                title={t("appshell.itineraryTitle")}
-              >
-                <Route className="w-4 h-4 text-orange-500" />
-                <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-orange-500 text-white text-[10px] font-bold flex items-center justify-center leading-none">
-                  {itineraryCount}
-                </span>
-              </Link>
+              <div className="hidden sm:block flex-shrink-0">
+                <Link
+                  href="/itinerary"
+                  className="relative flex items-center justify-center w-9 h-9 rounded-full bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-700/40 hover:bg-orange-100 dark:hover:bg-orange-900/40 transition-colors"
+                  title={t("appshell.itineraryTitle")}
+                >
+                  <Route className="w-4 h-4 text-orange-500" />
+                  <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-orange-500 text-white text-[10px] font-bold flex items-center justify-center leading-none">
+                    {itineraryCount}
+                  </span>
+                </Link>
+              </div>
             )}
 
             {healthStatus !== "loading" && (
               <div
-                className={`w-2 h-2 rounded-full ${
+                className={`hidden sm:block w-2 h-2 rounded-full flex-shrink-0 ${
                   healthStatus === "ok"
                     ? "bg-emerald-500 animate-pulse"
                     : healthStatus === "degraded"
@@ -190,8 +211,15 @@ export function AppShell({ children, healthStatus = "loading", headerAction }: A
                 }
               />
             )}
-            <ThemeToggle />
-            <NotificationPanel />
+            
+            <div className="hidden sm:block flex-shrink-0">
+              <ThemeToggle />
+            </div>
+
+            <div className="hidden sm:block flex-shrink-0">
+              <NotificationPanel />
+            </div>
+
             <UserDropdown />
           </div>
         </div>
