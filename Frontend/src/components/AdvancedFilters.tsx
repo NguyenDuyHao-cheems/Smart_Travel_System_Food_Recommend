@@ -20,13 +20,15 @@ interface TagGroupDef {
 }
 
 const TAG_GROUPS: TagGroupDef[] = [
-  { label: 'Thịt', emoji: '🥩', members: ['gà', 'bò', 'heo'] },
-  { label: 'Cơm/Cháo', emoji: '🍚', members: ['cơm', 'cháo', 'healthy'] },
-  { label: 'Nước/Lẩu', emoji: '🍜', members: ['phở', 'bún', 'mì', 'lẩu'] },
-  { label: 'Hải sản/Nướng', emoji: '🦐', members: ['hải sản', 'nướng'] },
-  { label: 'Đồ uống/Tráng miệng', emoji: '🧋', members: ['trà sữa', 'cà phê', 'đồ uống', 'tráng miệng', 'dessert'] },
-  { label: 'Quốc tế', emoji: '🌍', members: ['sushi', 'pizza', 'burger'] },
-  { label: 'Bữa ăn/Khác', emoji: '🌿', members: ['món chay', 'ăn sáng', 'ăn tối', 'ăn trưa', 'ăn vặt', 'ăn khuya'] },
+  { label: 'Món Nướng', emoji: '🔥', members: ['nướng', 'bbq', 'gà', 'bò', 'heo', 'hải sản'] },
+  { label: 'Món Chiên', emoji: '🍤', members: ['chiên', 'fastfood', 'pizza', 'burger', 'ăn vặt'] },
+  { label: 'Món Xào', emoji: '🍝', members: ['xào', 'mì xào'] },
+  { label: 'Món Nước / Hầm', emoji: '🍜', members: ['phở', 'bún', 'mì', 'lẩu', 'cháo', 'nước', 'hầm'] },
+  { label: 'Món Hấp / Luộc', emoji: '🥟', members: ['hấp', 'luộc', 'dimsum'] },
+  { label: 'Món Trộn / Gỏi', emoji: '🥗', members: ['trộn', 'gỏi', 'salad', 'nộm', 'healthy', 'sushi'] },
+  { label: 'Món Chay', emoji: '🌿', members: ['món chay', 'chay'] },
+  { label: 'Tráng Miệng / Ngọt', emoji: '🍰', members: ['tráng miệng', 'dessert', 'kem', 'chè', 'bánh'] },
+  { label: 'Thức Uống / Pha Chế', emoji: '🧋', members: ['trà sữa', 'cà phê', 'đồ uống', 'nước ép'] },
   { label: 'Đánh giá', emoji: '⭐', members: ['đánh giá cao', 'nhiều đánh giá'] },
   { label: 'Phân khúc', emoji: '💵', members: ['giá rẻ', 'tầm trung', 'cao cấp'] },
 ];
@@ -43,16 +45,20 @@ const TAG_EMOJI_MAP: Record<string, string> = {
   'ăn vặt': '🍿', 'ăn khuya': '🌃',
   'đánh giá cao': '⭐', 'nhiều đánh giá': '💬',
   'giá rẻ': '💰', 'tầm trung': '💵', 'cao cấp': '💎',
+  'chiên': '🍤', 'fastfood': '🍔', 'xào': '🍝', 'mì xào': '🍝',
+  'hấp': '🥟', 'luộc': '🥟', 'trộn': '🥗', 'gỏi': '🥗', 'salad': '🥗', 'chay': '🌿',
 };
 
 const TAG_GROUP_LABELS_EN: Record<string, string> = {
-  'Thịt': 'Meat',
-  'Cơm/Cháo': 'Rice/Porridge',
-  'Nước/Lẩu': 'Noodles/Hotpot',
-  'Hải sản/Nướng': 'Seafood/Grill',
-  'Đồ uống/Tráng miệng': 'Drinks/Dessert',
-  'Quốc tế': 'International',
-  'Bữa ăn/Khác': 'Meals/Other',
+  'Món Nướng': 'BBQ & Grilled',
+  'Món Chiên': 'Fried',
+  'Món Xào': 'Stir-fried',
+  'Món Nước / Hầm': 'Soups & Stews',
+  'Món Hấp / Luộc': 'Steamed & Boiled',
+  'Món Trộn / Gỏi': 'Salad & Mixed',
+  'Món Chay': 'Vegetarian',
+  'Tráng Miệng / Ngọt': 'Sweets & Desserts',
+  'Thức Uống / Pha Chế': 'Drinks & Beverages',
   'Đánh giá': 'Rating',
   'Phân khúc': 'Price Segment',
   'Khác': 'Other',
@@ -85,6 +91,16 @@ const TAG_LABELS_EN: Record<string, string> = {
   'giá rẻ': 'budget',
   'tầm trung': 'mid-range',
   'cao cấp': 'premium',
+  'chiên': 'fried',
+  'fastfood': 'fast food',
+  'xào': 'stir-fried',
+  'mì xào': 'fried noodles',
+  'hấp': 'steamed',
+  'luộc': 'boiled',
+  'trộn': 'mixed',
+  'gỏi': 'salad',
+  'salad': 'salad',
+  'chay': 'vegetarian',
 };
 
 function getTagEmoji(tagName: string): string {

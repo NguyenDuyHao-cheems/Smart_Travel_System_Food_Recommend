@@ -513,36 +513,67 @@ export default function ProfilePage() {
                   <div className="space-y-4">
                     {(() => {
                       const getVibeColor = (label: string) => {
-                        if (label.includes("🍜")) return "bg-amber-600 dark:bg-amber-500";
-                        if (label.includes("🥩")) return "bg-rose-600 dark:bg-rose-500";
-                        if (label.includes("🍲")) return "bg-orange-500 dark:bg-orange-400";
-                        if (label.includes("🍤")) return "bg-yellow-500 dark:bg-yellow-400";
-                        if (label.includes("🥗")) return "bg-emerald-500 dark:bg-emerald-400";
-                        if (label.includes("🍰")) return "bg-pink-500 dark:bg-pink-400";
+                        if (label.includes("Nướng")) return "bg-rose-600 dark:bg-rose-500";
+                        if (label.includes("Chiên") || label.includes("Xào")) return "bg-orange-500 dark:bg-orange-400";
+                        if (label.includes("Nước")) return "bg-amber-600 dark:bg-amber-500";
+                        if (label.includes("Hấp") || label.includes("Trộn") || label.includes("Chay")) return "bg-emerald-500 dark:bg-emerald-400";
+                        if (label.includes("Ngọt") || label.includes("Thức Uống")) return "bg-pink-500 dark:bg-pink-400";
                         return "bg-brand";
                       };
 
                       const getCulinaryVibeLabel = (l: string) => {
                         if (language !== "en") return l;
-                        if (l.includes("🍜")) return "Soups & Stews 🍜";
-                        if (l.includes("🥩")) return "BBQ & Grilled 🥩";
-                        if (l.includes("🍲")) return "Hotpot 🍲";
-                        if (l.includes("🍤")) return "Fried & Stir-fried 🍤";
-                        if (l.includes("🥗")) return "Steamed & Salad (Healthy) 🥗";
-                        if (l.includes("🍰")) return "Sweets & Desserts 🍰";
+                        if (l.includes("Nướng")) return "BBQ & Grilled";
+                        if (l.includes("Chiên")) return "Fried";
+                        if (l.includes("Xào")) return "Stir-fried";
+                        if (l.includes("Nước")) return "Soups & Stews";
+                        if (l.includes("Hấp")) return "Steamed & Boiled";
+                        if (l.includes("Trộn")) return "Salad & Mixed";
+                        if (l.includes("Chay")) return "Vegetarian";
+                        if (l.includes("Ngọt")) return "Sweets & Desserts";
+                        if (l.includes("Thức Uống")) return "Drinks & Beverages";
                         return l;
                       };
 
-                      const defaultVibes = [
-                        { label: "Món Nước (Ninh / Hầm) 🍜", percent: 0, count: 0 },
-                        { label: "Món Nướng (BBQ) 🥩", percent: 0, count: 0 },
-                        { label: "Món Lẩu 🍲", percent: 0, count: 0 },
-                        { label: "Món Chiên / Xào 🍤", percent: 0, count: 0 },
-                        { label: "Món Hấp / Trộn (Thanh đạm) 🥗", percent: 0, count: 0 },
-                        { label: "Món Ngọt / Tráng miệng 🍰", percent: 0, count: 0 }
-                      ];
+                      const getMappedVibes = () => {
+                        const map = {
+                          "Món Nướng": 0,
+                          "Món Chiên": 0,
+                          "Món Xào": 0,
+                          "Món Nước / Hầm": 0,
+                          "Món Hấp / Luộc": 0,
+                          "Món Trộn / Gỏi": 0,
+                          "Món Chay": 0,
+                          "Tráng Miệng / Ngọt": 0,
+                          "Thức Uống / Pha Chế": 0
+                        };
 
-                      const displayVibes = culinaryVibes.length > 0 ? culinaryVibes : defaultVibes;
+                        if (culinaryVibes.length > 0) {
+                          culinaryVibes.forEach(item => {
+                            const l = item.label;
+                            if (l.includes("Nướng") || l.includes("🥩")) map["Món Nướng"] += item.percent;
+                            else if (l.includes("Chiên") || l.includes("🍤")) {
+                              map["Món Chiên"] += Math.ceil(item.percent / 2);
+                              map["Món Xào"] += Math.floor(item.percent / 2);
+                            }
+                            else if (l.includes("Nước") || l.includes("Lẩu") || l.includes("🍜") || l.includes("🍲")) map["Món Nước / Hầm"] += item.percent;
+                            else if (l.includes("Hấp") || l.includes("🥗")) {
+                              map["Món Hấp / Luộc"] += Math.ceil(item.percent / 2);
+                              map["Món Trộn / Gỏi"] += Math.floor(item.percent / 2);
+                            }
+                            else if (l.includes("Ngọt") || l.includes("🍰")) map["Tráng Miệng / Ngọt"] += item.percent;
+                          });
+                        }
+
+                        const total = Object.values(map).reduce((a, b) => a + b, 0);
+                        const mapped = Object.entries(map)
+                          .map(([k, v]) => ({ label: k, percent: total > 0 ? Math.round((v / total) * 100) : 0 }))
+                          .sort((a, b) => b.percent - a.percent);
+                          
+                        return mapped;
+                      };
+
+                      const displayVibes = getMappedVibes();
 
                       return displayVibes.map((item, idx) => (
                         <div key={idx}>
@@ -714,14 +745,24 @@ export default function ProfilePage() {
                         })()}
                       </div>
 
-                      {recentActivities.length > visibleActivitiesCount && (
-                        <button 
-                          onClick={() => setVisibleActivitiesCount(prev => Math.min(prev + 5, 15))}
-                          className="w-full mt-6 py-3 text-xs font-bold text-gray-400 hover:text-brand hover:bg-gray-50 dark:hover:bg-[#2A2420]/30 rounded-2xl transition-all tracking-widest uppercase cursor-pointer text-center"
-                        >
-                          {t("profile.seeMoreActivity")}
-                        </button>
-                      )}
+                      <div className="flex gap-2 mt-6">
+                        {recentActivities.length > visibleActivitiesCount && (
+                          <button 
+                            onClick={() => setVisibleActivitiesCount(prev => prev + 5)}
+                            className="flex-1 py-3 text-xs font-bold text-gray-400 hover:text-brand hover:bg-gray-50 dark:hover:bg-[#2A2420]/30 rounded-2xl transition-all tracking-widest uppercase cursor-pointer text-center"
+                          >
+                            {t("profile.seeMoreActivity")}
+                          </button>
+                        )}
+                        {visibleActivitiesCount > 5 && (
+                          <button 
+                            onClick={() => setVisibleActivitiesCount(5)}
+                            className="flex-1 py-3 text-xs font-bold text-gray-400 hover:text-brand hover:bg-gray-50 dark:hover:bg-[#2A2420]/30 rounded-2xl transition-all tracking-widest uppercase cursor-pointer text-center"
+                          >
+                            {language === 'en' ? "SHOW LESS" : "ẨN BỚT"}
+                          </button>
+                        )}
+                      </div>
                     </>
                   )}
                 </div>
