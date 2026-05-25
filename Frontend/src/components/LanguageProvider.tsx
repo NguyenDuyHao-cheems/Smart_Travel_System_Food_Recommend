@@ -636,6 +636,7 @@ const translations = {
       replyPlaceholder: "Viết phản hồi...",
       deleteComment: "Xóa bình luận",
       commentSendSuccess: "Gửi bình luận thành công!",
+      commentDeleteSuccess: "Đã xóa bình luận thành công!",
     },
     loadingState: {
       statusInit: "Đang khởi tạo hệ thống phân tích toàn diện...",
@@ -1517,6 +1518,7 @@ const translations = {
       replyPlaceholder: "Write a reply...",
       deleteComment: "Delete comment",
       commentSendSuccess: "Reply posted successfully!",
+      commentDeleteSuccess: "Comment deleted successfully",
     },
     loadingState: {
       statusInit: "Initializing the full analysis system...",
