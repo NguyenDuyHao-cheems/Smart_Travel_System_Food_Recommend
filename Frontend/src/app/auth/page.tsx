@@ -40,12 +40,37 @@ function AuthPageContent() {
 
   // C: Không crash, bắt lỗi cẩn thận
   useEffect(() => {
-    // Nếu đã đăng nhập, tự động chuyển về trang đích
+    // Nếu đã đăng nhập, tự động chuyển về trang đích (chỉ khi token còn hạn)
     const token = localStorage.getItem("access_token");
     if (token) {
+      try {
+        const arrayToken = token.split('.');
+        if (arrayToken.length === 3) {
+          const payload = JSON.parse(atob(arrayToken[1]));
+          if (payload.exp && Date.now() > payload.exp * 1000) {
+            // Token đã hết hạn! Dọn dẹp localStorage và ở lại trang đăng nhập
+            localStorage.removeItem("access_token");
+            localStorage.removeItem("username");
+            localStorage.removeItem("user_avatar");
+            localStorage.removeItem("user_id");
+            localStorage.removeItem("login_method");
+            return;
+          }
+        }
+      } catch (e) {
+        localStorage.removeItem("access_token");
+        return;
+      }
       router.push(redirectPath);
     }
   }, [router, redirectPath]);
+
+  // Hiển thị thông báo khi bị chuyển hướng do phiên đăng nhập hết hạn (?expired=1)
+  useEffect(() => {
+    if (searchParams && searchParams.get("expired") === "1") {
+      setErrorMsg(t("sessionExpiredAlert") || "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại!");
+    }
+  }, [searchParams, t]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

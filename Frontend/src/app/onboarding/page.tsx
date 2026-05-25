@@ -227,10 +227,31 @@ export default function OnboardingPage() {
     }
   }, []);
 
-  // Yêu cầu đăng nhập — redirect về /auth nếu chưa có token
+  // Yêu cầu đăng nhập — redirect về /auth nếu chưa có token hoặc token hết hạn
   useEffect(() => {
     const token = localStorage.getItem('access_token');
     const storedUserId = localStorage.getItem('user_id');
+
+    if (token) {
+      try {
+        const arrayToken = token.split('.');
+        if (arrayToken.length === 3) {
+          const payload = JSON.parse(atob(arrayToken[1]));
+          if (payload.exp && Date.now() > payload.exp * 1000) {
+            console.warn("Token hết hạn, redirect về /auth");
+            localStorage.removeItem("access_token");
+            localStorage.removeItem("username");
+            localStorage.removeItem("user_avatar");
+            localStorage.removeItem("user_id");
+            localStorage.removeItem("login_method");
+            router.push('/auth?expired=1&redirect=/onboarding');
+            return;
+          }
+        }
+      } catch (e) {
+        localStorage.removeItem("access_token");
+      }
+    }
 
     if (!token || !storedUserId) {
       console.warn("Chưa đăng nhập, redirect về /auth");
