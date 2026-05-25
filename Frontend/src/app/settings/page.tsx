@@ -359,6 +359,7 @@ function AccountSettings({
 
   const [showPasswordModal, setShowPasswordModal] = React.useState(false);
   const [showDeleteModal, setShowDeleteModal] = React.useState(false);
+  const [isDeletingAccount, setIsDeletingAccount] = React.useState(false);
   const [passwords, setPasswords] = React.useState({ old: "", new: "", confirm: "" });
   const [copied, setCopied] = React.useState(false);
   const [isSavingAvatar, setIsSavingAvatar] = React.useState(false);
@@ -452,8 +453,12 @@ function AccountSettings({
   };
 
   const handleAccountDeletion = async () => {
-    setShowDeleteModal(false);
-    await onDeleteAccount();
+    setIsDeletingAccount(true);
+    const success = await onDeleteAccount();
+    setIsDeletingAccount(false);
+    if (success) {
+      setShowDeleteModal(false);
+    }
   };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -1391,9 +1396,14 @@ function AccountSettings({
                 </button>
                 <button 
                   onClick={handleAccountDeletion}
-                  className="flex-1 py-3.5 bg-red-500 text-white text-sm font-bold rounded-2xl hover:bg-red-600 transition-all shadow-lg shadow-red-200 dark:shadow-none"
+                  disabled={isDeletingAccount}
+                  className="flex-1 py-3.5 bg-red-500 text-white text-sm font-bold rounded-2xl hover:bg-red-600 transition-all shadow-lg shadow-red-200 dark:shadow-none flex items-center justify-center disabled:opacity-70 disabled:cursor-not-allowed"
                 >
-                  {t("settings.confirmDeleteBtn")}
+                  {isDeletingAccount ? (
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    t("settings.confirmDeleteBtn")
+                  )}
                 </button>
               </div>
             </motion.div>
