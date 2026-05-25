@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { PageLayout } from "../../components/PageLayout";
 import { useOptimizedLocation } from "../../hooks/useOptimizedLocation";
@@ -48,18 +48,59 @@ export default function LuckyWheelPage() {
   
   // Audio contexts / audio generator for retro arcade sounds
   const audioCtxRef = useRef<AudioContext | null>(null);
+  const soundEnabledRef = useRef(soundEnabled);
+  const spinTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const spinRunIdRef = useRef(0);
+
+  useEffect(() => {
+    soundEnabledRef.current = soundEnabled;
+  }, [soundEnabled]);
+
+  const clearSpinTimers = useCallback(() => {
+    spinTimersRef.current.forEach(clearTimeout);
+    spinTimersRef.current = [];
+  }, []);
+
+  const stopAudioContext = useCallback(() => {
+    const ctx = audioCtxRef.current;
+    audioCtxRef.current = null;
+    ctx?.close().catch(() => undefined);
+  }, []);
+
+  const queueSpinTimer = useCallback((callback: () => void, delay: number) => {
+    const timer = setTimeout(() => {
+      spinTimersRef.current = spinTimersRef.current.filter((item) => item !== timer);
+      callback();
+    }, delay);
+    spinTimersRef.current.push(timer);
+  }, []);
+
+  const ensureAudioContext = async () => {
+    if (typeof window === "undefined") return null;
+
+    const AudioContextCtor =
+      window.AudioContext || (window as Window & typeof globalThis & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+
+    if (!AudioContextCtor) return null;
+
+    if (!audioCtxRef.current) {
+      audioCtxRef.current = new AudioContextCtor();
+    }
+
+    const ctx = audioCtxRef.current;
+    if (ctx.state === "suspended") {
+      await ctx.resume();
+    }
+
+    return ctx;
+  };
 
   // Play retro synthesised sound using Web Audio API
-  const playRetroSound = (type: "tick" | "win" | "spin") => {
-    if (!soundEnabled) return;
+  const playRetroSound = async (type: "tick" | "win" | "spin") => {
+    if (!soundEnabledRef.current) return;
     try {
-      if (!audioCtxRef.current) {
-        audioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
-      }
-      const ctx = audioCtxRef.current;
-      if (ctx.state === "suspended") {
-        ctx.resume();
-      }
+      const ctx = await ensureAudioContext();
+      if (!ctx) return;
 
       if (type === "tick") {
         const osc = ctx.createOscillator();
@@ -103,6 +144,17 @@ export default function LuckyWheelPage() {
       }
     } catch (e) {
       console.warn("Audio Context error:", e);
+    }
+  };
+
+  const handleSoundToggle = async () => {
+    const nextEnabled = !soundEnabled;
+    setSoundEnabled(nextEnabled);
+    soundEnabledRef.current = nextEnabled;
+
+    if (nextEnabled) {
+      await ensureAudioContext();
+      void playRetroSound("tick");
     }
   };
 
@@ -156,14 +208,24 @@ export default function LuckyWheelPage() {
     fetchDishes();
   }, [language]);
 
+  useEffect(() => {
+    return () => {
+      clearSpinTimers();
+      stopAudioContext();
+    };
+  }, [clearSpinTimers, stopAudioContext]);
+
   // Spin function
   const handleSpin = () => {
     if (isSpinning || dishes.length < 12) return;
 
+    clearSpinTimers();
+    const spinRunId = spinRunIdRef.current + 1;
+    spinRunIdRef.current = spinRunId;
     setIsSpinning(true);
     setWinner(null);
     setShowWinnerModal(false);
-    playRetroSound("spin");
+    void playRetroSound("spin");
 
     // Number of full rotations (e.g. 5 to 8 rounds) plus random angle
     const minRounds = 5;
@@ -179,11 +241,17 @@ export default function LuckyWheelPage() {
     let tickCount = 0;
     const duration = 6000; // matches transition duration (6s)
     const totalTicks = Math.floor(randomRounds * 12);
+    const spinEndsAt = Date.now() + duration;
     
     const playTicks = () => {
-      if (tickCount >= totalTicks) return;
+      if (
+        spinRunIdRef.current !== spinRunId ||
+        tickCount >= totalTicks ||
+        Date.now() >= spinEndsAt ||
+        !soundEnabledRef.current
+      ) return;
       
-      playRetroSound("tick");
+      void playRetroSound("tick");
       tickCount++;
       
       // Calculate delay based on cubic-bezier slow-down: delay gets progressively larger
@@ -191,14 +259,18 @@ export default function LuckyWheelPage() {
       // standard cubic-bezier deceleration curve simulation
       const factor = Math.pow(progress, 3); 
       const nextDelay = 30 + factor * 700;
+      const remainingMs = spinEndsAt - Date.now();
+      if (remainingMs <= 0) return;
 
-      setTimeout(playTicks, nextDelay);
+      queueSpinTimer(playTicks, Math.min(nextDelay, remainingMs));
     };
 
-    setTimeout(playTicks, 100);
+    queueSpinTimer(playTicks, 100);
 
     // Spin complete callback
-    setTimeout(() => {
+    queueSpinTimer(() => {
+      clearSpinTimers();
+      stopAudioContext();
       setIsSpinning(false);
       
       // Compute winning index
@@ -209,7 +281,6 @@ export default function LuckyWheelPage() {
 
       const winningDish = dishes[winningIndex];
       setWinner(winningDish);
-      playRetroSound("win");
       setShowWinnerModal(true);
     }, duration);
   };
@@ -260,6 +331,17 @@ export default function LuckyWheelPage() {
         if (typeof window !== "undefined") {
           sessionStorage.setItem("current_search_session_id", data.session_id);
           sessionStorage.setItem("current_search_mode", "basic");
+          sessionStorage.setItem(`session_data_${data.session_id}`, JSON.stringify({
+            query: winner,
+            results: data.results || [],
+            fallback_applied: data.fallback_applied || false,
+            fallback_reason: data.fallback_reason || "",
+            applied_budget: data.applied_budget ?? null,
+            filtered_out_count: data.filtered_out_count || 0,
+            allergen_flagged_count: data.allergen_flagged_count || 0,
+            warning: data.warning || "",
+            results_contain_warnings: data.results_contain_warnings || false,
+          }));
         }
         
         router.push(`/result?q=${encodeURIComponent(winner)}`);
@@ -318,7 +400,7 @@ export default function LuckyWheelPage() {
           </p>
 
           <button
-            onClick={() => setSoundEnabled(!soundEnabled)}
+            onClick={handleSoundToggle}
             className="mt-2 flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold bg-[#E6DFD5]/60 dark:bg-[#3D312A]/60 text-[#3D312A] dark:text-[#E6DFD5] hover:bg-brand/10 transition-colors border border-transparent hover:border-brand/20 cursor-pointer"
           >
             {soundEnabled ? (
