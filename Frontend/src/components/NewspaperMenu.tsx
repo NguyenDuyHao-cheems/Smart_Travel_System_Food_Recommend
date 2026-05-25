@@ -34,6 +34,52 @@ interface NewspaperMenuResponse {
   message?: string;
 }
 
+const DEFAULT_CITY_LABEL = "vị trí của bạn";
+
+function getDisplayPlaceFromAddress(address: string | null): string {
+  if (!address) return DEFAULT_CITY_LABEL;
+
+  const parts = address
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  if (parts.length === 0) return DEFAULT_CITY_LABEL;
+
+  const countryNames = new Set([
+    "việt nam",
+    "viet nam",
+    "vietnam",
+  ]);
+
+  const isCoordinate = (part: string) => /^-?\d+(\.\d+)?\s*,?\s*-?\d+(\.\d+)?$/.test(part);
+  const isNumericOnly = (part: string) => /^-?\d+(\.\d+)?$/.test(part);
+  const isPostalCode = (part: string) => /^\d{4,6}$/.test(part);
+  const stripAdministrativePrefix = (part: string) =>
+    part.replace(/^(Tỉnh|Thành phố|Thành Phố|TP\.|Tp\.)\s+/i, "").trim();
+
+  const candidates = parts
+    .map(stripAdministrativePrefix)
+    .filter(
+      (part) =>
+        part &&
+        !isPostalCode(part) &&
+        !isCoordinate(part) &&
+        !isNumericOnly(part) &&
+        !countryNames.has(part.toLowerCase())
+    );
+
+  if (candidates.length === 0) return DEFAULT_CITY_LABEL;
+
+  const cityLike = candidates.find((part) =>
+    /hồ chí minh|ho chi minh|hà nội|ha noi|đà nẵng|da nang|cần thơ|can tho|hải phòng|hai phong/i.test(
+      part
+    )
+  );
+
+  return cityLike || candidates[Math.max(0, candidates.length - 2)] || candidates[candidates.length - 1];
+}
+
 export default function NewspaperMenu() {
   const { language, t } = useLanguage();
   const [isMounted, setIsMounted] = useState(false);
@@ -191,18 +237,12 @@ export default function NewspaperMenu() {
 
   // Geographic context parsing
   const city = useMemo(() => {
-    if (!address) return "vị trí của bạn";
-    const parts = address.split(",");
-    if (parts.length >= 2) {
-      const provincePart = parts[parts.length - 2].trim();
-      return provincePart.replace(/^(Tỉnh|Thành phố|Thành Phố|TP\.|Tp\.)\s+/i, "").trim();
-    }
-    return address;
+    return getDisplayPlaceFromAddress(address);
   }, [address]);
 
   const cityTrans = useMemo(() => {
-    if (city === "vị trí của bạn") {
-      return language === 'en' ? "your location" : "vị trí của bạn";
+    if (city === DEFAULT_CITY_LABEL) {
+      return language === 'en' ? "your location" : DEFAULT_CITY_LABEL;
     }
     return city;
   }, [city, language]);

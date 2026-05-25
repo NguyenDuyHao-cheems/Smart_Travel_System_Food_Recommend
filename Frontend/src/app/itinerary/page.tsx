@@ -394,7 +394,7 @@ export default function ItineraryPage() {
                 {t("itinerary.emptyDesc")}
               </p>
               <button
-                onClick={() => router.back()}
+                onClick={() => router.push('/')}
                 className="mt-8 px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-2xl shadow-lg shadow-orange-200/40 transition-all hover:-translate-y-0.5"
               >
                 {t("itinerary.findPlaces")}
