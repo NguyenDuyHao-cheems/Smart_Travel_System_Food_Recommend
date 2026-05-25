@@ -1,4 +1,5 @@
 import pytest
+import math
 from unittest.mock import AsyncMock, patch, MagicMock
 from app.services.recommendation_service import recommend, _apply_sentiment_search_boost
 
@@ -174,13 +175,13 @@ async def test_recommend_happy_path_with_rerank():
         assert len(results) == 4
         # Confirm reranked order
         assert results[0].id == "3"
-        assert results[0].ranking_score == 0.95
+        assert pytest.approx(results[0].ranking_score, 1e-5) == 1.0 / (1.0 + math.exp(-0.95))
         assert results[1].id == "1"
-        assert results[1].ranking_score == 0.85
+        assert pytest.approx(results[1].ranking_score, 1e-5) == 1.0 / (1.0 + math.exp(-0.85))
         assert results[2].id == "4"
-        assert results[2].ranking_score == 0.75
+        assert pytest.approx(results[2].ranking_score, 1e-5) == 1.0 / (1.0 + math.exp(-0.75))
         assert results[3].id == "2"
-        assert results[3].ranking_score == 0.65
+        assert pytest.approx(results[3].ranking_score, 1e-5) == 1.0 / (1.0 + math.exp(-0.65))
 
 @pytest.mark.asyncio
 async def test_recommend_emotion_mode_pre_ranks_before_lambdamart_without_post_override():
@@ -275,3 +276,68 @@ def test_apply_sentiment_search_boost():
     assert len(boosted) == 3
     assert boosted[0].sentiment_search_score >= boosted[1].sentiment_search_score
     assert boosted[1].sentiment_search_score >= boosted[2].sentiment_search_score
+
+
+def test_sigmoid_distance_decay_negative_scores():
+    from app.services.recommendation_service import _apply_distance_decay
+    
+    # 2 candidates with the SAME negative score but different distances
+    # A is close (100 meters), B is far (10000 meters)
+    c1 = DummyCandidate(id="close")
+    c1.ranking_score = -1.5
+    c1.distance_m = 100
+    
+    c2 = DummyCandidate(id="far")
+    c2.ranking_score = -1.5
+    c2.distance_m = 10000
+    
+    candidates = [c2, c1]
+    
+    # Run distance decay
+    decayed = _apply_distance_decay(candidates)
+    
+    # close candidate should have higher ranking_score than far candidate, and rank first
+    assert decayed[0].id == "close"
+    assert decayed[0].ranking_score > decayed[1].ranking_score
+
+
+def test_feature_service_normalized_synonym_boost():
+    from app.domains.ranking.feature_service import FeatureService
+    
+    # 1. Test synonym boost (diacritic-insensitive)
+    # Search for "cơm tấm" (normalized is "com tam") should match restaurant with name "Cơm Tấm Đặc Sản" (normalized "com tam dac san")
+    c = DummyCandidate(id="1")
+    c.name = "Cơm Tấm Đặc Sản"
+    c.lat = 10.0
+    c.lng = 10.6
+    
+    svc = FeatureService()
+    features = svc.build_integer_features(
+        candidates=[c],
+        user_lat=10.0,
+        user_lng=10.6,
+        budget=50000,
+        query_text="cơm tấm"
+    )
+    
+    # similarity_score should be boosted (+40) because of synonym match
+    assert features[0]["similarity_score"] >= 40
+
+    # 2. Test overlapping keyword boost (diacritic-insensitive)
+    # Search "bánh mì gà" (normalized: "banh mi ga") should match restaurant with name "Gà Rán Ngon" (normalized: "ga ran ngon")
+    # because of overlapping word "gà" -> "ga"
+    c2 = DummyCandidate(id="2")
+    c2.name = "Gà Rán Ngon"
+    c2.lat = 10.0
+    c2.lng = 10.6
+    
+    features2 = svc.build_integer_features(
+        candidates=[c2],
+        user_lat=10.0,
+        user_lng=10.6,
+        budget=50000,
+        query_text="bánh mì gà"
+    )
+    
+    # "gà" -> "ga" matches name's "Gà" -> "ga". Should receive overlapping boost (+25)
+    assert features2[0]["similarity_score"] >= 25

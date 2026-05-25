@@ -177,8 +177,8 @@
 | **Input** | Tối đa `50` quán tốt nhất (đã qua bước cosine distance ≤ `0.80`) + `user_lat`, `user_lng`, `budget`, `query_text` |
 | **Process** | Với mỗi quán, tính **9 đặc trưng** (đều là số nguyên): |
 | | • `similarity_score`: `(1 - cosine_distance) × 100`, sau đó: |
-| |   — 🆕 Cộng `+40` nếu tên quán khớp synonym group (VD: "cà phê" ↔ "coffee" ↔ "cafe") |
-| |   — Cộng `+25` nếu từ khóa query xuất hiện trong tên quán (loại trừ stopwords: "tìm", "quán", "ăn"...) |
+| |   — 🆕 Cộng `+40` nếu tên quán khớp synonym group sau khi chuẩn hóa bỏ dấu diacritics (hỗ trợ dịch song ngữ Anh-Việt rộng như lẩu ↔ hotpot, nướng ↔ bbq, cơm ↔ rice, phở ↔ pho,...) |
+| |   — Cộng `+25` nếu từ khóa query xuất hiện trong tên quán (áp dụng chuẩn hóa bỏ dấu diacritics và loại trừ stopwords không dấu như "tim", "quan", "an"...) |
 | | • `rating`: `rating_avg × 100` (VD: 4.5 sao → 450) |
 | | • `sentiment_score`: Điểm sentiment chuẩn hóa `[-1, 1]` × 100 |
 | | • `distance_m`: Khoảng cách Haversine từ GPS người dùng đến quán (mét, int). 🆕 Gắn ngược lại vào candidate (`setattr(r, "distance_m", dist_m)`) để dùng cho Distance Decay ở Bước 7a |
@@ -220,7 +220,7 @@
 | |   — Vùng đông (≥ 10 quán gần): `decay_scale = 2.0` → phạt mạnh quán xa |
 | |   — Vùng trung bình (≥ 5 quán): `decay_scale = 4.0` → phạt vừa phải |
 | |   — Vùng thưa (< 5 quán): `decay_scale = 8.0` → tha cho quán xa |
-| | 3. **Áp dụng decay:** `final_score = ranking_score × exp(-dist_km / decay_scale)` |
+| | 3. **Áp dụng decay:** Ánh xạ `ranking_score` qua hàm Sigmoid $\sigma(x)$ để luôn đạt giá trị dương (tránh lỗi đảo chiều khoảng cách khi điểm số âm), sau đó tính: `final_score = sigmoid(ranking_score) × exp(-dist_km / decay_scale)` |
 | | 4. **Sắp xếp lại** theo `ranking_score` giảm dần (quán không có ranking_score xuống cuối) |
 | **Output** | Danh sách candidates đã điều chỉnh thứ tự theo khoảng cách + mật độ. Không loại bỏ kết quả nào |
 

@@ -266,7 +266,9 @@ def _apply_distance_decay(candidates):
         dist_km = (getattr(c, "distance_m", 0) or 0) / 1000.0
         score = getattr(c, "ranking_score", None)
         if score is not None:
-            c.ranking_score = score * math.exp(-dist_km / decay_scale)
+            # Map raw score to positive range (0, 1) using sigmoid to prevent negative score invert bugs
+            pos_score = 1.0 / (1.0 + math.exp(-score))
+            c.ranking_score = pos_score * math.exp(-dist_km / decay_scale)
 
     # Sắp xếp lại: quán có ranking_score cao nhất lên đầu
     # Quán không có ranking_score (fallback cosine) xuống cuối
