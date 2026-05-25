@@ -5,7 +5,7 @@ import { PostCard, SocialPost } from '../../components/social/PostCard';
 import { QuickCreateBox } from '../../components/social/QuickCreateBox';
 import { StoryList } from '../../components/social/StoryList';
 import { UserSearchPanel } from '../../components/social/UserSearchPanel';
-import { Sparkles, Loader2 } from 'lucide-react';
+import { PostCardSkeleton } from '../../components/ui/LoadingState';
 import { toast } from 'sonner';
 import { useLanguage } from '../../components/LanguageProvider';
 
@@ -144,9 +144,8 @@ export default function FeedPage() {
 
             {/* Posts */}
             {isLoading ? (
-              <div className="flex flex-col items-center justify-center py-16 gap-3">
-                <Loader2 className="w-8 h-8 text-brand animate-spin" />
-                <p className="text-sm text-muted-foreground">{t("feed.loading")}</p>
+              <div className="space-y-4">
+                {Array.from({ length: 3 }).map((_, i) => <PostCardSkeleton key={i} />)}
               </div>
             ) : posts.length === 0 ? (
               <div className="text-center py-20 bg-card border border-border rounded-xl shadow-sm">
@@ -158,17 +157,23 @@ export default function FeedPage() {
               </div>
             ) : (
               <div className="space-y-4">
-                {posts.map((post) => (
-                  <PostCard 
-                    key={post.id} 
-                    post={post} 
-                    onDelete={(postId) => {
-                      setPosts(prev => prev.filter(p => p.id !== postId));
-                    }}
-                  />
+                {posts.map((post, idx) => (
+                  <div
+                    key={post.id}
+                    className="animate-fade-in-up"
+                    style={{ animationDelay: `${idx * 0.08}s` }}
+                  >
+                    <PostCard 
+                      post={post} 
+                      onDelete={(postId) => {
+                        setPosts(prev => prev.filter(p => p.id !== postId));
+                      }}
+                    />
+                  </div>
                 ))}
               </div>
             )}
+
         </div>
       </div>
     </AppShell>

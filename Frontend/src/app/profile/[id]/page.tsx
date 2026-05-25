@@ -4,7 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { AppShell } from '../../../components/AppShell';
 import { PostCard, SocialPost } from '../../../components/social/PostCard';
-import { Loader2, ArrowLeft, Users, UserPlus, UserCheck } from 'lucide-react';
+import { ArrowLeft, UserPlus, UserCheck } from 'lucide-react';
+import { ProfilePageSkeleton } from '../../../components/ui/LoadingState';
 import { toast } from 'sonner';
 import { useLanguage } from '../../../components/LanguageProvider';
 
@@ -24,7 +25,7 @@ interface PublicProfile {
 export default function PublicProfilePage() {
   const { id } = useParams() as { id: string };
   const router = useRouter();
-  const { t, language } = useLanguage();
+  const { t } = useLanguage();
   
   const [profile, setProfile] = useState<PublicProfile | null>(null);
   const [posts, setPosts] = useState<SocialPost[]>([]);
@@ -70,7 +71,7 @@ export default function PublicProfilePage() {
       }
     };
     fetchData();
-  }, [id, router, language]);
+  }, [id, router]);
 
   const handleToggleFollow = async () => {
     const token = localStorage.getItem('access_token');
@@ -140,9 +141,7 @@ export default function PublicProfilePage() {
   if (isLoading) {
     return (
       <AppShell>
-        <div className="flex flex-col items-center justify-center min-h-screen">
-          <Loader2 className="w-8 h-8 text-brand animate-spin" />
-        </div>
+        <ProfilePageSkeleton />
       </AppShell>
     );
   }
@@ -158,7 +157,7 @@ export default function PublicProfilePage() {
 
   return (
     <AppShell>
-      <div className="max-w-[768px] mx-auto px-4 pt-8 pb-12">
+      <div className="max-w-[768px] mx-auto px-4 pt-8 pb-12 animate-fade-in-up">
         {/* Header Back Button */}
         <button
           onClick={() => router.back()}
@@ -246,13 +245,18 @@ export default function PublicProfilePage() {
           </div>
         ) : (
           <div className="flex flex-col gap-3">
-            {posts.map((post) => (
-              <PostCard
+            {posts.map((post, idx) => (
+              <div
                 key={post.id}
-                post={post}
-                onLikeToggle={handleLikeToggle}
-                onReplyClick={(id) => router.push(`/feed/${id}`)}
-              />
+                className="animate-fade-in-up"
+                style={{ animationDelay: `${idx * 0.08}s` }}
+              >
+                <PostCard
+                  post={post}
+                  onLikeToggle={handleLikeToggle}
+                  onReplyClick={(id) => router.push(`/feed/${id}`)}
+                />
+              </div>
             ))}
           </div>
         )}

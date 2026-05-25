@@ -1,6 +1,7 @@
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
 import { Plus, Loader2 } from 'lucide-react';
+import { StoryItemSkeleton } from '../../components/ui/LoadingState';
 import { toast } from 'sonner';
 import { useLanguage } from '../../components/LanguageProvider';
 
@@ -89,14 +90,17 @@ export function StoryList() {
         </div>
 
         {/* Stories List */}
-        {!isLoading && stories.map((story, idx) => {
+        {isLoading
+          ? Array.from({ length: 4 }).map((_, i) => <StoryItemSkeleton key={i} />)
+          : stories.map((story, idx) => {
           const displayName = story.full_name || story.username || 'User';
           const avatar = story.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${displayName}`;
           return (
             <div 
               key={story.id} 
               onClick={() => setSelectedStoryIndex(idx)}
-              className="flex flex-col items-center gap-1.5 shrink-0 cursor-pointer group w-[72px]"
+              className="flex flex-col items-center gap-1.5 shrink-0 cursor-pointer group w-[72px] animate-fade-in-up"
+              style={{ animationDelay: `${idx * 0.06}s` }}
             >
               <div className="relative w-16 h-16 rounded-full p-[2px] bg-gradient-to-tr from-brand via-orange-400 to-amber-300 group-hover:scale-105 transition-transform duration-300">
                 <div className="w-full h-full rounded-full border-2 border-card overflow-hidden">

@@ -18,6 +18,7 @@ import { enUS, vi } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { LinkPreview } from './LinkPreview';
 import { useLanguage } from '../LanguageProvider';
+import { CommentSkeleton } from '../ui/LoadingState';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -380,19 +381,23 @@ export function PostCard({ post, onLikeToggle, onDelete }: PostCardProps) {
 
               {/* Comments List */}
               {isLoadingComments ? (
-                <div className="flex items-center justify-center py-4">
-                  <Loader2 className="w-5 h-5 text-muted-foreground animate-spin" />
+                <div className="space-y-3">
+                  {Array.from({ length: 2 }).map((_, i) => <CommentSkeleton key={i} />)}
                 </div>
               ) : comments.length === 0 ? (
                 <p className="text-xs text-muted-foreground text-center py-2">{t('socialPost.noComments')}</p>
               ) : (
                 <div className="space-y-3 max-h-[320px] overflow-y-auto pr-1">
-                  {comments.map((comment) => {
+                  {comments.map((comment, cIdx) => {
                     const cName = comment.full_name || comment.username || t('socialPost.anonymous');
                     const cInitial = cName.charAt(0).toUpperCase();
                     const cProfileUrl = `/profile/${comment.user_id}`;
                     return (
-                      <div key={comment.id} className="flex items-start gap-2.5 group">
+                      <div
+                        key={comment.id}
+                        className="flex items-start gap-2.5 group animate-fade-in-up"
+                        style={{ animationDelay: `${cIdx * 0.06}s` }}
+                      >
                         <Link href={cProfileUrl} className="shrink-0">
                           <Avatar className="w-7 h-7 border border-border">
                             <AvatarImage src={comment.avatar_url || ''} alt={cName} />

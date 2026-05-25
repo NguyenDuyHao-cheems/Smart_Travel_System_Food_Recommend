@@ -23,6 +23,7 @@ import { useRouter } from "next/navigation";
 import { AttendanceCalendarModal } from "../../components/AttendanceCalendarModal";
 import { toast } from "sonner";
 import { useLanguage } from "../../components/LanguageProvider";
+import { ProfileOwnSkeleton } from "../../components/ui/LoadingState";
 
 interface RecentActivity {
   title: string;
@@ -117,6 +118,7 @@ export default function ProfilePage() {
   const [streakCount, setStreakCount] = useState<number>(0);
   const [followersCount, setFollowersCount] = useState<number>(0);
   const [followingCount, setFollowingCount] = useState<number>(0);
+  const [isLoading, setIsLoading] = useState(true);
 
   const [personalization, setPersonalization] = useState<{
     favorite_dishes: string[];
@@ -227,96 +229,89 @@ export default function ProfilePage() {
         }
 
         const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
-        const res = await fetch(`${API_BASE}/api/v1/users/me`, {
-          headers: {
-            "Authorization": `Bearer ${token}`
+        const userId = localStorage.getItem("user_id") || "";
+
+        // Chạy song song 3 API calls thay vì tuần tự
+        const [meResult, socialResult, onboardingResult] = await Promise.allSettled([
+          fetch(`${API_BASE}/api/v1/users/me`, {
+            headers: { "Authorization": `Bearer ${token}` }
+          }),
+          userId ? fetch(`${API_BASE}/api/v1/social/users/${userId}/profile`, {
+            headers: { "Authorization": `Bearer ${token}` }
+          }) : Promise.resolve(null),
+          userId ? fetch(`${API_BASE}/api/v1/users/${userId}/onboarding`, {
+            headers: { "Authorization": `Bearer ${token}` }
+          }) : Promise.resolve(null),
+        ]);
+
+        // Xử lý kết quả /users/me
+        if (meResult.status === "fulfilled" && meResult.value) {
+          const res = meResult.value;
+          if (res.status === 401) {
+            window.dispatchEvent(new Event("auth-session-expired"));
+            return;
           }
-        });
-        if (res.ok) {
-          const data = await res.json();
-          if (data.created_at) {
-            const date = new Date(data.created_at);
-            const day = date.getDate();
-            const month = date.getMonth() + 1;
-            const year = date.getFullYear();
-            if (language === "en") {
-              const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-              setJoinDate(`${monthNames[date.getMonth()]} ${day}, ${year}`);
-            } else {
-              setJoinDate(`ngày ${day} tháng ${month}, ${year}`);
-            }
-          }
-          if (data.cover_url) {
-            setCover(data.cover_url);
-            const userId = localStorage.getItem("user_id") || "";
-            localStorage.setItem(`user_cover_${userId}`, data.cover_url);
-          }
-          if (data.badges) {
-            setBadges(data.badges);
-            
-            // Auto select first unlocked badge if nothing is saved yet
-            const currentSavedBadge = localStorage.getItem("active_badge");
-            if (!currentSavedBadge) {
-              const firstUnlocked = Object.entries(data.badges).find(([_, info]: any) => info.unlocked);
-              if (firstUnlocked) {
-                localStorage.setItem("active_badge", firstUnlocked[0]);
-                setActiveBadge(firstUnlocked[0]);
+          if (res.ok) {
+            const data = await res.json();
+            if (data.created_at) {
+              const date = new Date(data.created_at);
+              const day = date.getDate();
+              const month = date.getMonth() + 1;
+              const year = date.getFullYear();
+              if (language === "en") {
+                const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+                setJoinDate(`${monthNames[date.getMonth()]} ${day}, ${year}`);
+              } else {
+                setJoinDate(`ngày ${day} tháng ${month}, ${year}`);
               }
             }
-          }
-          if (data.culinary_vibes) {
-            setCulinaryVibes(data.culinary_vibes);
-          }
-          if (data.recent_activities) {
-            setRecentActivities(data.recent_activities);
-          }
-          if (data.active_dates) {
-            setActiveDates(data.active_dates);
-          }
-          if (data.favorites_count !== undefined) {
-            setFavoritesCount(data.favorites_count);
-          }
-          if (data.reviews_count !== undefined) {
-            setReviewsCount(data.reviews_count);
-          }
-          if (data.discoveries_count !== undefined) {
-            setDiscoveriesCount(data.discoveries_count);
-          }
-          if (data.streak_count !== undefined) {
-            setStreakCount(data.streak_count);
-          }
-
-          // Fetch social follow stats
-          const socialUserId = localStorage.getItem("user_id") || "";
-          if (socialUserId) {
-            const socialRes = await fetch(`${API_BASE}/api/v1/social/users/${socialUserId}/profile`, {
-              headers: { "Authorization": `Bearer ${token}` }
-            });
-            if (socialRes.ok) {
-              const socialData = await socialRes.json();
-              setFollowersCount(socialData.followers_count ?? 0);
-              setFollowingCount(socialData.following_count ?? 0);
+            if (data.cover_url) {
+              setCover(data.cover_url);
+              localStorage.setItem(`user_cover_${userId}`, data.cover_url);
             }
-          }
-
-          // Fetch onboarding personalization preferences
-          const userId = localStorage.getItem("user_id") || "";
-          if (userId) {
-            const onboardingRes = await fetch(`${API_BASE}/api/v1/users/${userId}/onboarding`, {
-              headers: {
-                "Authorization": `Bearer ${token}`
+            if (data.badges) {
+              setBadges(data.badges);
+              const currentSavedBadge = localStorage.getItem("active_badge");
+              if (!currentSavedBadge) {
+                const firstUnlocked = Object.entries(data.badges).find(([_, info]: any) => info.unlocked);
+                if (firstUnlocked) {
+                  localStorage.setItem("active_badge", firstUnlocked[0]);
+                  setActiveBadge(firstUnlocked[0]);
+                }
               }
-            });
-            if (onboardingRes.ok) {
-              const obData = await onboardingRes.json();
-              setPersonalization(obData);
             }
+            if (data.culinary_vibes) setCulinaryVibes(data.culinary_vibes);
+            if (data.recent_activities) setRecentActivities(data.recent_activities);
+            if (data.active_dates) setActiveDates(data.active_dates);
+            if (data.favorites_count !== undefined) setFavoritesCount(data.favorites_count);
+            if (data.reviews_count !== undefined) setReviewsCount(data.reviews_count);
+            if (data.discoveries_count !== undefined) setDiscoveriesCount(data.discoveries_count);
+            if (data.streak_count !== undefined) setStreakCount(data.streak_count);
           }
-        } else if (res.status === 401) {
-          window.dispatchEvent(new Event("auth-session-expired"));
+        }
+
+        // Xử lý kết quả social (followers/following)
+        if (socialResult.status === "fulfilled" && socialResult.value) {
+          const socialRes = socialResult.value as Response;
+          if (socialRes.ok) {
+            const socialData = await socialRes.json();
+            setFollowersCount(socialData.followers_count ?? 0);
+            setFollowingCount(socialData.following_count ?? 0);
+          }
+        }
+
+        // Xử lý kết quả onboarding
+        if (onboardingResult.status === "fulfilled" && onboardingResult.value) {
+          const onboardingRes = onboardingResult.value as Response;
+          if (onboardingRes.ok) {
+            const obData = await onboardingRes.json();
+            setPersonalization(obData);
+          }
         }
       } catch (err) {
         console.error("Failed to fetch profile:", err);
+      } finally {
+        setIsLoading(false);
       }
     };
     fetchProfile();
@@ -324,9 +319,17 @@ export default function ProfilePage() {
 
   if (!mounted) return null;
 
+  if (isLoading) {
+    return (
+      <AppShell>
+        <ProfileOwnSkeleton />
+      </AppShell>
+    );
+  }
+
   return (
     <AppShell>
-      <div className="max-w-5xl mx-auto px-4 md:px-8 py-8">
+      <div className="max-w-5xl mx-auto px-4 md:px-8 py-8 animate-fade-in-up">
         {/* Profile content unchanged below */}
             
             {/* Profile Header Card */}
@@ -467,7 +470,11 @@ export default function ProfilePage() {
                       const info = badges[badgeIcon] || { unlocked: false, progress: 0, target: badgeIcon === "🧘" ? 1 : 20 };
                       const isZen = badgeIcon === "🧘";
                       return (
-                        <div key={idx} className="group cursor-help relative flex flex-col items-center">
+                        <div 
+                          key={idx} 
+                          className="group cursor-help relative flex flex-col items-center animate-fade-in-up"
+                          style={{ animationDelay: `${idx * 0.04}s` }}
+                        >
                           <div className={`w-16 h-16 rounded-2xl flex items-center justify-center text-2xl mb-1.5 transition-all duration-300 relative overflow-hidden ${
                             info.unlocked 
                               ? (isZen 
@@ -690,7 +697,8 @@ export default function ProfilePage() {
                               <div 
                                 key={idx} 
                                 onClick={() => handleActivityClick(activity)}
-                                className="flex gap-4 group cursor-pointer"
+                                className="flex gap-4 group cursor-pointer animate-fade-in-up"
+                                style={{ animationDelay: `${idx * 0.05}s` }}
                               >
                                 <div className={`w-10 h-10 ${bg} ${color} rounded-xl flex-shrink-0 flex items-center justify-center transition-transform group-hover:scale-110`}>
                                   <Icon className="w-5 h-5" />
