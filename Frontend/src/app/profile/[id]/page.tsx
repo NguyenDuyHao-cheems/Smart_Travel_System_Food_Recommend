@@ -170,7 +170,7 @@ export default function PublicProfilePage() {
         {/* Profile Card */}
         <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm mb-6">
           {/* Cover Photo */}
-          <div className="h-48 md:h-64 relative bg-muted w-full">
+          <div className="w-full aspect-[3/1] relative bg-muted">
             <img src={coverUrl} alt="Cover" className="w-full h-full object-cover" />
           </div>
 

@@ -355,7 +355,7 @@ export default function ProfilePage() {
             {/* Profile Header Card */}
             <div className="bg-white dark:bg-[#3D312A] rounded-[40px] shadow-sm border border-gray-100 dark:border-[#3D312A] overflow-hidden mb-8">
               {/* Cover Image Placeholder */}
-              <div className="h-48 relative overflow-hidden bg-[#3D312A]">
+              <div className="w-full aspect-[3/1] relative overflow-hidden bg-[#3D312A]">
                 {cover ? (
                   <img src={cover} alt="Cover" className="w-full h-full object-cover" />
                 ) : (
