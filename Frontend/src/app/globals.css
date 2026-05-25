@@ -154,10 +154,7 @@
   /* ── Animations ── */
   --animate-float: float 4s ease-in-out infinite;
   --animate-float-delayed: float 5s ease-in-out 2s infinite reverse;
-  @keyframes float {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-15px); }
-  }
+
 
 
 }
@@ -291,4 +288,31 @@
 
 .dark .drawer-nav-item:hover {
   background-color: rgba(169, 27, 13, 0.10);
+}
+
+/* ── Fade-in-up — dùng cho content sau khi skeleton load xong ── */
+.animate-fade-in-up {
+  animation: fade-in-up 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in-up {
+    animation: none;
+  }
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-15px); }
 }

@@ -2130,7 +2130,7 @@ function PersonalizationSettings() {
                 onClick={() => setFormData(prev => ({ ...prev, spicy_level: opt.id }))}
                 className={`px-4 py-2.5 rounded-2xl text-xs font-bold border transition-all cursor-pointer ${
                   formData.spicy_level === opt.id
-                    ? "bg-red-600 text-white border-red-650 shadow-md shadow-red-500/20 dark:bg-red-50 dark:border-red-500 dark:shadow-[0_0_15px_rgba(239,68,68,0.55)]"
+                    ? "bg-red-600 text-white border-red-600 shadow-md shadow-red-500/20 dark:bg-red-500 dark:border-red-500 dark:text-white dark:shadow-[0_0_15px_rgba(239,68,68,0.55)]"
                     : "bg-[#FDFBF7] dark:bg-[#2A2420]/80 text-[#7A6A5A] dark:text-[#E6DFD5] border-[#E6DFD5] dark:border-[#4D3D32] hover:border-red-500 hover:text-red-500 dark:hover:border-red-500 dark:hover:text-red-400"
                 }`}
               >

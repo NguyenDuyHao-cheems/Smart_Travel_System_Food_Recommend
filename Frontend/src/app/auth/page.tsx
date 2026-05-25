@@ -159,7 +159,7 @@ function AuthPageContent() {
 
   const showShopeeError = () => {
     setErrorMsg(t('auth.googleUnsuccessful'));
-    toast.custom((t) => (
+    toast.custom((toastId) => (
       <div className="bg-black/70 backdrop-blur-md text-white px-5 py-4 rounded-2xl shadow-2xl flex items-center gap-4 border border-white/10 animate-in fade-in slide-in-from-top-4 duration-300">
         <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center flex-shrink-0">
           <span className="text-white text-xl font-black">!</span>
