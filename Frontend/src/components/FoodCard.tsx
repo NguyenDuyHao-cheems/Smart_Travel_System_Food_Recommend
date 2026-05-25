@@ -2,13 +2,16 @@
 
 import React from "react";
 import { RecommendResult } from "../app/result/page";
-import { Heart, MapPin, Trash2, Plus, Check, Bookmark } from "lucide-react";
+import { Heart, MapPin, Trash2, Plus, Check, Bookmark, Route } from "lucide-react";
 import { favoriteService } from "../services/favoriteService";
 import { collectionService } from "../services/collectionService";
 import { toast } from "sonner";
 import { AddToCollectionModal } from "./AddToCollectionModal";
 import { interactionService } from "../services/interactionService";
 import { useRouter } from "next/navigation";
+import { useDispatch, useSelector } from "react-redux";
+import { RootState } from "../store";
+import { addItem, removeItem } from "../store/slices/itinerarySlice";
 
 import { useLanguage } from "./LanguageProvider";
 
@@ -27,6 +30,10 @@ export function FoodCard({ item, userId, onRemove, showRemove, showAddCollection
   const [isFav, setIsFav] = React.useState(false);
   const [isInColl, setIsInColl] = React.useState(false);
   const [isCollectionModalOpen, setIsCollectionModalOpen] = React.useState(false);
+
+  const dispatch = useDispatch();
+  const itineraryItems = useSelector((state: RootState) => state.itinerary?.items || []);
+  const isInItinerary = itineraryItems.some(i => i.id === item.id);
 
   const translateReason = (reason: string): string => {
     if (language !== 'en') return reason;
@@ -88,6 +95,33 @@ export function FoodCard({ item, userId, onRemove, showRemove, showAddCollection
     }
   };
 
+  const toggleItinerary = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isInItinerary) {
+      dispatch(removeItem(item.id));
+      toast.success(t("result.removedItineraryToast") || "Đã xóa khỏi lộ trình");
+    } else {
+      dispatch(addItem({
+        id: item.id,
+        name: item.name,
+        lat: item.lat,
+        lng: item.lng,
+        address: item.restaurantName || item.reason || '',
+        img: item.img,
+        rating: item.rating,
+        price: item.price,
+        reason: item.reason,
+        google_maps_url: item.google_maps_url,
+      }));
+      toast.success(t("result.addedItineraryToast") || "Đã thêm vào lộ trình", {
+        action: {
+          label: 'Xem',
+          onClick: () => router.push('/itinerary')
+        }
+      });
+    }
+  };
+
   const handleCardClick = () => {
     // Guard: nếu item.id bị thiếu thì không navigate
     if (!item.id || item.id === "undefined" || item.id === "null") {
@@ -131,21 +165,28 @@ export function FoodCard({ item, userId, onRemove, showRemove, showAddCollection
         
         {/* Actions top right */}
         <div className="absolute top-3 right-3 flex flex-col gap-2">
+          <button
+            onClick={toggleItinerary}
+            className="w-8 h-8 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center hover:scale-110 transition-all shadow-sm hover:bg-black/60"
+            title={isInItinerary ? (t("result.removeItinerary") || "Xóa khỏi lộ trình") : (t("result.addItinerary") || "Thêm vào lộ trình")}
+          >
+            <Route className={`w-4 h-4 ${isInItinerary ? 'text-brand dark:text-[#E8735A]' : 'text-white/90'}`} />
+          </button>
           {!showRemove && (
             <button 
               onClick={toggleFavorite}
-              className="w-8 h-8 rounded-full bg-white/90 dark:bg-[#2A2420]/80 flex items-center justify-center hover:scale-110 transition-all shadow-sm"
+              className="w-8 h-8 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center hover:scale-110 transition-all shadow-sm hover:bg-black/60"
             >
-              <Heart className={`w-4 h-4 ${isFav ? 'text-red-500 fill-current' : 'text-gray-400'}`} />
+              <Heart className={`w-4 h-4 ${isFav ? 'text-red-500 fill-current' : 'text-white/90'}`} />
             </button>
           )}
           {showRemove && onRemove && (
             <button 
               onClick={(e) => { e.stopPropagation(); onRemove(item); }}
-              className="w-8 h-8 rounded-full bg-white/90 dark:bg-[#2A2420]/80 flex items-center justify-center hover:scale-110 hover:bg-red-50 transition-all shadow-sm"
+              className="w-8 h-8 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center hover:scale-110 hover:bg-red-500/80 transition-all shadow-sm"
               title={t("favorites.deleteBtn")}
             >
-              <Trash2 className="w-4 h-4 text-red-500" />
+              <Trash2 className="w-4 h-4 text-white/90" />
             </button>
           )}
           {showAddCollection && (
@@ -166,14 +207,10 @@ export function FoodCard({ item, userId, onRemove, showRemove, showAddCollection
                 setIsCollectionModalOpen(true);
                 if (onAddCollection) onAddCollection(item);
               }}
-              className={`w-8 h-8 rounded-full bg-white/90 dark:bg-[#2A2420]/80 flex items-center justify-center hover:scale-110 transition-all shadow-sm ${isInColl ? 'hover:bg-yellow-50' : 'hover:bg-brand-muted'}`}
+              className="w-8 h-8 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center hover:scale-110 transition-all shadow-sm hover:bg-black/60"
               title={isInColl ? t("collections.alreadyInCollectionCheck") : t("collections.addToCollection")}
             >
-              {isInColl ? (
-                <Check className="w-4 h-4 text-yellow-500" />
-              ) : (
-                <Plus className="w-4 h-4 text-brand dark:text-[#E8735A]" />
-              )}
+              <Bookmark className={`w-4 h-4 ${isInColl ? 'text-brand dark:text-[#E8735A] fill-current' : 'text-white/90'}`} />
             </button>
           )}
         </div>
