@@ -100,3 +100,6 @@ core_backend/*.sqlite
 *.pkl
 lambdamart.lgb
 tsconfig.tsbuildinfo
+
+# Scratch/Benchmark files
+core_backend/scratch/

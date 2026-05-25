@@ -12,21 +12,21 @@ from app.domains.recommendations.service import RecommendationService
 async def test_get_group_recommendations_logic(db_session: Session):
     # Setup test users
     user_a = UserAccount(
-        id="user-a-id",
+        id="a0000000-0000-0000-0000-00000000000a",
         username="usera",
         password_hash="hash",
         preferences_vector=[0.1] * 768,
         allergies=["peanut"]
     )
     user_b = UserAccount(
-        id="user-b-id",
+        id="b0000000-0000-0000-0000-00000000000b",
         username="userb",
         password_hash="hash",
         preferences_vector=[0.3] * 768,
         allergies=None
     )
     user_c = UserAccount(
-        id="user-c-id",
+        id="c0000000-0000-0000-0000-00000000000c",
         username="userc",
         password_hash="hash",
         preferences_vector=[0.5] * 768,
@@ -37,14 +37,14 @@ async def test_get_group_recommendations_logic(db_session: Session):
     db_session.commit()
     
     # Establish friendship A <-> B (but not A <-> C)
-    friend_ab = UserFriend(user_id="user-a-id", friend_id="user-b-id")
-    friend_ba = UserFriend(user_id="user-b-id", friend_id="user-a-id")
+    friend_ab = UserFriend(user_id="a0000000-0000-0000-0000-00000000000a", friend_id="b0000000-0000-0000-0000-00000000000b")
+    friend_ba = UserFriend(user_id="b0000000-0000-0000-0000-00000000000b", friend_id="a0000000-0000-0000-0000-00000000000a")
     db_session.add_all([friend_ab, friend_ba])
     db_session.commit()
 
     # User B Onboarding
     onb_b = UserOnboarding(
-        user_id="user-b-id",
+        user_id="b0000000-0000-0000-0000-00000000000b",
         favorite_dishes=["bún chả"],
         spicy_level="medium",
         budget="medium",
@@ -136,7 +136,7 @@ async def test_get_group_recommendations_logic(db_session: Session):
         # Execute service method
         res = await RecommendationService.get_group_recommendations(
             user=user_a,
-            friend_ids=["user-b-id", "user-c-id"],
+            friend_ids=["b0000000-0000-0000-0000-00000000000b", "c0000000-0000-0000-0000-00000000000c"],
             lat=10.87,
             lng=106.80,
             limit=10,

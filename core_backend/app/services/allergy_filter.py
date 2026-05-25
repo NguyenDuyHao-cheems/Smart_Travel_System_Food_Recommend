@@ -49,8 +49,8 @@ def get_unsafe_dish_filter(db: Session, keywords: List[str]) -> Optional[Any]:
 
     dialect = db.bind.dialect.name
     if dialect == "postgresql":
-        from sqlalchemy.dialects.postgresql import JSONB, array
-        # Use postgresql.array() to force compilation as ARRAY[...] (text[]) instead of JSONB
+        from sqlalchemy.dialects.postgresql import array, JSONB
+        # Explicitly cast to PostgreSQL JSONB to enable the has_any operator in SQLAlchemy compilation
         return cast(DishModel.allergens, JSONB).has_any(array(keywords))
     else:
         # SQLite fallback: cast to String and check with ILIKE/LIKE

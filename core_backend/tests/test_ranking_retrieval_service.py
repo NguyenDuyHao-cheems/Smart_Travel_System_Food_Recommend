@@ -19,6 +19,9 @@ class DummyQuery:
     def join(self, *args, **kwargs):
         return self
 
+    def options(self, *args, **kwargs):
+        return self
+
     def order_by(self, *clauses):
         self.order_by_clauses.extend(clauses)
         return self
@@ -86,7 +89,8 @@ def test_get_candidates_adds_budget_filter_to_postgres_query():
 
     sql = _compiled_filter_sql(db.query_obj)
 
-    assert "split_part" in sql
+    assert "price_min" in sql
+    assert "price_max" in sql
     assert "50000" in sql
 
 
@@ -100,7 +104,8 @@ def test_get_candidates_skips_budget_filter_when_budget_is_zero():
 
     sql = _compiled_filter_sql(db.query_obj)
 
-    assert "split_part" not in sql
+    assert "price_min" not in sql
+    assert "price_max" not in sql
 
 
 def test_get_candidates_adds_viewport_filter_when_bounds_are_present():
