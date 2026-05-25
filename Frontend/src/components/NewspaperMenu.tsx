@@ -307,14 +307,17 @@ export default function NewspaperMenu() {
   
   if (menu && items.length === 0) {
     return (
-      <div className="relative w-full min-h-[480px] bg-[#FAF6EE] dark:bg-[#332B25] border border-[#d2c2ad] dark:border-[#4d3d32] shadow-md rounded-lg p-6 text-[#3D312A] dark:text-[#E6DFD5] mb-8 font-serif transition-colors duration-300 flex flex-col justify-between">
+      <div 
+        className="relative w-full min-h-[480px] bg-[#FAF6EE] dark:bg-[#332B25] border border-[#d2c2ad] dark:border-[#4d3d32] shadow-md rounded-lg p-6 text-[#3D312A] dark:text-[#E6DFD5] mb-8 transition-colors duration-300 flex flex-col justify-between"
+        style={{ fontFamily: 'var(--font-lora), Georgia, serif' }}
+      >
         <div className="text-center">
           <span className="text-[10px] tracking-widest font-mono uppercase text-[#3D312A]/70 dark:text-[#E6DFD5]/70 block mb-1">
             {t("newspaper.title")}
           </span>
           <h1 
             className="text-4xl md:text-5xl font-bold uppercase tracking-wide text-[#2B221E] dark:text-[#F3EDE2] leading-none mb-3"
-            style={{ fontFamily: '"DFVN Paper Kuto", "Segoe UI", Roboto, sans-serif' }}
+            style={{ fontFamily: 'var(--font-lora), "Playfair Display", Georgia, serif' }}
           >
             Wanderbite Daily
           </h1>
@@ -329,7 +332,7 @@ export default function NewspaperMenu() {
           <div className="text-4xl mb-4 text-[#8A3324]/40 dark:text-[#E27A67]/40">📰</div>
           <h3 
             className="text-xl font-bold mb-2 text-[#2B221E] dark:text-[#F3EDE2]"
-            style={{ fontFamily: '"DFVN Paper Kuto", "Segoe UI", Roboto, sans-serif' }}
+            style={{ fontFamily: 'var(--font-lora), "Playfair Display", Georgia, serif' }}
           >
             {t("newspaper.empty")}
           </h3>
@@ -361,7 +364,10 @@ export default function NewspaperMenu() {
   }
 
   return (
-    <div className="relative w-full min-h-[480px] bg-[#FAF6EE] dark:bg-[#332B25] border border-[#d2c2ad] dark:border-[#4d3d32] shadow-md rounded-lg p-6 text-[#3D312A] dark:text-[#E6DFD5] mb-8 font-serif transition-colors duration-300">
+    <div 
+      className="relative w-full min-h-[480px] bg-[#FAF6EE] dark:bg-[#332B25] border border-[#d2c2ad] dark:border-[#4d3d32] shadow-md rounded-lg p-6 text-[#3D312A] dark:text-[#E6DFD5] mb-8 transition-colors duration-300"
+      style={{ fontFamily: 'var(--font-lora), Georgia, serif' }}
+    >
       
       {/* Newspaper Top section */}
       <div className="text-center">
@@ -372,7 +378,7 @@ export default function NewspaperMenu() {
         {/* Title / Masthead */}
         <h1 
           className="text-4xl md:text-5xl font-bold uppercase tracking-wide text-[#2B221E] dark:text-[#F3EDE2] leading-none mb-3"
-          style={{ fontFamily: '"DFVN Paper Kuto", "Segoe UI", Roboto, sans-serif' }}
+          style={{ fontFamily: 'var(--font-lora), "Playfair Display", Georgia, serif' }}
         >
           Wanderbite Daily
         </h1>
@@ -395,14 +401,14 @@ export default function NewspaperMenu() {
       <div className="text-center my-6 max-w-3xl mx-auto border-b border-[#3D312A]/10 dark:border-[#E6DFD5]/10 pb-4">
         <h2 
           className="text-xl md:text-2xl font-bold text-[#2B221E] dark:text-[#F3EDE2] italic leading-tight"
-          style={{ fontFamily: '"DFVN Paper Kuto", "Segoe UI", Roboto, sans-serif' }}
+          style={{ fontFamily: 'var(--font-lora), "Playfair Display", Georgia, serif' }}
         >
           &ldquo;{t("newspaper.headlineQuote")
             .replace("{time}", timeSlotTrans)
             .replace("{day}", dayNameTrans)
             .replace("{adj}", weatherAdjectiveTrans)
             .replace("{weather}", translateWeatherDescription(weatherDescription).toLowerCase())
-            .replace("{city}", cityTrans)}&rdquo;
+            .replace("{city}", cityTrans).normalize("NFC")}&rdquo;
         </h2>
       </div>
 
@@ -445,7 +451,7 @@ export default function NewspaperMenu() {
               {/* Restaurant Name */}
               <h3 className="text-lg font-bold leading-tight mb-1 hover:text-[#8A3324] dark:hover:text-[#E27A67] transition-colors duration-200">
                 <Link href={`/restaurant/${item.restaurant_id}`}>
-                  {item.restaurant_name}
+                  {item.restaurant_name?.normalize("NFC")}
                 </Link>
               </h3>
 
@@ -465,7 +471,7 @@ export default function NewspaperMenu() {
                     {t("newspaper.suggestTitle")}
                   </div>
                   <div className="font-semibold text-sm text-[#2B221E] dark:text-[#F3EDE2]">
-                    {item.suggested_dish_name}
+                    {item.suggested_dish_name?.normalize("NFC")}
                   </div>
                   {item.suggested_dish_price && (
                     <div className="font-mono text-[#8A3324] dark:text-[#E27A67] mt-0.5">

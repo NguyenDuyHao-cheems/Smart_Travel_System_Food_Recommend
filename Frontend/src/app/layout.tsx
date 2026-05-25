@@ -13,6 +13,13 @@ const beVietnamPro = Be_Vietnam_Pro({
   variable: "--font-be-vietnam-pro",
 });
 
+import { Lora } from "next/font/google";
+const lora = Lora({
+  subsets: ["latin", "vietnamese"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-lora",
+});
+
 export const metadata: Metadata = {
   title: "Wanderbite - Smart Food Discovery",
   description: "Find food and restaurants that match your taste with AI.",
@@ -24,7 +31,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="vi" suppressHydrationWarning className={beVietnamPro.variable}>
+    <html lang="vi" suppressHydrationWarning className={`${beVietnamPro.variable} ${lora.variable}`}>
       <body
         suppressHydrationWarning
         className={`${beVietnamPro.className} antialiased text-slate-800 dark:text-[#E6DFD5] bg-slate-50 dark:bg-[#2A2420]`}
