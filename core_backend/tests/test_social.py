@@ -86,31 +86,48 @@ def test_social_flow(client: TestClient):
     assert viewers[0]["username"] == username_b
     assert viewers[0]["reaction"] == "❤️"
 
-def test_unread_count_sse(client: TestClient):
-    # Register user
-    username = f"user_{uuid.uuid4().hex[:8]}"
-    user = _register_user(client, username)
-    token = user['access_token']
-    
-    # 1. Test NotificationNotifier directly
-    from app.domains.social.notifier import notifier
+@pytest.mark.asyncio
+async def test_unread_count_sse(db_session):
+    from httpx import AsyncClient, ASGITransport
+    from app.main import app
+    from app.core.dependencies import get_db
     import asyncio
     
-    q = asyncio.Queue()
-    user_id = user['user_id']
-    notifier.subscribe(user_id, q)
-    assert q.empty()
+    # Register user
+    username = f"user_{uuid.uuid4().hex[:8]}"
     
-    notifier.notify(user_id)
-    assert not q.empty()
-    assert q.get_nowait() is True
-    notifier.unsubscribe(user_id, q)
+    # Override get_db for this test
+    def override_get_db():
+        yield db_session
+    app.dependency_overrides[get_db] = override_get_db
 
-    # 2. Test SSE endpoint connection and initial yield
-    with client.stream("GET", f"/api/v1/social/notifications/unread-count/sse?token={token}") as response:
-        assert response.status_code == 200
-        # Read the first line of the stream, which should be the initial count "data: 0\n\n"
-        lines = response.iter_lines()
-        first_line = next(lines)
-        assert b"data: 0" in first_line
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as async_client:
+        resp = await async_client.post(SIGN_UP_URL, json={"username": username, "password": "strongpassword123"})
+        assert resp.status_code == 200
+        user = resp.json()
+        token = user['access_token']
+        
+        # 1. Test NotificationNotifier directly
+        from app.domains.social.notifier import notifier
+        
+        q = asyncio.Queue()
+        user_id = user['user_id']
+        notifier.subscribe(user_id, q)
+        assert q.empty()
+        
+        notifier.notify(user_id)
+        assert not q.empty()
+        assert q.get_nowait() is True
+        notifier.unsubscribe(user_id, q)
+
+        # 2. Test SSE endpoint connection and initial yield
+        async with async_client.stream("GET", f"/api/v1/social/notifications/unread-count/sse?token={token}") as response:
+            assert response.status_code == 200
+            async for line in response.aiter_lines():
+                assert "data: 0" in line
+                break
+                
+    app.dependency_overrides.clear()
+
 

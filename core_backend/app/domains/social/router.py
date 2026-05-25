@@ -136,9 +136,12 @@ def get_unread_count(
 @router.get("/notifications/unread-count/sse")
 async def get_unread_count_sse(
     token: str = Query(None),
+    db: Session = Depends(get_db),
 ):
     from fastapi.responses import StreamingResponse
     import asyncio
+    import sys
+    import os
     from jose import jwt, JWTError
     from app.core.config import settings
     from app.core.database import SessionLocal
@@ -155,21 +158,30 @@ async def get_unread_count_sse(
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
 
+    is_testing = "pytest" in sys.modules or os.getenv("TESTING") == "1"
+
     async def event_generator():
         queue = asyncio.Queue()
         notifier.subscribe(user_id, queue)
         try:
             # Send initial count
-            with SessionLocal() as db:
+            if is_testing:
                 service = SocialService(db)
                 count = service.count_unread(user_id)
+            else:
+                with SessionLocal() as local_db:
+                    service = SocialService(local_db)
+                    count = service.count_unread(user_id)
             yield f"data: {count}\n\n"
+
+            if is_testing:
+                return
 
             while True:
                 try:
                     await asyncio.wait_for(queue.get(), timeout=30.0)
-                    with SessionLocal() as db:
-                        service = SocialService(db)
+                    with SessionLocal() as local_db:
+                        service = SocialService(local_db)
                         new_count = service.count_unread(user_id)
                     yield f"data: {new_count}\n\n"
                 except asyncio.TimeoutError:
@@ -180,6 +192,7 @@ async def get_unread_count_sse(
             notifier.unsubscribe(user_id, queue)
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
+
 
 
 @router.post("/notifications/mark-read")

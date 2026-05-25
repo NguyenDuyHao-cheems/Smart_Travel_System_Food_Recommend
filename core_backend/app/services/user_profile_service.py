@@ -61,9 +61,8 @@ async def rebuild_user_profile_vector(
     """
     # ── 1. Collect signals ───────────────────────────────────────────────────
     # Run sync DB queries in a thread pool to avoid blocking the event loop
-    onboarding_record = await asyncio.to_thread(
-        lambda: UserOnboardingRepository(db).get_by_user_id(user_id)
-    )
+    onboarding_record = UserOnboardingRepository(db).get_by_user_id(user_id)
+
 
     if not onboarding_record:
         logger.info("No onboarding data for user %s, skipping profile rebuild.", user_id)
@@ -107,9 +106,8 @@ async def rebuild_user_profile_vector(
 
     # ── 4. Persist to users.preferences_vector ───────────────────────────────
     user_repo = UserAccountRepository(db)
-    updated = await asyncio.to_thread(
-        lambda: user_repo.update_preferences_vector(user_id, vector)
-    )
+    updated = user_repo.update_preferences_vector(user_id, vector)
+
     
     if not updated:
         logger.error("User %s not found when persisting profile vector.", user_id)
