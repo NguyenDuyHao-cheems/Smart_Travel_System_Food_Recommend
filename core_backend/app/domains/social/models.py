@@ -66,3 +66,11 @@ class SocialStoryView(Base):
     user_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
     reaction = Column(String, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+from sqlalchemy import event
+from app.domains.social.notifier import notifier
+
+@event.listens_for(SocialNotification, 'after_insert')
+def receive_after_insert(mapper, connection, target):
+    notifier.notify(str(target.user_id))
+

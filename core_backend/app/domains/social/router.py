@@ -133,6 +133,55 @@ def get_unread_count(
     service = SocialService(db)
     return {"count": service.count_unread(str(current_user.id))}
 
+@router.get("/notifications/unread-count/sse")
+async def get_unread_count_sse(
+    token: str = Query(None),
+):
+    from fastapi.responses import StreamingResponse
+    import asyncio
+    from jose import jwt, JWTError
+    from app.core.config import settings
+    from app.core.database import SessionLocal
+    from app.domains.social.notifier import notifier
+
+    if not token:
+        raise HTTPException(status_code=401, detail="Authentication token required")
+
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        user_id: str = payload.get("sub")
+        if user_id is None:
+            raise HTTPException(status_code=401, detail="Invalid token")
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    async def event_generator():
+        queue = asyncio.Queue()
+        notifier.subscribe(user_id, queue)
+        try:
+            # Send initial count
+            with SessionLocal() as db:
+                service = SocialService(db)
+                count = service.count_unread(user_id)
+            yield f"data: {count}\n\n"
+
+            while True:
+                try:
+                    await asyncio.wait_for(queue.get(), timeout=30.0)
+                    with SessionLocal() as db:
+                        service = SocialService(db)
+                        new_count = service.count_unread(user_id)
+                    yield f"data: {new_count}\n\n"
+                except asyncio.TimeoutError:
+                    yield ": ping\n\n"
+        except asyncio.CancelledError:
+            pass
+        finally:
+            notifier.unsubscribe(user_id, queue)
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+
 @router.post("/notifications/mark-read")
 def mark_notifications_read(
     db: Session = Depends(get_db),

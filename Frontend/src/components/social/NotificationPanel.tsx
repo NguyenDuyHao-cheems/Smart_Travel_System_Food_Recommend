@@ -102,20 +102,40 @@ export function NotificationPanel() {
     } catch { /* silent */ }
   };
 
-  // Poll unread count and notifications (if open) every 5s
+  const isOpenRef = React.useRef(isOpen);
   useEffect(() => {
-    fetchUnread();
+    isOpenRef.current = isOpen;
+  }, [isOpen]);
+
+  // Use Server-Sent Events (SSE) for real-time unread count updates
+  useEffect(() => {
+    if (!token) return;
+
+    const sseUrl = `${BACKEND_URL}/api/v1/social/notifications/unread-count/sse?token=${encodeURIComponent(token)}`;
+    const eventSource = new EventSource(sseUrl);
+
+    eventSource.onmessage = (event) => {
+      const count = parseInt(event.data, 10);
+      if (!isNaN(count)) {
+        setUnreadCount(count);
+        if (isOpenRef.current) {
+          fetchNotifications();
+        }
+      }
+    };
+
+    return () => {
+      eventSource.close();
+    };
+  }, [token]);
+
+  // Fetch notifications once when opening the panel
+  useEffect(() => {
     if (isOpen) {
       fetchNotifications();
     }
-    const interval = setInterval(() => {
-      fetchUnread();
-      if (isOpen) {
-        fetchNotifications();
-      }
-    }, 5000);
-    return () => clearInterval(interval);
-  }, [fetchUnread, isOpen]);
+  }, [isOpen]);
+
 
   const handleOpen = () => {
     setIsOpen(true);

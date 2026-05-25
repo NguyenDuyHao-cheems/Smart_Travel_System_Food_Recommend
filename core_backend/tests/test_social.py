@@ -85,3 +85,32 @@ def test_social_flow(client: TestClient):
     assert len(viewers) == 1
     assert viewers[0]["username"] == username_b
     assert viewers[0]["reaction"] == "❤️"
+
+def test_unread_count_sse(client: TestClient):
+    # Register user
+    username = f"user_{uuid.uuid4().hex[:8]}"
+    user = _register_user(client, username)
+    token = user['access_token']
+    
+    # 1. Test NotificationNotifier directly
+    from app.domains.social.notifier import notifier
+    import asyncio
+    
+    q = asyncio.Queue()
+    user_id = user['user_id']
+    notifier.subscribe(user_id, q)
+    assert q.empty()
+    
+    notifier.notify(user_id)
+    assert not q.empty()
+    assert q.get_nowait() is True
+    notifier.unsubscribe(user_id, q)
+
+    # 2. Test SSE endpoint connection and initial yield
+    with client.stream("GET", f"/api/v1/social/notifications/unread-count/sse?token={token}") as response:
+        assert response.status_code == 200
+        # Read the first line of the stream, which should be the initial count "data: 0\n\n"
+        lines = response.iter_lines()
+        first_line = next(lines)
+        assert b"data: 0" in first_line
+

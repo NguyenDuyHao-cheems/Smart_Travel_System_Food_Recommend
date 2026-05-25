@@ -135,6 +135,9 @@ class SocialRepository:
             SocialNotification.is_read == False  # noqa: E712
         ).update({"is_read": True})
         self.db.commit()
+        from app.domains.social.notifier import notifier
+        notifier.notify(user_id)
+
 
     def get_following_ids(self, user_id: str) -> List[str]:
         rows = self.db.query(SocialFollow.following_id).filter(
