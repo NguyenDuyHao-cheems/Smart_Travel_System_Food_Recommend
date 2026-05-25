@@ -1,5 +1,5 @@
 from sqlalchemy import Column, Integer, String, Float, Boolean, ForeignKey, JSON, DateTime
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, deferred
 from app.core.database import Base
 from pgvector.sqlalchemy import Vector
 from app.core.config import settings
@@ -32,7 +32,7 @@ class RestaurantModel(Base):
     is_vegetarian = Column(Boolean, default=False)  # nhà hàng chuyên chay hoặc có menu chay
 
     # Cột vector embedding (pgvector) cho semantic search
-    embedding_vector = Column(Vector(settings.VECTOR_DIM), nullable=True)
+    embedding_vector = deferred(Column(Vector(settings.VECTOR_DIM), nullable=True))
 
     image_url = Column(String, nullable=True)
     opening_hours = Column(String, nullable=True)
@@ -56,7 +56,7 @@ class DishModel(Base):
     image_url = Column(String, nullable=True)
     allergens = Column(JSON, default=[])
     is_vegetarian = Column(Boolean, default=False)
-    embedding_vector = Column(Vector(settings.VECTOR_DIM), nullable=True)
+    embedding_vector = deferred(Column(Vector(settings.VECTOR_DIM), nullable=True))
 
     restaurant = relationship("RestaurantModel", back_populates="dishes")
 

@@ -173,7 +173,15 @@ def get_current_user_profile(
 
     # 2. Truy vấn lịch sử tìm kiếm để tính toán tiến độ và gu ẩm thực
     user_uuid = uuid.UUID(str(current_user.id))
-    sessions = db.query(SearchSession).filter(SearchSession.user_id == user_uuid).all()
+    from sqlalchemy.orm import load_only
+    sessions = (
+        db.query(SearchSession)
+        .filter(SearchSession.user_id == user_uuid)
+        .options(load_only(SearchSession.query, SearchSession.created_at))
+        .order_by(SearchSession.created_at.desc())
+        .limit(500)
+        .all()
+    )
 
     # 3. Tính toán đếm số lần theo từ khóa cho Huy hiệu
     pho_count = 0
@@ -685,27 +693,42 @@ def get_favorites(
     current_user: UserAccount = Depends(get_current_user),
 ):
     try:
-        favs = db.query(UserFavorite).filter(UserFavorite.user_id == str(current_user.id)).all()
+        from sqlalchemy.orm import joinedload
+        import uuid
+        
+        # Optimize by joining RestaurantModel and UserFavorite directly and eager-loading tags
+        restaurants = (
+            db.query(RestaurantModel)
+            .join(UserFavorite, RestaurantModel.id == UserFavorite.res_id)
+            .filter(UserFavorite.user_id == str(current_user.id))
+            .options(joinedload(RestaurantModel.tags))
+            .all()
+        )
+        
         results = []
-        for fav in favs:
-            res = db.query(RestaurantModel).filter(RestaurantModel.id == fav.res_id).first()
-            if res:
-                results.append({
-                    "id": shortuuid.encode(res.id),
-                    "name": res.name,
-                    "match": "100%",
-                    "dist": "",
-                    "distance_km": 0.0,
-                    "lat": float(res.lat) if res.lat is not None else None,
-                    "lng": float(res.lng) if res.lng is not None else None,
-                    "price": res.price_range or "0",
-                    "rating": str(res.rating_avg or 0.0),
-                    "reason": "Món ăn đã được thêm vào mục yêu thích của bạn.",
-                    "img": res.image_url or "",
-                    "total_reviews": res.total_reviews or 0,
-                    "google_maps_url": res.google_maps_url or "",
-                    "tags": [tag.name for tag in res.tags] if res.tags else [],
-                })
+        for res in restaurants:
+            try:
+                raw_uuid = uuid.UUID(str(res.id))
+                obfuscated_id = shortuuid.encode(raw_uuid)
+            except Exception:
+                obfuscated_id = shortuuid.encode(res.id) if res.id else ""
+                
+            results.append({
+                "id": obfuscated_id,
+                "name": res.name,
+                "match": "100%",
+                "dist": "",
+                "distance_km": 0.0,
+                "lat": float(res.lat) if res.lat is not None else None,
+                "lng": float(res.lng) if res.lng is not None else None,
+                "price": res.price_range or "0",
+                "rating": str(res.rating_avg or 0.0),
+                "reason": "Món ăn đã được thêm vào mục yêu thích của bạn.",
+                "img": res.image_url or "",
+                "total_reviews": res.total_reviews or 0,
+                "google_maps_url": res.google_maps_url or "",
+                "tags": [tag.name for tag in res.tags] if res.tags else [],
+            })
         return results
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed to get favorites: {exc}")
@@ -772,16 +795,54 @@ def list_collections(
     current_user: UserAccount = Depends(get_current_user),
 ):
     try:
+        from sqlalchemy.orm import joinedload
+        import uuid
+        
+        # 1. Fetch all collections
         colls = db.query(UserCollection).filter(UserCollection.user_id == str(current_user.id)).all()
+        if not colls:
+            return []
+            
+        coll_ids = [c.id for c in colls]
+        
+        # 2. Fetch all collection items in a single query
+        items = db.query(UserCollectionItem).filter(UserCollectionItem.collection_id.in_(coll_ids)).all()
+        
+        # 3. Gather all distinct restaurant IDs and load them with their tags in a single batch query
+        res_ids = list(set([it.res_id for it in items if it.res_id]))
+        res_map = {}
+        if res_ids:
+            restaurants = (
+                db.query(RestaurantModel)
+                .filter(RestaurantModel.id.in_(res_ids))
+                .options(joinedload(RestaurantModel.tags))
+                .all()
+            )
+            res_map = {r.id: r for r in restaurants}
+            
+        # 4. Group items by collection ID in memory
+        items_by_coll = {}
+        for it in items:
+            if it.collection_id not in items_by_coll:
+                items_by_coll[it.collection_id] = []
+            items_by_coll[it.collection_id].append(it)
+            
         results = []
         for coll in colls:
-            items = db.query(UserCollectionItem).filter(UserCollectionItem.collection_id == coll.id).all()
             formatted_items = []
-            for item in items:
-                res = db.query(RestaurantModel).filter(RestaurantModel.id == item.res_id).first()
+            coll_items = items_by_coll.get(coll.id, [])
+            
+            for item in coll_items:
+                res = res_map.get(item.res_id)
                 if res:
+                    try:
+                        raw_uuid = uuid.UUID(str(res.id))
+                        obfuscated_id = shortuuid.encode(raw_uuid)
+                    except Exception:
+                        obfuscated_id = shortuuid.encode(res.id) if res.id else ""
+                        
                     formatted_items.append({
-                        "id": shortuuid.encode(res.id),
+                        "id": obfuscated_id,
                         "name": res.name,
                         "match": "100%",
                         "dist": "",
@@ -796,6 +857,7 @@ def list_collections(
                         "google_maps_url": res.google_maps_url or "",
                         "tags": [tag.name for tag in res.tags] if res.tags else [],
                     })
+                    
             results.append({
                 "id": coll.id,
                 "user_id": coll.user_id,
@@ -818,6 +880,9 @@ def update_collection(
     current_user: UserAccount = Depends(get_current_user),
 ):
     try:
+        from sqlalchemy.orm import joinedload
+        import uuid
+        
         coll = db.query(UserCollection).filter(
             UserCollection.id == collection_id,
             UserCollection.user_id == str(current_user.id)
@@ -831,14 +896,33 @@ def update_collection(
         db.commit()
         db.refresh(coll)
         
-        # Get items for returning full response
+        # 1. Fetch collection items
         items = db.query(UserCollectionItem).filter(UserCollectionItem.collection_id == coll.id).all()
+        
+        # 2. Gather distinct restaurant IDs and bulk load with tags in a single query
+        res_ids = list(set([it.res_id for it in items if it.res_id]))
+        res_map = {}
+        if res_ids:
+            restaurants = (
+                db.query(RestaurantModel)
+                .filter(RestaurantModel.id.in_(res_ids))
+                .options(joinedload(RestaurantModel.tags))
+                .all()
+            )
+            res_map = {r.id: r for r in restaurants}
+            
         formatted_items = []
         for item in items:
-            res = db.query(RestaurantModel).filter(RestaurantModel.id == item.res_id).first()
+            res = res_map.get(item.res_id)
             if res:
+                try:
+                    raw_uuid = uuid.UUID(str(res.id))
+                    obfuscated_id = shortuuid.encode(raw_uuid)
+                except Exception:
+                    obfuscated_id = shortuuid.encode(res.id) if res.id else ""
+                    
                 formatted_items.append({
-                    "id": shortuuid.encode(res.id),
+                    "id": obfuscated_id,
                     "name": res.name,
                     "match": "100%",
                     "dist": "",

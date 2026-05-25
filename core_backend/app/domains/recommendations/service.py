@@ -352,26 +352,11 @@ class RecommendationService:
         # to satisfy the "Minimum 16 results" requirement after applying allergy filters.
         budget_expr = None
         if budget and budget > 0:
-            from sqlalchemy import cast, func, Integer, case, or_, and_
-            raw_min_price_str = case(
-                (RestaurantModel.price_range.contains("-"), func.split_part(RestaurantModel.price_range, "-", 1)),
-                else_=RestaurantModel.price_range,
-            )
-            raw_max_price_str = case(
-                (RestaurantModel.price_range.contains("-"), func.split_part(RestaurantModel.price_range, "-", 2)),
-                else_=RestaurantModel.price_range,
-            )
-            
-            clean_min_price_str = func.regexp_replace(raw_min_price_str, r'\D', '', 'g')
-            clean_max_price_str = func.regexp_replace(raw_max_price_str, r'\D', '', 'g')
-            
-            clean_min_price_int = func.coalesce(cast(func.nullif(clean_min_price_str, ''), Integer), 0)
-            clean_max_price_int = func.coalesce(cast(func.nullif(clean_max_price_str, ''), Integer), 0)
-
+            from sqlalchemy import or_, and_
             budget_expr = or_(
-                and_(clean_min_price_int == 0, clean_max_price_int == 0),
-                clean_min_price_int <= budget,
-                clean_max_price_int <= budget,
+                and_(RestaurantModel.price_min.is_(None), RestaurantModel.price_max.is_(None)),
+                RestaurantModel.price_min <= budget,
+                RestaurantModel.price_max <= budget,
             )
 
         raw_candidates = []
@@ -404,7 +389,9 @@ class RecommendationService:
                 base_query = apply_inline_allergy_filter(db, base_query, list(group_allergies))
 
             if average_vector:
-                temp_candidates = base_query.order_by(
+                temp_candidates = base_query.filter(
+                    RestaurantModel.embedding_vector.isnot(None)
+                ).order_by(
                     RestaurantModel.embedding_vector.cosine_distance(average_vector)
                 ).limit(150).all()
             else:
@@ -443,7 +430,9 @@ class RecommendationService:
                     base_query = apply_inline_allergy_filter(db, base_query, list(group_allergies))
 
                 if average_vector:
-                    temp_candidates = base_query.order_by(
+                    temp_candidates = base_query.filter(
+                        RestaurantModel.embedding_vector.isnot(None)
+                    ).order_by(
                         RestaurantModel.embedding_vector.cosine_distance(average_vector)
                     ).limit(150).all()
                 else:

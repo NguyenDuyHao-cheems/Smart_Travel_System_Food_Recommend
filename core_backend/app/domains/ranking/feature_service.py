@@ -41,7 +41,9 @@ class FeatureService:
             setattr(r, "distance_m", dist_m)
 
             # 2. % ngân sách (0–100) — price_range là String trong DB
-            raw_price = _extract_max_price(getattr(r, "price_range", "") or "")
+            raw_price = getattr(r, "price_max", None)
+            if raw_price is None:
+                raw_price = _extract_max_price(getattr(r, "price_range", "") or "")
             
             if budget <= 0:
                 price_norm = 0

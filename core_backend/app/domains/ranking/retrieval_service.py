@@ -188,11 +188,18 @@ class RetrievalService:
                 if search_term:
                     tokens = [t.strip() for t in search_term.split() if len(t.strip()) > 0]
                     if tokens:
-                        filters = [DishModel.name.ilike(f"%{t}%") for t in tokens]
-                        exact_dishes = self.db.query(DishModel.res_id).filter(
-                            and_(*filters)
-                        ).limit(200).all()
-                        exact_match_res_ids = [str(r[0]) for r in exact_dishes]
+                        res_ids_set = set()
+                        for t in tokens:
+                            # Tránh query keyword quá ngắn (1 ký tự) gây tốn tài nguyên
+                            if len(t) <= 1:
+                                continue
+                            # Thực hiện query riêng rẽ từng token có LIMIT rõ ràng để kích hoạt GIN trigram index idx_dishes_name_trgm
+                            exact_dishes = self.db.query(DishModel.res_id).filter(
+                                DishModel.name.ilike(f"%{t}%")
+                            ).limit(100).all()
+                            for r in exact_dishes:
+                                res_ids_set.add(str(r[0]))
+                        exact_match_res_ids = list(res_ids_set)[:200]
                 self._exact_match_res_ids = exact_match_res_ids
             
             # Tier 2: Vector search trên DishModel (instance cached)
