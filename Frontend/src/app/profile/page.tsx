@@ -148,25 +148,44 @@ export default function ProfilePage() {
     if (language !== "en") return title;
     
     // Pattern checks
-    if (title.startsWith("Thích quán ") && activity.res_name) {
-      return `Liked ${activity.res_name}`;
+    // 1. Visit
+    if (title.includes("Ghé thăm nhà hàng") || title.includes("Đã ghé thăm quán")) {
+      const resName = activity.res_name || title.match(/"([^"]+)"/)?.[1] || "";
+      return resName ? `Visited restaurant "${resName}"` : "Visited restaurant";
     }
-    if (title.startsWith("Lưu quán ") && activity.res_name && activity.collection_name) {
-      return `Saved ${activity.res_name} to collection "${activity.collection_name}"`;
+    // 2. Favorite
+    if (title.includes("Đã yêu thích nhà hàng:") || title.includes("Thích quán") || title.includes("Đã yêu thích nhà hàng")) {
+      const resName = activity.res_name || title.match(/"([^"]+)"/)?.[1] || "";
+      return resName ? `Favorited restaurant "${resName}"` : "Favorited restaurant";
     }
-    if (title.startsWith("Đã ghé thăm quán ") && activity.res_name) {
-      return `Visited ${activity.res_name}`;
+    // 3. Remove
+    if (title.includes("Xóa nhà hàng") && title.includes("ra khỏi Favorites")) {
+      const resName = activity.res_name || title.match(/"([^"]+)"/)?.[1] || "";
+      return resName ? `Removed restaurant "${resName}" from Favorites` : "Removed restaurant from Favorites";
     }
-    if (title.startsWith("Đánh giá ") && activity.res_name) {
-      const match = title.match(/Đánh giá (\d+)\s*sao/i);
-      const stars = match ? match[1] : "5";
-      return `Rated ${stars} stars for ${activity.res_name}`;
-    }
-    if (title.startsWith("Xóa quán ") && activity.res_name) {
+    if (title.includes("Xóa quán") && activity.res_name) {
       return `Removed ${activity.res_name} from favorites`;
     }
-    if (title.startsWith("Xóa bình luận") && activity.res_name) {
-      return `Deleted comment at ${activity.res_name}`;
+    // 4. Save
+    if (title.includes("Lưu quán") || title.includes("Lưu nhà hàng")) {
+      const resName = activity.res_name || title.match(/"([^"]+)"/)?.[1] || "";
+      const colName = activity.collection_name || "";
+      if (resName && colName) {
+        return `Saved restaurant "${resName}" to collection "${colName}"`;
+      }
+      return `Saved restaurant`;
+    }
+    // 5. Rate
+    if (title.includes("Đánh giá")) {
+      const match = title.match(/Đánh giá (\d+)\s*sao/i) || title.match(/Rated (\d+)\s*stars/i);
+      const stars = match ? match[1] : "5";
+      const resName = activity.res_name || "";
+      return resName ? `Rated ${stars} stars for restaurant "${resName}"` : `Rated ${stars} stars`;
+    }
+    // 6. Delete comment
+    if (title.includes("Xóa bình luận")) {
+      const resName = activity.res_name || "";
+      return resName ? `Deleted comment at restaurant "${resName}"` : "Deleted comment";
     }
     
     // Fallback translations of generic terms:
@@ -175,6 +194,7 @@ export default function ProfilePage() {
     trans = trans.replace("Xóa bình luận", "Deleted comment");
     return trans;
   }, [language]);
+
 
   const handleActivityClick = (activity: RecentActivity) => {
     if (activity.icon_type === "heart" && activity.res_name) {

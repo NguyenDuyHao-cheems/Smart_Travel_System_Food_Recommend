@@ -630,6 +630,12 @@ const translations = {
       deleteConfirmTitle: "Bạn có chắc chắn muốn xóa bài viết này?",
       deleteConfirmDesc: "Hành động này không thể hoàn tác. Bài viết của bạn sẽ bị xóa vĩnh viễn khỏi hệ thống.",
       cancel: "Hủy",
+      reply: "Trả lời",
+      viewReplies: "Xem {count} phản hồi",
+      hideReplies: "Ẩn phản hồi",
+      replyPlaceholder: "Viết phản hồi...",
+      deleteComment: "Xóa bình luận",
+      commentSendSuccess: "Gửi bình luận thành công!",
     },
     loadingState: {
       statusInit: "Đang khởi tạo hệ thống phân tích toàn diện...",
@@ -851,6 +857,12 @@ const translations = {
       following: "Đang theo dõi",
       loading: "Đang tải bảng tin...",
       noPosts: "Chưa có bài viết nào.",
+      moods: {
+        stress: "😭 Căng thẳng",
+        study: "🧠 Chạy Deadline",
+        chill: "🎉 Chill cuối tuần",
+        dating: "💖 Hẹn hò"
+      },
       noPostsDesc: "Hãy theo dõi thêm foodie hoặc tự chia sẻ trải nghiệm ăn uống của bạn!",
       pleaseLogin: "Vui lòng đăng nhập để đăng bài viết.",
       pleaseLoginStory: "Vui lòng đăng nhập để đăng Story.",
@@ -1499,6 +1511,12 @@ const translations = {
       deleteConfirmTitle: "Delete this post?",
       deleteConfirmDesc: "This action cannot be undone. Your post will be permanently removed from the system.",
       cancel: "Cancel",
+      reply: "Reply",
+      viewReplies: "View {count} replies",
+      hideReplies: "Hide replies",
+      replyPlaceholder: "Write a reply...",
+      deleteComment: "Delete comment",
+      commentSendSuccess: "Reply posted successfully!",
     },
     loadingState: {
       statusInit: "Initializing the full analysis system...",
@@ -1720,6 +1738,12 @@ const translations = {
       following: "Following",
       loading: "Loading feed...",
       noPosts: "No posts yet.",
+      moods: {
+        stress: "😭 Stressed",
+        study: "🧠 Study/Deadline",
+        chill: "🎉 Weekend Chill",
+        dating: "💖 Dating"
+      },
       noPostsDesc: "Follow more foodies or share your own eating experiences!",
       pleaseLogin: "Please log in to publish posts.",
       pleaseLoginStory: "Please log in to publish Story.",

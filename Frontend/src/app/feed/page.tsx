@@ -62,10 +62,10 @@ export default function FeedPage() {
     let moodLabel = null;
     if (mood) {
       const MOODS = [
-        { id: 'stress', label: '😭 Stress' },
-        { id: 'study', label: '🧠 Chạy Deadline' },
-        { id: 'chill', label: '🎉 Chill cuối tuần' },
-        { id: 'dating', label: '💖 Hẹn hò' },
+        { id: 'stress', label: t("feed.moods.stress") },
+        { id: 'study', label: t("feed.moods.study") },
+        { id: 'chill', label: t("feed.moods.chill") },
+        { id: 'dating', label: t("feed.moods.dating") },
       ];
       const found = MOODS.find(m => m.id === mood);
       if (found) moodLabel = found.label;
