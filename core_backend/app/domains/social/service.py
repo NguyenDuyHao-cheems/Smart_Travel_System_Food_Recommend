@@ -142,6 +142,11 @@ class SocialService:
 
         self.repo.update_post_content(post, content)
         result = self.repo.get_post_with_user_by_id(post_id)
+        if not result:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Updated post could not be loaded",
+            )
         return self._format_post_results([result], current_user_id=current_user_id)[0]
         
     def get_post_thread(self, post_id: str, current_user_id: str = None, include_descendants: bool = False) -> list[SocialPostResponse]:
