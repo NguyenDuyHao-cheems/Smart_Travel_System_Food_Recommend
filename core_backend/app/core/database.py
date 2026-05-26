@@ -11,7 +11,16 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 
 from sqlalchemy.pool import NullPool
 
-engine = create_engine(DATABASE_URL, poolclass=NullPool) # type: ignore
+if DATABASE_URL and DATABASE_URL.startswith("sqlite"):
+    engine = create_engine(DATABASE_URL, poolclass=NullPool)
+else:
+    engine = create_engine(
+        DATABASE_URL,
+        pool_pre_ping=True,
+        pool_size=5,
+        max_overflow=10,
+        pool_recycle=1800,
+    )
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 class Base(DeclarativeBase):
     pass

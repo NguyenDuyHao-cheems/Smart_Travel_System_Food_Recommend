@@ -12,7 +12,7 @@ import {
   AlertDialogHeader, 
   AlertDialogTitle 
 } from '../ui/alert-dialog';
-import { Heart, MessageCircle, MapPin, MoreHorizontal, Trash2, Flag, Link as LinkIcon, Send, Loader2 } from 'lucide-react';
+import { Heart, MessageCircle, MapPin, MoreHorizontal, Trash2, Flag, Link as LinkIcon, Send, Loader2, Pencil, Check, X } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { enUS, vi } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -90,9 +90,9 @@ const parseLinks = (text: string) => {
 
 interface CommentNodeProps {
   comment: SocialPost;
-  depth: number;
   currentUserId: string | null;
   onLikeComment: (commentId: string) => void;
+  onEditComment: (commentId: string, content: string) => Promise<boolean>;
   onDeleteComment: (commentId: string) => void;
   activeReplyId: string | null;
   setActiveReplyId: (id: string | null) => void;
@@ -107,9 +107,9 @@ interface CommentNodeProps {
 
 const CommentNode = ({
   comment,
-  depth,
   currentUserId,
   onLikeComment,
+  onEditComment,
   onDeleteComment,
   activeReplyId,
   setActiveReplyId,
@@ -127,6 +127,26 @@ const CommentNode = ({
   const isLiked = comment.is_liked || false;
   const likesCount = comment.likes_count || 0;
   const showReplyInput = activeReplyId === comment.id;
+  const [isEditing, setIsEditing] = useState(false);
+  const [editText, setEditText] = useState(comment.content || '');
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+
+  React.useEffect(() => {
+    if (!isEditing) {
+      setEditText(comment.content || '');
+    }
+  }, [comment.content, isEditing]);
+
+  const saveEdit = async () => {
+    const content = editText.trim();
+    if (!content) return;
+    setIsSavingEdit(true);
+    const saved = await onEditComment(comment.id, content);
+    setIsSavingEdit(false);
+    if (saved) {
+      setIsEditing(false);
+    }
+  };
 
   return (
     <div className="group/comment animate-fade-in-up">
@@ -147,9 +167,46 @@ const CommentNode = ({
                 {formatTime(comment.created_at)}
               </span>
             </div>
-            <p className="text-sm text-foreground mt-0.5 whitespace-pre-wrap break-words">
-              {parseLinks(comment.content || '')}
-            </p>
+            {isEditing ? (
+              <div className="flex items-center gap-1.5 mt-1">
+                <input
+                  type="text"
+                  value={editText}
+                  onChange={(e) => setEditText(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      saveEdit();
+                    } else if (e.key === 'Escape') {
+                      setIsEditing(false);
+                    }
+                  }}
+                  className="flex-1 text-sm px-2 py-1 rounded-lg border border-border bg-card focus:outline-none focus:ring-2 focus:ring-brand/30"
+                  disabled={isSavingEdit}
+                  autoFocus
+                />
+                <button
+                  onClick={saveEdit}
+                  disabled={isSavingEdit || !editText.trim()}
+                  className="p-1 text-brand disabled:opacity-40"
+                  title={t('socialPost.save')}
+                >
+                  {isSavingEdit ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                </button>
+                <button
+                  onClick={() => setIsEditing(false)}
+                  disabled={isSavingEdit}
+                  className="p-1 text-muted-foreground hover:text-foreground"
+                  title={t('socialPost.cancel')}
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ) : (
+              <p className="text-sm text-foreground mt-0.5 whitespace-pre-wrap break-words">
+                {parseLinks(comment.content || '')}
+              </p>
+            )}
           </div>
           
           {/* Heart, Chat bubble and Trash controls */}
@@ -167,17 +224,29 @@ const CommentNode = ({
               className={`flex items-center gap-1 transition-colors hover:text-blue-500 ${showReplyInput ? 'text-blue-500' : ''}`}
             >
               <MessageCircle className={`w-3.5 h-3.5 ${showReplyInput ? 'fill-blue-100 dark:fill-blue-900/30' : ''}`} />
-              {comment.replies_count > 0 && <span>{comment.replies_count}</span>}
             </button>
 
             {currentUserId === comment.user_id && (
-              <button 
-                onClick={() => onDeleteComment(comment.id)}
-                className="flex items-center gap-1 transition-colors text-muted-foreground/60 hover:text-rose-500"
-                title={t('socialPost.deleteComment') || 'Delete comment'}
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
+              <>
+                <button
+                  onClick={() => {
+                    setActiveReplyId(null);
+                    setEditText(comment.content || '');
+                    setIsEditing(true);
+                  }}
+                  className="flex items-center gap-1 transition-colors text-muted-foreground/60 hover:text-brand"
+                  title={t('socialPost.editComment')}
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={() => onDeleteComment(comment.id)}
+                  className="flex items-center gap-1 transition-colors text-muted-foreground/60 hover:text-rose-500"
+                  title={t('socialPost.deleteComment') || 'Delete comment'}
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </>
             )}
           </div>
 
@@ -220,6 +289,10 @@ export function PostCard({ post, onLikeToggle, onDelete }: PostCardProps) {
   const [likesCount, setLikesCount] = useState(post.likes_count || 0);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [postContent, setPostContent] = useState(post.content || '');
+  const [isEditingPost, setIsEditingPost] = useState(false);
+  const [editPostText, setEditPostText] = useState(post.content || '');
+  const [isSavingPost, setIsSavingPost] = useState(false);
 
   // Comments & Replies State
   const [showComments, setShowComments] = useState(false);
@@ -239,6 +312,11 @@ export function PostCard({ post, onLikeToggle, onDelete }: PostCardProps) {
   React.useEffect(() => {
     setCurrentUserId(localStorage.getItem('user_id'));
   }, []);
+
+  React.useEffect(() => {
+    setPostContent(post.content || '');
+    setEditPostText(post.content || '');
+  }, [post.content]);
 
   // Utility to generate SEO-friendly slug
   const generateSlug = (name: string) => {
@@ -288,38 +366,52 @@ export function PostCard({ post, onLikeToggle, onDelete }: PostCardProps) {
     toast.success(t('socialPost.reportThanks'));
   };
 
-  // Helper/Memo to flatten recursive replies into a single list
-  const flatRepliesMap = React.useMemo(() => {
-    const map: Record<string, SocialPost[]> = {};
-    const getFlat = (id: string): SocialPost[] => {
-      const list: SocialPost[] = [];
-      const traverse = (currentId: string) => {
-        const children = repliesData[currentId] || [];
-        children.forEach(child => {
-          list.push(child);
-          traverse(child.id);
-        });
-      };
-      traverse(id);
-      return list;
-    };
-    Object.keys(repliesData).forEach(id => {
-      map[id] = getFlat(id);
-    });
-    return map;
-  }, [repliesData]);
+  const handleEditPost = async () => {
+    const content = editPostText.trim();
+    const token = localStorage.getItem('access_token');
+    if (!content) return;
+    if (!token) {
+      toast.error(t('socialPost.loginRequired'));
+      return;
+    }
+
+    setIsSavingPost(true);
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/v1/social/posts/${post.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ content })
+      });
+      if (res.ok) {
+        const updatedPost: SocialPost = await res.json();
+        setPostContent(updatedPost.content || '');
+        setEditPostText(updatedPost.content || '');
+        setIsEditingPost(false);
+        toast.success(t('socialPost.editSuccess'));
+      } else {
+        toast.error(t('socialPost.editError'));
+      }
+    } catch {
+      toast.error(t('socialPost.connectionError'));
+    } finally {
+      setIsSavingPost(false);
+    }
+  };
 
   // ── Replies handler ──
   const fetchReplies = async (commentId: string) => {
     setLoadingReplies(prev => ({ ...prev, [commentId]: true }));
     try {
       const token = localStorage.getItem('access_token');
-      const res = await fetch(`${BACKEND_URL}/api/v1/social/posts/${commentId}/thread`, {
+      const res = await fetch(`${BACKEND_URL}/api/v1/social/posts/${commentId}/thread?include_descendants=true`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
       if (res.ok) {
-        const list: SocialPost[] = await res.json();
-        setRepliesData(prev => ({ ...prev, [commentId]: list }));
+        const replies: SocialPost[] = await res.json();
+        setRepliesData(prev => ({ ...prev, [commentId]: replies }));
       }
     } catch (err) {
       console.error("Failed to fetch replies:", err);
@@ -398,10 +490,16 @@ export function PostCard({ post, onLikeToggle, onDelete }: PostCardProps) {
       });
       if (res.ok) {
         const newReply = await res.json();
-        setRepliesData(prev => ({
-          ...prev,
-          [commentId]: [...(prev[commentId] || []), newReply]
-        }));
+        const rootCommentId = comments.some(comment => comment.id === commentId)
+          ? commentId
+          : Object.keys(repliesData).find(id => repliesData[id].some(reply => reply.id === commentId));
+        if (rootCommentId) {
+          setRepliesData(prev => ({
+            ...prev,
+            [rootCommentId]: [...(prev[rootCommentId] || []), newReply]
+          }));
+          setExpandedComments(prev => ({ ...prev, [rootCommentId]: true }));
+        }
         setReplyText('');
         setActiveReplyId(null);
         
@@ -463,20 +561,59 @@ export function PostCard({ post, onLikeToggle, onDelete }: PostCardProps) {
     } catch { /* silent */ }
   };
 
+  const handleEditComment = async (commentId: string, content: string): Promise<boolean> => {
+    const token = localStorage.getItem('access_token');
+    if (!token) return false;
+
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/v1/social/posts/${commentId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ content })
+      });
+      if (!res.ok) {
+        toast.error(t('socialPost.editError'));
+        return false;
+      }
+
+      const updatedComment: SocialPost = await res.json();
+      const updatePostInList = (list: SocialPost[]) =>
+        list.map(item => item.id === commentId ? updatedComment : item);
+
+      setComments(prev => updatePostInList(prev));
+      setRepliesData(prev => {
+        const updated = { ...prev };
+        Object.keys(updated).forEach(key => {
+          updated[key] = updatePostInList(updated[key]);
+        });
+        return updated;
+      });
+      toast.success(t('socialPost.editSuccess'));
+      return true;
+    } catch {
+      toast.error(t('socialPost.connectionError'));
+      return false;
+    }
+  };
+
   const handleDeleteComment = async (commentId: string) => {
     const token = localStorage.getItem('access_token');
     if (!token) return;
 
-    // Find parent_id of the comment/reply being deleted
-    let parentId: string | undefined = undefined;
-    const commentToDelete = comments.find(c => c.id === commentId);
-    if (commentToDelete) {
-      parentId = commentToDelete.parent_id;
-    } else {
-      Object.values(repliesData).forEach(list => {
-        const found = list.find(c => c.id === commentId);
-        if (found) {
-          parentId = found.parent_id;
+    const visibleComments = [...comments, ...Object.values(repliesData).flat()];
+    const commentToDelete = visibleComments.find(c => c.id === commentId);
+    const parentId = commentToDelete?.parent_id;
+    const deletedIds = new Set([commentId]);
+    let foundDescendant = true;
+    while (foundDescendant) {
+      foundDescendant = false;
+      visibleComments.forEach(comment => {
+        if (comment.parent_id && deletedIds.has(comment.parent_id) && !deletedIds.has(comment.id)) {
+          deletedIds.add(comment.id);
+          foundDescendant = true;
         }
       });
     }
@@ -486,23 +623,35 @@ export function PostCard({ post, onLikeToggle, onDelete }: PostCardProps) {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` }
       });
-      if (res.ok) {
-        toast.success(t('socialPost.commentDeleteSuccess') || 'Comment deleted successfully');
+      if (res.ok || res.status === 404) {
+        if (res.ok) {
+          toast.success(t('socialPost.commentDeleteSuccess') || 'Comment deleted successfully');
+        }
         
-        // Remove from main comments list
-        setComments(prev => prev.filter(c => c.id !== commentId));
+        setComments(prev => prev.filter(c => !deletedIds.has(c.id)));
         
-        // Remove from repliesData lists
         setRepliesData(prev => {
           const updated = { ...prev };
           Object.keys(updated).forEach(key => {
-            updated[key] = updated[key].filter(c => c.id !== commentId);
+            if (deletedIds.has(key)) {
+              delete updated[key];
+            } else {
+              updated[key] = updated[key].filter(c => !deletedIds.has(c.id));
+            }
           });
           return updated;
         });
+        setExpandedComments(prev => {
+          const updated = { ...prev };
+          deletedIds.forEach(id => delete updated[id]);
+          return updated;
+        });
+        if (activeReplyId && deletedIds.has(activeReplyId)) {
+          setActiveReplyId(null);
+          setReplyText('');
+        }
 
-        // Decrement reply count for the parent/post
-        if (parentId) {
+        if (res.ok && parentId) {
           if (parentId === post.id) {
             setRepliesCount(prev => Math.max(0, prev - 1));
           } else {
@@ -578,9 +727,20 @@ export function PostCard({ post, onLikeToggle, onDelete }: PostCardProps) {
                     <LinkIcon className="w-4 h-4 mr-2" /> {t('socialPost.copyLink')}
                   </DropdownMenuItem>
                   {isOwner ? (
-                    <DropdownMenuItem onClick={() => setIsDeleteDialogOpen(true)} className="cursor-pointer text-rose-500 focus:text-rose-500 focus:bg-rose-50">
-                      <Trash2 className="w-4 h-4 mr-2" /> {t('socialPost.deletePost')}
-                    </DropdownMenuItem>
+                    <>
+                      <DropdownMenuItem
+                        onClick={() => {
+                          setEditPostText(postContent);
+                          setIsEditingPost(true);
+                        }}
+                        className="cursor-pointer"
+                      >
+                        <Pencil className="w-4 h-4 mr-2" /> {t('socialPost.editPost')}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setIsDeleteDialogOpen(true)} className="cursor-pointer text-rose-500 focus:text-rose-500 focus:bg-rose-50">
+                        <Trash2 className="w-4 h-4 mr-2" /> {t('socialPost.deletePost')}
+                      </DropdownMenuItem>
+                    </>
                   ) : (
                     <DropdownMenuItem onClick={handleReport} className="cursor-pointer text-orange-500 focus:text-orange-500 focus:bg-orange-50">
                       <Flag className="w-4 h-4 mr-2" /> {t('socialPost.report')}
@@ -591,16 +751,45 @@ export function PostCard({ post, onLikeToggle, onDelete }: PostCardProps) {
             </div>
           </div>
 
-          {post.content && (
+          {isEditingPost ? (
+            <div className="mt-2 flex items-end gap-2">
+              <textarea
+                value={editPostText}
+                onChange={(e) => setEditPostText(e.target.value)}
+                className="flex-1 min-h-[64px] resize-none text-sm px-3 py-2 rounded-xl border border-border bg-muted/20 focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
+                disabled={isSavingPost}
+                autoFocus
+              />
+              <button
+                onClick={handleEditPost}
+                disabled={isSavingPost || !editPostText.trim()}
+                className="p-2 rounded-full bg-brand text-white hover:bg-brand/90 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                title={t('socialPost.save')}
+              >
+                {isSavingPost ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+              </button>
+              <button
+                onClick={() => {
+                  setEditPostText(postContent);
+                  setIsEditingPost(false);
+                }}
+                disabled={isSavingPost}
+                className="p-2 rounded-full border border-border text-muted-foreground hover:text-foreground transition-colors"
+                title={t('socialPost.cancel')}
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          ) : postContent && (
             <div className="mt-2 text-sm text-foreground whitespace-pre-wrap break-words">
-              {parseLinks(post.content)}
+              {parseLinks(postContent)}
             </div>
           )}
 
           {(() => {
-            if (!post.content) return null;
+            if (!postContent || isEditingPost) return null;
             const linkMatchRegex = /(https?:\/\/[^\s]+)|([a-zA-Z0-9.-]+\.[a-zA-Z]{2,}(?:\/[^\s]*)?)/i;
-            const match = post.content.match(linkMatchRegex);
+            const match = postContent.match(linkMatchRegex);
             if (match && match[0]) {
               let url = match[0];
               const lastChar = url[url.length - 1];
@@ -708,16 +897,15 @@ export function PostCard({ post, onLikeToggle, onDelete }: PostCardProps) {
               ) : (
                 <div className="space-y-4 max-h-[320px] overflow-y-auto pr-1">
                   {comments.map((comment) => {
-                    const level1Replies = repliesData[comment.id] || [];
-                    const isExpanded0 = expandedComments[comment.id] || false;
+                    const visibleReplies = repliesData[comment.id] || [];
+                    const isExpanded = expandedComments[comment.id] || false;
                     return (
-                      <React.Fragment key={comment.id}>
-                        {/* Level 0 Comment */}
+                      <div key={comment.id} className="space-y-2">
                         <CommentNode
                           comment={comment}
-                          depth={0}
                           currentUserId={currentUserId}
                           onLikeComment={handleLikeComment}
+                          onEditComment={handleEditComment}
                           onDeleteComment={handleDeleteComment}
                           activeReplyId={activeReplyId}
                           setActiveReplyId={setActiveReplyId}
@@ -730,10 +918,9 @@ export function PostCard({ post, onLikeToggle, onDelete }: PostCardProps) {
                           t={t}
                         />
 
-                        {/* Level 0 Toggle Button */}
                         {comment.replies_count > 0 && (
                           <div className="ml-10 mt-1">
-                            {!isExpanded0 ? (
+                            {!isExpanded ? (
                               <button
                                 onClick={() => {
                                   setExpandedComments(prev => ({ ...prev, [comment.id]: true }));
@@ -745,7 +932,7 @@ export function PostCard({ post, onLikeToggle, onDelete }: PostCardProps) {
                                 disabled={loadingReplies[comment.id]}
                               >
                                 {loadingReplies[comment.id] && <Loader2 className="w-3 h-3 animate-spin" />}
-                                {t('socialPost.viewReplies').replace('{count}', String(comment.replies_count))}
+                                {t('socialPost.viewReplies')}
                               </button>
                             ) : (
                               <button
@@ -757,21 +944,18 @@ export function PostCard({ post, onLikeToggle, onDelete }: PostCardProps) {
                             )}
                           </div>
                         )}
-                        
-                        {/* Level 1 Replies Container */}
-                        {isExpanded0 && level1Replies.length > 0 && (
+
+                        {isExpanded && visibleReplies.length > 0 && (
                           <div className="space-y-3 ml-3 pl-3 border-l border-border/60 mt-2">
-                            {level1Replies.map((r1) => {
-                              const flatSubReplies = flatRepliesMap[r1.id] || [];
-                              const isExpanded1 = expandedComments[r1.id] || false;
+                            {visibleReplies.map((reply) => {
+                              const isNestedReply = reply.parent_id !== comment.id;
                               return (
-                                <React.Fragment key={r1.id}>
-                                  {/* Level 1 Reply */}
+                                <div key={reply.id} className={isNestedReply ? 'ml-3 pl-3 border-l border-border/60' : ''}>
                                   <CommentNode
-                                    comment={r1}
-                                    depth={1}
+                                    comment={reply}
                                     currentUserId={currentUserId}
                                     onLikeComment={handleLikeComment}
+                                    onEditComment={handleEditComment}
                                     onDeleteComment={handleDeleteComment}
                                     activeReplyId={activeReplyId}
                                     setActiveReplyId={setActiveReplyId}
@@ -783,97 +967,12 @@ export function PostCard({ post, onLikeToggle, onDelete }: PostCardProps) {
                                     parseLinks={parseLinks}
                                     t={t}
                                   />
-
-                                  {/* Level 1 Toggle Button */}
-                                  {r1.replies_count > 0 && (
-                                    <div className="ml-10 mt-1">
-                                      {!isExpanded1 ? (
-                                        <button
-                                          onClick={() => {
-                                            setExpandedComments(prev => ({ ...prev, [r1.id]: true }));
-                                            if (!repliesData[r1.id]) {
-                                              fetchReplies(r1.id);
-                                            }
-                                          }}
-                                          className="text-[11px] text-brand hover:underline font-bold flex items-center gap-1.5 cursor-pointer"
-                                          disabled={loadingReplies[r1.id]}
-                                        >
-                                          {loadingReplies[r1.id] && <Loader2 className="w-3 h-3 animate-spin" />}
-                                          {t('socialPost.viewReplies').replace('{count}', String(r1.replies_count))}
-                                        </button>
-                                      ) : (
-                                        <button
-                                          onClick={() => setExpandedComments(prev => ({ ...prev, [r1.id]: false }))}
-                                          className="text-[11px] text-muted-foreground hover:underline font-bold flex items-center gap-1 cursor-pointer"
-                                        >
-                                          {t('socialPost.hideReplies')}
-                                        </button>
-                                      )}
-                                    </div>
-                                  )}
-                                  
-                                  {/* Level 2+ Sub-Replies Container (Flattened from Level 2 onwards) */}
-                                  {isExpanded1 && flatSubReplies.length > 0 && (
-                                    <div className="space-y-3 ml-3 pl-3 border-l border-border/60 mt-2">
-                                      {flatSubReplies.map((r2) => {
-                                        const isExpanded2 = expandedComments[r2.id] || false;
-                                        return (
-                                          <React.Fragment key={r2.id}>
-                                            <CommentNode
-                                              comment={r2}
-                                              depth={2}
-                                              currentUserId={currentUserId}
-                                              onLikeComment={handleLikeComment}
-                                              onDeleteComment={handleDeleteComment}
-                                              activeReplyId={activeReplyId}
-                                              setActiveReplyId={setActiveReplyId}
-                                              replyText={replyText}
-                                              setReplyText={setReplyText}
-                                              isSendingReply={isSendingReply}
-                                              onSendReply={handleSendReply}
-                                              formatTime={formatTime}
-                                              parseLinks={parseLinks}
-                                              t={t}
-                                            />
-
-                                            {/* Level 2+ Toggle Button */}
-                                            {r2.replies_count > 0 && (
-                                              <div className="ml-10 mt-1">
-                                                {!isExpanded2 ? (
-                                                  <button
-                                                    onClick={() => {
-                                                      setExpandedComments(prev => ({ ...prev, [r2.id]: true }));
-                                                      if (!repliesData[r2.id]) {
-                                                        fetchReplies(r2.id);
-                                                      }
-                                                    }}
-                                                    className="text-[11px] text-brand hover:underline font-bold flex items-center gap-1.5 cursor-pointer"
-                                                    disabled={loadingReplies[r2.id]}
-                                                  >
-                                                    {loadingReplies[r2.id] && <Loader2 className="w-3 h-3 animate-spin" />}
-                                                    {t('socialPost.viewReplies').replace('{count}', String(r2.replies_count))}
-                                                  </button>
-                                                ) : (
-                                                  <button
-                                                    onClick={() => setExpandedComments(prev => ({ ...prev, [r2.id]: false }))}
-                                                    className="text-[11px] text-muted-foreground hover:underline font-bold flex items-center gap-1 cursor-pointer"
-                                                  >
-                                                    {t('socialPost.hideReplies')}
-                                                  </button>
-                                                )}
-                                              </div>
-                                            )}
-                                          </React.Fragment>
-                                        );
-                                      })}
-                                    </div>
-                                  )}
-                                </React.Fragment>
+                                </div>
                               );
                             })}
                           </div>
                         )}
-                      </React.Fragment>
+                      </div>
                     );
                   })}
                 </div>

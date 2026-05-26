@@ -86,6 +86,177 @@ def test_social_flow(client: TestClient):
     assert viewers[0]["username"] == username_b
     assert viewers[0]["reaction"] == "❤️"
 
+
+def test_delete_post_removes_nested_replies(client: TestClient, db_session):
+    from app.domains.social.models import SocialPost
+
+    owner = _register_user(client, f"owner_{uuid.uuid4().hex[:8]}")
+    commenter = _register_user(client, f"commenter_{uuid.uuid4().hex[:8]}")
+    owner_headers = {"Authorization": f"Bearer {owner['access_token']}"}
+    commenter_headers = {"Authorization": f"Bearer {commenter['access_token']}"}
+
+    post = client.post(POSTS_URL, json={"content": "Root post"}, headers=owner_headers).json()
+    comment = client.post(
+        POSTS_URL,
+        json={"content": "Comment", "parent_id": post["id"]},
+        headers=commenter_headers,
+    ).json()
+    nested_reply = client.post(
+        POSTS_URL,
+        json={"content": "Nested reply", "parent_id": comment["id"]},
+        headers=owner_headers,
+    ).json()
+
+    response = client.delete(f"{POSTS_URL}/{post['id']}", headers=owner_headers)
+
+    assert response.status_code == 200
+    deleted_ids = [post["id"], comment["id"], nested_reply["id"]]
+    remaining = db_session.query(SocialPost).filter(SocialPost.id.in_(deleted_ids)).all()
+    assert remaining == []
+
+
+def test_delete_comment_removes_its_replies_and_updates_parent_count(client: TestClient, db_session):
+    from app.domains.social.models import SocialPost
+
+    owner = _register_user(client, f"owner_{uuid.uuid4().hex[:8]}")
+    commenter = _register_user(client, f"commenter_{uuid.uuid4().hex[:8]}")
+    owner_headers = {"Authorization": f"Bearer {owner['access_token']}"}
+    commenter_headers = {"Authorization": f"Bearer {commenter['access_token']}"}
+
+    post = client.post(POSTS_URL, json={"content": "Root post"}, headers=owner_headers).json()
+    comment = client.post(
+        POSTS_URL,
+        json={"content": "Comment", "parent_id": post["id"]},
+        headers=commenter_headers,
+    ).json()
+    nested_reply = client.post(
+        POSTS_URL,
+        json={"content": "Nested reply", "parent_id": comment["id"]},
+        headers=owner_headers,
+    ).json()
+
+    response = client.delete(f"{POSTS_URL}/{comment['id']}", headers=commenter_headers)
+
+    assert response.status_code == 200
+    remaining = db_session.query(SocialPost).filter(
+        SocialPost.id.in_([comment["id"], nested_reply["id"]])
+    ).all()
+    root_post = db_session.query(SocialPost).filter(SocialPost.id == post["id"]).one()
+    assert remaining == []
+    assert root_post.replies_count == 0
+
+
+def test_thread_returns_actual_reply_count_when_stored_counter_is_stale(client: TestClient, db_session):
+    from app.domains.social.models import SocialPost
+
+    user = _register_user(client, f"user_{uuid.uuid4().hex[:8]}")
+    headers = {"Authorization": f"Bearer {user['access_token']}"}
+    post = client.post(POSTS_URL, json={"content": "Root post"}, headers=headers).json()
+    comment = client.post(
+        POSTS_URL,
+        json={"content": "Comment", "parent_id": post["id"]},
+        headers=headers,
+    ).json()
+    client.post(
+        POSTS_URL,
+        json={"content": "Nested reply", "parent_id": comment["id"]},
+        headers=headers,
+    )
+
+    stored_comment = db_session.query(SocialPost).filter(SocialPost.id == comment["id"]).one()
+    stored_comment.replies_count = 99
+    db_session.commit()
+
+    response = client.get(f"{POSTS_URL}/{post['id']}/thread", headers=headers)
+
+    assert response.status_code == 200
+    assert response.json()[0]["replies_count"] == 1
+
+
+def test_thread_can_return_all_nested_replies_in_one_request(client: TestClient):
+    user = _register_user(client, f"user_{uuid.uuid4().hex[:8]}")
+    headers = {"Authorization": f"Bearer {user['access_token']}"}
+    post = client.post(POSTS_URL, json={"content": "Root post"}, headers=headers).json()
+    comment = client.post(
+        POSTS_URL,
+        json={"content": "Comment", "parent_id": post["id"]},
+        headers=headers,
+    ).json()
+    reply = client.post(
+        POSTS_URL,
+        json={"content": "Nested reply", "parent_id": comment["id"]},
+        headers=headers,
+    ).json()
+    nested_reply = client.post(
+        POSTS_URL,
+        json={"content": "Deep reply", "parent_id": reply["id"]},
+        headers=headers,
+    ).json()
+
+    direct_response = client.get(f"{POSTS_URL}/{post['id']}/thread", headers=headers)
+    full_response = client.get(
+        f"{POSTS_URL}/{post['id']}/thread?include_descendants=true",
+        headers=headers,
+    )
+
+    assert [item["id"] for item in direct_response.json()] == [comment["id"]]
+    assert [item["id"] for item in full_response.json()] == [
+        comment["id"],
+        reply["id"],
+        nested_reply["id"],
+    ]
+
+
+def test_owner_can_edit_post_and_comment_but_other_user_cannot(client: TestClient):
+    owner = _register_user(client, f"owner_{uuid.uuid4().hex[:8]}")
+    commenter = _register_user(client, f"commenter_{uuid.uuid4().hex[:8]}")
+    owner_headers = {"Authorization": f"Bearer {owner['access_token']}"}
+    commenter_headers = {"Authorization": f"Bearer {commenter['access_token']}"}
+
+    post = client.post(POSTS_URL, json={"content": "Root post"}, headers=owner_headers).json()
+    updated_post = client.patch(
+        f"{POSTS_URL}/{post['id']}",
+        json={"content": " Updated root post "},
+        headers=owner_headers,
+    )
+    assert updated_post.status_code == 200
+    assert updated_post.json()["content"] == "Updated root post"
+
+    forbidden_post = client.patch(
+        f"{POSTS_URL}/{post['id']}",
+        json={"content": "Not permitted"},
+        headers=commenter_headers,
+    )
+    assert forbidden_post.status_code == 403
+
+    comment = client.post(
+        POSTS_URL,
+        json={"content": "Comment", "parent_id": post["id"]},
+        headers=commenter_headers,
+    ).json()
+    updated_comment = client.patch(
+        f"{POSTS_URL}/{comment['id']}",
+        json={"content": "Edited comment"},
+        headers=commenter_headers,
+    )
+    assert updated_comment.status_code == 200
+    assert updated_comment.json()["content"] == "Edited comment"
+
+    forbidden_comment = client.patch(
+        f"{POSTS_URL}/{comment['id']}",
+        json={"content": "Not permitted"},
+        headers=owner_headers,
+    )
+    assert forbidden_comment.status_code == 403
+
+    empty_content = client.patch(
+        f"{POSTS_URL}/{post['id']}",
+        json={"content": "   "},
+        headers=owner_headers,
+    )
+    assert empty_content.status_code == 422
+
+
 @pytest.mark.asyncio
 async def test_unread_count_sse(db_session):
     from httpx import AsyncClient, ASGITransport
