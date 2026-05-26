@@ -856,6 +856,9 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
   const hasActiveAdvFilters = activeAdvFilterCount > 0;
   const [apiError, setApiError] = useState<string | null>(null);
 
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchLoadingMsg, setSearchLoadingMsg] = useState("Đang phân tích sở thích của bạn...");
+
   useEffect(() => {
     if (mapViewEnabled) {
       setIsAdvancedFiltersOpen(false);
@@ -1452,6 +1455,7 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
             />
           </div>
         </div>
+      </div>
 
         {/* Right Content for Results */}
         <div className={`flex-1 min-w-0 w-full transition-all duration-300 ${

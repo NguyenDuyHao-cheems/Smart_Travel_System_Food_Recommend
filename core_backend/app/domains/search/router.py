@@ -93,3 +93,14 @@ def get_all_tags(db: Session = Depends(get_db)):
     return [t[0] for t in tags if t[0]]
 
 
+
+@router.get("/search/sessions/{session_id}", response_model=SessionDataResponse)
+def get_search_session(
+    session_id: str,
+    db: Session = Depends(get_db),
+):
+    """
+    Lấy kết quả tìm kiếm đã lưu theo session_id.
+    Không chạy lại AI — chỉ đọc từ database.
+    """
+    return SearchService.get_session(session_id, db)
