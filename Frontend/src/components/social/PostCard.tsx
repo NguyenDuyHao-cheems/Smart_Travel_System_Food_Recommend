@@ -314,11 +314,9 @@ export function PostCard({ post, onLikeToggle, onDelete }: PostCardProps) {
   }, []);
 
   React.useEffect(() => {
-    if (!isEditingPost) {
-      setPostContent(post.content || '');
-      setEditPostText(post.content || '');
-    }
-  }, [post.content, isEditingPost]);
+    setPostContent(post.content || '');
+    setEditPostText(post.content || '');
+  }, [post.content]);
 
   // Utility to generate SEO-friendly slug
   const generateSlug = (name: string) => {
