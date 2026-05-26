@@ -97,8 +97,8 @@ function ModeButton({
       onClick={onClick}
       className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-sm transition-all ${
         active
-          ? 'bg-orange-500 text-white shadow-lg shadow-orange-200/40 dark:shadow-orange-900/30 scale-105'
-          : 'bg-white dark:bg-[#3D312A] text-gray-600 dark:text-[#C8BFB0] border border-gray-200 dark:border-[#4D3D32] hover:border-orange-300 hover:text-orange-600'
+          ? 'bg-brand text-white shadow-lg shadow-brand/20 dark:shadow-brand/30 scale-105'
+          : 'bg-white dark:bg-[#3D312A] text-gray-600 dark:text-[#C8BFB0] border border-gray-200 dark:border-[#4D3D32] hover:border-brand/40 hover:text-brand'
       }`}
     >
       {icon}
@@ -135,11 +135,11 @@ function SegmentCard({
       className="relative mx-8 my-1"
     >
       {/* Vertical connector line */}
-      <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-orange-200 dark:bg-orange-800/50" />
+      <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-brand/30 dark:bg-brand/20" />
 
       <div className="ml-10 pl-3 py-2">
-        <div className="bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800/40 rounded-xl px-4 py-2.5 flex flex-wrap items-center gap-4 text-sm">
-          <span className="flex items-center gap-1.5 font-bold text-orange-600 dark:text-orange-400">
+        <div className="bg-brand/5 dark:bg-brand/10 border border-brand/20 dark:border-brand/20 rounded-xl px-4 py-2.5 flex flex-wrap items-center gap-4 text-sm">
+          <span className="flex items-center gap-1.5 font-bold text-brand dark:text-brand-on-dark">
             <Navigation className="w-4 h-4" />
             {distKm.toFixed(1)} km
           </span>
@@ -202,7 +202,7 @@ function SummaryBar({
   return (
     <div className="grid grid-cols-3 gap-4 mb-8">
       {[
-        { icon: <MapPin className="w-5 h-5 text-orange-500" />, label: t("itinerary.stopsCount"), value: `${count} ${t("itinerary.stopsCountValue")}` },
+        { icon: <MapPin className="w-5 h-5 text-brand" />, label: t("itinerary.stopsCount"), value: `${count} ${t("itinerary.stopsCountValue")}` },
         { icon: <TrendingUp className="w-5 h-5 text-blue-500" />, label: t("itinerary.totalDistance"), value: `${totalKm.toFixed(1)} km` },
         { icon: <Clock className="w-5 h-5 text-green-500" />, label: t("itinerary.travelTime"), value: totalTime },
       ].map((stat) => (
@@ -344,7 +344,7 @@ export default function ItineraryPage() {
             </button>
             <div className="flex-1">
               <h1 className="text-xl font-bold text-gray-900 dark:text-[#E6DFD5] flex items-center gap-2">
-                <Route className="w-5 h-5 text-orange-500" />
+                <Route className="w-5 h-5 text-brand" />
                 {t("itinerary.title")}
               </h1>
               <p className="text-xs text-gray-400 dark:text-[#9A8A7A]">
@@ -368,8 +368,8 @@ export default function ItineraryPage() {
           {/* Empty state */}
           {!mounted ? (
             <div className="flex flex-col items-center justify-center py-24 text-center">
-              <div className="w-24 h-24 bg-orange-50 dark:bg-orange-950/30 rounded-full flex items-center justify-center mb-6">
-                <Route className="w-12 h-12 text-orange-300" />
+              <div className="w-24 h-24 bg-brand/5 dark:bg-brand/10 rounded-full flex items-center justify-center mb-6">
+                <Route className="w-12 h-12 text-brand/30" />
               </div>
               <h2 className="text-2xl font-bold text-gray-800 dark:text-[#E6DFD5] mb-2">
                 {t("itinerary.loading")}
@@ -384,8 +384,8 @@ export default function ItineraryPage() {
               animate={{ opacity: 1, y: 0 }}
               className="flex flex-col items-center justify-center py-24 text-center"
             >
-              <div className="w-24 h-24 bg-orange-50 dark:bg-orange-950/30 rounded-full flex items-center justify-center mb-6">
-                <Route className="w-12 h-12 text-orange-300" />
+              <div className="w-24 h-24 bg-brand/5 dark:bg-brand/10 rounded-full flex items-center justify-center mb-6">
+                <Route className="w-12 h-12 text-brand/30" />
               </div>
               <h2 className="text-2xl font-bold text-gray-800 dark:text-[#E6DFD5] mb-2">
                 {t("itinerary.emptyTitle")}
@@ -395,7 +395,7 @@ export default function ItineraryPage() {
               </p>
               <button
                 onClick={() => router.push('/')}
-                className="mt-8 px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-2xl shadow-lg shadow-orange-200/40 transition-all hover:-translate-y-0.5"
+                className="mt-8 px-6 py-3 bg-brand hover:bg-brand-hover text-white font-bold rounded-2xl shadow-lg shadow-brand/20 transition-all hover:-translate-y-0.5"
               >
                 {t("itinerary.findPlaces")}
               </button>
@@ -518,7 +518,7 @@ export default function ItineraryPage() {
                           <GripVertical className="w-5 h-5 text-gray-300 dark:text-[#6A5A4A] flex-shrink-0" />
 
                           {/* Stop number */}
-                          <span className="w-7 h-7 rounded-full bg-orange-500 text-white text-xs font-bold flex items-center justify-center flex-shrink-0">
+                          <span className="w-7 h-7 rounded-full bg-red-500 text-white text-xs font-bold flex items-center justify-center flex-shrink-0">
                             {idx + 1}
                           </span>
 
@@ -632,7 +632,7 @@ export default function ItineraryPage() {
                     href={mapsUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-3 w-full py-4 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-bold rounded-2xl shadow-xl shadow-orange-200/40 dark:shadow-orange-900/30 transition-all hover:-translate-y-0.5 text-base"
+                    className="flex items-center justify-center gap-3 w-full py-4 bg-gradient-to-r from-brand to-brand-hover hover:from-brand-hover hover:to-brand text-white font-bold rounded-2xl shadow-xl shadow-brand/20 dark:shadow-brand/30 transition-all hover:-translate-y-0.5 text-base"
                   >
                     <Navigation className="w-5 h-5" />
                     {t("itinerary.openInGoogleMaps")}

@@ -224,11 +224,11 @@ export function AppShell({ children, healthStatus = "loading", headerAction }: A
               <div className="hidden md:block flex-shrink-0">
                 <Link
                   href="/itinerary"
-                  className="relative flex items-center justify-center w-9 h-9 rounded-full bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-700/40 hover:bg-orange-100 dark:hover:bg-orange-900/40 transition-colors"
+                  className="relative flex items-center justify-center w-9 h-9 rounded-full bg-brand/5 dark:bg-brand/10 border border-brand/20 dark:border-brand/30 hover:bg-brand/10 dark:hover:bg-brand/20 transition-colors"
                   title={t("appshell.itineraryTitle")}
                 >
-                  <Route className="w-4 h-4 text-orange-500" />
-                  <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-orange-500 text-white text-[10px] font-bold flex items-center justify-center leading-none">
+                  <Route className="w-4 h-4 text-brand dark:text-brand-on-dark" />
+                  <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-brand text-white text-[10px] font-bold flex items-center justify-center leading-none">
                     {itineraryCount}
                   </span>
                 </Link>
