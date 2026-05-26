@@ -219,9 +219,6 @@ class SocialRepository:
         following = self.db.query(SocialFollow).filter(SocialFollow.follower_id == target_user_id).count()
         return followers, following
 
-    def get_post_by_id(self, post_id: str) -> Optional[SocialPost]:
-        return self.db.query(SocialPost).options(joinedload(SocialPost.restaurant)).filter(SocialPost.id == post_id).first()
-
     def delete_post(self, post_id: str):
         deleted_post = self.get_post_by_id(post_id)
         parent_post = (
