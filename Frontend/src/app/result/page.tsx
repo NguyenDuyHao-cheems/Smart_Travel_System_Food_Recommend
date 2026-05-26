@@ -128,15 +128,33 @@ function translateResultReason(reason: string, language: 'vi' | 'en') {
     .replace(/Đánh giá cao/g, 'Highly rated');
 }
 
+const TAG_EMOJI_MAP: Record<string, string> = {
+  'gà': '🍗', 'bò': '🥩', 'heo': '🐷',
+  'cơm': '🍚', 'phở': '🍜', 'bún': '🍜', 'mì': '🍝',
+  'hải sản': '🦐', 'lẩu': '🫕', 'nướng': '🔥',
+  'trà sữa': '🧋', 'cà phê': '☕', 'đồ uống': '🥤',
+  'sushi': '🍣', 'pizza': '🍕', 'burger': '🍔',
+  'tráng miệng': '🍰', 'dessert': '🍰',
+  'cháo': '🥣', 'healthy': '🥗', 'món chay': '🌿',
+  'ăn sáng': '🌅', 'ăn trưa': '☀️', 'ăn tối': '🌙',
+  'ăn vặt': '🍿', 'ăn khuya': '🌃',
+  'đánh giá cao': '⭐', 'nhiều đánh giá': '💬',
+  'giá rẻ': '💰', 'tầm trung': '💵', 'cao cấp': '💎',
+  'chiên': '🍤', 'fastfood': '🍔', 'xào': '🍝', 'mì xào': '🍝',
+  'hấp': '🥟', 'luộc': '🥟', 'trộn': '🥗', 'gỏi': '🥗', 'salad': '🥗', 'chay': '🌿',
+};
+
 function getTagsForItem(item: RecommendResult, index: number): VibeTag[] {
   if (item.tags && Array.isArray(item.tags) && item.tags.length > 0) {
     return item.tags.map((t: string, i: number) => {
       const found = VIBE_TAGS.find(v => v.label.toLowerCase() === t.toLowerCase());
       if (found) return found;
       const defaultStyle = DEFAULT_TAG_STYLES[i % DEFAULT_TAG_STYLES.length];
+      const emoji = TAG_EMOJI_MAP[t.toLowerCase()] || defaultStyle.emoji;
       return {
         label: t,
-        ...defaultStyle
+        ...defaultStyle,
+        emoji
       };
     });
   }
