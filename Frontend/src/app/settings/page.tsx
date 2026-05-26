@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
@@ -29,7 +30,8 @@ import {
   Sparkles,
   Heart,
   Copy,
-  Check
+  Check,
+  Mouse
 } from "lucide-react";
 import { AppShell } from "../../components/AppShell";
 import { useLanguage } from "../../components/LanguageProvider";
@@ -336,9 +338,13 @@ function AccountSettings({
   onPasswordChange: (newPass: string) => Promise<boolean>,
   onDeleteAccount: () => Promise<boolean>
 }) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const coverFileInputRef = React.useRef<HTMLInputElement>(null);
+  const avatarImgRef = React.useRef<HTMLImageElement>(null);
+  const coverImgRef = React.useRef<HTMLImageElement>(null);
+  const avatarContainerRef = React.useRef<HTMLDivElement>(null);
+  const coverContainerRef = React.useRef<HTMLDivElement>(null);
 
   const userId = typeof window !== 'undefined' ? localStorage.getItem("user_id") || "guest" : "guest";
   const historyKey = `user_avatar_history_${userId}`;
@@ -353,8 +359,12 @@ function AccountSettings({
 
   const [showPasswordModal, setShowPasswordModal] = React.useState(false);
   const [showDeleteModal, setShowDeleteModal] = React.useState(false);
+  const [isDeletingAccount, setIsDeletingAccount] = React.useState(false);
   const [passwords, setPasswords] = React.useState({ old: "", new: "", confirm: "" });
   const [copied, setCopied] = React.useState(false);
+  const [isSavingAvatar, setIsSavingAvatar] = React.useState(false);
+  const [isSavingCover, setIsSavingCover] = React.useState(false);
+  const [isSavingPassword, setIsSavingPassword] = React.useState(false);
 
   const handleCopyId = () => {
     if (typeof window !== 'undefined' && userId) {
@@ -404,6 +414,20 @@ function AccountSettings({
     }
   }, [showHistoryModal, avatar, historyKey]);
 
+  React.useEffect(() => {
+    const avatarEl = avatarContainerRef.current;
+    const coverEl = coverContainerRef.current;
+    const preventScroll = (e: WheelEvent) => e.preventDefault();
+    
+    if (avatarEl) avatarEl.addEventListener('wheel', preventScroll, { passive: false });
+    if (coverEl) coverEl.addEventListener('wheel', preventScroll, { passive: false });
+    
+    return () => {
+      if (avatarEl) avatarEl.removeEventListener('wheel', preventScroll);
+      if (coverEl) coverEl.removeEventListener('wheel', preventScroll);
+    };
+  }, [showCropModal, showCoverCropModal]);
+
   const isEmail = accountEmail?.includes("@") || username?.includes("@") || loginMethod === "google";
 
   const handlePasswordChange = async (e: React.FormEvent) => {
@@ -417,7 +441,10 @@ function AccountSettings({
       return;
     }
     
+    setIsSavingPassword(true);
     const success = await onPasswordChange(passwords.new);
+    setIsSavingPassword(false);
+    
     if (success) {
       toast.success(t("settings.passwordChangeSuccess"));
       setShowPasswordModal(false);
@@ -426,8 +453,12 @@ function AccountSettings({
   };
 
   const handleAccountDeletion = async () => {
-    setShowDeleteModal(false);
-    await onDeleteAccount();
+    setIsDeletingAccount(true);
+    const success = await onDeleteAccount();
+    setIsDeletingAccount(false);
+    if (success) {
+      setShowDeleteModal(false);
+    }
   };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -490,7 +521,7 @@ function AccountSettings({
   };
 
   const constrainOffset = (x: number, y: number, currentZoom: number) => {
-    const img = document.querySelector('img[alt="Cắt ảnh"]') as HTMLImageElement;
+    const img = avatarImgRef.current;
     if (!img) return { x: 0, y: 0 };
 
     const imgWidth = img.naturalWidth;
@@ -498,9 +529,9 @@ function AccountSettings({
     if (!imgWidth || !imgHeight) return { x: 0, y: 0 };
 
     const maxDim = Math.max(imgWidth, imgHeight);
-    const viewportSize = 360;
+    const viewportSize = 300;
     const cropCircleSize = 280;
-    const borderGap = (viewportSize - cropCircleSize) / 2; // 40px
+    const borderGap = (viewportSize - cropCircleSize) / 2; // 10px
 
     const renderedWidth = (imgWidth / maxDim) * viewportSize;
     const renderedHeight = (imgHeight / maxDim) * viewportSize;
@@ -538,7 +569,7 @@ function AccountSettings({
         const imgHeight = img.naturalHeight;
         if (imgWidth && imgHeight) {
           const maxDim = Math.max(imgWidth, imgHeight);
-          const viewportSize = 360;
+          const viewportSize = 300;
           const cropCircleSize = 280;
           
           const renderedWidth = (imgWidth / maxDim) * viewportSize;
@@ -594,7 +625,7 @@ function AccountSettings({
   };
 
   const constrainCoverOffset = (x: number, y: number, currentZoom: number) => {
-    const img = document.querySelector('img[alt="Cắt ảnh bìa"]') as HTMLImageElement;
+    const img = coverImgRef.current;
     if (!img) return { x: 0, y: 0 };
 
     const imgWidth = img.naturalWidth;
@@ -602,11 +633,11 @@ function AccountSettings({
     if (!imgWidth || !imgHeight) return { x: 0, y: 0 };
 
     const maxDim = Math.max(imgWidth, imgHeight);
-    const viewportSize = 360;
-    const cropWidth = 330;
-    const cropHeight = 110;
+    const viewportSize = 300;
+    const cropWidth = 270;
+    const cropHeight = 90;
     const borderGapX = (viewportSize - cropWidth) / 2; // 15px
-    const borderGapY = (viewportSize - cropHeight) / 2; // 125px
+    const borderGapY = (viewportSize - cropHeight) / 2; // 105px
 
     const renderedWidth = (imgWidth / maxDim) * viewportSize;
     const renderedHeight = (imgHeight / maxDim) * viewportSize;
@@ -644,9 +675,9 @@ function AccountSettings({
         const imgHeight = img.naturalHeight;
         if (imgWidth && imgHeight) {
           const maxDim = Math.max(imgWidth, imgHeight);
-          const viewportSize = 360;
-          const cropWidth = 330;
-          const cropHeight = 110;
+          const viewportSize = 300;
+          const cropWidth = 270;
+          const cropHeight = 90;
           
           const renderedWidth = (imgWidth / maxDim) * viewportSize;
           const renderedHeight = (imgHeight / maxDim) * viewportSize;
@@ -701,6 +732,8 @@ function AccountSettings({
   };
 
   const handleCoverWheel = (e: React.WheelEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     const zoomStep = 0.05;
     const nextZoom = e.deltaY < 0 
       ? Math.min(coverMinZoom * 4, coverZoom + zoomStep) 
@@ -715,9 +748,9 @@ function AccountSettings({
     
     if (imgWidth && imgHeight) {
       const maxDim = Math.max(imgWidth, imgHeight);
-      const viewportSize = 360;
-      const cropWidth = 330;
-      const cropHeight = 110;
+      const viewportSize = 300;
+      const cropWidth = 270;
+      const cropHeight = 90;
       
       const renderedWidth = (imgWidth / maxDim) * viewportSize;
       const renderedHeight = (imgHeight / maxDim) * viewportSize;
@@ -748,9 +781,9 @@ function AccountSettings({
       ctx.fillStyle = "#ffffff";
       ctx.fillRect(0, 0, targetWidth, targetHeight);
 
-      const viewportSize = 360; // size of the screen viewport container
-      const cropWidth = 330; // size of the screen crop rectangle width
-      const scaleFactor = targetWidth / cropWidth; // 900 / 330 = 2.7272
+      const viewportSize = 300; // size of the screen viewport container
+      const cropWidth = 270; // size of the screen crop rectangle width
+      const scaleFactor = targetWidth / cropWidth; // 900 / 270 = 3.333
 
       // Translate origin to center of canvas
       ctx.translate(targetWidth / 2, targetHeight / 2);
@@ -780,7 +813,11 @@ function AccountSettings({
       );
 
       const croppedBase64 = canvas.toDataURL("image/jpeg", 0.85);
+      
+      setIsSavingCover(true);
       const success = await onCoverChange(croppedBase64);
+      setIsSavingCover(false);
+      
       if (success !== false) {
         toast.success(t("settings.coverUpdateSuccess"));
         setShowCoverCropModal(false);
@@ -806,7 +843,7 @@ function AccountSettings({
       ctx.fillStyle = "#ffffff";
       ctx.fillRect(0, 0, size, size);
 
-      const viewportSize = 360; // size of the screen viewport container
+      const viewportSize = 300; // size of the screen viewport container
       const cropCircleSize = 280; // size of the screen crop circle
       const scaleFactor = size / cropCircleSize; // 300 / 280 = 1.0714
 
@@ -839,7 +876,11 @@ function AccountSettings({
       );
 
       const croppedBase64 = canvas.toDataURL("image/jpeg", 0.85);
+      
+      setIsSavingAvatar(true);
       const success = await onAvatarChange(croppedBase64);
+      setIsSavingAvatar(false);
+      
       if (success !== false) {
         try {
           if (tempOriginalImage) {
@@ -898,6 +939,8 @@ function AccountSettings({
   };
 
   const handleWheel = (e: React.WheelEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     const zoomStep = 0.05;
     const nextZoom = e.deltaY < 0 
       ? Math.min(minZoom * 4, zoom + zoomStep) 
@@ -912,7 +955,7 @@ function AccountSettings({
     
     if (imgWidth && imgHeight) {
       const maxDim = Math.max(imgWidth, imgHeight);
-      const viewportSize = 360;
+      const viewportSize = 300;
       const cropCircleSize = 280;
       
       const renderedWidth = (imgWidth / maxDim) * viewportSize;
@@ -981,7 +1024,8 @@ function AccountSettings({
       />
 
       {/* Rectangular 3:1 Cover Crop & Edit Modal */}
-      <AnimatePresence>
+      {typeof document !== "undefined" && createPortal(
+        <AnimatePresence>
         {showCoverCropModal && coverImageSrc && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
             <motion.div 
@@ -998,106 +1042,120 @@ function AccountSettings({
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-[480px] bg-white dark:bg-[#2A2420] rounded-[32px] p-8 shadow-2xl border border-gray-100 dark:border-[#3D312A] z-10"
+              className="relative w-full max-w-[480px] max-h-[90vh] flex flex-col bg-white dark:bg-[#2A2420] rounded-[32px] overflow-hidden shadow-2xl border border-gray-100 dark:border-[#3D312A] z-10"
             >
-              <h3 className="text-xl font-black text-gray-900 dark:text-[#E6DFD5] mb-2 uppercase tracking-tight text-left">{t("settings.editCoverTitle")}</h3>
-              <p className="text-sm text-gray-500 dark:text-[#9A8A7A] mb-6 text-left">{t("settings.editCoverDesc")}</p>
+              {/* Scrollable body — does NOT include buttons */}
+              <div className="flex-1 overflow-y-auto p-5">
+                <h3 className="text-xl font-black text-gray-900 dark:text-[#E6DFD5] mb-1 uppercase tracking-tight text-left">{t("settings.editCoverTitle")}</h3>
+                <p className="text-sm text-gray-500 dark:text-[#9A8A7A] mb-4 text-left">{t("settings.editCoverDesc")}</p>
 
-              {/* Crop Viewport area */}
-              <div className="flex justify-center mb-6">
-                <div 
-                  className="relative w-[360px] h-[360px] bg-neutral-900 rounded-[28px] overflow-hidden cursor-grab active:cursor-grabbing border border-gray-100 dark:border-[#4D3D32] flex items-center justify-center select-none"
-                  onMouseDown={handleCoverMouseDown}
-                  onMouseMove={handleCoverMouseMove}
-                  onMouseUp={handleCoverMouseUp}
-                  onMouseLeave={handleCoverMouseLeave}
-                  onTouchStart={handleCoverTouchStart}
-                  onTouchMove={handleCoverTouchMove}
-                  onTouchEnd={handleCoverTouchEnd}
-                  onWheel={handleCoverWheel}
-                >
-                  <img
-                    src={coverImageSrc}
-                    alt={t("settings.coverPhoto")}
-                    draggable={false}
-                    onLoad={handleCoverImageLoad}
-                    style={{
-                      transform: `translate(${coverOffset.x}px, ${coverOffset.y}px) rotate(${coverRotation}deg) scale(${coverZoom})`,
-                      transition: isCoverDragging ? 'none' : 'transform 0.1s ease-out'
-                    }}
-                    className="max-w-full max-h-full object-contain pointer-events-none select-none"
-                  />
-                  {/* Rectangular mask overlay with a 3:1 cutout */}
-                  <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-                    <div className="w-[330px] h-[110px] border-2 border-dashed border-white shadow-[0_0_0_9999px_rgba(0,0,0,0.65)]" />
+                {/* Crop Viewport area */}
+                <div className="flex justify-center mb-4">
+                  <div 
+                    ref={coverContainerRef}
+                    className="relative w-[300px] h-[300px] bg-neutral-900 rounded-[24px] overflow-hidden cursor-grab active:cursor-grabbing border border-gray-100 dark:border-[#4D3D32] flex items-center justify-center select-none"
+                    onMouseDown={handleCoverMouseDown}
+                    onMouseMove={handleCoverMouseMove}
+                    onMouseUp={handleCoverMouseUp}
+                    onMouseLeave={handleCoverMouseLeave}
+                    onTouchStart={handleCoverTouchStart}
+                    onTouchMove={handleCoverTouchMove}
+                    onTouchEnd={handleCoverTouchEnd}
+                    onWheel={handleCoverWheel}
+                  >
+                    <img
+                      src={coverImageSrc}
+                      ref={coverImgRef}
+                      alt={t("settings.coverPhoto")}
+                      draggable={false}
+                      onLoad={handleCoverImageLoad}
+                      style={{
+                        transform: `translate(${coverOffset.x}px, ${coverOffset.y}px) rotate(${coverRotation}deg) scale(${coverZoom})`,
+                        transition: isCoverDragging ? 'none' : 'transform 0.1s ease-out'
+                      }}
+                      className="max-w-full max-h-full object-contain pointer-events-none select-none"
+                    />
+                    {/* Rectangular mask overlay with a 3:1 cutout */}
+                    <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+                      <div className="w-[270px] h-[90px] border-2 border-dashed border-white shadow-[0_0_0_9999px_rgba(0,0,0,0.65)]" />
+                    </div>
+                    {/* Zoom Hint Badge */}
+                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 pointer-events-none flex items-center gap-1.5 bg-black/60 backdrop-blur-sm text-white px-3 py-1.5 rounded-full z-20 shadow-lg border border-white/10">
+                      <Mouse className="w-3.5 h-3.5 text-gray-300" />
+                      <span className="text-[10px] font-medium whitespace-nowrap">{language === 'vi' ? 'Lăn chuột để thu / phóng' : 'Scroll to zoom in / out'}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Controls */}
+                <div className="space-y-4">
+                  {/* Zoom */}
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-xs font-bold text-gray-500 dark:text-[#9A8A7A] uppercase tracking-wider">
+                      <span>{t("settings.zoom")}</span>
+                      <span>{coverZoom.toFixed(1)}x</span>
+                    </div>
+                    <input 
+                      type="range"
+                      min={coverMinZoom}
+                      max={coverMinZoom * 4}
+                      step="0.01"
+                      value={coverZoom}
+                      onChange={(e) => setCoverZoom(parseFloat(e.target.value))}
+                      className="w-full h-1.5 bg-gray-100 dark:bg-[#4D3D32] rounded-lg appearance-none cursor-pointer accent-brand"
+                    />
+                  </div>
+
+                  {/* Rotation */}
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-xs font-bold text-gray-500 dark:text-[#9A8A7A] uppercase tracking-wider">
+                      <span>{t("settings.rotate")}</span>
+                      <span>{coverRotation}°</span>
+                    </div>
+                    <input 
+                      type="range"
+                      min="0"
+                      max="360"
+                      step="1"
+                      value={coverRotation}
+                      onChange={(e) => setCoverRotation(parseInt(e.target.value))}
+                      className="w-full h-1.5 bg-gray-100 dark:bg-[#4D3D32] rounded-lg appearance-none cursor-pointer accent-brand"
+                    />
                   </div>
                 </div>
               </div>
 
-              {/* Controls */}
-              <div className="space-y-5 mb-8">
-                {/* Zoom */}
-                <div className="space-y-2">
-                  <div className="flex justify-between text-xs font-bold text-gray-500 dark:text-[#9A8A7A] uppercase tracking-wider">
-                    <span>{t("settings.zoom")}</span>
-                    <span>{coverZoom.toFixed(1)}x</span>
-                  </div>
-                  <input 
-                    type="range"
-                    min={coverMinZoom}
-                    max={coverMinZoom * 4}
-                    step="0.01"
-                    value={coverZoom}
-                    onChange={(e) => setCoverZoom(parseFloat(e.target.value))}
-                    className="w-full h-1.5 bg-gray-100 dark:bg-[#4D3D32] rounded-lg appearance-none cursor-pointer accent-brand"
-                  />
-                </div>
-
-                {/* Rotation */}
-                <div className="space-y-2">
-                  <div className="flex justify-between text-xs font-bold text-gray-500 dark:text-[#9A8A7A] uppercase tracking-wider">
-                    <span>{t("settings.rotate")}</span>
-                    <span>{coverRotation}°</span>
-                  </div>
-                  <input 
-                    type="range"
-                    min="0"
-                    max="360"
-                    step="1"
-                    value={coverRotation}
-                    onChange={(e) => setCoverRotation(parseInt(e.target.value))}
-                    className="w-full h-1.5 bg-gray-100 dark:bg-[#4D3D32] rounded-lg appearance-none cursor-pointer accent-brand"
-                  />
-                </div>
-              </div>
-
-              {/* Buttons */}
-              <div className="flex gap-3">
+              {/* Sticky buttons — always visible, never scrolled away */}
+              <div className="flex-shrink-0 flex gap-3 px-5 py-4 border-t border-gray-100 dark:border-[#3D312A]">
                 <button 
                   type="button"
                   onClick={() => {
                     setShowCoverCropModal(false);
                     setCoverImageSrc(null);
                   }}
-                  className="flex-1 py-3.5 text-gray-500 dark:text-[#9A8A7A] text-sm font-bold rounded-2xl hover:bg-gray-50 dark:hover:bg-[#3D312A] transition-colors cursor-pointer"
+                  className="flex-1 py-3 text-gray-500 dark:text-[#9A8A7A] text-sm font-bold rounded-2xl hover:bg-gray-50 dark:hover:bg-[#3D312A] transition-colors cursor-pointer"
                 >
                   {t("settings.cancel")}
                 </button>
                 <button 
                   type="button"
                   onClick={handleCoverCropSave}
-                  className="flex-1 py-3.5 bg-brand text-white text-sm font-bold rounded-2xl hover:bg-brand-hover transition-all shadow-lg shadow-brand/20 dark:shadow-none cursor-pointer"
+                  disabled={isSavingCover}
+                  className="flex-1 py-3 bg-brand text-white text-sm font-bold rounded-2xl hover:bg-brand-hover transition-all shadow-lg shadow-brand/20 dark:shadow-none disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center cursor-pointer"
                 >
-                  {t("settings.confirmCrop")}
+                  {isSavingCover ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : t("settings.confirmCrop")}
                 </button>
               </div>
             </motion.div>
           </div>
         )}
-      </AnimatePresence>
+        </AnimatePresence>,
+        document.body
+      )}
 
       {/* Circular Crop & Edit Image Modal */}
-      <AnimatePresence>
+      {typeof document !== "undefined" && createPortal(
+        <AnimatePresence>
         {showCropModal && imageSrc && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
             <motion.div 
@@ -1114,106 +1172,120 @@ function AccountSettings({
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-[480px] bg-white dark:bg-[#2A2420] rounded-[32px] p-8 shadow-2xl border border-gray-100 dark:border-[#3D312A] z-10"
+              className="relative w-full max-w-[480px] max-h-[90vh] flex flex-col bg-white dark:bg-[#2A2420] rounded-[32px] overflow-hidden shadow-2xl border border-gray-100 dark:border-[#3D312A] z-10"
             >
-              <h3 className="text-xl font-black text-gray-900 dark:text-[#E6DFD5] mb-2 uppercase tracking-tight">{t("settings.editAvatarTitle")}</h3>
-              <p className="text-sm text-gray-500 dark:text-[#9A8A7A] mb-6">{t("settings.editAvatarDesc")}</p>
+              {/* Scrollable body — does NOT include buttons */}
+              <div className="flex-1 overflow-y-auto p-5">
+                <h3 className="text-xl font-black text-gray-900 dark:text-[#E6DFD5] mb-1 uppercase tracking-tight">{t("settings.editAvatarTitle")}</h3>
+                <p className="text-sm text-gray-500 dark:text-[#9A8A7A] mb-4">{t("settings.editAvatarDesc")}</p>
 
-              {/* Crop Canvas/Viewport area */}
-              <div className="flex justify-center mb-6">
-                <div 
-                  className="relative w-[360px] h-[360px] bg-neutral-900 rounded-[28px] overflow-hidden cursor-grab active:cursor-grabbing border border-gray-100 dark:border-[#4D3D32] flex items-center justify-center select-none"
-                  onMouseDown={handleMouseDown}
-                  onMouseMove={handleMouseMove}
-                  onMouseUp={handleMouseUp}
-                  onMouseLeave={handleMouseLeave}
-                  onTouchStart={handleTouchStart}
-                  onTouchMove={handleTouchMove}
-                  onTouchEnd={handleTouchEnd}
-                  onWheel={handleWheel}
-                >
-                  <img
-                    src={imageSrc}
-                    alt={t("settings.avatarLabel")}
-                    draggable={false}
-                    onLoad={handleImageLoad}
-                    style={{
-                      transform: `translate(${offset.x}px, ${offset.y}px) rotate(${rotation}deg) scale(${zoom})`,
-                      transition: isDragging ? 'none' : 'transform 0.1s ease-out'
-                    }}
-                    className="max-w-full max-h-full object-contain pointer-events-none select-none"
-                  />
-                  {/* Dark mask overlay with a circle highlight cutout */}
-                  <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-                    <div className="w-[280px] h-[280px] rounded-full border-2 border-dashed border-white shadow-[0_0_0_9999px_rgba(0,0,0,0.65)]" />
+                {/* Crop Canvas/Viewport area */}
+                <div className="flex justify-center mb-4">
+                  <div 
+                    ref={avatarContainerRef}
+                    className="relative w-[300px] h-[300px] bg-neutral-900 rounded-[24px] overflow-hidden cursor-grab active:cursor-grabbing border border-gray-100 dark:border-[#4D3D32] flex items-center justify-center select-none"
+                    onMouseDown={handleMouseDown}
+                    onMouseMove={handleMouseMove}
+                    onMouseUp={handleMouseUp}
+                    onMouseLeave={handleMouseLeave}
+                    onTouchStart={handleTouchStart}
+                    onTouchMove={handleTouchMove}
+                    onTouchEnd={handleTouchEnd}
+                    onWheel={handleWheel}
+                  >
+                    <img
+                      src={imageSrc}
+                      ref={avatarImgRef}
+                      alt={t("settings.avatarLabel")}
+                      draggable={false}
+                      onLoad={handleImageLoad}
+                      style={{
+                        transform: `translate(${offset.x}px, ${offset.y}px) rotate(${rotation}deg) scale(${zoom})`,
+                        transition: isDragging ? 'none' : 'transform 0.1s ease-out'
+                      }}
+                      className="max-w-full max-h-full object-contain pointer-events-none select-none"
+                    />
+                    {/* Dark mask overlay with a circle highlight cutout */}
+                    <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+                      <div className="w-[280px] h-[280px] rounded-full border-2 border-dashed border-white shadow-[0_0_0_9999px_rgba(0,0,0,0.65)]" />
+                    </div>
+                    {/* Zoom Hint Badge */}
+                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 pointer-events-none flex items-center gap-1.5 bg-black/60 backdrop-blur-sm text-white px-3 py-1.5 rounded-full z-20 shadow-lg border border-white/10">
+                      <Mouse className="w-3.5 h-3.5 text-gray-300" />
+                      <span className="text-[10px] font-medium whitespace-nowrap">{language === 'vi' ? 'Lăn chuột để thu / phóng' : 'Scroll to zoom in / out'}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Controls */}
+                <div className="space-y-4">
+                  {/* Zoom */}
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-xs font-bold text-gray-500 dark:text-[#9A8A7A] uppercase tracking-wider">
+                      <span>{t("settings.zoom")}</span>
+                      <span>{zoom.toFixed(1)}x</span>
+                    </div>
+                    <input 
+                      type="range"
+                      min={minZoom}
+                      max={minZoom * 4}
+                      step="0.01"
+                      value={zoom}
+                      onChange={(e) => setZoom(parseFloat(e.target.value))}
+                      className="w-full h-1.5 bg-gray-100 dark:bg-[#4D3D32] rounded-lg appearance-none cursor-pointer accent-brand"
+                    />
+                  </div>
+
+                  {/* Rotation */}
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-xs font-bold text-gray-500 dark:text-[#9A8A7A] uppercase tracking-wider">
+                      <span>{t("settings.rotate")}</span>
+                      <span>{rotation}°</span>
+                    </div>
+                    <input 
+                      type="range"
+                      min="0"
+                      max="360"
+                      step="1"
+                      value={rotation}
+                      onChange={(e) => setRotation(parseInt(e.target.value))}
+                      className="w-full h-1.5 bg-gray-100 dark:bg-[#4D3D32] rounded-lg appearance-none cursor-pointer accent-brand"
+                    />
                   </div>
                 </div>
               </div>
 
-              {/* Controls */}
-              <div className="space-y-5 mb-8">
-                {/* Zoom */}
-                <div className="space-y-2">
-                  <div className="flex justify-between text-xs font-bold text-gray-500 dark:text-[#9A8A7A] uppercase tracking-wider">
-                    <span>{t("settings.zoom")}</span>
-                    <span>{zoom.toFixed(1)}x</span>
-                  </div>
-                  <input 
-                    type="range"
-                    min={minZoom}
-                    max={minZoom * 4}
-                    step="0.01"
-                    value={zoom}
-                    onChange={(e) => setZoom(parseFloat(e.target.value))}
-                    className="w-full h-1.5 bg-gray-100 dark:bg-[#4D3D32] rounded-lg appearance-none cursor-pointer accent-brand"
-                  />
-                </div>
-
-                {/* Rotation */}
-                <div className="space-y-2">
-                  <div className="flex justify-between text-xs font-bold text-gray-500 dark:text-[#9A8A7A] uppercase tracking-wider">
-                    <span>{t("settings.rotate")}</span>
-                    <span>{rotation}°</span>
-                  </div>
-                  <input 
-                    type="range"
-                    min="0"
-                    max="360"
-                    step="1"
-                    value={rotation}
-                    onChange={(e) => setRotation(parseInt(e.target.value))}
-                    className="w-full h-1.5 bg-gray-100 dark:bg-[#4D3D32] rounded-lg appearance-none cursor-pointer accent-brand"
-                  />
-                </div>
-              </div>
-
-              {/* Buttons */}
-              <div className="flex gap-3">
+              {/* Sticky buttons — always visible, never scrolled away */}
+              <div className="flex-shrink-0 flex gap-3 px-5 py-4 border-t border-gray-100 dark:border-[#3D312A]">
                 <button 
                   type="button"
                   onClick={() => {
                     setShowCropModal(false);
                     setImageSrc(null);
                   }}
-                  className="flex-1 py-3.5 text-gray-500 dark:text-[#9A8A7A] text-sm font-bold rounded-2xl hover:bg-gray-50 dark:hover:bg-[#3D312A] transition-colors cursor-pointer"
+                  className="flex-1 py-3 text-gray-500 dark:text-[#9A8A7A] text-sm font-bold rounded-2xl hover:bg-gray-50 dark:hover:bg-[#3D312A] transition-colors cursor-pointer"
                 >
                   {t("settings.cancel")}
                 </button>
                 <button 
                   type="button"
                   onClick={handleCropSave}
-                  className="flex-1 py-3.5 bg-brand text-white text-sm font-bold rounded-2xl hover:bg-brand-hover transition-all shadow-lg shadow-brand/20 dark:shadow-none cursor-pointer"
+                  disabled={isSavingAvatar}
+                  className="flex-1 py-3 bg-brand text-white text-sm font-bold rounded-2xl hover:bg-brand-hover transition-all shadow-lg shadow-brand/20 dark:shadow-none disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center cursor-pointer"
                 >
-                  {t("settings.confirmCrop")}
+                  {isSavingAvatar ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : t("settings.confirmCrop")}
                 </button>
               </div>
             </motion.div>
           </div>
         )}
-      </AnimatePresence>
+        </AnimatePresence>,
+        document.body
+      )}
 
       {/* Change Password Modal */}
-      <AnimatePresence>
+      {typeof document !== "undefined" && createPortal(
+        <AnimatePresence>
         {showPasswordModal && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
             <motion.div 
@@ -1274,19 +1346,23 @@ function AccountSettings({
                   </button>
                   <button 
                     type="submit"
-                    className="flex-1 py-3.5 bg-brand text-white text-sm font-bold rounded-2xl hover:bg-brand-hover transition-all shadow-lg shadow-brand/20 dark:shadow-none"
+                    disabled={isSavingPassword}
+                    className="flex-1 py-3.5 bg-brand text-white text-sm font-bold rounded-2xl hover:bg-brand-hover transition-all shadow-lg shadow-brand/20 dark:shadow-none disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center"
                   >
-                    {t("settings.updateBtn")}
+                    {isSavingPassword ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : t("settings.updateBtn")}
                   </button>
                 </div>
               </form>
             </motion.div>
           </div>
         )}
-      </AnimatePresence>
+        </AnimatePresence>,
+        document.body
+      )}
 
       {/* Delete Account Modal */}
-      <AnimatePresence>
+      {typeof document !== "undefined" && createPortal(
+        <AnimatePresence>
         {showDeleteModal && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
             <motion.div 
@@ -1320,18 +1396,26 @@ function AccountSettings({
                 </button>
                 <button 
                   onClick={handleAccountDeletion}
-                  className="flex-1 py-3.5 bg-red-500 text-white text-sm font-bold rounded-2xl hover:bg-red-600 transition-all shadow-lg shadow-red-200 dark:shadow-none"
+                  disabled={isDeletingAccount}
+                  className="flex-1 py-3.5 bg-red-500 text-white text-sm font-bold rounded-2xl hover:bg-red-600 transition-all shadow-lg shadow-red-200 dark:shadow-none flex items-center justify-center disabled:opacity-70 disabled:cursor-not-allowed"
                 >
-                  {t("settings.confirmDeleteBtn")}
+                  {isDeletingAccount ? (
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    t("settings.confirmDeleteBtn")
+                  )}
                 </button>
               </div>
             </motion.div>
           </div>
         )}
-      </AnimatePresence>
+        </AnimatePresence>,
+        document.body
+      )}
 
       {/* Avatar History Gallery Modal */}
-      <AnimatePresence>
+      {typeof document !== "undefined" && createPortal(
+        <AnimatePresence>
         {showHistoryModal && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
             <motion.div 
@@ -1454,7 +1538,9 @@ function AccountSettings({
             </motion.div>
           </div>
         )}
-      </AnimatePresence>
+        </AnimatePresence>,
+        document.body
+      )}
 
       {/* Profile Info Card */}
       <div className="bg-white dark:bg-[#3D312A] rounded-[32px] p-8 shadow-sm border border-gray-100 dark:border-[#3D312A] relative overflow-hidden">
@@ -1468,7 +1554,7 @@ function AccountSettings({
         {/* Cover Photo Section */}
         <div className="mb-8">
           <label className="text-[13px] font-bold text-gray-400 uppercase tracking-wider block mb-3 pl-1">{t("settings.coverPhoto")}</label>
-          <div className="relative group rounded-3xl overflow-hidden border border-gray-100 dark:border-[#4D3D32] bg-gray-50 dark:bg-[#2A2420] h-36 flex items-center justify-center">
+          <div className="relative group rounded-3xl overflow-hidden border border-gray-100 dark:border-[#4D3D32] bg-gray-50 dark:bg-[#2A2420] w-full aspect-[3/1] flex items-center justify-center">
             {cover ? (
               <img src={cover} alt="Cover" className="w-full h-full object-cover" />
             ) : (

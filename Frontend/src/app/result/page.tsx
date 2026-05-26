@@ -916,6 +916,7 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
   const [searchLoadingMsg, setSearchLoadingMsg] = useState(t('result.loadingAnalyzing'));
 
   const abortControllerRef = useRef<AbortController | null>(null);
+  const mapDragRef = useRef(false);
 
   const handleCancelSearch = () => {
     if (abortControllerRef.current) {
@@ -1274,9 +1275,20 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
     </>
   );
   const mapFloatingButton = (
-    <button
+    <motion.button
+      drag
+      dragMomentum={false}
+      onDragStart={() => {
+        mapDragRef.current = true;
+      }}
+      onDragEnd={() => {
+        setTimeout(() => {
+          mapDragRef.current = false;
+        }, 100);
+      }}
       type="button"
       onClick={() => {
+        if (mapDragRef.current) return;
         const next = !mapViewEnabled;
         setMapViewEnabled(next);
         if (typeof window !== 'undefined') {
@@ -1290,7 +1302,7 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
           window.history.replaceState(null, '', queryString ? `/result?${queryString}` : '/result');
         }
       }}
-      className={`fixed left-4 top-28 z-40 inline-flex items-center justify-center gap-2 h-11 px-4 rounded-full border-2 border-[#3D312A] shadow-[4px_4px_0px_rgba(61,49,42,1)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-[2px_2px_0px_rgba(61,49,42,1)] transition-all duration-150 cursor-pointer font-black text-xs uppercase tracking-wide ${
+      className={`fixed right-4 top-28 z-[100] inline-flex items-center justify-center gap-2 h-11 px-4 rounded-full border-2 border-[#3D312A] shadow-[4px_4px_0px_rgba(61,49,42,1)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-[2px_2px_0px_rgba(61,49,42,1)] transition-colors duration-150 cursor-grab active:cursor-grabbing font-black text-xs uppercase tracking-wide ${
         mapViewEnabled
           ? 'bg-brand text-white hover:bg-brand-hover'
           : 'bg-white dark:bg-[#3D312A] text-[#3D312A] dark:text-[#E6DFD5] hover:text-brand'
@@ -1298,15 +1310,16 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
       title={mapViewEnabled ? t('result.exitMapTitle') : t('result.showMapTitle')}
       aria-label={mapViewEnabled ? t('result.exitMapTitle') : t('result.showMapTitle')}
     >
-      {mapViewEnabled ? <LogOut className="w-4 h-4" /> : <MapIcon className="w-4 h-4" />}
-      <span>{mapViewEnabled ? t('result.exitMap') : t('result.map')}</span>
-    </button>
+      <LogOut className={`w-4 h-4 pointer-events-none ${mapViewEnabled ? 'block' : 'hidden'}`} />
+      <MapIcon className={`w-4 h-4 pointer-events-none ${mapViewEnabled ? 'hidden' : 'block'}`} />
+      <span className="pointer-events-none">{mapViewEnabled ? t('result.exitMap') : t('result.map')}</span>
+    </motion.button>
   );
 
   return (
     <AppShell>
       {isSearching && <SearchLoadingOverlay message={searchLoadingMsg} onCancel={handleCancelSearch} />}
-      {mapFloatingButton}
+      {mounted && mapFloatingButton}
 
       {!mapViewEnabled && (
         <div className="border-b border-[#E6DFD5]/60 dark:border-[#3D312A]/60 bg-[#FDFBF7]/80 dark:bg-[#2A2420]/80 backdrop-blur-sm">
@@ -1444,13 +1457,13 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
                 )}
 
                 {!isLoggedIn && showGuestNotice && (
-                  <div className="mb-6 px-5 py-3 rounded-full bg-[#F0F7FF] dark:bg-blue-500/5 border border-[#E1EFFE] dark:border-blue-500/20 flex items-center gap-3 relative shadow-sm">
-                    <Sparkles className="w-5 h-5 text-blue-500 flex-shrink-0" />
-                    <p className="text-[13px] md:text-sm text-gray-600 dark:text-blue-200 pr-10 whitespace-nowrap">
+                  <div className="mb-6 px-5 py-3 rounded-2xl bg-[#F0F7FF] dark:bg-blue-500/5 border border-[#E1EFFE] dark:border-blue-500/20 flex items-start sm:items-center gap-3 relative shadow-sm">
+                    <Sparkles className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5 sm:mt-0" />
+                    <p className="text-[13px] md:text-sm text-gray-600 dark:text-blue-200 pr-8 sm:pr-12 leading-relaxed">
                       {t('result.guestSearching')}{" "}
                       <button
                         onClick={() => router.push('/auth')}
-                        className="font-bold text-blue-600 dark:text-blue-400 underline hover:text-blue-700 transition-colors"
+                        className="font-bold text-blue-600 dark:text-blue-400 underline decoration-blue-400/50 hover:decoration-blue-600 hover:text-blue-700 dark:hover:text-blue-300 transition-all cursor-pointer inline-block hover:-translate-y-[1px] active:translate-y-0"
                       >
                         {t('result.loginNow')}
                       </button>
@@ -1458,7 +1471,7 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
                     </p>
                     <button
                       onClick={() => setShowGuestNotice(false)}
-                      className="absolute right-5 p-1 text-gray-400 hover:text-gray-600 dark:hover:text-blue-300 transition-colors"
+                      className="absolute right-3 top-3 sm:right-4 sm:top-1/2 sm:-translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 dark:hover:text-blue-300 transition-colors"
                     >
                       <X className="w-4 h-4" />
                     </button>
