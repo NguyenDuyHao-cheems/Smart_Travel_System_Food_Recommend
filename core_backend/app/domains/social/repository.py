@@ -1,3 +1,4 @@
+from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 from .models import SocialPost, SocialFollow, SocialLike, SocialNotification, SocialStory
 from app.domains.users.models import UserAccount
@@ -47,6 +48,17 @@ class SocialRepository:
         ).filter(
             SocialPost.parent_id == post_id
         ).order_by(SocialPost.created_at.asc()).limit(limit).all()
+
+    def count_replies_batch(self, post_ids: List[str]) -> dict:
+        if not post_ids:
+            return {}
+        rows = self.db.query(
+            SocialPost.parent_id,
+            func.count(SocialPost.id)
+        ).filter(
+            SocialPost.parent_id.in_(post_ids)
+        ).group_by(SocialPost.parent_id).all()
+        return {str(parent_id): count for parent_id, count in rows}
 
     def check_follow(self, follower_id: str, following_id: str) -> bool:
         return self.db.query(SocialFollow).filter(
@@ -167,14 +179,45 @@ class SocialRepository:
         return self.db.query(SocialPost).options(joinedload(SocialPost.restaurant)).filter(SocialPost.id == post_id).first()
 
     def delete_post(self, post_id: str):
-        # Delete all notifications linked to this post
-        self.db.query(SocialNotification).filter(SocialNotification.post_id == post_id).delete(synchronize_session=False)
-        # Delete all likes for this post
-        self.db.query(SocialLike).filter(SocialLike.post_id == post_id).delete(synchronize_session=False)
-        # Delete all child comments recursively (just 1 level for now)
-        self.db.query(SocialPost).filter(SocialPost.parent_id == post_id).delete(synchronize_session=False)
-        # Delete the post itself
+        deleted_post = self.get_post_by_id(post_id)
+        parent_post = (
+            self.get_post_by_id(str(deleted_post.parent_id))
+            if deleted_post and deleted_post.parent_id
+            else None
+        )
+        descendant_levels: List[List[str]] = []
+        parent_ids = [post_id]
+        while parent_ids:
+            child_ids = [
+                child_id
+                for child_id, in self.db.query(SocialPost.id).filter(
+                    SocialPost.parent_id.in_(parent_ids)
+                ).all()
+            ]
+            if not child_ids:
+                break
+            descendant_levels.append(child_ids)
+            parent_ids = child_ids
+
+        post_ids = [post_id] + [
+            descendant_id
+            for level in descendant_levels
+            for descendant_id in level
+        ]
+        self.db.query(SocialNotification).filter(
+            SocialNotification.post_id.in_(post_ids)
+        ).delete(synchronize_session=False)
+        self.db.query(SocialLike).filter(
+            SocialLike.post_id.in_(post_ids)
+        ).delete(synchronize_session=False)
+
+        for level in reversed(descendant_levels):
+            self.db.query(SocialPost).filter(
+                SocialPost.id.in_(level)
+            ).delete(synchronize_session=False)
         self.db.query(SocialPost).filter(SocialPost.id == post_id).delete(synchronize_session=False)
+        if parent_post:
+            parent_post.replies_count = max(0, (parent_post.replies_count or 0) - 1)
         self.db.commit()
 
     def create_story(self, story: SocialStory) -> SocialStory:

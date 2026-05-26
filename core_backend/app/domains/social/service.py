@@ -228,6 +228,7 @@ class SocialService:
         formatted = []
         post_ids = [str(post.id) for post, _ in results]
         liked_post_ids = set()
+        reply_counts = self.repo.count_replies_batch(post_ids)
         
         if current_user_id and post_ids:
             liked_post_ids = self.repo.check_likes_batch(current_user_id, post_ids)
@@ -244,7 +245,7 @@ class SocialService:
                 res_id=str(post.res_id) if post.res_id else None,
                 parent_id=str(post.parent_id) if post.parent_id else None,
                 likes_count=post.likes_count or 0,
-                replies_count=post.replies_count or 0,
+                replies_count=reply_counts.get(str(post.id), 0),
                 created_at=post.created_at,
                 username=user.username,
                 full_name=user.full_name,

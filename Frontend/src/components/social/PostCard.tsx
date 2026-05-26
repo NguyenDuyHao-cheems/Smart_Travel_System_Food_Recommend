@@ -90,7 +90,6 @@ const parseLinks = (text: string) => {
 
 interface CommentNodeProps {
   comment: SocialPost;
-  depth: number;
   currentUserId: string | null;
   onLikeComment: (commentId: string) => void;
   onDeleteComment: (commentId: string) => void;
@@ -107,7 +106,6 @@ interface CommentNodeProps {
 
 const CommentNode = ({
   comment,
-  depth,
   currentUserId,
   onLikeComment,
   onDeleteComment,
@@ -167,7 +165,6 @@ const CommentNode = ({
               className={`flex items-center gap-1 transition-colors hover:text-blue-500 ${showReplyInput ? 'text-blue-500' : ''}`}
             >
               <MessageCircle className={`w-3.5 h-3.5 ${showReplyInput ? 'fill-blue-100 dark:fill-blue-900/30' : ''}`} />
-              {comment.replies_count > 0 && <span>{comment.replies_count}</span>}
             </button>
 
             {currentUserId === comment.user_id && (
@@ -288,39 +285,29 @@ export function PostCard({ post, onLikeToggle, onDelete }: PostCardProps) {
     toast.success(t('socialPost.reportThanks'));
   };
 
-  // Helper/Memo to flatten recursive replies into a single list
-  const flatRepliesMap = React.useMemo(() => {
-    const map: Record<string, SocialPost[]> = {};
-    const getFlat = (id: string): SocialPost[] => {
-      const list: SocialPost[] = [];
-      const traverse = (currentId: string) => {
-        const children = repliesData[currentId] || [];
-        children.forEach(child => {
-          list.push(child);
-          traverse(child.id);
-        });
-      };
-      traverse(id);
-      return list;
-    };
-    Object.keys(repliesData).forEach(id => {
-      map[id] = getFlat(id);
-    });
-    return map;
-  }, [repliesData]);
-
   // ── Replies handler ──
   const fetchReplies = async (commentId: string) => {
     setLoadingReplies(prev => ({ ...prev, [commentId]: true }));
     try {
       const token = localStorage.getItem('access_token');
-      const res = await fetch(`${BACKEND_URL}/api/v1/social/posts/${commentId}/thread`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {}
-      });
-      if (res.ok) {
-        const list: SocialPost[] = await res.json();
-        setRepliesData(prev => ({ ...prev, [commentId]: list }));
-      }
+      const fetchDescendants = async (parentId: string): Promise<SocialPost[]> => {
+        const res = await fetch(`${BACKEND_URL}/api/v1/social/posts/${parentId}/thread`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+        if (!res.ok) return [];
+
+        const replies: SocialPost[] = await res.json();
+        const replyBranches = await Promise.all(
+          replies.map(async reply => [
+            reply,
+            ...(reply.replies_count > 0 ? await fetchDescendants(reply.id) : [])
+          ])
+        );
+        return replyBranches.flat();
+      };
+
+      const allReplies = await fetchDescendants(commentId);
+      setRepliesData(prev => ({ ...prev, [commentId]: allReplies }));
     } catch (err) {
       console.error("Failed to fetch replies:", err);
     } finally {
@@ -398,10 +385,16 @@ export function PostCard({ post, onLikeToggle, onDelete }: PostCardProps) {
       });
       if (res.ok) {
         const newReply = await res.json();
-        setRepliesData(prev => ({
-          ...prev,
-          [commentId]: [...(prev[commentId] || []), newReply]
-        }));
+        const rootCommentId = comments.some(comment => comment.id === commentId)
+          ? commentId
+          : Object.keys(repliesData).find(id => repliesData[id].some(reply => reply.id === commentId));
+        if (rootCommentId) {
+          setRepliesData(prev => ({
+            ...prev,
+            [rootCommentId]: [...(prev[rootCommentId] || []), newReply]
+          }));
+          setExpandedComments(prev => ({ ...prev, [rootCommentId]: true }));
+        }
         setReplyText('');
         setActiveReplyId(null);
         
@@ -467,16 +460,17 @@ export function PostCard({ post, onLikeToggle, onDelete }: PostCardProps) {
     const token = localStorage.getItem('access_token');
     if (!token) return;
 
-    // Find parent_id of the comment/reply being deleted
-    let parentId: string | undefined = undefined;
-    const commentToDelete = comments.find(c => c.id === commentId);
-    if (commentToDelete) {
-      parentId = commentToDelete.parent_id;
-    } else {
-      Object.values(repliesData).forEach(list => {
-        const found = list.find(c => c.id === commentId);
-        if (found) {
-          parentId = found.parent_id;
+    const visibleComments = [...comments, ...Object.values(repliesData).flat()];
+    const commentToDelete = visibleComments.find(c => c.id === commentId);
+    const parentId = commentToDelete?.parent_id;
+    const deletedIds = new Set([commentId]);
+    let foundDescendant = true;
+    while (foundDescendant) {
+      foundDescendant = false;
+      visibleComments.forEach(comment => {
+        if (comment.parent_id && deletedIds.has(comment.parent_id) && !deletedIds.has(comment.id)) {
+          deletedIds.add(comment.id);
+          foundDescendant = true;
         }
       });
     }
@@ -486,23 +480,35 @@ export function PostCard({ post, onLikeToggle, onDelete }: PostCardProps) {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` }
       });
-      if (res.ok) {
-        toast.success(t('socialPost.commentDeleteSuccess') || 'Comment deleted successfully');
+      if (res.ok || res.status === 404) {
+        if (res.ok) {
+          toast.success(t('socialPost.commentDeleteSuccess') || 'Comment deleted successfully');
+        }
         
-        // Remove from main comments list
-        setComments(prev => prev.filter(c => c.id !== commentId));
+        setComments(prev => prev.filter(c => !deletedIds.has(c.id)));
         
-        // Remove from repliesData lists
         setRepliesData(prev => {
           const updated = { ...prev };
           Object.keys(updated).forEach(key => {
-            updated[key] = updated[key].filter(c => c.id !== commentId);
+            if (deletedIds.has(key)) {
+              delete updated[key];
+            } else {
+              updated[key] = updated[key].filter(c => !deletedIds.has(c.id));
+            }
           });
           return updated;
         });
+        setExpandedComments(prev => {
+          const updated = { ...prev };
+          deletedIds.forEach(id => delete updated[id]);
+          return updated;
+        });
+        if (activeReplyId && deletedIds.has(activeReplyId)) {
+          setActiveReplyId(null);
+          setReplyText('');
+        }
 
-        // Decrement reply count for the parent/post
-        if (parentId) {
+        if (res.ok && parentId) {
           if (parentId === post.id) {
             setRepliesCount(prev => Math.max(0, prev - 1));
           } else {
@@ -708,14 +714,12 @@ export function PostCard({ post, onLikeToggle, onDelete }: PostCardProps) {
               ) : (
                 <div className="space-y-4 max-h-[320px] overflow-y-auto pr-1">
                   {comments.map((comment) => {
-                    const level1Replies = repliesData[comment.id] || [];
-                    const isExpanded0 = expandedComments[comment.id] || false;
+                    const visibleReplies = repliesData[comment.id] || [];
+                    const isExpanded = expandedComments[comment.id] || false;
                     return (
-                      <React.Fragment key={comment.id}>
-                        {/* Level 0 Comment */}
+                      <div key={comment.id} className="space-y-2">
                         <CommentNode
                           comment={comment}
-                          depth={0}
                           currentUserId={currentUserId}
                           onLikeComment={handleLikeComment}
                           onDeleteComment={handleDeleteComment}
@@ -730,10 +734,9 @@ export function PostCard({ post, onLikeToggle, onDelete }: PostCardProps) {
                           t={t}
                         />
 
-                        {/* Level 0 Toggle Button */}
                         {comment.replies_count > 0 && (
                           <div className="ml-10 mt-1">
-                            {!isExpanded0 ? (
+                            {!isExpanded ? (
                               <button
                                 onClick={() => {
                                   setExpandedComments(prev => ({ ...prev, [comment.id]: true }));
@@ -745,7 +748,7 @@ export function PostCard({ post, onLikeToggle, onDelete }: PostCardProps) {
                                 disabled={loadingReplies[comment.id]}
                               >
                                 {loadingReplies[comment.id] && <Loader2 className="w-3 h-3 animate-spin" />}
-                                {t('socialPost.viewReplies').replace('{count}', String(comment.replies_count))}
+                                {t('socialPost.viewReplies')}
                               </button>
                             ) : (
                               <button
@@ -757,19 +760,15 @@ export function PostCard({ post, onLikeToggle, onDelete }: PostCardProps) {
                             )}
                           </div>
                         )}
-                        
-                        {/* Level 1 Replies Container */}
-                        {isExpanded0 && level1Replies.length > 0 && (
+
+                        {isExpanded && visibleReplies.length > 0 && (
                           <div className="space-y-3 ml-3 pl-3 border-l border-border/60 mt-2">
-                            {level1Replies.map((r1) => {
-                              const flatSubReplies = flatRepliesMap[r1.id] || [];
-                              const isExpanded1 = expandedComments[r1.id] || false;
+                            {visibleReplies.map((reply) => {
+                              const isNestedReply = reply.parent_id !== comment.id;
                               return (
-                                <React.Fragment key={r1.id}>
-                                  {/* Level 1 Reply */}
+                                <div key={reply.id} className={isNestedReply ? 'ml-3 pl-3 border-l border-border/60' : ''}>
                                   <CommentNode
-                                    comment={r1}
-                                    depth={1}
+                                    comment={reply}
                                     currentUserId={currentUserId}
                                     onLikeComment={handleLikeComment}
                                     onDeleteComment={handleDeleteComment}
@@ -783,97 +782,12 @@ export function PostCard({ post, onLikeToggle, onDelete }: PostCardProps) {
                                     parseLinks={parseLinks}
                                     t={t}
                                   />
-
-                                  {/* Level 1 Toggle Button */}
-                                  {r1.replies_count > 0 && (
-                                    <div className="ml-10 mt-1">
-                                      {!isExpanded1 ? (
-                                        <button
-                                          onClick={() => {
-                                            setExpandedComments(prev => ({ ...prev, [r1.id]: true }));
-                                            if (!repliesData[r1.id]) {
-                                              fetchReplies(r1.id);
-                                            }
-                                          }}
-                                          className="text-[11px] text-brand hover:underline font-bold flex items-center gap-1.5 cursor-pointer"
-                                          disabled={loadingReplies[r1.id]}
-                                        >
-                                          {loadingReplies[r1.id] && <Loader2 className="w-3 h-3 animate-spin" />}
-                                          {t('socialPost.viewReplies').replace('{count}', String(r1.replies_count))}
-                                        </button>
-                                      ) : (
-                                        <button
-                                          onClick={() => setExpandedComments(prev => ({ ...prev, [r1.id]: false }))}
-                                          className="text-[11px] text-muted-foreground hover:underline font-bold flex items-center gap-1 cursor-pointer"
-                                        >
-                                          {t('socialPost.hideReplies')}
-                                        </button>
-                                      )}
-                                    </div>
-                                  )}
-                                  
-                                  {/* Level 2+ Sub-Replies Container (Flattened from Level 2 onwards) */}
-                                  {isExpanded1 && flatSubReplies.length > 0 && (
-                                    <div className="space-y-3 ml-3 pl-3 border-l border-border/60 mt-2">
-                                      {flatSubReplies.map((r2) => {
-                                        const isExpanded2 = expandedComments[r2.id] || false;
-                                        return (
-                                          <React.Fragment key={r2.id}>
-                                            <CommentNode
-                                              comment={r2}
-                                              depth={2}
-                                              currentUserId={currentUserId}
-                                              onLikeComment={handleLikeComment}
-                                              onDeleteComment={handleDeleteComment}
-                                              activeReplyId={activeReplyId}
-                                              setActiveReplyId={setActiveReplyId}
-                                              replyText={replyText}
-                                              setReplyText={setReplyText}
-                                              isSendingReply={isSendingReply}
-                                              onSendReply={handleSendReply}
-                                              formatTime={formatTime}
-                                              parseLinks={parseLinks}
-                                              t={t}
-                                            />
-
-                                            {/* Level 2+ Toggle Button */}
-                                            {r2.replies_count > 0 && (
-                                              <div className="ml-10 mt-1">
-                                                {!isExpanded2 ? (
-                                                  <button
-                                                    onClick={() => {
-                                                      setExpandedComments(prev => ({ ...prev, [r2.id]: true }));
-                                                      if (!repliesData[r2.id]) {
-                                                        fetchReplies(r2.id);
-                                                      }
-                                                    }}
-                                                    className="text-[11px] text-brand hover:underline font-bold flex items-center gap-1.5 cursor-pointer"
-                                                    disabled={loadingReplies[r2.id]}
-                                                  >
-                                                    {loadingReplies[r2.id] && <Loader2 className="w-3 h-3 animate-spin" />}
-                                                    {t('socialPost.viewReplies').replace('{count}', String(r2.replies_count))}
-                                                  </button>
-                                                ) : (
-                                                  <button
-                                                    onClick={() => setExpandedComments(prev => ({ ...prev, [r2.id]: false }))}
-                                                    className="text-[11px] text-muted-foreground hover:underline font-bold flex items-center gap-1 cursor-pointer"
-                                                  >
-                                                    {t('socialPost.hideReplies')}
-                                                  </button>
-                                                )}
-                                              </div>
-                                            )}
-                                          </React.Fragment>
-                                        );
-                                      })}
-                                    </div>
-                                  )}
-                                </React.Fragment>
+                                </div>
                               );
                             })}
                           </div>
                         )}
-                      </React.Fragment>
+                      </div>
                     );
                   })}
                 </div>
