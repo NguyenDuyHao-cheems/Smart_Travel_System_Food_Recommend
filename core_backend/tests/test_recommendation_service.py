@@ -18,8 +18,7 @@ class DummyCandidate:
 @pytest.mark.asyncio
 async def test_recommend_no_candidates_returns_empty():
     db = MagicMock()
-    with patch("app.services.recommendation_service.get_user_allergies", return_value=[]), \
-         patch("app.services.recommendation_service.get_user_preferences_vector", return_value=None), \
+    with patch("app.services.recommendation_service.get_user_recommendation_context", return_value=([], None)), \
          patch("app.services.recommendation_service.RetrievalService") as mock_retrieval_cls:
          
         mock_retrieval = MagicMock()
@@ -40,8 +39,7 @@ async def test_recommend_few_candidates_skips_rerank():
         DummyCandidate(id="1", distance=0.1),
         DummyCandidate(id="2", distance=0.15)
     ]
-    with patch("app.services.recommendation_service.get_user_allergies", return_value=[]), \
-         patch("app.services.recommendation_service.get_user_preferences_vector", return_value=None), \
+    with patch("app.services.recommendation_service.get_user_recommendation_context", return_value=([], None)), \
          patch("app.services.recommendation_service.RetrievalService") as mock_retrieval_cls, \
          patch("app.services.recommendation_service.annotate_allergy", return_value=(candidates, 0)):
          
@@ -59,8 +57,7 @@ async def test_recommend_basic_mode_blends_saved_user_preferences():
     db = MagicMock()
     query_vector = [1.0, 1.0]
     user_vector = [0.0, 0.0]
-    with patch("app.services.recommendation_service.get_user_allergies", return_value=[]), \
-         patch("app.services.recommendation_service.get_user_preferences_vector", return_value=user_vector), \
+    with patch("app.services.recommendation_service.get_user_recommendation_context", return_value=([], user_vector)), \
          patch("app.services.recommendation_service.RetrievalService") as mock_retrieval_cls:
 
         mock_retrieval = MagicMock()
@@ -76,8 +73,7 @@ async def test_recommend_emotion_mode_ignores_saved_user_preferences_for_retriev
     db = MagicMock()
     query_vector = [1.0, 1.0]
     user_vector = [0.0, 0.0]
-    with patch("app.services.recommendation_service.get_user_allergies", return_value=[]), \
-         patch("app.services.recommendation_service.get_user_preferences_vector", return_value=user_vector) as mock_preferences, \
+    with patch("app.services.recommendation_service.get_user_recommendation_context", return_value=([], None)) as mock_context, \
          patch("app.services.recommendation_service.RetrievalService") as mock_retrieval_cls:
 
         mock_retrieval = MagicMock()
@@ -92,7 +88,7 @@ async def test_recommend_emotion_mode_ignores_saved_user_preferences_for_retriev
             search_mode="emotion",
         )
 
-        mock_preferences.assert_not_called()
+        mock_context.assert_called_once_with(db, "user-1", include_preferences=False)
         assert mock_retrieval.get_candidates.call_args.kwargs["query_vector"] == query_vector
 
 @pytest.mark.asyncio
@@ -102,8 +98,7 @@ async def test_recommend_few_candidates_emotion_mode_applies_sentiment_before_sk
         DummyCandidate(id="negative", distance=0.12, rating_avg=4.0, total_reviews=80, sentiment_score=-0.8),
         DummyCandidate(id="positive", distance=0.14, rating_avg=4.0, total_reviews=80, sentiment_score=0.9),
     ]
-    with patch("app.services.recommendation_service.get_user_allergies", return_value=[]), \
-         patch("app.services.recommendation_service.get_user_preferences_vector", return_value=None), \
+    with patch("app.services.recommendation_service.get_user_recommendation_context", return_value=([], None)), \
          patch("app.services.recommendation_service.RetrievalService") as mock_retrieval_cls, \
          patch("app.services.recommendation_service.annotate_allergy", return_value=(candidates, 0)):
 
@@ -147,8 +142,7 @@ async def test_recommend_happy_path_with_rerank():
         def raise_for_status(self):
             pass
 
-    with patch("app.services.recommendation_service.get_user_allergies", return_value=[]), \
-         patch("app.services.recommendation_service.get_user_preferences_vector", return_value=None), \
+    with patch("app.services.recommendation_service.get_user_recommendation_context", return_value=([], None)), \
          patch("app.services.recommendation_service.RetrievalService") as mock_retrieval_cls, \
          patch("app.services.recommendation_service.annotate_allergy", return_value=(candidates, 0)), \
          patch("app.services.recommendation_service.FeatureService") as mock_feature_cls, \
@@ -206,8 +200,7 @@ async def test_recommend_emotion_mode_pre_ranks_before_lambdamart_without_post_o
         def raise_for_status(self):
             pass
 
-    with patch("app.services.recommendation_service.get_user_allergies", return_value=[]), \
-         patch("app.services.recommendation_service.get_user_preferences_vector", return_value=None), \
+    with patch("app.services.recommendation_service.get_user_recommendation_context", return_value=([], None)), \
          patch("app.services.recommendation_service.RetrievalService") as mock_retrieval_cls, \
          patch("app.services.recommendation_service.annotate_allergy", return_value=(candidates, 0)), \
          patch("app.services.recommendation_service.FeatureService") as mock_feature_cls, \
@@ -248,8 +241,7 @@ async def test_recommend_ai_engine_down_falls_back_gracefully():
         DummyCandidate(id="3", distance=0.2),
         DummyCandidate(id="4", distance=0.25)
     ]
-    with patch("app.services.recommendation_service.get_user_allergies", return_value=[]), \
-         patch("app.services.recommendation_service.get_user_preferences_vector", return_value=None), \
+    with patch("app.services.recommendation_service.get_user_recommendation_context", return_value=([], None)), \
          patch("app.services.recommendation_service.RetrievalService") as mock_retrieval_cls, \
          patch("app.services.recommendation_service.annotate_allergy", return_value=(candidates, 0)), \
          patch("app.services.recommendation_service.FeatureService") as mock_feature_cls, \

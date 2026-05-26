@@ -201,6 +201,7 @@ function HomeContent() {
   }, [healthStatus, checkHealth]);
 
   const abortControllerRef = React.useRef<AbortController | null>(null);
+  const searchStartedAtRef = React.useRef<number | null>(null);
 
   const handleCancelSearch = () => {
     if (abortControllerRef.current) {
@@ -208,6 +209,7 @@ function HomeContent() {
       abortControllerRef.current = null;
     }
     setIsSearching(false);
+    searchStartedAtRef.current = null;
   };
 
   /* ── Search handler — GPS fallback, no reject ── */
@@ -215,6 +217,7 @@ function HomeContent() {
     const finalQuery = (overrideQuery ?? query).trim();
     if (!finalQuery) return;
 
+    searchStartedAtRef.current = performance.now();
     setIsSearching(true);
     setApiError(null);
 
@@ -264,6 +267,9 @@ function HomeContent() {
 
       if (res.ok) {
         const data = await res.json();
+        const elapsedMs = searchStartedAtRef.current === null
+          ? null
+          : Math.round(performance.now() - searchStartedAtRef.current);
         if (userId) {
           historyService.addHistory(
             userId,
@@ -279,6 +285,10 @@ function HomeContent() {
         if (typeof window !== 'undefined') {
           sessionStorage.setItem('current_search_session_id', data.session_id);
           sessionStorage.setItem('current_search_mode', searchMode);
+          if (elapsedMs !== null) {
+            sessionStorage.setItem('current_search_elapsed_ms', String(elapsedMs));
+            sessionStorage.setItem(`search_elapsed_ms_${data.session_id}`, String(elapsedMs));
+          }
         }
         const params = new URLSearchParams();
         params.set("q", finalQuery);
@@ -339,7 +349,13 @@ function HomeContent() {
         )}
 
         {/* ── Loading overlay ── */}
-        {isSearching && <SearchLoadingOverlay message={searchLoadingMsg} onCancel={handleCancelSearch} />}
+        {isSearching && (
+          <SearchLoadingOverlay
+            message={searchLoadingMsg}
+            onCancel={handleCancelSearch}
+            startedAt={searchStartedAtRef.current ?? undefined}
+          />
+        )}
 
         {/* ── Hero Section ── */}
         <section

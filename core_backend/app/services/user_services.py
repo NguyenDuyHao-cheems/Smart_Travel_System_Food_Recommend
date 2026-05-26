@@ -1,10 +1,58 @@
 import logging
-from typing import List, Optional
+from typing import List, Optional, Tuple
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
+from app.domains.users.models import UserOnboarding, UserAccount
 from app.domains.users.repository import UserOnboardingRepository, UserAccountRepository
 
 logger = logging.getLogger(__name__)
+
+
+def get_user_recommendation_context(
+    db: Session,
+    user_id: str,
+    include_preferences: bool = True,
+) -> Tuple[List[str], Optional[List[float]]]:
+    """Load allergy and personalization context with one database roundtrip."""
+    try:
+        if include_preferences:
+            record = (
+                db.query(
+                    UserOnboarding.allergies,
+                    UserAccount.preferences_vector,
+                    UserOnboarding.preferences_vector,
+                )
+                .select_from(UserAccount)
+                .outerjoin(UserOnboarding, UserOnboarding.user_id == UserAccount.id)
+                .filter(UserAccount.id == user_id)
+                .first()
+            )
+        else:
+            record = (
+                db.query(UserOnboarding.allergies)
+                .filter(UserOnboarding.user_id == user_id)
+                .first()
+            )
+
+        if not record:
+            return [], None
+
+        allergies = record[0] or []
+        if isinstance(allergies, str):
+            allergies = [a.strip() for a in allergies.split(",")]
+
+        if not include_preferences:
+            return allergies, None
+
+        preferences_vector = record[1] if record[1] is not None else record[2]
+        return allergies, list(preferences_vector) if preferences_vector is not None else None
+
+    except SQLAlchemyError as e:
+        logger.error(f"Database error in get_user_recommendation_context for user {user_id}: {e}")
+        raise
+    except Exception as e:
+        logger.exception(f"Unexpected error in get_user_recommendation_context for user {user_id}: {e}")
+        return [], None
 
 
 def get_user_allergies(db: Session, user_id: str) -> List[str]:

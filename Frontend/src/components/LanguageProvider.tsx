@@ -607,6 +607,7 @@ const translations = {
       gpsRequiredError: "Không thể xác định vị trí thực tế của bạn. Vui lòng kiểm tra quyền truy cập GPS để tiếp tục.",
       aiConnectionError: "Không thể kết nối với hệ thống AI.",
       aiConnectionRetry: "Lỗi kết nối AI. Vui lòng thử lại.",
+      searchElapsed: "Thời gian tìm kiếm",
     },
     socialPost: {
       loginRequired: "Vui lòng đăng nhập.",
@@ -1494,6 +1495,7 @@ const translations = {
       gpsRequiredError: "Unable to determine your physical location. Please check GPS permission to continue.",
       aiConnectionError: "Could not connect to the AI system.",
       aiConnectionRetry: "AI connection error. Please try again.",
+      searchElapsed: "Search time",
     },
     socialPost: {
       loginRequired: "Please log in.",

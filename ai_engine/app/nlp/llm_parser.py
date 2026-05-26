@@ -7,12 +7,40 @@ Fix #7: Dùng system_instruction field để tách prompt khỏi user input (tr�
 
 import json
 import logging
+import re
 import httpx
 from typing import Tuple, List, Optional
 from fastapi import Request
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
+
+
+def _safe_for_log(value: object) -> str:
+    """Return a credential-redacted ASCII representation safe for log handlers."""
+    redacted = re.sub(
+        r"([?&]key=)[^&\s'\"\\]+",
+        r"\1[REDACTED]",
+        str(value),
+        flags=re.IGNORECASE,
+    )
+    return ascii(redacted)
+
+
+def _log_gemini_failure(exc: Exception) -> None:
+    """Log safe failure metadata without exposing request URLs or API keys."""
+    if isinstance(exc, httpx.HTTPStatusError) and exc.response is not None:
+        logger.warning(
+            "Gemini API failed (HTTP %s); falling back to original text",
+            exc.response.status_code,
+        )
+        return
+
+    logger.warning(
+        "Gemini API failed (%s); falling back to original text",
+        type(exc).__name__,
+    )
+
 
 # ---------------------------------------------------------------------------
 # Gemini API URL template — model name is configurable via settings
@@ -89,14 +117,24 @@ async def clean_query_with_gemini(text: str, request: Optional[Request] = None) 
         str: Câu truy vấn đã được làm sạch. Nếu Gemini fail → trả về text gốc.
     """
     normalized_text = text.strip().lower()
-    print(f"[QUERY CACHE CHECK] query: '{text}' (normalized: '{normalized_text}')")
+    logger.debug(
+        "Query cache check: query=%s normalized=%s",
+        _safe_for_log(text),
+        _safe_for_log(normalized_text),
+    )
     if normalized_text in _query_cache:
         cached_val = _query_cache[normalized_text]
-        print(f"[QUERY CACHE HIT] returning cached value: '{cached_val}'")
-        logger.info("Query cache hit: '%s' → '%s'", text, cached_val)
+        logger.info(
+            "Query cache hit: %s -> %s",
+            _safe_for_log(text),
+            _safe_for_log(cached_val),
+        )
         return cached_val
 
-    print(f"[QUERY CACHE MISS] cache keys: {list(_query_cache.keys())} - calling Gemini API...")
+    logger.debug(
+        "Query cache miss: cache_keys=%s; calling Gemini API",
+        _safe_for_log(list(_query_cache.keys())),
+    )
     # --- Thử gọi Gemini trước ---
     if settings.GEMINI_API_KEY:
         try:
@@ -107,12 +145,16 @@ async def clean_query_with_gemini(text: str, request: Optional[Request] = None) 
             result = await _call_gemini(text, request)
             if result is not None:
                 _query_cache[normalized_text] = result
-                print(f"[QUERY CACHE SAVE] cached: '{normalized_text}' → '{result}'")
+                logger.debug(
+                    "Query cache save: %s -> %s",
+                    _safe_for_log(normalized_text),
+                    _safe_for_log(result),
+                )
                 return result
         except Exception as e:
-            logger.warning("Gemini API failed, falling back to original text: %s", e)
+            _log_gemini_failure(e)
     else:
-        logger.warning("GEMINI_API_KEY chưa được cấu hình, sử dụng original text fallback")
+        logger.warning("GEMINI_API_KEY is not configured; using original text fallback")
 
     # --- Fallback: dùng original text ---
     return text
@@ -176,5 +218,9 @@ async def _call_gemini(text: str, request: Optional[Request] = None) -> Optional
     if not cleaned:
         return None
     
-    logger.info("Query cleaned: '%s' → '%s'", text, cleaned)
+    logger.info(
+        "Query cleaned: %s -> %s",
+        _safe_for_log(text),
+        _safe_for_log(cleaned),
+    )
     return cleaned

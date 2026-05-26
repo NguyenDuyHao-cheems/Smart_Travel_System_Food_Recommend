@@ -934,8 +934,10 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
 
   const [isSearching, setIsSearching] = useState(false);
   const [searchLoadingMsg, setSearchLoadingMsg] = useState(t('result.loadingAnalyzing'));
+  const [lastSearchElapsedMs, setLastSearchElapsedMs] = useState<number | null>(null);
 
   const abortControllerRef = useRef<AbortController | null>(null);
+  const searchStartedAtRef = useRef<number | null>(null);
   const mapDragRef = useRef(false);
 
   const handleCancelSearch = () => {
@@ -944,7 +946,14 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
       abortControllerRef.current = null;
     }
     setIsSearching(false);
+    searchStartedAtRef.current = null;
   };
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !sessionIdFromUrl) return;
+    const storedElapsed = sessionStorage.getItem(`search_elapsed_ms_${sessionIdFromUrl}`);
+    setLastSearchElapsedMs(storedElapsed ? Number(storedElapsed) : null);
+  }, [sessionIdFromUrl]);
 
   useEffect(() => {
     if (!sessionIdFromUrl) {
@@ -1050,6 +1059,7 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
 
     if (finalQuery === '') return;
 
+    searchStartedAtRef.current = performance.now();
     setIsSearching(true);
     setApiError(null);
 
@@ -1104,6 +1114,10 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
 
       if (res.ok) {
         const data = await res.json();
+        const elapsedMs = searchStartedAtRef.current === null
+          ? null
+          : Math.round(performance.now() - searchStartedAtRef.current);
+        setLastSearchElapsedMs(elapsedMs);
         if (userId) {
           historyService.addHistory(
             userId,
@@ -1119,6 +1133,10 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
         if (typeof window !== 'undefined') {
           sessionStorage.setItem('current_search_session_id', data.session_id);
           sessionStorage.setItem('current_search_mode', searchMode);
+          if (elapsedMs !== null) {
+            sessionStorage.setItem('current_search_elapsed_ms', String(elapsedMs));
+            sessionStorage.setItem(`search_elapsed_ms_${data.session_id}`, String(elapsedMs));
+          }
           sessionStorage.setItem(`session_data_${data.session_id}`, JSON.stringify({
             query: finalQuery,
             results: data.results || [],
@@ -1338,7 +1356,13 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
 
   return (
     <AppShell>
-      {isSearching && <SearchLoadingOverlay message={searchLoadingMsg} onCancel={handleCancelSearch} />}
+      {isSearching && (
+        <SearchLoadingOverlay
+          message={searchLoadingMsg}
+          onCancel={handleCancelSearch}
+          startedAt={searchStartedAtRef.current ?? undefined}
+        />
+      )}
       {mounted && mapFloatingButton}
 
       {!mapViewEnabled && (
@@ -1508,6 +1532,11 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
                     <button onClick={() => router.push('/')} className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-brand transition-colors">
                       <Home className="w-4 h-4" /> {t('result.backHome')}
                     </button>
+                    {lastSearchElapsedMs !== null && (
+                      <span className="inline-flex items-center rounded-full border border-brand/20 bg-brand/5 px-3 py-1 text-xs font-semibold text-brand dark:text-[#E8735A]">
+                        {t('result.searchElapsed')}: {lastSearchElapsedMs.toLocaleString()} ms ({(lastSearchElapsedMs / 1000).toFixed(3)} s)
+                      </span>
+                    )}
                   </div>
                   <div className="relative group flex">
                     <SearchBar
