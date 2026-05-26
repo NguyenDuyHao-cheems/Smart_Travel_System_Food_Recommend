@@ -813,24 +813,7 @@ function ResultPageContent() {
     }
   }, [searchParams]);
 
-  useEffect(() => {
-    if (mapViewEnabled) {
-      const handleResize = () => {
-        if (window.innerWidth >= 1280) {
-          document.body.style.overflow = 'hidden';
-        } else {
-          document.body.style.overflow = '';
-        }
-      };
-      
-      handleResize();
-      window.addEventListener('resize', handleResize);
-      return () => {
-        document.body.style.overflow = '';
-        window.removeEventListener('resize', handleResize);
-      };
-    }
-  }, [mapViewEnabled]);
+
 
   const [collectionModalItem, setCollectionModalItem] = useState<RecommendResult | null>(null);
 
@@ -1429,11 +1412,7 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
         </div>
       )}
 
-      <div className={`max-w-7xl mx-auto px-4 md:px-8 w-full flex flex-col lg:flex-row gap-0 lg:gap-8 items-start ${
-        mapViewEnabled
-          ? 'xl:h-[calc(100vh-64px)] xl:py-4 xl:overflow-hidden py-8 md:py-12'
-          : 'py-8 md:py-12'
-      }`}>
+      <div className="max-w-7xl mx-auto px-4 md:px-8 w-full flex flex-col lg:flex-row gap-0 lg:gap-8 items-start py-8 md:py-12">
         {/* Left Sidebar for Filters (Collapsible) */}
         <div className={`transition-all duration-300 overflow-hidden flex-shrink-0 ${isAdvancedFiltersOpen ? 'w-full lg:w-[320px] opacity-100 mb-8 lg:mb-0' : 'w-0 opacity-0 h-0 lg:h-auto'}`}>
           <div className="lg:sticky lg:top-24 w-full lg:w-[320px]">
@@ -1564,8 +1543,8 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
                   </button>
                 </motion.div>
               ) : mapViewEnabled ? (
-                <div className={`flex flex-col xl:flex-row gap-6 items-stretch ${mapViewEnabled ? 'xl:flex-1 xl:h-0 xl:min-h-0' : 'min-h-[calc(100vh-12rem)]'}`}>
-                  <div className={`w-full xl:w-[450px] xl:shrink-0 flex flex-col gap-4 ${mapViewEnabled ? 'xl:h-full xl:min-h-0' : ''}`}>
+                <div className="flex flex-col xl:flex-row gap-6 items-stretch min-h-[calc(100vh-12rem)] w-full">
+                  <div className="w-full xl:w-[450px] xl:shrink-0 flex flex-col gap-4">
                     {results.length === 0 ? (
                       <div className="py-16 text-center bg-white dark:bg-[#3D312A] rounded-3xl border border-gray-100 dark:border-[#4D3D32] shadow-sm">
                         <div className="w-16 h-16 bg-gray-50 dark:bg-[#2A2420] rounded-full flex items-center justify-center mx-auto mb-5">
@@ -1639,7 +1618,7 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
                         )}
 
                         {/* Vertical list of restaurants */}
-                        <div className={`flex flex-col gap-5 overflow-y-auto pr-1 scrollbar-thin ${mapViewEnabled ? 'xl:flex-1 xl:h-0 xl:min-h-0' : 'max-h-[70vh]'}`}>
+                        <div className="flex flex-col gap-5 pr-1">
                           {displayResults.map((item, idx) => (
                             <div
                               key={item.id || idx}
@@ -1666,7 +1645,7 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
                       </>
                     )}
                   </div>
-                  <div className={`w-full xl:flex-1 order-first xl:order-none ${mapViewEnabled ? 'xl:h-full' : 'h-[600px] xl:h-[750px] xl:sticky xl:top-24'}`}>
+                  <div className="w-full xl:flex-1 order-first xl:order-none xl:sticky xl:top-24 xl:h-[calc(100vh-120px)] h-[600px]">
                     <ResultMapView
                       results={displayResults}
                       fallbackCenter={fallbackMapCenter}
