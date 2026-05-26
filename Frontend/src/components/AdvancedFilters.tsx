@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { SlidersHorizontal, Star, Leaf, DollarSign, RotateCcw, Tag, X } from 'lucide-react';
 import { useLanguage } from './LanguageProvider';
+import { translateRestaurantTag } from '../lib/recommendationText';
 
 export interface AdvancedFilterState {
   minPrice: number | null;
@@ -64,45 +65,6 @@ const TAG_GROUP_LABELS_EN: Record<string, string> = {
   'Khác': 'Other',
 };
 
-const TAG_LABELS_EN: Record<string, string> = {
-  'gà': 'chicken',
-  'bò': 'beef',
-  'heo': 'pork',
-  'cơm': 'rice',
-  'cháo': 'porridge',
-  'phở': 'pho',
-  'bún': 'vermicelli',
-  'mì': 'noodles',
-  'lẩu': 'hotpot',
-  'hải sản': 'seafood',
-  'nướng': 'grill',
-  'trà sữa': 'milk tea',
-  'cà phê': 'coffee',
-  'đồ uống': 'drinks',
-  'tráng miệng': 'dessert',
-  'món chay': 'vegetarian',
-  'ăn sáng': 'breakfast',
-  'ăn trưa': 'lunch',
-  'ăn tối': 'dinner',
-  'ăn vặt': 'snacks',
-  'ăn khuya': 'late-night',
-  'đánh giá cao': 'highly rated',
-  'nhiều đánh giá': 'many reviews',
-  'giá rẻ': 'budget',
-  'tầm trung': 'mid-range',
-  'cao cấp': 'premium',
-  'chiên': 'fried',
-  'fastfood': 'fast food',
-  'xào': 'stir-fried',
-  'mì xào': 'fried noodles',
-  'hấp': 'steamed',
-  'luộc': 'boiled',
-  'trộn': 'mixed',
-  'gỏi': 'salad',
-  'salad': 'salad',
-  'chay': 'vegetarian',
-};
-
 function getTagEmoji(tagName: string): string {
   return TAG_EMOJI_MAP[tagName.toLowerCase()] || '✨';
 }
@@ -134,7 +96,7 @@ export function AdvancedFilters({
   const [localIsOpen, setLocalIsOpen] = useState(false);
   const isOpen = externalIsOpen !== undefined ? externalIsOpen : localIsOpen;
   const labelForGroup = (label: string) => language === 'en' ? TAG_GROUP_LABELS_EN[label] || label : label;
-  const labelForTag = (tag: string) => language === 'en' ? TAG_LABELS_EN[tag.toLowerCase()] || tag : tag;
+  const labelForTag = (tag: string) => translateRestaurantTag(tag, language);
 
   const toggleOpen = () => {
     if (onToggle) {

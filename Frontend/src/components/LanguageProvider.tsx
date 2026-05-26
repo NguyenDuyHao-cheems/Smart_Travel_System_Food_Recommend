@@ -345,6 +345,8 @@ const translations = {
       deleteStory: "Xóa Story",
       viewers: "Người xem",
       noViewers: "Chưa có ai xem Story này.",
+      deleteConfirm: "Bạn có chắc chắn muốn xóa Story này?",
+      reactionSent: "Đã gửi cảm xúc {emoji}",
     },
     luckyWheelPage: {
       serverError: "Không thể kết nối đến máy chủ.",
@@ -687,6 +689,26 @@ const translations = {
       longitude: "Kinh độ (Longitude)",
       cancel: "Hủy",
       manualUpdate: "Cập nhật thủ công",
+      mapAttribution: "Dữ liệu bản đồ & địa chỉ",
+    },
+    surveyModal: {
+      close: "Đóng khảo sát",
+      title: "Chào mừng đến Wanderbite! 🍜",
+      description: "Cho chúng tôi biết thêm về bạn để AI gợi ý chính xác hơn nhé!",
+      underConstruction: "🚧 Khảo sát đang được xây dựng",
+      comingSoon: "Tính năng đầy đủ sẽ sớm ra mắt!",
+      skip: "Bỏ qua",
+      start: "Bắt đầu khám phá! ✨",
+    },
+    simpleHeader: {
+      back: "Quay lại",
+      notifications: "Thông báo",
+      support: "Hỗ trợ",
+    },
+    aiPersonalized: {
+      askAi: "✨ Hỏi Wanderbite AI",
+      title: "AI gợi ý cho bạn",
+      viewDetails: "Xem chi tiết",
     },
     interactiveMap: {
       notFound: "Không tìm thấy địa điểm này. Vui lòng thử tìm kiếm khác!",
@@ -1233,6 +1255,8 @@ const translations = {
       deleteStory: "Delete Story",
       viewers: "Viewers",
       noViewers: "No one has viewed this Story yet.",
+      deleteConfirm: "Are you sure you want to delete this Story?",
+      reactionSent: "Reaction sent {emoji}",
     },
     luckyWheelPage: {
       serverError: "Unable to connect to the server.",
@@ -1575,6 +1599,26 @@ const translations = {
       longitude: "Longitude",
       cancel: "Cancel",
       manualUpdate: "Manual update",
+      mapAttribution: "Map and address data",
+    },
+    surveyModal: {
+      close: "Close survey",
+      title: "Welcome to Wanderbite! 🍜",
+      description: "Tell us more about you so AI can make more accurate recommendations!",
+      underConstruction: "🚧 Survey under construction",
+      comingSoon: "The full feature is coming soon!",
+      skip: "Skip",
+      start: "Start exploring! ✨",
+    },
+    simpleHeader: {
+      back: "Back",
+      notifications: "Notifications",
+      support: "Support",
+    },
+    aiPersonalized: {
+      askAi: "✨ Ask Wanderbite AI",
+      title: "AI picks for you",
+      viewDetails: "View details",
     },
     interactiveMap: {
       notFound: "Could not find this place. Please try another search.",

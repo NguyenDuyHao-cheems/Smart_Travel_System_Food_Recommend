@@ -7,7 +7,7 @@ export interface WeatherInfo {
   isRaining: boolean;
   rainMm: number;           // mm of rain (0 if none)
   weatherCode: number;      // WMO weather code
-  description: string;      // human-readable Vietnamese description
+  description: string;      // human-readable localized description
   source: 'openweathermap' | 'open-meteo';
 }
 
@@ -16,7 +16,18 @@ type WeatherMap = Record<string, WeatherInfo>;
 /* ──────────────────────────────────────────────
    WMO Weather Code → Vietnamese description
 ────────────────────────────────────────────── */
-function wmoDescription(code: number): string {
+function wmoDescription(code: number, language: 'vi' | 'en' = 'vi'): string {
+  if (language === 'en') {
+    if (code <= 3) return 'Clear sky';
+    if (code <= 48) return 'Foggy';
+    if (code <= 57) return 'Drizzle';
+    if (code <= 67) return 'Rain';
+    if (code <= 77) return 'Snow';
+    if (code <= 82) return 'Rain showers';
+    if (code <= 86) return 'Snow showers';
+    if (code <= 99) return 'Thunderstorm';
+    return 'Unknown';
+  }
   if (code <= 3) return 'Trời quang';
   if (code <= 48) return 'Có sương mù';
   if (code <= 57) return 'Mưa phùn';
@@ -144,7 +155,7 @@ interface Coordinate {
   lng?: number;
 }
 
-export function useWeather(coords: Coordinate[]): {
+export function useWeather(coords: Coordinate[], language: 'vi' | 'en' = 'vi'): {
   weatherMap: WeatherMap;
   loading: boolean;
   error: string | null;
@@ -182,7 +193,12 @@ export function useWeather(coords: Coordinate[]): {
           if (cancelled) return;
           const promises = chunk.map(async (c) => {
             const weather = await fetchWeather(c.lat!, c.lng!);
-            return { id: c.id, weather };
+            return {
+              id: c.id,
+              weather: language === 'en'
+                ? { ...weather, description: wmoDescription(weather.weatherCode, language) }
+                : weather,
+            };
           });
           const settled = await Promise.allSettled(promises);
           for (const result of settled) {
@@ -198,7 +214,7 @@ export function useWeather(coords: Coordinate[]): {
         }
       } catch (err) {
         if (!cancelled) {
-          setError('Không thể tải dữ liệu thời tiết');
+          setError(language === 'en' ? 'Unable to load weather data' : 'Không thể tải dữ liệu thời tiết');
           setLoading(false);
         }
       }
@@ -208,7 +224,7 @@ export function useWeather(coords: Coordinate[]): {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [coords.map((c) => `${c.id}:${c.lat}:${c.lng}`).join('|')]);
+  }, [coords.map((c) => `${c.id}:${c.lat}:${c.lng}`).join('|'), language]);
 
   return { weatherMap, loading, error };
 }

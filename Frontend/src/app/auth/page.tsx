@@ -68,7 +68,7 @@ function AuthPageContent() {
   // Hiển thị thông báo khi bị chuyển hướng do phiên đăng nhập hết hạn (?expired=1)
   useEffect(() => {
     if (searchParams && searchParams.get("expired") === "1") {
-      setErrorMsg(t("sessionExpiredAlert") || "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại!");
+      setErrorMsg(t("settings.sessionExpiredAlert"));
     }
   }, [searchParams, t]);
 
