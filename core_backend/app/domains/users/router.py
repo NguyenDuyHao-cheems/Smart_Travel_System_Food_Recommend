@@ -269,8 +269,15 @@ def get_current_user_profile(
         "🧘": BadgeProgress(unlocked=is_vegetarian, progress=1 if is_vegetarian else 0, target=1)
     }
 
-    if current_user.profile_stats:
-        unlocked_list = current_user.profile_stats.get("unlocked_badges", [])
+    stats = current_user.profile_stats
+    if isinstance(stats, str):
+        import json
+        try:
+            stats = json.loads(stats)
+        except Exception:
+            stats = {}
+    if stats:
+        unlocked_list = stats.get("unlocked_badges", [])
         for badgeIcon, info in badges_data.items():
             if badgeIcon in unlocked_list:
                 info.unlocked = True
@@ -390,6 +397,13 @@ def get_current_user_profile(
     favorites_count = db.query(UserFavorite).filter(UserFavorite.user_id == str(current_user.id)).count()
 
     stats = current_user.profile_stats
+    if isinstance(stats, str):
+        import json
+        try:
+            stats = json.loads(stats)
+        except Exception:
+            stats = None
+
     if stats is None:
         stats = initialize_profile_stats(db, current_user)
         # Sync unlocked badges right after initialization (exclude zen master "🧘" from database persistence)
@@ -593,6 +607,12 @@ def log_user_interaction(
             db_user = db.query(UserAccount).filter(UserAccount.id == current_user.id).first()
             if db_user:
                 stats = db_user.profile_stats
+                if isinstance(stats, str):
+                    import json
+                    try:
+                        stats = json.loads(stats)
+                    except Exception:
+                        stats = None
                 if stats is None:
                     stats = initialize_profile_stats(db, db_user)
                 
@@ -766,6 +786,7 @@ def create_collection(
     db: Session = Depends(get_db),
     current_user: UserAccount = Depends(get_current_user),
 ):
+    from sqlalchemy.exc import IntegrityError
     try:
         coll = UserCollection(
             user_id=str(current_user.id),
@@ -784,6 +805,9 @@ def create_collection(
             "updated_at": coll.updated_at,
             "items": []
         }
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Tên bộ sưu tập đã tồn tại. Vui lòng chọn tên khác.")
     except Exception as exc:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Failed to create collection: {exc}")

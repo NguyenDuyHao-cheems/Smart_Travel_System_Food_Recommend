@@ -1,10 +1,13 @@
 from datetime import datetime, timezone
 import uuid
 from sqlalchemy import Column, String, Integer, JSON, DateTime, event, DDL, ForeignKey, Boolean, UniqueConstraint, UUID
+from sqlalchemy.dialects.postgresql import JSONB
 from app.core.database import Base
 from pgvector.sqlalchemy import Vector
 from sqlalchemy.ext.compiler import compiles
 from app.core.config import settings
+
+JSONVariant = JSON().with_variant(JSONB(), "postgresql")
 
 
 @compiles(Vector, "sqlite")
@@ -79,7 +82,7 @@ class UserAccount(Base):
     password_hash = Column(String, nullable=False)
     preferences_vector = Column(Vector(settings.VECTOR_DIM), nullable=True)
     allergies = Column(JSON, nullable=True)
-    profile_stats = Column(JSON, nullable=True)
+    profile_stats = Column(JSONVariant, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc),
                         onupdate=lambda: datetime.now(timezone.utc))
