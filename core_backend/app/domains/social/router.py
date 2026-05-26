@@ -4,7 +4,7 @@ from typing import List
 from app.core.dependencies import get_db
 from app.core.dependencies import get_current_user, get_optional_current_user
 from app.domains.users.models import UserAccount
-from .schemas import SocialPostCreate, SocialPostResponse, StoryCreate, StoryResponse, StoryViewCreate, StoryViewerItem
+from .schemas import SocialPostCreate, SocialPostResponse, SocialPostUpdate, StoryCreate, StoryResponse, StoryViewCreate, StoryViewerItem
 from .service import SocialService
 
 router = APIRouter()
@@ -17,6 +17,16 @@ def create_post(
 ):
     service = SocialService(db)
     return service.create_post(current_user.id, post_data)
+
+@router.patch("/posts/{post_id}", response_model=SocialPostResponse)
+def update_post(
+    post_id: str,
+    post_data: SocialPostUpdate,
+    db: Session = Depends(get_db),
+    current_user: UserAccount = Depends(get_current_user)
+):
+    service = SocialService(db)
+    return service.update_post(post_id, str(current_user.id), post_data)
 
 @router.post("/stories", response_model=StoryResponse)
 def create_story(
@@ -78,12 +88,13 @@ def get_feed(
 @router.get("/posts/{post_id}/thread", response_model=List[SocialPostResponse])
 def get_post_thread(
     post_id: str,
+    include_descendants: bool = Query(False),
     db: Session = Depends(get_db),
     current_user: UserAccount = Depends(get_optional_current_user)
 ):
     service = SocialService(db)
     user_id = current_user.id if current_user else None
-    return service.get_post_thread(post_id, user_id)
+    return service.get_post_thread(post_id, user_id, include_descendants)
 
 @router.post("/users/{user_id}/follow")
 def toggle_follow(

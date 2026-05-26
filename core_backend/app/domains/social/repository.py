@@ -17,6 +17,21 @@ class SocialRepository:
     def get_post_by_id(self, post_id: str) -> Optional[SocialPost]:
         return self.db.query(SocialPost).options(joinedload(SocialPost.restaurant)).filter(SocialPost.id == post_id).first()
 
+    def get_post_with_user_by_id(self, post_id: str) -> Optional[tuple]:
+        return self.db.query(SocialPost, UserAccount).join(
+            UserAccount, SocialPost.user_id == UserAccount.id
+        ).options(
+            joinedload(SocialPost.restaurant)
+        ).filter(
+            SocialPost.id == post_id
+        ).first()
+
+    def update_post_content(self, post: SocialPost, content: str) -> SocialPost:
+        post.content = content
+        self.db.commit()
+        self.db.refresh(post)
+        return post
+
     def get_feed(self, user_id: str, limit: int = 20, offset: int = 0, mode: str = "for_you") -> List[tuple]:
         query = self.db.query(SocialPost, UserAccount).join(
             UserAccount, SocialPost.user_id == UserAccount.id
@@ -48,6 +63,35 @@ class SocialRepository:
         ).filter(
             SocialPost.parent_id == post_id
         ).order_by(SocialPost.created_at.asc()).limit(limit).all()
+
+    def get_descendant_replies(self, post_id: str) -> List[tuple]:
+        children_by_parent: dict[str, List[tuple]] = {}
+        pending_parent_ids = [post_id]
+        while pending_parent_ids:
+            replies = self.db.query(SocialPost, UserAccount).join(
+                UserAccount, SocialPost.user_id == UserAccount.id
+            ).options(
+                joinedload(SocialPost.restaurant)
+            ).filter(
+                SocialPost.parent_id.in_(pending_parent_ids)
+            ).order_by(SocialPost.created_at.asc()).all()
+            if not replies:
+                break
+
+            pending_parent_ids = []
+            for reply in replies:
+                post = reply[0]
+                children_by_parent.setdefault(str(post.parent_id), []).append(reply)
+                pending_parent_ids.append(str(post.id))
+
+        flattened: List[tuple] = []
+        def append_children(parent_id: str):
+            for reply in children_by_parent.get(parent_id, []):
+                flattened.append(reply)
+                append_children(str(reply[0].id))
+
+        append_children(post_id)
+        return flattened
 
     def count_replies_batch(self, post_ids: List[str]) -> dict:
         if not post_ids:

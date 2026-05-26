@@ -157,11 +157,10 @@ export default function FeedPage() {
               </div>
             ) : (
               <div className="space-y-4">
-                {posts.map((post, idx) => (
+                {posts.map((post) => (
                   <div
                     key={post.id}
                     className="animate-fade-in-up"
-                    style={{ animationDelay: `${idx * 0.08}s` }}
                   >
                     <PostCard 
                       post={post} 

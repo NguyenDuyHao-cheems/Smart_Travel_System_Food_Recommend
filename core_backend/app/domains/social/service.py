@@ -6,7 +6,7 @@ from urllib.parse import parse_qs, unquote, urlparse
 from cachetools import TTLCache
 
 from .models import SocialPost, SocialFollow, SocialLike, SocialNotification, SocialStory, SocialStoryView
-from .schemas import SocialPostCreate, SocialPostResponse, StoryCreate, StoryResponse, StoryViewCreate, StoryViewerItem
+from .schemas import SocialPostCreate, SocialPostResponse, SocialPostUpdate, StoryCreate, StoryResponse, StoryViewCreate, StoryViewerItem
 from .repository import SocialRepository
 
 preview_cache = TTLCache(maxsize=1000, ttl=86400)
@@ -128,13 +128,32 @@ class SocialService:
     def get_feed(self, user_id: str, limit: int = 20, offset: int = 0, mode: str = "for_you") -> list[SocialPostResponse]:
         results = self.repo.get_feed(user_id, limit, offset, mode)
         return self._format_post_results(results, current_user_id=user_id)
-        
-    def get_post_thread(self, post_id: str, current_user_id: str = None) -> list[SocialPostResponse]:
+
+    def update_post(self, post_id: str, current_user_id: str, post_data: SocialPostUpdate) -> SocialPostResponse:
         post = self.repo.get_post_by_id(post_id)
         if not post:
             raise HTTPException(status_code=404, detail="Post not found")
-            
-        replies = self.repo.get_replies(post_id)
+        if str(post.user_id) != current_user_id:
+            raise HTTPException(status_code=403, detail="Not authorized to edit this post")
+
+        content = post_data.content.strip()
+        if not content:
+            raise HTTPException(status_code=422, detail="Content cannot be empty")
+
+        self.repo.update_post_content(post, content)
+        result = self.repo.get_post_with_user_by_id(post_id)
+        return self._format_post_results([result], current_user_id=current_user_id)[0]
+        
+    def get_post_thread(self, post_id: str, current_user_id: str = None, include_descendants: bool = False) -> list[SocialPostResponse]:
+        post = self.repo.get_post_by_id(post_id)
+        if not post:
+            raise HTTPException(status_code=404, detail="Post not found")
+
+        replies = (
+            self.repo.get_descendant_replies(post_id)
+            if include_descendants
+            else self.repo.get_replies(post_id)
+        )
         return self._format_post_results(replies, current_user_id)
 
     def toggle_follow(self, follower_id: str, following_id: str) -> dict:

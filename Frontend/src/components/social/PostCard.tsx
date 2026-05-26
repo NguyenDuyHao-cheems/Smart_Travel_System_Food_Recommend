@@ -12,7 +12,7 @@ import {
   AlertDialogHeader, 
   AlertDialogTitle 
 } from '../ui/alert-dialog';
-import { Heart, MessageCircle, MapPin, MoreHorizontal, Trash2, Flag, Link as LinkIcon, Send, Loader2 } from 'lucide-react';
+import { Heart, MessageCircle, MapPin, MoreHorizontal, Trash2, Flag, Link as LinkIcon, Send, Loader2, Pencil, Check, X } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { enUS, vi } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -92,6 +92,7 @@ interface CommentNodeProps {
   comment: SocialPost;
   currentUserId: string | null;
   onLikeComment: (commentId: string) => void;
+  onEditComment: (commentId: string, content: string) => Promise<boolean>;
   onDeleteComment: (commentId: string) => void;
   activeReplyId: string | null;
   setActiveReplyId: (id: string | null) => void;
@@ -108,6 +109,7 @@ const CommentNode = ({
   comment,
   currentUserId,
   onLikeComment,
+  onEditComment,
   onDeleteComment,
   activeReplyId,
   setActiveReplyId,
@@ -125,6 +127,26 @@ const CommentNode = ({
   const isLiked = comment.is_liked || false;
   const likesCount = comment.likes_count || 0;
   const showReplyInput = activeReplyId === comment.id;
+  const [isEditing, setIsEditing] = useState(false);
+  const [editText, setEditText] = useState(comment.content || '');
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+
+  React.useEffect(() => {
+    if (!isEditing) {
+      setEditText(comment.content || '');
+    }
+  }, [comment.content, isEditing]);
+
+  const saveEdit = async () => {
+    const content = editText.trim();
+    if (!content) return;
+    setIsSavingEdit(true);
+    const saved = await onEditComment(comment.id, content);
+    setIsSavingEdit(false);
+    if (saved) {
+      setIsEditing(false);
+    }
+  };
 
   return (
     <div className="group/comment animate-fade-in-up">
@@ -145,9 +167,46 @@ const CommentNode = ({
                 {formatTime(comment.created_at)}
               </span>
             </div>
-            <p className="text-sm text-foreground mt-0.5 whitespace-pre-wrap break-words">
-              {parseLinks(comment.content || '')}
-            </p>
+            {isEditing ? (
+              <div className="flex items-center gap-1.5 mt-1">
+                <input
+                  type="text"
+                  value={editText}
+                  onChange={(e) => setEditText(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      saveEdit();
+                    } else if (e.key === 'Escape') {
+                      setIsEditing(false);
+                    }
+                  }}
+                  className="flex-1 text-sm px-2 py-1 rounded-lg border border-border bg-card focus:outline-none focus:ring-2 focus:ring-brand/30"
+                  disabled={isSavingEdit}
+                  autoFocus
+                />
+                <button
+                  onClick={saveEdit}
+                  disabled={isSavingEdit || !editText.trim()}
+                  className="p-1 text-brand disabled:opacity-40"
+                  title={t('socialPost.save')}
+                >
+                  {isSavingEdit ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                </button>
+                <button
+                  onClick={() => setIsEditing(false)}
+                  disabled={isSavingEdit}
+                  className="p-1 text-muted-foreground hover:text-foreground"
+                  title={t('socialPost.cancel')}
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ) : (
+              <p className="text-sm text-foreground mt-0.5 whitespace-pre-wrap break-words">
+                {parseLinks(comment.content || '')}
+              </p>
+            )}
           </div>
           
           {/* Heart, Chat bubble and Trash controls */}
@@ -168,13 +227,26 @@ const CommentNode = ({
             </button>
 
             {currentUserId === comment.user_id && (
-              <button 
-                onClick={() => onDeleteComment(comment.id)}
-                className="flex items-center gap-1 transition-colors text-muted-foreground/60 hover:text-rose-500"
-                title={t('socialPost.deleteComment') || 'Delete comment'}
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
+              <>
+                <button
+                  onClick={() => {
+                    setActiveReplyId(null);
+                    setEditText(comment.content || '');
+                    setIsEditing(true);
+                  }}
+                  className="flex items-center gap-1 transition-colors text-muted-foreground/60 hover:text-brand"
+                  title={t('socialPost.editComment')}
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={() => onDeleteComment(comment.id)}
+                  className="flex items-center gap-1 transition-colors text-muted-foreground/60 hover:text-rose-500"
+                  title={t('socialPost.deleteComment') || 'Delete comment'}
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </>
             )}
           </div>
 
@@ -217,6 +289,10 @@ export function PostCard({ post, onLikeToggle, onDelete }: PostCardProps) {
   const [likesCount, setLikesCount] = useState(post.likes_count || 0);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [postContent, setPostContent] = useState(post.content || '');
+  const [isEditingPost, setIsEditingPost] = useState(false);
+  const [editPostText, setEditPostText] = useState(post.content || '');
+  const [isSavingPost, setIsSavingPost] = useState(false);
 
   // Comments & Replies State
   const [showComments, setShowComments] = useState(false);
@@ -236,6 +312,13 @@ export function PostCard({ post, onLikeToggle, onDelete }: PostCardProps) {
   React.useEffect(() => {
     setCurrentUserId(localStorage.getItem('user_id'));
   }, []);
+
+  React.useEffect(() => {
+    if (!isEditingPost) {
+      setPostContent(post.content || '');
+      setEditPostText(post.content || '');
+    }
+  }, [post.content, isEditingPost]);
 
   // Utility to generate SEO-friendly slug
   const generateSlug = (name: string) => {
@@ -285,29 +368,49 @@ export function PostCard({ post, onLikeToggle, onDelete }: PostCardProps) {
     toast.success(t('socialPost.reportThanks'));
   };
 
+  const handleEditPost = async () => {
+    const content = editPostText.trim();
+    const token = localStorage.getItem('access_token');
+    if (!content || !token) return;
+
+    setIsSavingPost(true);
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/v1/social/posts/${post.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ content })
+      });
+      if (res.ok) {
+        const updatedPost: SocialPost = await res.json();
+        setPostContent(updatedPost.content || '');
+        setEditPostText(updatedPost.content || '');
+        setIsEditingPost(false);
+        toast.success(t('socialPost.editSuccess'));
+      } else {
+        toast.error(t('socialPost.editError'));
+      }
+    } catch {
+      toast.error(t('socialPost.connectionError'));
+    } finally {
+      setIsSavingPost(false);
+    }
+  };
+
   // ── Replies handler ──
   const fetchReplies = async (commentId: string) => {
     setLoadingReplies(prev => ({ ...prev, [commentId]: true }));
     try {
       const token = localStorage.getItem('access_token');
-      const fetchDescendants = async (parentId: string): Promise<SocialPost[]> => {
-        const res = await fetch(`${BACKEND_URL}/api/v1/social/posts/${parentId}/thread`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {}
-        });
-        if (!res.ok) return [];
-
+      const res = await fetch(`${BACKEND_URL}/api/v1/social/posts/${commentId}/thread?include_descendants=true`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
+      if (res.ok) {
         const replies: SocialPost[] = await res.json();
-        const replyBranches = await Promise.all(
-          replies.map(async reply => [
-            reply,
-            ...(reply.replies_count > 0 ? await fetchDescendants(reply.id) : [])
-          ])
-        );
-        return replyBranches.flat();
-      };
-
-      const allReplies = await fetchDescendants(commentId);
-      setRepliesData(prev => ({ ...prev, [commentId]: allReplies }));
+        setRepliesData(prev => ({ ...prev, [commentId]: replies }));
+      }
     } catch (err) {
       console.error("Failed to fetch replies:", err);
     } finally {
@@ -456,6 +559,44 @@ export function PostCard({ post, onLikeToggle, onDelete }: PostCardProps) {
     } catch { /* silent */ }
   };
 
+  const handleEditComment = async (commentId: string, content: string): Promise<boolean> => {
+    const token = localStorage.getItem('access_token');
+    if (!token) return false;
+
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/v1/social/posts/${commentId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ content })
+      });
+      if (!res.ok) {
+        toast.error(t('socialPost.editError'));
+        return false;
+      }
+
+      const updatedComment: SocialPost = await res.json();
+      const updatePostInList = (list: SocialPost[]) =>
+        list.map(item => item.id === commentId ? updatedComment : item);
+
+      setComments(prev => updatePostInList(prev));
+      setRepliesData(prev => {
+        const updated = { ...prev };
+        Object.keys(updated).forEach(key => {
+          updated[key] = updatePostInList(updated[key]);
+        });
+        return updated;
+      });
+      toast.success(t('socialPost.editSuccess'));
+      return true;
+    } catch {
+      toast.error(t('socialPost.connectionError'));
+      return false;
+    }
+  };
+
   const handleDeleteComment = async (commentId: string) => {
     const token = localStorage.getItem('access_token');
     if (!token) return;
@@ -584,9 +725,20 @@ export function PostCard({ post, onLikeToggle, onDelete }: PostCardProps) {
                     <LinkIcon className="w-4 h-4 mr-2" /> {t('socialPost.copyLink')}
                   </DropdownMenuItem>
                   {isOwner ? (
-                    <DropdownMenuItem onClick={() => setIsDeleteDialogOpen(true)} className="cursor-pointer text-rose-500 focus:text-rose-500 focus:bg-rose-50">
-                      <Trash2 className="w-4 h-4 mr-2" /> {t('socialPost.deletePost')}
-                    </DropdownMenuItem>
+                    <>
+                      <DropdownMenuItem
+                        onClick={() => {
+                          setEditPostText(postContent);
+                          setIsEditingPost(true);
+                        }}
+                        className="cursor-pointer"
+                      >
+                        <Pencil className="w-4 h-4 mr-2" /> {t('socialPost.editPost')}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setIsDeleteDialogOpen(true)} className="cursor-pointer text-rose-500 focus:text-rose-500 focus:bg-rose-50">
+                        <Trash2 className="w-4 h-4 mr-2" /> {t('socialPost.deletePost')}
+                      </DropdownMenuItem>
+                    </>
                   ) : (
                     <DropdownMenuItem onClick={handleReport} className="cursor-pointer text-orange-500 focus:text-orange-500 focus:bg-orange-50">
                       <Flag className="w-4 h-4 mr-2" /> {t('socialPost.report')}
@@ -597,16 +749,45 @@ export function PostCard({ post, onLikeToggle, onDelete }: PostCardProps) {
             </div>
           </div>
 
-          {post.content && (
+          {isEditingPost ? (
+            <div className="mt-2 flex items-end gap-2">
+              <textarea
+                value={editPostText}
+                onChange={(e) => setEditPostText(e.target.value)}
+                className="flex-1 min-h-[64px] resize-none text-sm px-3 py-2 rounded-xl border border-border bg-muted/20 focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
+                disabled={isSavingPost}
+                autoFocus
+              />
+              <button
+                onClick={handleEditPost}
+                disabled={isSavingPost || !editPostText.trim()}
+                className="p-2 rounded-full bg-brand text-white hover:bg-brand/90 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                title={t('socialPost.save')}
+              >
+                {isSavingPost ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+              </button>
+              <button
+                onClick={() => {
+                  setEditPostText(postContent);
+                  setIsEditingPost(false);
+                }}
+                disabled={isSavingPost}
+                className="p-2 rounded-full border border-border text-muted-foreground hover:text-foreground transition-colors"
+                title={t('socialPost.cancel')}
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          ) : postContent && (
             <div className="mt-2 text-sm text-foreground whitespace-pre-wrap break-words">
-              {parseLinks(post.content)}
+              {parseLinks(postContent)}
             </div>
           )}
 
           {(() => {
-            if (!post.content) return null;
+            if (!postContent || isEditingPost) return null;
             const linkMatchRegex = /(https?:\/\/[^\s]+)|([a-zA-Z0-9.-]+\.[a-zA-Z]{2,}(?:\/[^\s]*)?)/i;
-            const match = post.content.match(linkMatchRegex);
+            const match = postContent.match(linkMatchRegex);
             if (match && match[0]) {
               let url = match[0];
               const lastChar = url[url.length - 1];
@@ -722,6 +903,7 @@ export function PostCard({ post, onLikeToggle, onDelete }: PostCardProps) {
                           comment={comment}
                           currentUserId={currentUserId}
                           onLikeComment={handleLikeComment}
+                          onEditComment={handleEditComment}
                           onDeleteComment={handleDeleteComment}
                           activeReplyId={activeReplyId}
                           setActiveReplyId={setActiveReplyId}
@@ -771,6 +953,7 @@ export function PostCard({ post, onLikeToggle, onDelete }: PostCardProps) {
                                     comment={reply}
                                     currentUserId={currentUserId}
                                     onLikeComment={handleLikeComment}
+                                    onEditComment={handleEditComment}
                                     onDeleteComment={handleDeleteComment}
                                     activeReplyId={activeReplyId}
                                     setActiveReplyId={setActiveReplyId}

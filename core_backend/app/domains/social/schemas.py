@@ -9,6 +9,9 @@ class SocialPostCreate(BaseModel):
     res_id: Optional[str] = None
     parent_id: Optional[str] = None
 
+class SocialPostUpdate(BaseModel):
+    content: str = Field(min_length=1)
+
 class SocialPostResponse(BaseModel):
     id: str
     user_id: str
