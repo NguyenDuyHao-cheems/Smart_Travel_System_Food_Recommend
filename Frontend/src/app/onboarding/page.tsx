@@ -17,6 +17,7 @@ import {
   IconBrain
 } from '@tabler/icons-react';
 import { ThemeToggle } from '../../components/ThemeToggle';
+import { useLanguage } from '../../components/LanguageProvider';
 
 // ==========================================
 // TYPES & INITIAL STATE
@@ -96,8 +97,121 @@ const BUDGET_OPTIONS: { id: BudgetLevel, label: string, desc: string }[] = [
   { id: 'high', label: 'Cao cấp', desc: 'Trên 200k - Sang trọng, Fine dining' },
 ];
 
+const ONBOARDING_COPY = {
+  vi: {
+    errors: {
+      dishes: "Vui lòng chọn hoặc tự nhập ít nhất 3 Món ăn yêu thích để AI phân tích.",
+      spicy: "Vui lòng chọn Độ cay ưu tiên.",
+      budget: "Vui lòng chọn Mức giá trung bình.",
+      location: "Vui lòng nhập Khu vực sinh sống hiện tại.",
+      age: "Độ tuổi của bạn chưa hợp lệ (13 - 120).",
+      rejected: "Hệ thống từ chối: ",
+      backend: "Không thể kết nối với hệ thống Backend. Hãy kiểm tra lại Server/Mạng.",
+    },
+    loading: "Đang tải cấu hình sở thích của bạn...",
+    syncing: "Đang đồng bộ Neural Data...",
+    updateProfile: "Cập nhật Hồ sơ AI",
+    createProfile: "Khởi tạo Hồ sơ AI",
+    editBadge: "AI Profile Modification Engine",
+    createBadge: "AI Food Recommendation Engine",
+    editTitle: "Chỉnh Sửa Hồ Sơ Cá Nhân",
+    createTitle: "Khám Phá Bản Đồ Ẩm Thực",
+    editHighlight: "Tối Ưu Hóa Trực Quan",
+    createHighlight: "Dành Riêng Cho Bạn",
+    editDesc: "Cập nhật lại sở thích ăn uống của bạn. Hệ thống trí tuệ nhân tạo sẽ tự động học hỏi, phân tích và tối ưu hóa lại các gợi ý ẩm thực phù hợp nhất với khẩu vị mới.",
+    createDesc: "Hãy cho chúng tôi biết sơ lược về sở thích của bạn. Trí tuệ nhân tạo sẽ tự động phân tích và chọn lọc ra những địa điểm thưởng thức tuyệt vời nhất, phù hợp chính xác với gu của riêng bạn.",
+    ageLabel: "Độ tuổi của bạn (*)",
+    agePlaceholder: "Ví dụ: 22...",
+    locationLabel: "Khu vực hiện tại (*)",
+    locationPlaceholder: "Nhập địa chỉ của bạn",
+    favoriteTitle: "Món ăn yêu thích (*)",
+    favoriteSubtitle: (count: number) => `Đã chọn ${count} món (Yêu cầu ít nhất 3 món)`,
+    favoriteDesc: "Chọn các món ăn ưa thích hoặc tự nhập thêm món ăn khoái khẩu của bạn:",
+    categoryNames: ["Đặc sản Việt Nam", "Ẩm thực Á Âu", "Chuyên Ăn Vặt", "Tráng miệng & Nước"],
+    customTitle: "Tự nhập món ăn ưa thích khác",
+    customPlaceholder: "Nhập món ăn khác (ví dụ: Bún đậu mắm tôm, Nem nướng...)",
+    add: "Thêm",
+    spicyTitle: "Mức độ ăn cay (*)",
+    spicyPanel: "Kháng Hỏa Tùy Chỉnh",
+    dietaryTitle: "Chế độ ăn & Dị ứng",
+    optional: "Tuỳ chọn",
+    dietaryPanel: "Chế Độ Đặc Biệt",
+    dietaryNote: "* Món Halal là thực phẩm và đồ uống được phép tiêu thụ theo luật Hồi giáo.",
+    allergyPanel: "Khai Báo Dị Ứng",
+    allergyNote: "* Gluten: Protein có trong lúa mì & lúa mạch, có thể gây khó tiêu hoặc dị ứng.",
+    budgetTitle: "Mức chi tiêu trung bình (*)",
+  },
+  en: {
+    errors: {
+      dishes: "Please select or enter at least 3 favorite dishes for AI analysis.",
+      spicy: "Please select your spice preference.",
+      budget: "Please select your average budget.",
+      location: "Please enter your current area.",
+      age: "Your age is invalid (13 - 120).",
+      rejected: "The system rejected the request: ",
+      backend: "Unable to connect to the backend system. Please check the server/network.",
+    },
+    loading: "Loading your preference profile...",
+    syncing: "Syncing neural data...",
+    updateProfile: "Update AI Profile",
+    createProfile: "Create AI Profile",
+    editBadge: "AI Profile Modification Engine",
+    createBadge: "AI Food Recommendation Engine",
+    editTitle: "Edit Personal Profile",
+    createTitle: "Discover Your Food Map",
+    editHighlight: "Visual Optimization",
+    createHighlight: "Made For You",
+    editDesc: "Update your food preferences. The AI system will learn, analyze, and optimize food recommendations for your new taste profile.",
+    createDesc: "Tell us a little about your preferences. AI will analyze them and select dining places that match your personal taste.",
+    ageLabel: "Your age (*)",
+    agePlaceholder: "Example: 22...",
+    locationLabel: "Current area (*)",
+    locationPlaceholder: "Enter your address",
+    favoriteTitle: "Favorite dishes (*)",
+    favoriteSubtitle: (count: number) => `${count} selected (at least 3 required)`,
+    favoriteDesc: "Choose favorite dishes or add your own cravings:",
+    categoryNames: ["Vietnamese specialties", "Asian & Western cuisine", "Street snacks", "Desserts & drinks"],
+    customTitle: "Add another favorite dish",
+    customPlaceholder: "Enter another dish (e.g., bun dau mam tom, grilled pork rolls...)",
+    add: "Add",
+    spicyTitle: "Spice level (*)",
+    spicyPanel: "Custom Heat Resistance",
+    dietaryTitle: "Diet & Allergies",
+    optional: "Optional",
+    dietaryPanel: "Special Diet",
+    dietaryNote: "* Halal food and drinks are permitted under Islamic law.",
+    allergyPanel: "Declare Allergies",
+    allergyNote: "* Gluten is a protein in wheat and barley that may cause indigestion or allergies.",
+    budgetTitle: "Average spending (*)",
+  },
+};
+
+const DIETARY_LABELS_EN: Record<string, string> = {
+  vegan: "Vegan",
+  vegetarian: "Vegetarian",
+  halal: "Halal",
+};
+
+const ALLERGY_LABELS_EN: Record<string, string> = {
+  milk: "Milk",
+  egg: "Egg",
+  gluten: "Gluten",
+  seafood: "Seafood",
+  fish: "Fish",
+  peanut: "Peanuts",
+  soy: "Soy",
+};
+
+const BUDGET_LABELS_EN: Record<string, { label: string; desc: string }> = {
+  low: { label: "Budget", desc: "Under 50k - Students" },
+  medium: { label: "Mid-range", desc: "50k - 200k - Good food, decent view" },
+  high: { label: "Premium", desc: "Over 200k - Upscale, fine dining" },
+};
+
 export default function OnboardingPage() {
   const router = useRouter();
+  const { language } = useLanguage();
+  const copy = ONBOARDING_COPY[language];
   const [formData, setFormData] = useState<OnboardingData>(initialData);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -113,10 +227,31 @@ export default function OnboardingPage() {
     }
   }, []);
 
-  // Yêu cầu đăng nhập — redirect về /auth nếu chưa có token
+  // Yêu cầu đăng nhập — redirect về /auth nếu chưa có token hoặc token hết hạn
   useEffect(() => {
     const token = localStorage.getItem('access_token');
     const storedUserId = localStorage.getItem('user_id');
+
+    if (token) {
+      try {
+        const arrayToken = token.split('.');
+        if (arrayToken.length === 3) {
+          const payload = JSON.parse(atob(arrayToken[1]));
+          if (payload.exp && Date.now() > payload.exp * 1000) {
+            console.warn("Token hết hạn, redirect về /auth");
+            localStorage.removeItem("access_token");
+            localStorage.removeItem("username");
+            localStorage.removeItem("user_avatar");
+            localStorage.removeItem("user_id");
+            localStorage.removeItem("login_method");
+            router.push('/auth?expired=1&redirect=/onboarding');
+            return;
+          }
+        }
+      } catch (e) {
+        localStorage.removeItem("access_token");
+      }
+    }
 
     if (!token || !storedUserId) {
       console.warn("Chưa đăng nhập, redirect về /auth");
@@ -211,23 +346,23 @@ export default function OnboardingPage() {
     setErrorMsg('');
 
     if (formData.favorite_dishes.length < 3) {
-      setErrorMsg("Vui lòng chọn hoặc tự nhập ít nhất 3 Món ăn yêu thích để AI phân tích.");
+      setErrorMsg(copy.errors.dishes);
       return;
     }
     if (!formData.spicy_level) {
-      setErrorMsg("Vui lòng chọn Độ cay ưu tiên.");
+      setErrorMsg(copy.errors.spicy);
       return;
     }
     if (!formData.budget) {
-      setErrorMsg("Vui lòng chọn Mức giá trung bình.");
+      setErrorMsg(copy.errors.budget);
       return;
     }
     if (!formData.location.trim()) {
-      setErrorMsg("Vui lòng nhập Khu vực sinh sống hiện tại.");
+      setErrorMsg(copy.errors.location);
       return;
     }
     if (!formData.age || formData.age < 13 || formData.age > 120) {
-      setErrorMsg("Độ tuổi của bạn chưa hợp lệ (13 - 120).");
+      setErrorMsg(copy.errors.age);
       return;
     }
 
@@ -271,12 +406,12 @@ export default function OnboardingPage() {
         }, 1500);
       } else {
         const errData = await response.json();
-        setErrorMsg('Hệ thống từ chối: ' + JSON.stringify(errData));
+        setErrorMsg(copy.errors.rejected + JSON.stringify(errData));
         setIsSubmitting(false);
       }
     } catch (error) {
       console.error('Submit Error:', error);
-      setErrorMsg('Không thể kết nối với hệ thống Backend. Hãy kiểm tra lại Server/Mạng.');
+      setErrorMsg(copy.errors.backend);
       setIsSubmitting(false);
     }
   };
@@ -330,7 +465,7 @@ export default function OnboardingPage() {
         {isLoadingOldData ? (
           <div className="flex flex-col items-center justify-center py-20 space-y-4">
             <IconBrain className="w-12 h-12 text-brand animate-pulse" />
-            <p className="text-[14px] font-medium text-[#9A8A7A] dark:text-[#E6DFD5]/60 animate-pulse">Đang tải cấu hình sở thích của bạn...</p>
+            <p className="text-[14px] font-medium text-[#9A8A7A] dark:text-[#E6DFD5]/60 animate-pulse">{copy.loading}</p>
           </div>
         ) : (
           <>
@@ -403,8 +538,8 @@ export default function OnboardingPage() {
                 <IconBrain size={18} className={isSubmitting ? "animate-pulse" : ""} />
                 <span>
                   {isSubmitting 
-                    ? 'Đang đồng bộ Neural Data...' 
-                    : (isEditMode ? 'Cập nhật Hồ sơ AI' : 'Khởi tạo Hồ sơ AI')
+                    ? copy.syncing 
+                    : (isEditMode ? copy.updateProfile : copy.createProfile)
                   }
                 </span>
                 <IconArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
@@ -423,6 +558,8 @@ export default function OnboardingPage() {
 // ==========================================
 
 function Header({ isEditMode }: { isEditMode: boolean }) {
+  const { language } = useLanguage();
+  const copy = ONBOARDING_COPY[language];
   return (
     <div className="text-center space-y-4 pb-10 border-b border-[#E6DFD5] dark:border-[#4D3D32]/60 relative">
       <div className="absolute top-0 right-0 p-2 sm:p-0">
@@ -432,39 +569,38 @@ function Header({ isEditMode }: { isEditMode: boolean }) {
 
       <div className="inline-flex items-center gap-2 bg-brand/5 dark:bg-brand/10 border border-brand/15 dark:border-brand/30 text-brand dark:text-[#E8735A] text-[10px] uppercase tracking-[0.25em] font-black px-4.5 py-2 rounded-full mb-3 shadow-sm">
         <IconBrain size={14} className="animate-pulse" />
-        {isEditMode ? 'AI Profile Modification Engine' : 'AI Food Recommendation Engine'}
+        {isEditMode ? copy.editBadge : copy.createBadge}
       </div>
 
       <h1 className="text-[32px] sm:text-[40px] font-black text-[#3D312A] dark:text-[#E6DFD5] tracking-tight leading-tight uppercase">
-        {isEditMode ? 'Chỉnh Sửa Hồ Sơ Cá Nhân' : 'Khám Phá Bản Đồ Ẩm Thực'} <br />
+        {isEditMode ? copy.editTitle : copy.createTitle} <br />
         <span className="inline-block pb-3 pt-1 px-1.5 italic text-transparent bg-clip-text bg-gradient-to-r from-brand via-[#E8735A] to-brand font-black normal-case leading-relaxed">
-          {isEditMode ? 'Tối Ưu Hóa Trực Quan' : 'Dành Riêng Cho Bạn'}
+          {isEditMode ? copy.editHighlight : copy.createHighlight}
         </span>
       </h1>
 
       <p className="text-[#7A6A5A] dark:text-[#9A8A7A] text-sm sm:text-base max-w-xl mx-auto leading-relaxed mt-4">
-        {isEditMode
-          ? 'Cập nhật lại sở thích ăn uống của bạn. Hệ thống trí tuệ nhân tạo sẽ tự động học hỏi, phân tích và tối ưu hóa lại các gợi ý ẩm thực phù hợp nhất với khẩu vị mới.'
-          : 'Hãy cho chúng tôi biết sơ lược về sở thích của bạn. Trí tuệ nhân tạo sẽ tự động phân tích và chọn lọc ra những địa điểm thưởng thức tuyệt vời nhất, phù hợp chính xác với gu của riêng bạn.'
-        }
+        {isEditMode ? copy.editDesc : copy.createDesc}
       </p>
     </div>
   );
 }
 
 function BasicInfoSection({ formData, setSingleItem }: { formData: OnboardingData, setSingleItem: Function }) {
+  const { language } = useLanguage();
+  const copy = ONBOARDING_COPY[language];
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 p-1">
       <div className="space-y-3 group">
         <label className="flex items-center gap-2 font-bold text-xs uppercase tracking-wider text-[#7A6A5A] dark:text-[#9A8A7A] transition-colors group-focus-within:text-brand dark:group-focus-within:text-[#E8735A]">
-          <IconUser className="text-brand dark:text-[#E8735A] transition-colors" size={16} /> Độ tuổi của bạn (*)
+          <IconUser className="text-brand dark:text-[#E8735A] transition-colors" size={16} /> {copy.ageLabel}
         </label>
         <div className="relative">
           <input
             type="number"
             min="13"
             max="120"
-            placeholder="Ví dụ: 22..."
+            placeholder={copy.agePlaceholder}
             value={formData.age}
             onChange={(e) => setSingleItem('age', e.target.value === '' ? '' : parseInt(e.target.value))}
             className="w-full px-5 py-3.5 bg-gray-50 dark:bg-[#2A2420]/50 border border-gray-150 dark:border-[#4D3D32] rounded-2xl outline-none text-gray-900 dark:text-[#E6DFD5] focus:border-brand dark:focus:border-brand/60 focus:bg-white dark:focus:bg-[#3D312A] focus:ring-4 focus:ring-brand/10 transition-all duration-300 font-bold placeholder-gray-400 dark:placeholder-white/20 shadow-sm"
@@ -473,7 +609,7 @@ function BasicInfoSection({ formData, setSingleItem }: { formData: OnboardingDat
       </div>
       <div className="space-y-3 group">
         <label className="flex items-center gap-2 font-bold text-xs uppercase tracking-wider text-[#7A6A5A] dark:text-[#9A8A7A] transition-colors group-focus-within:text-brand dark:group-focus-within:text-[#E8735A]">
-          <IconMapPin className="text-brand dark:text-[#E8735A] transition-colors" size={16} /> Khu vực hiện tại (*)
+          <IconMapPin className="text-brand dark:text-[#E8735A] transition-colors" size={16} /> {copy.locationLabel}
         </label>
         <div className="relative">
             <input
@@ -481,7 +617,7 @@ function BasicInfoSection({ formData, setSingleItem }: { formData: OnboardingDat
               value={formData.location}
               onChange={(e) => setSingleItem('location', e.target.value)}
               className="w-full px-5 py-3.5 bg-gray-50 dark:bg-[#2A2420]/50 border border-gray-150 dark:border-[#4D3D32] rounded-2xl outline-none text-gray-900 dark:text-[#E6DFD5] focus:border-brand dark:focus:border-brand/60 focus:bg-white dark:focus:bg-[#3D312A] focus:ring-4 focus:ring-brand/10 transition-all duration-300 font-bold placeholder-gray-400 dark:placeholder-white/20 shadow-sm"
-              placeholder="Nhập địa chỉ của bạn"
+              placeholder={copy.locationPlaceholder}
             />
         </div>
       </div>
@@ -491,6 +627,8 @@ function BasicInfoSection({ formData, setSingleItem }: { formData: OnboardingDat
 
 function FavoriteDishes({ selected, onChange }: { selected: string[], onChange: (val: string) => void }) {
   const [customDish, setCustomDish] = React.useState("");
+  const { language } = useLanguage();
+  const copy = ONBOARDING_COPY[language];
 
   const handleAddCustom = () => {
     const val = customDish.trim();
@@ -507,8 +645,8 @@ function FavoriteDishes({ selected, onChange }: { selected: string[], onChange: 
   const customDishes = selected.filter(dish => !presetDishes.has(dish));
 
   return (
-    <Section title="Món ăn yêu thích (*)" icon={<IconMeat size={20} />} subtitle={`Đã chọn ${selected.length} món (Yêu cầu ít nhất 3 món)`}>
-      <div className="text-[13px] text-[#7A6A5A] dark:text-[#9A8A7A] mb-6 mt-1 font-bold">Chọn các món ăn ưa thích hoặc tự nhập thêm món ăn khoái khẩu của bạn:</div>
+    <Section title={copy.favoriteTitle} icon={<IconMeat size={20} />} subtitle={copy.favoriteSubtitle(selected.length)}>
+      <div className="text-[13px] text-[#7A6A5A] dark:text-[#9A8A7A] mb-6 mt-1 font-bold">{copy.favoriteDesc}</div>
 
       <div className="space-y-4">
         {FAV_DISH_CATEGORIES.map((cat, idx) => {
@@ -547,7 +685,7 @@ function FavoriteDishes({ selected, onChange }: { selected: string[], onChange: 
               </div>
               <div className="text-[11px] font-black mb-5 tracking-widest uppercase flex items-center gap-2">
                 <div className={`w-2 h-2 rounded-full ${DotColor} animate-pulse`}></div>
-                {cat.name}
+                {copy.categoryNames[idx] || cat.name}
               </div>
               <div className="flex flex-wrap gap-2.5 relative z-10 transition-all">
                 {cat.items.map((opt) => (
@@ -568,7 +706,7 @@ function FavoriteDishes({ selected, onChange }: { selected: string[], onChange: 
         <div className="p-5 sm:p-6 rounded-[24px] border border-dashed border-[#E6DFD5] dark:border-[#4D3D32]/65 bg-[#FDFBF7] dark:bg-[#2A2420]/30">
           <div className="text-[11px] font-black mb-3 tracking-widest uppercase text-brand dark:text-[#E8735A] flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-brand dark:bg-[#E8735A] animate-pulse"></div>
-            Tự nhập món ăn ưa thích khác
+            {copy.customTitle}
           </div>
           <div className="flex gap-2 mb-4">
             <input
@@ -576,14 +714,14 @@ function FavoriteDishes({ selected, onChange }: { selected: string[], onChange: 
               value={customDish}
               onChange={(e) => setCustomDish(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddCustom())}
-              placeholder="Nhập món ăn khác (ví dụ: Bún đậu mắm tôm, Nem nướng...)"
+              placeholder={copy.customPlaceholder}
               className="flex-1 bg-white dark:bg-[#3D312A] border border-[#E6DFD5] dark:border-[#4D3D32]/60 rounded-xl px-4 py-2.5 text-xs font-bold text-gray-900 dark:text-[#E6DFD5] focus:border-brand dark:focus:border-[#E8735A] focus:ring-4 focus:ring-brand/10 dark:focus:ring-[#E8735A]/10 outline-none transition-all"
             />
             <button
               onClick={handleAddCustom}
               className="px-5 py-2.5 bg-brand hover:bg-brand-hover text-white text-xs font-bold rounded-xl transition-all shadow-md active:scale-95 cursor-pointer shrink-0"
             >
-              Thêm
+              {copy.add}
             </button>
           </div>
 
@@ -612,15 +750,17 @@ function FavoriteDishes({ selected, onChange }: { selected: string[], onChange: 
 }
 
 function SpicyLevelPicker({ selected, onChange }: { selected: SpicyLevel, onChange: (val: SpicyLevel) => void }) {
+  const { language } = useLanguage();
+  const copy = ONBOARDING_COPY[language];
   return (
-    <Section title="Mức độ ăn cay (*)" icon={<IconFlame size={20} />}>
+    <Section title={copy.spicyTitle} icon={<IconFlame size={20} />}>
       <div className="bg-[#FDFBF7] dark:bg-[#2A2420]/30 p-5 sm:p-6 rounded-[24px] border border-[#E6DFD5] dark:border-[#4D3D32]/60 relative overflow-hidden group transition-colors mt-2">
         <div className="absolute -top-4 -right-4 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
           <IconFlame size={120} />
         </div>
         <div className="text-[11px] font-black text-red-600 dark:text-red-400 mb-5 tracking-widest uppercase flex items-center gap-2">
           <div className="w-2 h-2 rounded-full bg-red-600 dark:bg-red-500 animate-pulse"></div>
-          Kháng Hỏa Tùy Chỉnh
+          {copy.spicyPanel}
         </div>
         <div className="flex flex-wrap gap-3 relative z-10 transition-all">
           {SPICY_OPTIONS.map((opt) => {
@@ -645,8 +785,10 @@ function SpicyLevelPicker({ selected, onChange }: { selected: SpicyLevel, onChan
 }
 
 function DietaryAndAllergies({ dietary, allergies, toggleDietary, toggleAllergy }: { dietary: string[], allergies: string[], toggleDietary: (val: string) => void, toggleAllergy: (val: string) => void }) {
+  const { language } = useLanguage();
+  const copy = ONBOARDING_COPY[language];
   return (
-    <Section title="Chế độ ăn & Dị ứng" icon={<IconLeaf size={20} />} subtitle="Tuỳ chọn">
+    <Section title={copy.dietaryTitle} icon={<IconLeaf size={20} />} subtitle={copy.optional}>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mt-2">
         {/* Panel Chế độ ăn (Emerald) */}
         <div className="bg-[#FDFBF7] dark:bg-[#2A2420]/30 p-5 sm:p-6 rounded-[24px] border border-[#E6DFD5] dark:border-[#4D3D32]/60 relative overflow-hidden group transition-colors">
@@ -655,15 +797,15 @@ function DietaryAndAllergies({ dietary, allergies, toggleDietary, toggleAllergy 
           </div>
           <div className="text-[11px] font-black text-emerald-600 dark:text-emerald-450 mb-5 tracking-widest uppercase flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-sm dark:bg-emerald-500/80"></div>
-            Chế Độ Đặc Biệt
+            {copy.dietaryPanel}
           </div>
           <div className="flex flex-wrap gap-2.5 relative z-10 transition-all">
             {DIETARY_OPTS.map(opt => (
-              <Badge key={opt.id} label={opt.label} isActive={dietary.includes(opt.id)} onClick={() => toggleDietary(opt.id)} theme="emerald" />
+              <Badge key={opt.id} label={language === 'en' ? DIETARY_LABELS_EN[opt.id] : opt.label} isActive={dietary.includes(opt.id)} onClick={() => toggleDietary(opt.id)} theme="emerald" />
             ))}
           </div>
           <div className="mt-4 text-[11px] text-emerald-600/60 dark:text-emerald-400/50 font-medium italic">
-            * Món Halal là thực phẩm và đồ uống được phép tiêu thụ theo luật Hồi giáo .
+            {copy.dietaryNote}
           </div>
         </div>
 
@@ -674,15 +816,15 @@ function DietaryAndAllergies({ dietary, allergies, toggleDietary, toggleAllergy 
           </div>
           <div className="text-[11px] font-black text-red-600 dark:text-red-450 mb-5 tracking-widest uppercase flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-red-500 shadow-sm dark:bg-red-500/80 animate-pulse"></div>
-            Khai Báo Dị Ứng
+            {copy.allergyPanel}
           </div>
           <div className="flex flex-wrap gap-2.5 relative z-10 transition-all">
             {ALLERGY_OPTS.map(opt => (
-              <Badge key={opt.id} label={opt.label} isActive={allergies.includes(opt.id)} onClick={() => toggleAllergy(opt.id)} theme="red" />
+              <Badge key={opt.id} label={language === 'en' ? ALLERGY_LABELS_EN[opt.id] : opt.label} isActive={allergies.includes(opt.id)} onClick={() => toggleAllergy(opt.id)} theme="red" />
             ))}
           </div>
           <div className="mt-4 text-[11px] text-red-600/60 dark:text-red-400/50 font-medium italic">
-            * Gluten: Protein có trong lúa mì & lúa mạch, có thể gây khó tiêu hoặc dị ứng.
+            {copy.allergyNote}
           </div>
         </div>
       </div>
@@ -691,8 +833,10 @@ function DietaryAndAllergies({ dietary, allergies, toggleDietary, toggleAllergy 
 }
 
 function BudgetPicker({ selected, onChange }: { selected: BudgetLevel, onChange: (val: BudgetLevel) => void }) {
+  const { language } = useLanguage();
+  const copy = ONBOARDING_COPY[language];
   return (
-    <Section title="Mức chi tiêu trung bình (*)" icon={<IconCoin size={20} />}>
+    <Section title={copy.budgetTitle} icon={<IconCoin size={20} />}>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mt-2">
         {BUDGET_OPTIONS.map((opt) => {
           const isActive = selected === opt.id;
@@ -715,9 +859,9 @@ function BudgetPicker({ selected, onChange }: { selected: BudgetLevel, onChange:
               <div className="relative z-10">
                 <div className={`font-black text-sm flex items-center gap-2 ${isActive ? 'text-brand dark:text-[#E8735A]' : 'text-gray-800 dark:text-[#E6DFD5]/80'}`}>
                   {isActive && <div className="w-1.5 h-1.5 rounded-full bg-brand dark:bg-[#E8735A] animate-pulse"></div>}
-                  {opt.label}
+                  {language === 'en' ? BUDGET_LABELS_EN[opt.id]?.label : opt.label}
                 </div>
-                <div className={`text-xs mt-2 font-medium leading-relaxed ${isActive ? 'text-brand/80 dark:text-[#E8735A]/80' : 'text-gray-500 dark:text-[#E6DFD5]/40'}`}>{opt.desc}</div>
+                <div className={`text-xs mt-2 font-medium leading-relaxed ${isActive ? 'text-brand/80 dark:text-[#E8735A]/80' : 'text-gray-500 dark:text-[#E6DFD5]/40'}`}>{language === 'en' ? BUDGET_LABELS_EN[opt.id]?.desc : opt.desc}</div>
               </div>
 
               {isActive && (

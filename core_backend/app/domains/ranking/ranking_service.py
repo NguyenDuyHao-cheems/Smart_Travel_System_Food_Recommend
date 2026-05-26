@@ -59,25 +59,16 @@ class RankingService:
 
         # Bước 3: Gọi AI Engine (LambdaMART rerank)
         try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
-                payload = {
-                    "user_id": str(request.user_id),
-                    "candidates": featured,
-                    "top_k": request.k,
-                }
-                response = await client.post(
-                    f"{settings.AI_ENGINE_BASE_URL}/api/v1/ml/rank",
-                    json=payload,
-                )
-                if response.status_code == 200:
-                    result = response.json()
-                    return result.get("ranked_ids", [])
-                else:
-                    logger.error(
-                        "AI Engine returned %s: %s", response.status_code, response.text
-                    )
+            from app.services.ai_client import get_ai_client
+            ai_client = await get_ai_client()
+            result = await ai_client.rank_candidates(
+                user_id=str(request.user_id),
+                candidates=featured,
+                top_k=request.k,
+            )
+            return result.get("ranked_ids", [])
         except Exception as exc:
-            logger.error("AI Engine connection failed: %s", exc)
+            logger.error("AI Engine ranking failed: %s", exc)
 
         # Bước 4: Fallback — sort theo khoảng cách gần nhất
         logger.warning("AI Engine unavailable — falling back to distance sort.")

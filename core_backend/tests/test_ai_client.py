@@ -36,3 +36,117 @@ async def test_embed_text_engine_down():
 async def test_embed_text_empty_input():
     vector = await embed_text("  ")
     assert vector is None
+
+@pytest.mark.asyncio
+async def test_grpc_client_lazy_initialization():
+    from app.services.grpc_client import GRPCServiceClient
+    import asyncio
+    
+    client = GRPCServiceClient("localhost:50051")
+    # Initially none of these are created
+    assert client._channel is None
+    assert client._stub is None
+    assert client._loop is None
+    
+    # Access stub to trigger creation
+    stub1 = client.stub
+    assert client._channel is not None
+    assert client._stub is not None
+    assert client._loop is asyncio.get_running_loop()
+    
+    # Check that accessing again returns the same objects
+    assert client.stub is stub1
+    assert client.channel is client._channel
+    
+    # Clean up
+    await client.close()
+
+@pytest.mark.asyncio
+async def test_grpc_client_recreates_on_new_loop():
+    from app.services.grpc_client import GRPCServiceClient
+    import asyncio
+    
+    client = GRPCServiceClient("localhost:50051")
+    
+    # Access on the current loop
+    loop1 = asyncio.get_running_loop()
+    stub1 = client.stub
+    channel1 = client.channel
+    assert client._loop is loop1
+    
+    # We simulate a new loop by manually setting the loop reference to a fake loop object
+    fake_loop = object()
+    client._loop = fake_loop
+    
+    # Access again, it should detect different loop and recreate
+    stub2 = client.stub
+    channel2 = client.channel
+    assert client._loop is loop1  # It gets updated back to the active running loop
+    assert stub2 is not stub1
+    assert channel2 is not channel1
+    
+    await client.close()
+
+
+@pytest.mark.asyncio
+async def test_grpc_client_check_health_success():
+    from app.services.grpc_client import GRPCServiceClient
+    from unittest.mock import PropertyMock
+    
+    client = GRPCServiceClient("localhost:50051")
+    
+    mock_resp = MagicMock()
+    mock_resp.status = "online"
+    
+    mock_stub = MagicMock()
+    mock_stub.CheckHealth = AsyncMock(return_value=mock_resp)
+    
+    with patch.object(GRPCServiceClient, "stub", new_callable=PropertyMock, return_value=mock_stub):
+        res = await client.check_health()
+        assert res is True
+        mock_stub.CheckHealth.assert_called_once()
+        
+    await client.close()
+
+
+@pytest.mark.asyncio
+async def test_grpc_client_check_health_rpc_error():
+    import grpc
+    from app.services.grpc_client import GRPCServiceClient
+    from unittest.mock import PropertyMock
+    
+    client = GRPCServiceClient("localhost:50051")
+    
+    class FakeRpcError(grpc.RpcError, grpc.Call):
+        def code(self):
+            return grpc.StatusCode.UNAVAILABLE
+        def details(self):
+            return "Connection refused"
+            
+    mock_stub = MagicMock()
+    mock_stub.CheckHealth = AsyncMock(side_effect=FakeRpcError())
+    
+    with patch.object(GRPCServiceClient, "stub", new_callable=PropertyMock, return_value=mock_stub):
+        res = await client.check_health()
+        assert res is False
+        
+    await client.close()
+
+
+@pytest.mark.asyncio
+async def test_grpc_client_check_health_general_exception():
+    from app.services.grpc_client import GRPCServiceClient
+    from unittest.mock import PropertyMock
+    
+    client = GRPCServiceClient("localhost:50051")
+    
+    mock_stub = MagicMock()
+    mock_stub.CheckHealth = AsyncMock(side_effect=Exception("General failure"))
+    
+    with patch.object(GRPCServiceClient, "stub", new_callable=PropertyMock, return_value=mock_stub):
+        res = await client.check_health()
+        assert res is False
+        
+    await client.close()
+
+

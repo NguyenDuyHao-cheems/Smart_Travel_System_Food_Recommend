@@ -1,31 +1,36 @@
 import asyncio
-from fastapi import APIRouter
+import logging
+from fastapi import APIRouter, Request
 from .schemas import ExtractIntentRequest, ExtractIntentResponse, EmbedRequest, EmbedResponse
 from .llm_parser import clean_query_with_gemini
 from .service import generate_mean_pooled_embedding
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 @router.post("/extract-intent", response_model=ExtractIntentResponse)
-async def extract_intent(request: ExtractIntentRequest):
+async def extract_intent(request_data: ExtractIntentRequest, request: Request):
     """
     Unified endpoint: Gemini cleans query → word_tokenize → embed.
     """
     # Step 1: Gemini reformulates raw query
-    cleaned_query = await clean_query_with_gemini(request.text)
-    print("request.text", request.text)
-    print("cleaned_query", cleaned_query)
+    cleaned_query = await clean_query_with_gemini(request_data.text, request)
+    logger.debug(
+        "Extract intent input=%s cleaned_query=%s",
+        ascii(request_data.text),
+        ascii(cleaned_query),
+    )
     # Step 2: Embed the CLEANED query (not raw text!)
     # generate_mean_pooled_embedding already calls word_tokenize internally
     vector = await asyncio.to_thread(generate_mean_pooled_embedding, cleaned_query)
 
     return ExtractIntentResponse(
-        raw_text=request.text,
+        raw_text=request_data.text,
         cleaned_query=cleaned_query,
         vector=vector,
-        lat=request.lat,
-        lng=request.lng,
+        lat=request_data.lat,
+        lng=request_data.lng,
     )
 
 @router.post("/embed", response_model=EmbedResponse)

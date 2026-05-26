@@ -1,6 +1,9 @@
 from sqlalchemy.dialects import postgresql
 
-from app.domains.ranking.retrieval_service import RetrievalService
+from app.domains.ranking.retrieval_service import (
+    RetrievalService,
+    _build_exact_dish_search_terms,
+)
 
 
 class DummyQuery:
@@ -17,6 +20,9 @@ class DummyQuery:
         return self
 
     def join(self, *args, **kwargs):
+        return self
+
+    def options(self, *args, **kwargs):
         return self
 
     def order_by(self, *clauses):
@@ -86,7 +92,8 @@ def test_get_candidates_adds_budget_filter_to_postgres_query():
 
     sql = _compiled_filter_sql(db.query_obj)
 
-    assert "split_part" in sql
+    assert "price_min" in sql
+    assert "price_max" in sql
     assert "50000" in sql
 
 
@@ -100,7 +107,30 @@ def test_get_candidates_skips_budget_filter_when_budget_is_zero():
 
     sql = _compiled_filter_sql(db.query_obj)
 
-    assert "split_part" not in sql
+    assert "price_min" not in sql
+    assert "price_max" not in sql
+
+
+def test_get_candidates_adds_viewport_filter_when_bounds_are_present():
+    db = DummySession()
+    service = RetrievalService(db)
+
+    service.get_candidates(
+        budget=0,
+        viewport_bounds={
+            "north": 10.9,
+            "south": 10.7,
+            "east": 106.9,
+            "west": 106.5,
+        },
+    )
+
+    sql = _compiled_filter_sql(db.query_obj)
+
+    assert "restaurants.lat IS NOT NULL" in sql
+    assert "restaurants.lng IS NOT NULL" in sql
+    assert "restaurants.lat BETWEEN 10.7 AND 10.9" in sql
+    assert "restaurants.lng BETWEEN 106.5 AND 106.9" in sql
 
 
 # -------------------------------------------------------------------
@@ -140,3 +170,43 @@ def test_get_candidates_without_query_vector_orders_by_rating():
 
     filter_sql = _compiled_filter_sql(db.query_obj)
     assert "embedding_vector" not in filter_sql
+
+
+# -------------------------------------------------------------------
+# Dish exact match query selection
+# -------------------------------------------------------------------
+
+
+def test_exact_dish_terms_prefer_phrases_over_broad_tokens():
+    terms = _build_exact_dish_search_terms("gà nướng, phở bò, món chay")
+
+    assert terms == ["gà nướng", "phở bò", "món chay"]
+    assert "gà" not in terms
+
+
+def test_exact_dish_terms_skip_broad_single_food_tokens():
+    terms = _build_exact_dish_search_terms("gà, bò, heo, cá, ăn, món, ngon, rẻ, gần, quán, cơm")
+
+    assert terms == []
+
+
+def test_exact_dish_terms_keep_specific_single_tokens():
+    assert _build_exact_dish_search_terms("phở, chay") == ["phở", "chay"]
+
+
+def test_exact_dish_terms_limit_number_of_database_queries():
+    terms = _build_exact_dish_search_terms("gà nướng, phở bò, bún bò, trà sữa, món chay")
+
+    assert terms == ["gà nướng", "phở bò", "bún bò"]
+
+
+def test_exact_dish_terms_extract_food_phrase_from_raw_fallback_query():
+    terms = _build_exact_dish_search_terms("Tôi muốn ăn gà nướng ngon gần đây giá rẻ")
+
+    assert terms == ["gà nướng"]
+
+
+def test_exact_dish_terms_do_not_query_non_food_tokens_from_raw_fallback_query():
+    terms = _build_exact_dish_search_terms("Tôi muốn ăn ngon gần đây giá rẻ")
+
+    assert terms == []

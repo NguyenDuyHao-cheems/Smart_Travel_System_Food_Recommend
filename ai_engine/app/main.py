@@ -29,10 +29,20 @@ async def lifespan(app: FastAPI):
         from app.ranking.lightfm.recommendation_service import recommendation_service as lf_rec_service
         lf_rec_service.load_model()
         logger.info("LightFM Recommendations model loaded successfully.")
+        
+        # Start gRPC Server
+        from app.grpc.server import GRPCServer
+        from app.core.config import settings
+        app.state.grpc_server = GRPCServer(host=settings.AI_GRPC_HOST, port=settings.AI_GRPC_PORT)
+        await app.state.grpc_server.start()
+        
     except Exception as e:
-        logger.error(f"Error loading AI models during startup: {e}")
+        logger.error(f"Error loading AI models/starting gRPC during startup: {e}")
     yield
     logger.info("Shutting down AI Engine...")
+    if hasattr(app.state, "grpc_server"):
+        await app.state.grpc_server.stop()
+
 
 app = FastAPI(title="Smart Travel System - AI Engine", lifespan=lifespan)
 

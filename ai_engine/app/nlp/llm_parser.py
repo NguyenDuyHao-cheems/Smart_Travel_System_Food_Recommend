@@ -7,11 +7,40 @@ Fix #7: Dùng system_instruction field để tách prompt khỏi user input (tr�
 
 import json
 import logging
+import re
 import httpx
 from typing import Tuple, List, Optional
+from fastapi import Request
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
+
+
+def _safe_for_log(value: object) -> str:
+    """Return a credential-redacted ASCII representation safe for log handlers."""
+    redacted = re.sub(
+        r"([?&]key=)[^&\s'\"\\]+",
+        r"\1[REDACTED]",
+        str(value),
+        flags=re.IGNORECASE,
+    )
+    return ascii(redacted)
+
+
+def _log_gemini_failure(exc: Exception) -> None:
+    """Log safe failure metadata without exposing request URLs or API keys."""
+    if isinstance(exc, httpx.HTTPStatusError) and exc.response is not None:
+        logger.warning(
+            "Gemini API failed (HTTP %s); falling back to original text",
+            exc.response.status_code,
+        )
+        return
+
+    logger.warning(
+        "Gemini API failed (%s); falling back to original text",
+        type(exc).__name__,
+    )
+
 
 # ---------------------------------------------------------------------------
 # Gemini API URL template — model name is configurable via settings
@@ -68,7 +97,13 @@ JSON: {"cleaned_query": "bánh xèo, nem rán, gà rán, khoai tây chiên, da h
 Chỉ trả về JSON {"cleaned_query": "..."}, không giải thích thêm!"""
 
 
-async def clean_query_with_gemini(text: str) -> str:
+from cachetools import TTLCache
+
+# Cache up to 1000 items, with TTL of 1 hour (3600 seconds)
+_query_cache = TTLCache(maxsize=1000, ttl=3600)
+
+
+async def clean_query_with_gemini(text: str, request: Optional[Request] = None) -> str:
     """
     Gửi câu query thô của user tới Gemini để làm sạch và reformulate.
     
@@ -81,22 +116,51 @@ async def clean_query_with_gemini(text: str) -> str:
     Returns:
         str: Câu truy vấn đã được làm sạch. Nếu Gemini fail → trả về text gốc.
     """
+    normalized_text = text.strip().lower()
+    logger.debug(
+        "Query cache check: query=%s normalized=%s",
+        _safe_for_log(text),
+        _safe_for_log(normalized_text),
+    )
+    if normalized_text in _query_cache:
+        cached_val = _query_cache[normalized_text]
+        logger.info(
+            "Query cache hit: %s -> %s",
+            _safe_for_log(text),
+            _safe_for_log(cached_val),
+        )
+        return cached_val
+
+    logger.debug(
+        "Query cache miss: cache_keys=%s; calling Gemini API",
+        _safe_for_log(list(_query_cache.keys())),
+    )
     # --- Thử gọi Gemini trước ---
     if settings.GEMINI_API_KEY:
         try:
-            result = await _call_gemini(text)
+            if request and await request.is_disconnected():
+                logger.info("User disconnected. Aborting Gemini API call.")
+                return text
+
+            result = await _call_gemini(text, request)
             if result is not None:
+                _query_cache[normalized_text] = result
+                logger.debug(
+                    "Query cache save: %s -> %s",
+                    _safe_for_log(normalized_text),
+                    _safe_for_log(result),
+                )
                 return result
         except Exception as e:
-            logger.warning("Gemini API failed, falling back to original text: %s", e)
+            _log_gemini_failure(e)
     else:
-        logger.warning("GEMINI_API_KEY chưa được cấu hình, sử dụng original text fallback")
+        logger.warning("GEMINI_API_KEY is not configured; using original text fallback")
 
     # --- Fallback: dùng original text ---
     return text
 
 
-async def _call_gemini(text: str) -> Optional[str]:
+async def _call_gemini(text: str, request: Optional[Request] = None) -> Optional[str]:
     """
     Gọi Gemini API để reformulate query.
     Trả về cleaned_query string hoặc None nếu thất bại.
@@ -104,6 +168,10 @@ async def _call_gemini(text: str) -> Optional[str]:
     Fix #7: User text được gửi trong contents[].parts[].text thuần túy,
     system instructions được tách ra riêng trong system_instruction field.
     """
+    if request and await request.is_disconnected():
+        logger.info("User disconnected. Aborting Gemini API call.")
+        return None
+
     url = _GEMINI_URL_TEMPLATE.format(
         model=settings.GEMINI_MODEL_NAME,
         key=settings.GEMINI_API_KEY
@@ -150,5 +218,9 @@ async def _call_gemini(text: str) -> Optional[str]:
     if not cleaned:
         return None
     
-    logger.info("Query cleaned: '%s' → '%s'", text, cleaned)
+    logger.info(
+        "Query cleaned: %s -> %s",
+        _safe_for_log(text),
+        _safe_for_log(cleaned),
+    )
     return cleaned

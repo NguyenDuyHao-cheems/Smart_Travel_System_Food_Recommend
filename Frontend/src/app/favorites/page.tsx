@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { Suspense, useEffect, useState } from "react";
 import { PageLayout } from "../../components/PageLayout";
 import { FoodCard } from "../../components/FoodCard";
 import { favoriteService } from "../../services/favoriteService";
@@ -10,7 +10,10 @@ import { toast } from "sonner";
 import { useRouter, useSearchParams } from "next/navigation";
 import { interactionService } from "../../services/interactionService";
 
-export default function FavoritesPage() {
+import { useLanguage } from "../../components/LanguageProvider";
+
+function FavoritesPageInner() {
+  const { t } = useLanguage();
   const [favorites, setFavorites] = useState<RecommendResult[]>([]);
   const [userId, setUserId] = useState<string | null>(null);
   const [highlightedName, setHighlightedName] = useState<string | null>(null);
@@ -20,7 +23,7 @@ export default function FavoritesPage() {
   useEffect(() => {
     const id = localStorage.getItem("user_id");
     if (!id) {
-      toast.error("Vui lòng đăng nhập để xem yêu thích");
+      toast.error(t("favorites.pleaseLogin"));
       router.push("/auth");
       return;
     }
@@ -31,7 +34,7 @@ export default function FavoritesPage() {
     favoriteService.fetchAndSyncFavorites(id).then(dbFavs => {
       setFavorites(dbFavs);
     });
-  }, [router]);
+  }, [router, t]);
 
   useEffect(() => {
     const highlight = searchParams.get("highlight");
@@ -48,7 +51,7 @@ export default function FavoritesPage() {
     if (!userId) return;
     favoriteService.removeFavorite(userId, item.name);
     setFavorites(prev => prev.filter(f => f.name !== item.name));
-    toast.success("Đã xóa khỏi yêu thích");
+    toast.success(t("favorites.removedSuccess"));
 
     interactionService.logInteraction({
       res_id: item.id,
@@ -62,23 +65,23 @@ export default function FavoritesPage() {
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-[#E6DFD5] flex items-center gap-3">
           <Heart className="w-8 h-8 text-red-500 fill-red-500/20" />
-          Món ăn yêu thích
+          {t("favorites.title")}
         </h1>
         <p className="text-gray-500 dark:text-[#9A8A7A] mt-2">
-          Danh sách các món ăn và địa điểm bạn đã lưu lại
+          {t("favorites.desc")}
         </p>
       </div>
 
       {favorites.length === 0 ? (
         <div className="text-center py-20 bg-white dark:bg-[#3D312A] rounded-3xl border border-gray-100 dark:border-[#4D3D32]">
           <Heart className="w-16 h-16 text-gray-300 dark:text-[#6A5A4A] mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-gray-700 dark:text-[#E6DFD5] mb-2">Bạn chưa có món nào trong yêu thích</h2>
-          <p className="text-gray-500 dark:text-[#9A8A7A] mb-6">Hãy khám phá và lưu lại những món ăn ngon nhé!</p>
+          <h2 className="text-xl font-bold text-gray-700 dark:text-[#E6DFD5] mb-2">{t("favorites.emptyTitle")}</h2>
+          <p className="text-gray-500 dark:text-[#9A8A7A] mb-6">{t("favorites.emptyDesc")}</p>
           <button 
             onClick={() => router.push('/')}
             className="px-6 py-2.5 bg-brand hover:bg-brand-hover text-white rounded-full font-semibold transition-colors"
           >
-            Khám phá ngay
+            {t("favorites.exploreBtn")}
           </button>
         </div>
       ) : (
@@ -103,5 +106,13 @@ export default function FavoritesPage() {
         </div>
       )}
     </PageLayout>
+  );
+}
+
+export default function FavoritesPage() {
+  return (
+    <Suspense>
+      <FavoritesPageInner />
+    </Suspense>
   );
 }

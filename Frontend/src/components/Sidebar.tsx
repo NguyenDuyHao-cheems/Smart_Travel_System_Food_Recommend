@@ -14,7 +14,11 @@ import {
   Settings,
   MoreVertical,
   User,
+  MessageSquare,
+  Dices,
+  Users,
 } from "lucide-react";
+import { useLanguage } from "./LanguageProvider";
 
 interface SidebarProps {
   isCollapsed: boolean;
@@ -30,6 +34,7 @@ export function Sidebar({
   avatar: propAvatar,
 }: SidebarProps) {
   const pathname = usePathname();
+  const { t } = useLanguage();
   const [username, setUsername] = React.useState<string | null>(null);
   const [avatar, setAvatar] = React.useState<string | null>(null);
   const [lastSearchUrl, setLastSearchUrl] = React.useState("/");
@@ -47,34 +52,53 @@ export function Sidebar({
 
   const navItems = [
     {
+      icon: MessageSquare,
+      label: t("sidebar.feed"),
+      active: pathname === "/feed",
+      href: "/feed",
+    },
+    {
       icon: Compass,
-      label: "Khám phá",
+      label: t("sidebar.discover"),
       active: pathname === "/" || pathname === "/result",
       href: lastSearchUrl,
     },
-    { icon: Heart, label: "Yêu thích", active: pathname === "/favorites", href: "/favorites" },
-    { icon: Clock, label: "Lịch sử", active: pathname === "/history", href: "/history" },
+    { icon: Heart, label: t("sidebar.favorites"), active: pathname === "/favorites", href: "/favorites" },
+    { icon: Clock, label: t("sidebar.history"), active: pathname === "/history", href: "/history" },
     {
       icon: Sparkles,
-      label: "Gợi ý cho bạn",
+      label: t("sidebar.recommendations"),
       active: pathname === "/recommendations",
       href: "/recommendations",
     },
     {
       icon: FolderOpen,
-      label: "Bộ sưu tập",
+      label: t("sidebar.collections"),
       active: pathname === "/collections",
       href: "/collections",
+    },
+    {
+      icon: Dices,
+      label: t("sidebar.luckyWheel"),
+      active: pathname === "/lucky-wheel",
+      href: "/lucky-wheel",
+    },
+    {
+      icon: Users,
+      label: t("sidebar.friends"),
+      active: pathname === "/friends",
+      href: "/friends",
     },
   ];
 
   const bottomNavItems = [
-    { icon: Settings, label: "Cài đặt", active: pathname === "/settings", href: "/settings" },
+    { icon: Settings, label: t("sidebar.settings"), active: pathname === "/settings", href: "/settings" },
   ];
 
   const avatarUrl =
     avatar ||
     `https://api.dicebear.com/7.x/avataaars/svg?seed=${username || "guest"}`;
+
 
   return (
     <aside
@@ -166,16 +190,16 @@ export function Sidebar({
           <div className="mt-6 mb-4 mx-2 p-4 rounded-2xl bg-brand-muted/50 dark:bg-brand/5 border border-brand-muted dark:border-brand/10 relative overflow-hidden group">
             <div className="relative z-10">
               <h4 className="text-[13px] font-bold text-[#3D312A] dark:text-[#E6DFD5] flex items-center gap-1.5 mb-1.5">
-                AI Wanderbite <Sparkles className="w-3 h-3 text-brand dark:text-[#E8735A]" />
+                {t("sidebar.aiTitle")} <Sparkles className="w-3 h-3 text-brand dark:text-[#E8735A]" />
               </h4>
               <p className="text-[11px] text-[#7A6A5A] dark:text-[#9A8A7A] leading-relaxed mb-3">
-                Để AI hiểu bạn hơn, hãy cập nhật sở thích thường xuyên nhé!
+                {t("sidebar.aiDesc")}
               </p>
               <button 
                 onClick={() => window.dispatchEvent(new Event('open-survey'))}
                 className="w-full py-2 bg-white dark:bg-[#3D312A] border border-brand-muted dark:border-brand/20 text-brand dark:text-[#E8735A] dark:text-[#E6DFD5] text-[11px] font-bold rounded-xl hover:bg-brand-muted/50 dark:hover:bg-brand/10 transition-colors shadow-sm cursor-pointer"
               >
-                Cập nhật ngay
+                {t("sidebar.aiBtn")}
               </button>
             </div>
             {/* Sparkles watermark */}
@@ -234,14 +258,14 @@ export function Sidebar({
           <>
             <div className="flex-1 min-w-0">
               <p className="text-[13px] font-semibold text-[#3D312A] dark:text-[#E6DFD5] truncate">
-                {username || "Khách"}
+                {username || t("sidebar.guest")}
               </p>
               <p className="text-[11px] text-[#9A8A7A] dark:text-[#7A6A5A]">
-                {username ? "Thành viên" : "Khách"}
+                {username ? t("sidebar.member") : t("sidebar.guest")}
               </p>
             </div>
             <button 
-              onClick={() => toast.info("Tính năng này sẽ sớm ra mắt")}
+              onClick={() => toast.info(t("settings.featureComingSoon"))}
               className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-brand-muted dark:hover:bg-brand/10 text-[#9A8A7A] hover:text-brand transition-colors cursor-pointer flex-shrink-0"
             >
               <MoreVertical className="w-4 h-4" />
@@ -249,6 +273,7 @@ export function Sidebar({
           </>
         )}
       </div>
+
     </aside>
   );
 }

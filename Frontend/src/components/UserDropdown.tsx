@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { User, LogOut, ChevronDown, UserCircle } from "lucide-react";
+import { useLanguage } from "./LanguageProvider";
 
 export function UserDropdown({
   username: propUsername,
@@ -12,6 +13,7 @@ export function UserDropdown({
   username?: string | null;
   avatar?: string | null;
 }) {
+  const { t } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
   const [username, setUsername] = useState<string | null>(null);
   const [avatar, setAvatar] = useState<string | null>(null);
@@ -55,6 +57,18 @@ export function UserDropdown({
     localStorage.removeItem("username");
     localStorage.removeItem("user_avatar");
     localStorage.removeItem("food_recsys_userid");
+    
+    // Clear group recommendation session data to prevent bleed between accounts
+    localStorage.removeItem("group_recs");
+    localStorage.removeItem("group_rec_stats");
+    localStorage.removeItem("group_rec_has_searched");
+    localStorage.removeItem("group_rec_selected_friends");
+    localStorage.removeItem("group_rec_custom_coords");
+    localStorage.removeItem("group_rec_custom_address");
+    localStorage.removeItem("group_rec_budget");
+    localStorage.removeItem("group_rec_enable_budget");
+    localStorage.removeItem("group_rec_radius");
+    
     setUsername(null);
     setAvatar(null);
     router.push("/auth");
@@ -71,7 +85,7 @@ export function UserDropdown({
         onClick={() => router.push("/auth")}
         className="ml-2 px-4 py-2 rounded-xl bg-brand-muted dark:bg-brand/10 text-brand-hover dark:text-[#E6DFD5] text-sm font-bold hover:bg-brand-muted/80 dark:hover:bg-brand/20 transition-colors cursor-pointer border border-brand-muted dark:border-brand/20"
       >
-        Đăng nhập
+        {t("userDropdown.login")}
       </button>
     );
   }
@@ -85,7 +99,7 @@ export function UserDropdown({
         <div className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center bg-gradient-to-tr from-brand to-brand-hover shadow-sm ring-2 ring-brand-muted dark:ring-brand/20">
           <img src={avatarUrl} alt={username} className="w-full h-full object-cover" />
         </div>
-        <span className="text-sm font-semibold text-[#3D312A] dark:text-[#E6DFD5] hidden sm:block">
+        <span className="text-sm font-semibold text-[#3D312A] dark:text-[#E6DFD5] hidden lg:block">
           {username}
         </span>
         <ChevronDown
@@ -107,7 +121,7 @@ export function UserDropdown({
             {/* Header */}
             <div className="px-4 py-3 border-b border-[#E6DFD5] dark:border-[#3D312A] mb-1">
               <p className="text-[10px] font-semibold text-[#9A8A7A] uppercase tracking-wider mb-1">
-                Tài khoản
+                {t("userDropdown.account")}
               </p>
               <p className="text-sm font-bold text-[#3D312A] dark:text-[#E6DFD5] truncate">
                 {username}
@@ -120,7 +134,7 @@ export function UserDropdown({
               className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-[#5A4A3A] dark:text-[#C4B4A4] hover:bg-brand-muted/50 dark:hover:bg-brand/5 transition-colors text-left cursor-pointer"
             >
               <UserCircle className="w-4 h-4 text-[#9A8A7A]" />
-              Hồ sơ cá nhân
+              {t("userDropdown.profile")}
             </button>
 
             <div className="h-px bg-[#E6DFD5] dark:bg-[#3D312A] my-1 mx-2" />
@@ -131,7 +145,7 @@ export function UserDropdown({
               className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-brand dark:text-[#E8735A] hover:bg-brand-muted/50 dark:hover:bg-brand/10 transition-colors text-left font-semibold cursor-pointer"
             >
               <LogOut className="w-4 h-4" />
-              Đăng xuất
+              {t("userDropdown.logout")}
             </button>
           </motion.div>
         )}

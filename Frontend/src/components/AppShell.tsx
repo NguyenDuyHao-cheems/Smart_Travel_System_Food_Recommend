@@ -14,31 +14,91 @@ import {
   Settings,
   Sparkles,
   AlertTriangle,
+  MapPin,
+  Route,
+  MessageSquare,
+  Users,
 } from "lucide-react";
 import { ThemeToggle } from "./ThemeToggle";
 import { UserDropdown } from "./UserDropdown";
+import { NotificationPanel } from "./social/NotificationPanel";
+import { useSelector } from "react-redux";
+import { RootState } from "../store";
+import { LocationModal } from "./LocationModal";
+import { useLanguage } from "./LanguageProvider";
 
 const NAV_ITEMS = [
-  { icon: Compass, label: "Khám phá", href: "/" },
-  { icon: Heart, label: "Yêu thích", href: "/favorites" },
-  { icon: Clock, label: "Lịch sử", href: "/history" },
-  { icon: FolderOpen, label: "Bộ sưu tập", href: "/collections" },
-  { icon: Settings, label: "Cài đặt", href: "/settings" },
+  { icon: Compass, label: "Khám phá", key: "discover", href: "/" },
+  { icon: MessageSquare, label: "Bảng tin", key: "feed", href: "/feed" },
+  { icon: Heart, label: "Yêu thích", key: "favorites", href: "/favorites" },
+  { icon: Clock, label: "Lịch sử", key: "history", href: "/history" },
+  { icon: FolderOpen, label: "Bộ sưu tập", key: "collections", href: "/collections" },
+  { icon: Route, label: "Lộ trình", key: "itinerary", href: "/itinerary" },
+  { icon: Users, label: "Bạn bè", key: "friends", href: "/friends" },
+  { icon: Sparkles, label: "Gợi ý nhóm", key: "groupRecommend", href: "/group-recommend" },
+  { icon: Settings, label: "Cài đặt", key: "settings", href: "/settings" },
 ];
 
 interface AppShellProps {
   children: React.ReactNode;
   /** Dot indicator: 'ok' | 'degraded' | 'error' | 'loading' */
   healthStatus?: "ok" | "degraded" | "error" | "loading";
+  headerAction?: React.ReactNode;
 }
 
-export function AppShell({ children, healthStatus = "loading" }: AppShellProps) {
+export function AppShell({ children, healthStatus = "loading", headerAction }: AppShellProps) {
+  const { t } = useLanguage();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [showAuthExpiredModal, setShowAuthExpiredModal] = useState(false);
+  const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
 
+  const address = useSelector((state: RootState) => state.location.address);
+  const status = useSelector((state: RootState) => state.location.status);
+  const itineraryCount = useSelector((state: RootState) => state.itinerary.items.length);
+
   useEffect(() => {
+    setMounted(true);
+
+    // Tự động kiểm tra token hết hạn khi người dùng mở trang hoặc tải lại trang
+    const token = localStorage.getItem("access_token");
+    if (token) {
+      try {
+        const arrayToken = token.split('.');
+        if (arrayToken.length === 3) {
+          const payload = JSON.parse(atob(arrayToken[1]));
+          if (payload.exp && Date.now() > payload.exp * 1000) {
+            // Token đã hết hạn! Dọn dẹp localStorage
+            localStorage.removeItem("access_token");
+            localStorage.removeItem("username");
+            localStorage.removeItem("user_avatar");
+            localStorage.removeItem("user_id");
+            localStorage.removeItem("login_method");
+            localStorage.removeItem("food_recsys_userid");
+            
+            // Xóa dữ liệu phiên gợi ý nhóm
+            localStorage.removeItem("group_recs");
+            localStorage.removeItem("group_rec_stats");
+            localStorage.removeItem("group_rec_has_searched");
+            localStorage.removeItem("group_rec_selected_friends");
+            localStorage.removeItem("group_rec_custom_coords");
+            localStorage.removeItem("group_rec_custom_address");
+            localStorage.removeItem("group_rec_budget");
+            localStorage.removeItem("group_rec_enable_budget");
+            localStorage.removeItem("group_rec_radius");
+            
+            // Tải lại trang để giao diện cập nhật ngay lập tức về chế độ Chưa đăng nhập (Guest)
+            window.location.reload();
+            return;
+          }
+        }
+      } catch (e) {
+        console.error("Error checking token expiration:", e);
+      }
+    }
+
     const handleAuthExpired = () => {
       // Clear localStorage immediately
       localStorage.removeItem("access_token");
@@ -92,31 +152,92 @@ export function AppShell({ children, healthStatus = "loading" }: AppShellProps) 
 
       {/* ── Sticky header ── */}
       <header className="relative z-30 sticky top-0 bg-[#FDFBF7]/95 dark:bg-[#2A2420]/95 backdrop-blur-md border-b-2 border-[#3D312A]/20 dark:border-[#E6DFD5]/10">
-        <div className="flex items-center justify-between px-4 md:px-8 h-[64px]">
+        <div className="grid grid-cols-[auto_1fr_auto] sm:grid-cols-[1fr_auto_1fr] items-center px-4 md:px-8 h-[64px]">
           {/* Left: Hamburger */}
-          <button
-            onClick={() => setDrawerOpen(true)}
-            className="p-2 hover:bg-[#3D312A]/10 dark:hover:bg-[#E6DFD5]/10 rounded transition-colors cursor-pointer"
-            aria-label="Mở menu"
-          >
-            <Menu className="w-5 h-5 text-[#3D312A] dark:text-[#E6DFD5]" />
-          </button>
-
-          {/* Center: Logo */}
-          <Link href="/" className="absolute left-1/2 -translate-x-1/2">
-            <span
-              className="text-3xl md:text-4xl font-black text-brand dark:text-[#E8735A] tracking-wide select-none"
-              style={{ fontFamily: '"DFVN Paper Kuto", "Segoe UI", Roboto, sans-serif' }}
+          <div className="flex items-center justify-start min-w-0">
+            <button
+              onClick={() => setDrawerOpen(true)}
+              className="p-2 hover:bg-[#3D312A]/10 dark:hover:bg-[#E6DFD5]/10 rounded transition-colors cursor-pointer"
+              aria-label={t("appshell.openMenu")}
             >
-              Wanderbite
-            </span>
-          </Link>
+              <Menu className="w-5 h-5 text-[#3D312A] dark:text-[#E6DFD5]" />
+            </button>
+          </div>
 
-          {/* Right: Health dot + Theme + User */}
-          <div className="flex items-center gap-3">
+          {/* Center: Logo — always perfectly centered */}
+          <div className="flex items-center justify-center min-w-0">
+            <Link href="/">
+              <span
+                className="text-[clamp(1.2rem,5.5vw,2rem)] md:text-4xl font-black text-brand dark:text-[#E8735A] tracking-wide select-none whitespace-nowrap"
+                style={{ fontFamily: '"DFVN Paper Kuto", "Segoe UI", Roboto, sans-serif' }}
+              >
+                Wanderbite
+              </span>
+            </Link>
+          </div>
+
+          {/* Right: Health dot + Location + Theme + User */}
+          <div className="flex items-center justify-end gap-2 overflow-x-clip min-w-0">
+            {headerAction}
+
+            {/* Location Indicator Widget - Text version (Desktop >= 1024px) */}
+            <button
+              onClick={() => setIsLocationModalOpen(true)}
+              className="hidden lg:flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border-2 border-[#3D312A]/20 dark:border-[#E6DFD5]/10 hover:bg-[#3D312A]/5 dark:hover:bg-[#E6DFD5]/5 hover:border-[#3D312A]/40 dark:hover:border-[#E6DFD5]/20 transition-all text-xs font-semibold cursor-pointer min-w-0 max-w-[200px]"
+              title={t("appshell.locationTitle")}
+            >
+              <MapPin
+                className={`w-3.5 h-3.5 flex-shrink-0 ${
+                  !mounted
+                    ? 'text-brand dark:text-[#E8735A]'
+                    : status === 'success'
+                    ? 'text-brand dark:text-[#E8735A]'
+                    : status === 'loading'
+                    ? 'text-brand dark:text-[#E8735A] animate-pulse'
+                    : 'text-red-500'
+                }`}
+              />
+              <span className="truncate text-[#3D312A]/70 dark:text-[#E6DFD5]/80">
+                {!mounted
+                  ? t("appshell.notPositioned")
+                  : address || (status === 'loading' ? t("appshell.finding") : t("appshell.notPositioned"))}
+              </span>
+            </button>
+
+            {/* Location icon-only version (Tablet 768px to 1024px) */}
+            <button
+              onClick={() => setIsLocationModalOpen(true)}
+              className="hidden md:max-lg:flex p-2 hover:bg-[#3D312A]/10 dark:hover:bg-[#E6DFD5]/10 rounded transition-colors cursor-pointer flex-shrink-0"
+              title="Nhấp để thay đổi vị trí của bạn"
+            >
+              <MapPin className={`w-4 h-4 flex-shrink-0 ${
+                !mounted || status === 'success'
+                  ? 'text-brand dark:text-[#E8735A]'
+                  : status === 'loading'
+                  ? 'text-brand dark:text-[#E8735A] animate-pulse'
+                  : 'text-red-500'
+              }`} />
+            </button>
+
+            {/* Itinerary badge - Hidden on mobile/high zoom (< 768px) */}
+            {mounted && itineraryCount > 0 && (
+              <div className="hidden md:block flex-shrink-0">
+                <Link
+                  href="/itinerary"
+                  className="relative flex items-center justify-center w-9 h-9 rounded-full bg-brand/5 dark:bg-brand/10 border border-brand/20 dark:border-brand/30 hover:bg-brand/10 dark:hover:bg-brand/20 transition-colors"
+                  title={t("appshell.itineraryTitle")}
+                >
+                  <Route className="w-4 h-4 text-brand dark:text-brand-on-dark" />
+                  <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-brand text-white text-[10px] font-bold flex items-center justify-center leading-none">
+                    {itineraryCount}
+                  </span>
+                </Link>
+              </div>
+            )}
+
             {healthStatus !== "loading" && (
               <div
-                className={`w-2 h-2 rounded-full ${
+                className={`hidden md:block w-2 h-2 rounded-full flex-shrink-0 ${
                   healthStatus === "ok"
                     ? "bg-emerald-500 animate-pulse"
                     : healthStatus === "degraded"
@@ -124,11 +245,19 @@ export function AppShell({ children, healthStatus = "loading" }: AppShellProps) 
                     : "bg-red-500"
                 }`}
                 title={
-                  healthStatus === "ok" ? "Hệ thống bình thường" : "Hệ thống có vấn đề"
+                  healthStatus === "ok" ? t("appshell.systemOk") : t("appshell.systemError")
                 }
               />
             )}
-            <ThemeToggle />
+            
+            <div className="hidden md:block flex-shrink-0">
+              <ThemeToggle />
+            </div>
+
+            <div className="hidden md:block flex-shrink-0">
+              <NotificationPanel />
+            </div>
+
             <UserDropdown />
           </div>
         </div>
@@ -192,7 +321,7 @@ export function AppShell({ children, healthStatus = "loading" }: AppShellProps) 
                     (item.href !== "/" && pathname.startsWith(item.href));
                   return (
                     <Link
-                      key={item.label}
+                      key={item.key}
                       href={item.href}
                       onClick={() => setDrawerOpen(false)}
                       className={`flex items-center gap-4 px-8 py-4 text-[14px] font-semibold border-b border-[#3D312A]/10 dark:border-[#E6DFD5]/10 transition-all uppercase tracking-[2px] ${
@@ -210,7 +339,7 @@ export function AppShell({ children, healthStatus = "loading" }: AppShellProps) 
                       }}
                     >
                       <item.icon className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-brand dark:text-[#E8735A]' : ''}`} />
-                      {item.label}
+                      {t("sidebar." + item.key)}
                     </Link>
                   );
                 })}
@@ -219,7 +348,7 @@ export function AppShell({ children, healthStatus = "loading" }: AppShellProps) 
               {/* Drawer footer */}
               <div className="relative z-10 px-6 pb-8">
                 <p className="text-xs text-[#3D312A]/50 dark:text-[#E6DFD5]/40 text-center italic">
-                  Gợi ý bởi AI · Vị ngon Sài Gòn
+                  {t("appshell.drawerFooter")}
                 </p>
               </div>
             </motion.div>
@@ -256,11 +385,11 @@ export function AppShell({ children, healthStatus = "loading" }: AppShellProps) 
                 </div>
 
                 <h3 className="text-2xl font-black text-[#3D312A] dark:text-[#E6DFD5] mb-2 uppercase tracking-wide">
-                  Phiên Hết Hạn
+                  {t("appshell.sessionExpired")}
                 </h3>
                 
                 <p className="text-[#3D312A]/80 dark:text-[#C8BFB0]/80 text-sm leading-relaxed mb-6 max-w-sm">
-                  Phiên đăng nhập của bạn đã hết hạn hoặc không hợp lệ. Vui lòng đăng nhập lại để sử dụng đầy đủ các tính năng cá nhân hóa!
+                  {t("appshell.sessionExpiredDesc")}
                 </p>
 
                 <div className="flex flex-col sm:flex-row gap-3 w-full justify-center">
@@ -268,13 +397,13 @@ export function AppShell({ children, healthStatus = "loading" }: AppShellProps) 
                     onClick={handleOk}
                     className="order-2 sm:order-1 px-6 py-3 border-2 border-[#3D312A] dark:border-[#E6DFD5]/25 rounded-2xl text-sm font-bold text-[#3D312A] dark:text-[#E6DFD5] hover:bg-[#3D312A]/10 dark:hover:bg-[#E6DFD5]/10 active:scale-95 transition-all uppercase tracking-wider cursor-pointer"
                   >
-                    Quay lại trang chủ
+                    {t("appshell.goHome")}
                   </button>
                   <button
                     onClick={handleLoginAgain}
                     className="order-1 sm:order-2 px-6 py-3 bg-[#E8735A] hover:bg-[#D65F47] text-white rounded-2xl text-sm font-black active:scale-95 transition-all shadow-[0_4px_14px_rgba(232,115,90,0.4)] uppercase tracking-wider cursor-pointer"
                   >
-                    Đăng nhập lại
+                    {t("appshell.loginAgain")}
                   </button>
                 </div>
               </div>
@@ -282,6 +411,7 @@ export function AppShell({ children, healthStatus = "loading" }: AppShellProps) 
           </div>
         )}
       </AnimatePresence>
+      <LocationModal isOpen={isLocationModalOpen} onClose={() => setIsLocationModalOpen(false)} />
     </div>
   );
 }

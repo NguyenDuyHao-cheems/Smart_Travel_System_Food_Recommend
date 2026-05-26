@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
-from .models import UserOnboarding, UserAccount, UserInteraction
+from .models import UserOnboarding, UserAccount, UserInteraction, UserFavorite, UserCollection, UserCollectionItem, UserFriend, FriendRequest
 from typing import Optional, List
 
 
@@ -164,9 +164,52 @@ class UserAccountRepository:
         if not user:
             return False
         
-        self._db.delete(user)
-        self._db.commit()
-        return True
+        try:
+            # Import social models inside the method to avoid circular imports if any, 
+            # or just import them here since they depend on users.id
+            from app.domains.social.models import SocialPost, SocialFollow, SocialLike, SocialNotification, SocialStory, SocialStoryView
+            from app.domains.ranking.models import ReviewModel
+            
+            # Delete social dependent records first
+            self._db.query(SocialStoryView).filter(SocialStoryView.user_id == user_id).delete()
+            self._db.query(SocialStory).filter(SocialStory.user_id == user_id).delete()
+            self._db.query(SocialNotification).filter((SocialNotification.user_id == user_id) | (SocialNotification.actor_id == user_id)).delete()
+            self._db.query(SocialLike).filter(SocialLike.user_id == user_id).delete()
+            self._db.query(SocialFollow).filter((SocialFollow.follower_id == user_id) | (SocialFollow.following_id == user_id)).delete()
+            
+            # Handle SocialPost: other users might have replied to this user's posts.
+            # We need to set their parent_id to NULL before deleting the user's posts to avoid ForeignKeyViolation.
+            user_posts = self._db.query(SocialPost.id).filter(SocialPost.user_id == user_id).all()
+            user_post_ids = [p.id for p in user_posts]
+            if user_post_ids:
+                self._db.query(SocialPost).filter(SocialPost.parent_id.in_(user_post_ids)).update({SocialPost.parent_id: None}, synchronize_session=False)
+            self._db.query(SocialPost).filter(SocialPost.user_id == user_id).delete()
+            
+            # Delete ranking dependent records
+            self._db.query(ReviewModel).filter(ReviewModel.user_id == user_id).delete()
+            
+            # Delete other dependent records
+            self._db.query(UserOnboarding).filter(UserOnboarding.user_id == user_id).delete()
+            self._db.query(UserInteraction).filter(UserInteraction.user_id == user_id).delete()
+            self._db.query(UserFavorite).filter(UserFavorite.user_id == user_id).delete()
+            self._db.query(UserCollectionItem).filter(UserCollectionItem.user_id == user_id).delete()
+            self._db.query(UserCollection).filter(UserCollection.user_id == user_id).delete()
+            
+            # FriendRequest and UserFriend might cascade, but manual deletion is safer
+            self._db.query(UserFriend).filter((UserFriend.user_id == user_id) | (UserFriend.friend_id == user_id)).delete()
+            self._db.query(FriendRequest).filter((FriendRequest.sender_id == user_id) | (FriendRequest.receiver_id == user_id)).delete()
+            
+            self._db.delete(user)
+            self._db.commit()
+            return True
+        except IntegrityError as e:
+            print("IntegrityError:", e)
+            self._db.rollback()
+            return False
+        except Exception as e:
+            print("Exception in delete_user:", e)
+            self._db.rollback()
+            return False
 
 class UserInteractionRepository:
     def __init__(self, db: Session) -> None:

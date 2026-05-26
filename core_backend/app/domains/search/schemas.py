@@ -25,6 +25,14 @@ class SearchRecommendRequest(BaseModel):
     )
     top_k: Optional[int] = Field(24, description="Số lượng kết quả tối đa cần trả về")
 
+    map_center_lat: Optional[float] = Field(None, description="Optional map center latitude used for map-view distance calculation")
+    map_center_lng: Optional[float] = Field(None, description="Optional map center longitude used for map-view distance calculation")
+    map_north: Optional[float] = Field(None, description="Optional north latitude of the current map viewport")
+    map_south: Optional[float] = Field(None, description="Optional south latitude of the current map viewport")
+    map_east: Optional[float] = Field(None, description="Optional east longitude of the current map viewport")
+    map_west: Optional[float] = Field(None, description="Optional west longitude of the current map viewport")
+    map_radius_km: Optional[float] = Field(None, ge=0, description="Optional map radius in kilometers for circle-based map search")
+
 class AllergenDishWarning(BaseModel):
     """Thông tin chi tiết món ăn gây dị ứng trong 1 quán."""
     dish_name: str
@@ -40,6 +48,8 @@ class RecommendResult(BaseModel):
     match: str
     dist: str           # display string, e.g. "1.2 km"
     distance_km: float = 0.0  # numeric value for client-side filtering
+    lat: Optional[float] = None
+    lng: Optional[float] = None
     price: str
     rating: str
     reason: str
@@ -47,6 +57,8 @@ class RecommendResult(BaseModel):
     total_reviews: Optional[int] = 0
     google_maps_url: Optional[str] = None
     allergen_warning: Optional[List[AllergenDishWarning]] = None
+    is_vegetarian: Optional[bool] = False
+    tags: List[str] = Field(default_factory=list, description="Danh sách tag phân loại của nhà hàng (vd: gà, phở, lẩu)")
     sentiment_score: Optional[float] = Field(
         None,
         ge=-1.0,
@@ -95,6 +107,10 @@ class SearchRecommendResponse(BaseModel):
         None,
         description="Thông báo cảnh báo (ví dụ: dị ứng)."
     )
+    results_contain_warnings: Optional[bool] = Field(
+        False,
+        description="True nếu kết quả chứa các cảnh báo dị ứng (chế độ fallback)."
+    )
 
 class AISearchPayload(BaseModel):
     """
@@ -119,6 +135,7 @@ class SessionCreateResponse(BaseModel):
     filtered_out_count: Optional[int] = None
     allergen_flagged_count: Optional[int] = 0
     warning: Optional[str] = None
+    results_contain_warnings: Optional[bool] = False
 
 class SessionDataResponse(BaseModel):
     """Response trả về khi truy vấn session đã lưu."""
@@ -131,4 +148,31 @@ class SessionDataResponse(BaseModel):
     filtered_out_count: Optional[int] = None
     allergen_flagged_count: Optional[int] = 0
     warning: Optional[str] = None
+    results_contain_warnings: Optional[bool] = False
     created_at: Optional[datetime] = None
+
+
+class NewspaperMenuItem(BaseModel):
+    slot: str  # "breakfast", "lunch", "dinner"
+    restaurant_id: str
+    restaurant_name: str
+    address: Optional[str] = None
+    rating_avg: float = 0.0
+    image_url: Optional[str] = None
+    price_range: Optional[str] = None
+    open_time: Optional[str] = None
+    close_time: Optional[str] = None
+    google_maps_url: Optional[str] = None
+    lat: Optional[float] = None
+    lng: Optional[float] = None
+    suggested_dish_name: Optional[str] = None
+    suggested_dish_price: Optional[int] = None
+
+
+class NewspaperMenuResponse(BaseModel):
+    items: List[NewspaperMenuItem]
+    is_fallback: bool = False
+    radius_km: float = 10.0
+    message: Optional[str] = None
+
+

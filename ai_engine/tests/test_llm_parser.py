@@ -3,6 +3,8 @@ test_llm_parser.py — Unit tests for llm_parser.py (Gemini NLP parser).
 """
 
 import json
+import io
+import logging
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from typing import Optional
@@ -11,6 +13,11 @@ from typing import Optional
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+@pytest.fixture(autouse=True)
+def clear_query_cache():
+    from app.nlp.llm_parser import _query_cache
+    _query_cache.clear()
 
 def make_gemini_response(cleaned_query="phở bò, bún bò Huế"):
     """Tạo mock Gemini API response dict."""
@@ -119,6 +126,17 @@ class TestCallGemini:
             with pytest.raises(httpx.HTTPStatusError):
                 await _call_gemini("test")
 
+    @pytest.mark.asyncio
+    async def test_disconnected_returns_none_in_call_gemini(self):
+        """Khi request báo disconnected -> _call_gemini trả về None."""
+        from app.nlp.llm_parser import _call_gemini
+
+        mock_request = AsyncMock()
+        mock_request.is_disconnected = AsyncMock(return_value=True)
+
+        result = await _call_gemini("test", request=mock_request)
+        assert result is None
+
 
 # ---------------------------------------------------------------------------
 # Tests for clean_query_with_gemini (fallback logic)
@@ -141,6 +159,31 @@ class TestCleanQueryWithGemini:
         assert result == "phở bò 50k"
 
     @pytest.mark.asyncio
+    async def test_vietnamese_logging_is_safe_for_cp1252_console(self):
+        """Vietnamese user text must not break Windows console logging."""
+        from app.nlp.llm_parser import clean_query_with_gemini, logger
+
+        output = io.BytesIO()
+        handler = logging.StreamHandler(
+            io.TextIOWrapper(output, encoding="cp1252", errors="strict", write_through=True)
+        )
+        old_level = logger.level
+        logger.addHandler(handler)
+        logger.setLevel(logging.DEBUG)
+        try:
+            with patch("app.nlp.llm_parser.settings") as mock_settings:
+                mock_settings.GEMINI_API_KEY = ""
+                result = await clean_query_with_gemini(
+                    "Hôm nay trời lạnh, thèm ăn món lẩu nóng hổi ngon rẻ"
+                )
+        finally:
+            logger.removeHandler(handler)
+            logger.setLevel(old_level)
+            handler.close()
+
+        assert result == "Hôm nay trời lạnh, thèm ăn món lẩu nóng hổi ngon rẻ"
+
+    @pytest.mark.asyncio
     async def test_gemini_error_falls_back_to_original(self):
         """Khi Gemini lỗi → fallback mà không crash."""
         from app.nlp.llm_parser import clean_query_with_gemini
@@ -158,6 +201,45 @@ class TestCleanQueryWithGemini:
                 result = await clean_query_with_gemini("phở bò 50k")
 
         assert result == "phở bò 50k"
+
+    @pytest.mark.asyncio
+    async def test_http_error_log_does_not_expose_api_key(self, caplog):
+        """HTTP exception request URLs must not place Gemini credentials in logs."""
+        from app.nlp.llm_parser import clean_query_with_gemini
+        import httpx
+
+        request = httpx.Request(
+            "POST",
+            "https://generativelanguage.googleapis.com/v1beta/models/test:generateContent?key=secret-key",
+        )
+        response = httpx.Response(429, request=request)
+        mock_client = AsyncMock()
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+        mock_client.post = AsyncMock(
+            side_effect=httpx.HTTPStatusError("rate limited", request=request, response=response)
+        )
+
+        caplog.set_level(logging.WARNING, logger="app.nlp.llm_parser")
+        with patch("app.nlp.llm_parser.httpx.AsyncClient", return_value=mock_client):
+            with patch("app.nlp.llm_parser.settings") as mock_settings:
+                mock_settings.GEMINI_API_KEY = "secret-key"
+                mock_settings.GEMINI_MODEL_NAME = "gemini-2.0-flash"
+                result = await clean_query_with_gemini("phở bò 50k")
+
+        assert result == "phở bò 50k"
+        assert "HTTP 429" in caplog.text
+        assert "secret-key" not in caplog.text
+        assert "generateContent?key=" not in caplog.text
+
+    def test_safe_log_redacts_key_parameter(self):
+        from app.nlp.llm_parser import _safe_for_log
+
+        message = "request failed: https://example.test/path?key=secret-key&x=1"
+        safe_message = _safe_for_log(message)
+
+        assert "secret-key" not in safe_message
+        assert "[REDACTED]" in safe_message
 
     @pytest.mark.asyncio
     async def test_success_returns_cleaned_query(self):
@@ -179,3 +261,31 @@ class TestCleanQueryWithGemini:
                 result = await clean_query_with_gemini("mình muốn ăn phở bò")
 
         assert result == "phở bò"
+
+    @pytest.mark.asyncio
+    async def test_disconnected_aborts_gemini_call(self):
+        """Khi request báo disconnected -> huỷ gọi Gemini API và trả về text gốc."""
+        from app.nlp.llm_parser import clean_query_with_gemini
+
+        mock_request = AsyncMock()
+        mock_request.is_disconnected = AsyncMock(return_value=True)
+
+        with patch("app.nlp.llm_parser.settings") as mock_settings:
+            mock_settings.GEMINI_API_KEY = "test-key"
+            mock_settings.GEMINI_MODEL_NAME = "gemini-2.0-flash"
+            result = await clean_query_with_gemini("phở bò", request=mock_request)
+
+        assert result == "phở bò"
+        mock_request.is_disconnected.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_cache_hit_returns_cached_query(self):
+        """Khi có trong cache -> lấy từ cache mà không gọi Gemini API."""
+        from app.nlp.llm_parser import clean_query_with_gemini, _query_cache
+        
+        # Populate cache
+        _query_cache["hôm nay trời lạnh ăn gì"] = "lẩu thái, đồ nướng"
+        
+        # Gọi clean_query_with_gemini mà không cần mock Gemini client
+        result = await clean_query_with_gemini("Hôm nay trời lạnh ăn gì")
+        assert result == "lẩu thái, đồ nướng"

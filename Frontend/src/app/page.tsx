@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { X, AlertTriangle, RefreshCw, Sparkles } from "lucide-react";
+import { X, AlertTriangle, RefreshCw, Sparkles, MessageSquare } from "lucide-react";
 import { AppShell } from "../components/AppShell";
 import { UserDropdown } from "../components/UserDropdown";
 import { BudgetSelector, type BudgetOption } from "../components/BudgetSelector";
@@ -17,6 +17,8 @@ import { RecommendResult } from "./result/page";
 import { useOptimizedLocation } from "../hooks/useOptimizedLocation";
 import { useSelector } from "react-redux";
 import { RootState } from "../store";
+import NewspaperMenu from "../components/NewspaperMenu";
+import { useLanguage } from "../components/LanguageProvider";
 
 /* ── Types ── */
 type HealthStatus = "loading" | "ok" | "degraded" | "error";
@@ -33,17 +35,18 @@ const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 /* ── Trending chips ── */
 const TRENDING = [
-  { id: 1, title: "Top Quán Nướng", emoji: "🥩", query: "quán nướng ngon" },
-  { id: 2, title: "Ăn Đêm", emoji: "🌃", query: "đồ ăn đêm muộn" },
-  { id: 3, title: "Đồ ăn Healthy", emoji: "🥑", query: "đồ ăn healthy ít calo" },
-  { id: 4, title: "Trà Sữa & Cà Phê", emoji: "🧋", query: "trà sữa cà phê ngon" },
-  { id: 5, title: "Bánh mì & Bún", emoji: "🍜", query: "bánh mì bún ngon" },
-  { id: 6, title: "Dimsum & Lẩu", emoji: "🥢", query: "dimsum lẩu ngon" },
+  { id: 1, key: "trendingBBQ", emoji: "🥩", query: "quán nướng ngon", tag: "nướng" },
+  { id: 2, key: "trendingLateNight", emoji: "🌃", query: "đồ ăn đêm muộn", tag: null },
+  { id: 3, key: "trendingHealthy", emoji: "🥑", query: "đồ ăn healthy ít calo", tag: "healthy" },
+  { id: 4, key: "trendingTeaCoffee", emoji: "🧋", query: "trà sữa cà phê ngon", tag: "cà phê" },
+  { id: 5, key: "trendingBreadsNoodles", emoji: "🍜", query: "bánh mì bún ngon", tag: "bún" },
+  { id: 6, key: "trendingDimsumHotpot", emoji: "🥢", query: "dimsum lẩu ngon", tag: "lẩu" },
 ];
 
 /* ─────────────────────────────────────────────── */
 
 function HomeContent() {
+  const { t } = useLanguage();
   const { query, setQuery, searchMode, setSearchMode } = useSearchState("");
   const [budget, setBudget] = useState<BudgetOption>("auto");
   const router = useRouter();
@@ -53,7 +56,7 @@ function HomeContent() {
   const [healthData, setHealthData] = useState<HealthData | null>(null);
   const [healthBannerDismissed, setHealthBannerDismissed] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
-  const [searchLoadingMsg, setSearchLoadingMsg] = useState("Đang phân tích sở thích của bạn...");
+  const [searchLoadingMsg, setSearchLoadingMsg] = useState("");
   const [apiError, setApiError] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
 
@@ -197,47 +200,76 @@ function HomeContent() {
     return () => clearInterval(interval);
   }, [healthStatus, checkHealth]);
 
+  const abortControllerRef = React.useRef<AbortController | null>(null);
+  const searchStartedAtRef = React.useRef<number | null>(null);
+
+  const handleCancelSearch = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    setIsSearching(false);
+    searchStartedAtRef.current = null;
+  };
+
   /* ── Search handler — GPS fallback, no reject ── */
-  const handleSearch = async (overrideQuery?: string) => {
+  const handleSearch = async (overrideQuery?: string, explicitTag?: string) => {
     const finalQuery = (overrideQuery ?? query).trim();
     if (!finalQuery) return;
 
+    searchStartedAtRef.current = performance.now();
     setIsSearching(true);
     setApiError(null);
 
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     try {
-      setSearchLoadingMsg("Đang xác định vị trí của bạn...");
+      setSearchLoadingMsg(t("home.searchingLocation"));
 
       const gps = await getOptimizedLocation();
+      if (controller.signal.aborted) return;
       if (!gps) {
-        setApiError("Không thể xác định vị trí thực tế của bạn. Vui lòng kiểm tra quyền truy cập GPS để tiếp tục.");
+        setApiError(t("home.searchError"));
         setIsSearching(false);
         return;
       }
 
-      setSearchLoadingMsg("AI đang phân tích khẩu vị của bạn...");
+      setSearchLoadingMsg(t("home.searchingAI"));
       const token = localStorage.getItem("access_token");
       const userId = localStorage.getItem("user_id");
 
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
       const res = await fetch(`${BACKEND_URL}/api/v1/search/recommend`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: token ? `Bearer ${token}` : "",
-        },
+        headers,
+        signal: controller.signal,
         body: JSON.stringify({
           query: finalQuery,
           lat: gps.lat,
           lng: gps.lng,
           user_id: userId || undefined,
-          budget: budget === "auto" ? undefined : parseInt(budget, 10),
+          // Bỏ qua budget ở Backend để lấy mảng dữ liệu lớn (Zero-latency Client-side Filtering)
           search_mode: searchMode,
-          top_k: 24, // Xin dư ra 24 món để sau khi frontend lọc trùng tên (deduplicate) vẫn đảm bảo đủ 16 món hiển thị
+          top_k: 100, // Lấy 1 mẻ lớn 100 món để lọc trên Frontend
+          tag_name: explicitTag || undefined,
         }),
       });
 
       if (res.ok) {
         const data = await res.json();
+        const elapsedMs = searchStartedAtRef.current === null
+          ? null
+          : Math.round(performance.now() - searchStartedAtRef.current);
         if (userId) {
           historyService.addHistory(
             userId,
@@ -248,22 +280,36 @@ function HomeContent() {
             searchMode
           );
         }
-        setSearchLoadingMsg("Đã có kết quả! Đang chuyển hướng...");
+        setSearchLoadingMsg(t("home.searchSuccess"));
         // [FIX-CONFLICT]: Ẩn session_id và mode vào sessionStorage, đẩy query q lên URL
         if (typeof window !== 'undefined') {
           sessionStorage.setItem('current_search_session_id', data.session_id);
           sessionStorage.setItem('current_search_mode', searchMode);
+          if (elapsedMs !== null) {
+            sessionStorage.setItem('current_search_elapsed_ms', String(elapsedMs));
+            sessionStorage.setItem(`search_elapsed_ms_${data.session_id}`, String(elapsedMs));
+          }
         }
-        router.push(`/result?q=${encodeURIComponent(finalQuery)}`);
+        const params = new URLSearchParams();
+        params.set("q", finalQuery);
+        if (budget !== 'auto') {
+          params.set("budget", String(budget));
+        }
+        router.push(`/result?${params.toString()}`);
       } else {
         const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.detail || "Không thể kết nối với hệ thống AI.");
+        throw new Error(errData.detail || t("home.connError"));
       }
     } catch (err: any) {
+      if (err.name === "AbortError") return;
       // GeolocationPositionError doesn't serialize — use err.message safely
-      const msg = err?.message || "Lỗi kết nối AI. Vui lòng thử lại.";
+      const msg = err?.message || t("home.connError");
       setApiError(msg);
       setIsSearching(false);
+    } finally {
+      if (abortControllerRef.current === controller) {
+        abortControllerRef.current = null;
+      }
     }
   };
 
@@ -284,15 +330,14 @@ function HomeContent() {
             <AlertTriangle className="w-4 h-4 flex-shrink-0" />
             <span className="flex-1">
               {healthStatus === "error"
-                ? "Không thể kết nối tới máy chủ. Vui lòng đảm bảo backend đang chạy."
-                : `Hệ thống đang hoạt động một phần — ${!healthData?.ai_engine ? "AI Engine chưa sẵn sàng" : "Database chưa kết nối"
-                }.`}
+                ? t("home.healthError")
+                : t("home.healthDegraded")}
             </span>
             <button
               onClick={checkHealth}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-bold bg-white/60 dark:bg-white/10 hover:bg-white dark:hover:bg-white/20 border border-current/20 transition-all cursor-pointer"
             >
-              <RefreshCw className="w-3 h-3" /> Thử lại
+              <RefreshCw className="w-3 h-3" /> {t("home.healthRetry")}
             </button>
             <button
               onClick={() => setHealthBannerDismissed(true)}
@@ -304,13 +349,20 @@ function HomeContent() {
         )}
 
         {/* ── Loading overlay ── */}
-        {isSearching && <SearchLoadingOverlay message={searchLoadingMsg} />}
+        {isSearching && (
+          <SearchLoadingOverlay
+            message={searchLoadingMsg}
+            onCancel={handleCancelSearch}
+            startedAt={searchStartedAtRef.current ?? undefined}
+          />
+        )}
 
         {/* ── Hero Section ── */}
         <section
           className="relative w-full overflow-hidden"
           style={{ minHeight: "calc(100vh - 64px)" }}
         >
+
           {/* ── Floating Food Decorations ── */}
 
           {/* Bánh canh — top-left */}
@@ -393,10 +445,9 @@ function HomeContent() {
             />
           </div>
 
-          {/* Bottom fade */}
           <div
             className="absolute bottom-0 left-0 right-0 h-16 z-10"
-            style={{ background: "linear-gradient(to bottom, transparent, rgba(255,253,249,0.8))" }}
+            style={{ background: "linear-gradient(to bottom, transparent, var(--background))" }}
           />
 
           <div className="relative z-10 max-w-6xl mx-auto px-4 md:px-8 py-12 md:py-20 flex flex-col items-center gap-12 min-h-[calc(100vh-104px)]">
@@ -417,11 +468,11 @@ function HomeContent() {
             <div className="flex flex-col items-center text-center gap-8 w-full">
               <div>
                 <h1 className="text-[26px] sm:text-[38px] md:text-[54px] lg:text-[62px] font-black leading-none tracking-tight text-[#3D312A] dark:text-[#E6DFD5] drop-shadow-sm sm:whitespace-nowrap">
-                  HÔM NAY BẠN MUỐN{" "}
-                  <span className="text-brand dark:text-[#E8735A]">ĂN GÌ ?</span>
+                  {t("home.heroTitle")}
+                  <span className="text-brand dark:text-[#E8735A]">{t("home.heroTitleSpan")}</span>
                 </h1>
                 <p className="text-[#3D312A]/60 dark:text-[#E6DFD5]/60 text-sm mt-3 font-semibold uppercase tracking-wider">
-                  Mô tả cảm giác bạn muốn · AI sẽ gợi ý ngay
+                  {t("home.heroDesc")}
                 </p>
               </div>
 
@@ -435,39 +486,66 @@ function HomeContent() {
                   onSearch={() => handleSearch()}
                   compact={false}
                 />
-                <div className="mt-4 flex justify-center">
+                <div className="mt-4 flex flex-col items-center gap-4">
                   <BudgetSelector value={budget} onChange={setBudget} />
+                  
+                  <Link
+                    href="/lucky-wheel"
+                    className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full text-xs font-bold uppercase tracking-wider bg-white dark:bg-[#3D312A] border border-[#E6DFD5] dark:border-[#4D3D32] text-[#3D312A] dark:text-[#E6DFD5] hover:border-brand/40 hover:text-brand dark:hover:text-brand hover:shadow-[0_0_15px_rgba(232,115,90,0.15)] transition-all cursor-pointer shadow-sm group"
+                  >
+                    <span className="text-base group-hover:rotate-45 transition-transform duration-300">🎡</span>
+                    <span>{t("home.luckyWheelBtn")}</span>
+                  </Link>
                 </div>
               </div>
 
               {/* Trending chips */}
               <div className="flex flex-wrap justify-center gap-2.5 max-w-2xl">
-                {TRENDING.map((t) => (
+                {TRENDING.map((tItem) => (
                   <button
-                    key={t.id}
+                    key={tItem.id}
                     onClick={() => {
-                      setQuery(t.query);
-                      handleSearch(t.query);
+                      setQuery(tItem.query);
+                      handleSearch(tItem.query, tItem.tag ?? undefined);
                     }}
                     className="px-4 py-2 text-xs font-bold uppercase tracking-[1.5px] border-2 border-[#3D312A]/20 bg-white/80 dark:bg-[#2A2420]/80 hover:bg-brand hover:text-white hover:border-brand transition-all rounded-full shadow-sm cursor-pointer text-[#3D312A] dark:text-[#E6DFD5]"
                   >
-                    {t.emoji} {t.title}
+                    {tItem.emoji} {t("home." + tItem.key)}
                   </button>
                 ))}
               </div>
+              
+              {/* Feed Banner Button */}
+              <div className="mt-4 w-full max-w-lg">
+                <Link
+                  href="/feed"
+                  className="flex items-center justify-center gap-4 px-6 py-4 bg-gradient-to-r from-brand/90 to-rose-500/90 hover:from-brand hover:to-rose-500 text-white rounded-[24px] shadow-lg shadow-rose-500/20 hover:shadow-xl hover:shadow-rose-500/30 hover:-translate-y-1 transition-all cursor-pointer group border border-white/10"
+                >
+                  <div className="bg-white/20 p-2.5 rounded-xl group-hover:rotate-12 transition-transform">
+                    <MessageSquare className="w-6 h-6 text-white" />
+                  </div>
+                  <div className="text-left">
+                    <div className="font-black text-lg tracking-tight leading-tight">{t("home.feedBannerTitle")}</div>
+                    <div className="text-[13px] text-white/90 font-medium mt-0.5">{t("home.feedBannerDesc")}</div>
+                  </div>
+                </Link>
+              </div>
             </div>
+
+            {/* ── Newspaper Daily Menu ── */}
+            <NewspaperMenu />
 
             {/* ── Recommendations Grid ── */}
             <div className="w-full mt-4 relative z-20 border-t border-[#3D312A]/10 pt-10">
               <div className="flex items-center justify-between mb-8 px-2">
                 <h2 className="text-2xl font-black text-[#3D312A] dark:text-[#E6DFD5] tracking-tight flex items-center gap-2">
-                  <Sparkles className="w-6 h-6 text-brand dark:text-[#E8735A]" /> GỢI Ý CHO BẠN
+                  <Sparkles className="w-6 h-6 text-brand dark:text-[#E8735A]" /> {t("home.recommendationsTitle")}
                 </h2>
                 <Link
                   href="/recommendations"
                   className="text-xs font-black text-brand dark:text-[#E8735A] hover:opacity-80 tracking-widest uppercase border-b-2 border-brand pb-0.5 transition-all"
                 >
-                  Xem thêm
+                  {t("home.seeMore")}
                 </Link>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -489,7 +567,7 @@ function HomeContent() {
                   ))
                 ) : (
                   <div className="col-span-full text-center text-gray-500 py-10">
-                    Chưa có gợi ý nào, hãy thử tìm kiếm!
+                    {t("home.noRecommendations")}
                   </div>
                 )}
               </div>

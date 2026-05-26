@@ -17,19 +17,67 @@ export const favoriteService = {
       const token = localStorage.getItem("access_token");
       if (!token) return favoriteService.getFavorites(userId);
 
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
       const res = await fetch(`${apiUrl}/api/v1/users/favorites`, {
         headers: {
           "Authorization": `Bearer ${token}`
         }
       });
+
+      if (res.status === 401) {
+        localStorage.removeItem("access_token");
+        localStorage.removeItem("user_id");
+        window.location.href = "/auth?expired=1";
+        return [];
+      }
+
       if (res.ok) {
         const dbFavs = await res.json() as RecommendResult[];
-        const data = localStorage.getItem(FAVORITES_KEY);
-        const allFavs: Record<string, RecommendResult[]> = data ? JSON.parse(data) : {};
-        allFavs[userId] = dbFavs;
+        
+        // 2-Way Sync: Find unsynced local favorites and upload them to the database
+        const localData = localStorage.getItem(FAVORITES_KEY);
+        const allFavs: Record<string, RecommendResult[]> = localData ? JSON.parse(localData) : {};
+        const localFavs = allFavs[userId] || [];
+        
+        let syncedFavs = [...dbFavs];
+        let hasChanges = false;
+        
+        for (const localFav of localFavs) {
+          const alreadyInDb = dbFavs.some(dbFav => dbFav.name === localFav.name);
+          if (!alreadyInDb) {
+            // Guard: Do not sync mock items to the DB
+            if (localFav.id && !localFav.id.startsWith("mock-")) {
+              try {
+                const addRes = await fetch(`${apiUrl}/api/v1/users/favorites`, {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`
+                  },
+                  body: JSON.stringify({ res_id: localFav.id })
+                });
+                
+                if (addRes.status === 401) {
+                  localStorage.removeItem("access_token");
+                  localStorage.removeItem("user_id");
+                  window.location.href = "/auth?expired=1";
+                  return [];
+                }
+                
+                if (addRes.ok) {
+                  syncedFavs.push(localFav);
+                  hasChanges = true;
+                }
+              } catch (e) {
+                console.error("Failed to sync local favorite to DB in background:", e);
+              }
+            }
+          }
+        }
+        
+        allFavs[userId] = syncedFavs;
         localStorage.setItem(FAVORITES_KEY, JSON.stringify(allFavs));
-        return dbFavs;
+        return syncedFavs;
       }
     } catch (err) {
       console.error("Failed to sync favorites from DB:", err);
@@ -54,7 +102,7 @@ export const favoriteService = {
       const token = localStorage.getItem("access_token");
       if (!token) return;
 
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
       await fetch(`${apiUrl}/api/v1/users/favorites`, {
         method: "POST",
         headers: {
@@ -91,7 +139,7 @@ export const favoriteService = {
       const token = localStorage.getItem("access_token");
       if (!token) return;
 
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
       await fetch(`${apiUrl}/api/v1/users/favorites/${item.id}`, {
         method: "DELETE",
         headers: {

@@ -1,4 +1,5 @@
 import pytest
+import math
 from unittest.mock import AsyncMock, patch, MagicMock
 from app.services.recommendation_service import recommend, _apply_sentiment_search_boost
 
@@ -17,8 +18,7 @@ class DummyCandidate:
 @pytest.mark.asyncio
 async def test_recommend_no_candidates_returns_empty():
     db = MagicMock()
-    with patch("app.services.recommendation_service.get_user_allergies", return_value=[]), \
-         patch("app.services.recommendation_service.get_user_preferences_vector", return_value=None), \
+    with patch("app.services.recommendation_service.get_user_recommendation_context", return_value=([], None)), \
          patch("app.services.recommendation_service.RetrievalService") as mock_retrieval_cls:
          
         mock_retrieval = MagicMock()
@@ -39,8 +39,7 @@ async def test_recommend_few_candidates_skips_rerank():
         DummyCandidate(id="1", distance=0.1),
         DummyCandidate(id="2", distance=0.15)
     ]
-    with patch("app.services.recommendation_service.get_user_allergies", return_value=[]), \
-         patch("app.services.recommendation_service.get_user_preferences_vector", return_value=None), \
+    with patch("app.services.recommendation_service.get_user_recommendation_context", return_value=([], None)), \
          patch("app.services.recommendation_service.RetrievalService") as mock_retrieval_cls, \
          patch("app.services.recommendation_service.annotate_allergy", return_value=(candidates, 0)):
          
@@ -58,8 +57,7 @@ async def test_recommend_basic_mode_blends_saved_user_preferences():
     db = MagicMock()
     query_vector = [1.0, 1.0]
     user_vector = [0.0, 0.0]
-    with patch("app.services.recommendation_service.get_user_allergies", return_value=[]), \
-         patch("app.services.recommendation_service.get_user_preferences_vector", return_value=user_vector), \
+    with patch("app.services.recommendation_service.get_user_recommendation_context", return_value=([], user_vector)), \
          patch("app.services.recommendation_service.RetrievalService") as mock_retrieval_cls:
 
         mock_retrieval = MagicMock()
@@ -75,8 +73,7 @@ async def test_recommend_emotion_mode_ignores_saved_user_preferences_for_retriev
     db = MagicMock()
     query_vector = [1.0, 1.0]
     user_vector = [0.0, 0.0]
-    with patch("app.services.recommendation_service.get_user_allergies", return_value=[]), \
-         patch("app.services.recommendation_service.get_user_preferences_vector", return_value=user_vector) as mock_preferences, \
+    with patch("app.services.recommendation_service.get_user_recommendation_context", return_value=([], None)) as mock_context, \
          patch("app.services.recommendation_service.RetrievalService") as mock_retrieval_cls:
 
         mock_retrieval = MagicMock()
@@ -91,7 +88,7 @@ async def test_recommend_emotion_mode_ignores_saved_user_preferences_for_retriev
             search_mode="emotion",
         )
 
-        mock_preferences.assert_not_called()
+        mock_context.assert_called_once_with(db, "user-1", include_preferences=False)
         assert mock_retrieval.get_candidates.call_args.kwargs["query_vector"] == query_vector
 
 @pytest.mark.asyncio
@@ -101,8 +98,7 @@ async def test_recommend_few_candidates_emotion_mode_applies_sentiment_before_sk
         DummyCandidate(id="negative", distance=0.12, rating_avg=4.0, total_reviews=80, sentiment_score=-0.8),
         DummyCandidate(id="positive", distance=0.14, rating_avg=4.0, total_reviews=80, sentiment_score=0.9),
     ]
-    with patch("app.services.recommendation_service.get_user_allergies", return_value=[]), \
-         patch("app.services.recommendation_service.get_user_preferences_vector", return_value=None), \
+    with patch("app.services.recommendation_service.get_user_recommendation_context", return_value=([], None)), \
          patch("app.services.recommendation_service.RetrievalService") as mock_retrieval_cls, \
          patch("app.services.recommendation_service.annotate_allergy", return_value=(candidates, 0)):
 
@@ -143,12 +139,14 @@ async def test_recommend_happy_path_with_rerank():
             self._json_data = json_data
         def json(self):
             return self._json_data
+        def raise_for_status(self):
+            pass
 
-    with patch("app.services.recommendation_service.get_user_allergies", return_value=[]), \
-         patch("app.services.recommendation_service.get_user_preferences_vector", return_value=None), \
+    with patch("app.services.recommendation_service.get_user_recommendation_context", return_value=([], None)), \
          patch("app.services.recommendation_service.RetrievalService") as mock_retrieval_cls, \
          patch("app.services.recommendation_service.annotate_allergy", return_value=(candidates, 0)), \
          patch("app.services.recommendation_service.FeatureService") as mock_feature_cls, \
+         patch("app.core.config.settings.ENABLE_GRPC", False), \
          patch("httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post:
          
         mock_retrieval = MagicMock()
@@ -171,13 +169,13 @@ async def test_recommend_happy_path_with_rerank():
         assert len(results) == 4
         # Confirm reranked order
         assert results[0].id == "3"
-        assert results[0].ranking_score == 0.95
+        assert pytest.approx(results[0].ranking_score, 1e-5) == 1.0 / (1.0 + math.exp(-0.95))
         assert results[1].id == "1"
-        assert results[1].ranking_score == 0.85
+        assert pytest.approx(results[1].ranking_score, 1e-5) == 1.0 / (1.0 + math.exp(-0.85))
         assert results[2].id == "4"
-        assert results[2].ranking_score == 0.75
+        assert pytest.approx(results[2].ranking_score, 1e-5) == 1.0 / (1.0 + math.exp(-0.75))
         assert results[3].id == "2"
-        assert results[3].ranking_score == 0.65
+        assert pytest.approx(results[3].ranking_score, 1e-5) == 1.0 / (1.0 + math.exp(-0.65))
 
 @pytest.mark.asyncio
 async def test_recommend_emotion_mode_pre_ranks_before_lambdamart_without_post_override():
@@ -199,12 +197,14 @@ async def test_recommend_emotion_mode_pre_ranks_before_lambdamart_without_post_o
             self._json_data = json_data
         def json(self):
             return self._json_data
+        def raise_for_status(self):
+            pass
 
-    with patch("app.services.recommendation_service.get_user_allergies", return_value=[]), \
-         patch("app.services.recommendation_service.get_user_preferences_vector", return_value=None), \
+    with patch("app.services.recommendation_service.get_user_recommendation_context", return_value=([], None)), \
          patch("app.services.recommendation_service.RetrievalService") as mock_retrieval_cls, \
          patch("app.services.recommendation_service.annotate_allergy", return_value=(candidates, 0)), \
          patch("app.services.recommendation_service.FeatureService") as mock_feature_cls, \
+         patch("app.core.config.settings.ENABLE_GRPC", False), \
          patch("httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post:
 
         mock_retrieval = MagicMock()
@@ -241,8 +241,7 @@ async def test_recommend_ai_engine_down_falls_back_gracefully():
         DummyCandidate(id="3", distance=0.2),
         DummyCandidate(id="4", distance=0.25)
     ]
-    with patch("app.services.recommendation_service.get_user_allergies", return_value=[]), \
-         patch("app.services.recommendation_service.get_user_preferences_vector", return_value=None), \
+    with patch("app.services.recommendation_service.get_user_recommendation_context", return_value=([], None)), \
          patch("app.services.recommendation_service.RetrievalService") as mock_retrieval_cls, \
          patch("app.services.recommendation_service.annotate_allergy", return_value=(candidates, 0)), \
          patch("app.services.recommendation_service.FeatureService") as mock_feature_cls, \
@@ -269,3 +268,68 @@ def test_apply_sentiment_search_boost():
     assert len(boosted) == 3
     assert boosted[0].sentiment_search_score >= boosted[1].sentiment_search_score
     assert boosted[1].sentiment_search_score >= boosted[2].sentiment_search_score
+
+
+def test_sigmoid_distance_decay_negative_scores():
+    from app.services.recommendation_service import _apply_distance_decay
+    
+    # 2 candidates with the SAME negative score but different distances
+    # A is close (100 meters), B is far (10000 meters)
+    c1 = DummyCandidate(id="close")
+    c1.ranking_score = -1.5
+    c1.distance_m = 100
+    
+    c2 = DummyCandidate(id="far")
+    c2.ranking_score = -1.5
+    c2.distance_m = 10000
+    
+    candidates = [c2, c1]
+    
+    # Run distance decay
+    decayed = _apply_distance_decay(candidates)
+    
+    # close candidate should have higher ranking_score than far candidate, and rank first
+    assert decayed[0].id == "close"
+    assert decayed[0].ranking_score > decayed[1].ranking_score
+
+
+def test_feature_service_normalized_synonym_boost():
+    from app.domains.ranking.feature_service import FeatureService
+    
+    # 1. Test synonym boost (diacritic-insensitive)
+    # Search for "cơm tấm" (normalized is "com tam") should match restaurant with name "Cơm Tấm Đặc Sản" (normalized "com tam dac san")
+    c = DummyCandidate(id="1")
+    c.name = "Cơm Tấm Đặc Sản"
+    c.lat = 10.0
+    c.lng = 10.6
+    
+    svc = FeatureService()
+    features = svc.build_integer_features(
+        candidates=[c],
+        user_lat=10.0,
+        user_lng=10.6,
+        budget=50000,
+        query_text="cơm tấm"
+    )
+    
+    # similarity_score should be boosted (+40) because of synonym match
+    assert features[0]["similarity_score"] >= 40
+
+    # 2. Test overlapping keyword boost (diacritic-insensitive)
+    # Search "bánh mì gà" (normalized: "banh mi ga") should match restaurant with name "Gà Rán Ngon" (normalized: "ga ran ngon")
+    # because of overlapping word "gà" -> "ga"
+    c2 = DummyCandidate(id="2")
+    c2.name = "Gà Rán Ngon"
+    c2.lat = 10.0
+    c2.lng = 10.6
+    
+    features2 = svc.build_integer_features(
+        candidates=[c2],
+        user_lat=10.0,
+        user_lng=10.6,
+        budget=50000,
+        query_text="bánh mì gà"
+    )
+    
+    # "gà" -> "ga" matches name's "Gà" -> "ga". Should receive overlapping boost (+25)
+    assert features2[0]["similarity_score"] >= 25

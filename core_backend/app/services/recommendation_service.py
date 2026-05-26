@@ -5,10 +5,10 @@ from typing import Optional, List
 
 from sqlalchemy.orm import Session
 
-from app.services.user_services import get_user_allergies, get_user_preferences_vector
+from app.services.user_services import get_user_recommendation_context
 from app.services.allergy_filter import (
-    filter_allergy, handle_fallback, 
-    fetch_allergen_map, fetch_dish_detail_map, annotate_allergy
+    handle_fallback, 
+    fetch_allergy_data, annotate_allergy
 )
 from app.domains.ranking.retrieval_service import RetrievalService
 from app.domains.ranking.feature_service import FeatureService
@@ -31,6 +31,9 @@ async def recommend(
     tag_name: Optional[str] = None,
     cleaned_query: str = "",
     search_mode: str = "basic",
+    viewport_bounds: Optional[dict] = None,
+    map_center: Optional[List[float]] = None,
+    map_radius_km: Optional[float] = None,
 ):
     """
     Recommendation pipeline:
@@ -38,12 +41,15 @@ async def recommend(
       2. Allergy filter loại bỏ món không an toàn.
       3. Trả về danh sách res_id đã sắp xếp.
     """
-    user_allergies = get_user_allergies(db, user_id) if user_id else []
     is_emotion_search = (search_mode or "").lower() == "emotion"
-    user_vector = (
-        None
-        if is_emotion_search
-        else get_user_preferences_vector(db, user_id) if user_id else None
+    user_allergies, user_vector = (
+        get_user_recommendation_context(
+            db,
+            user_id,
+            include_preferences=not is_emotion_search,
+        )
+        if user_id
+        else ([], None)
     )
 
     # Kết hợp vector: ưu tiên query hiện tại (85%) để tránh bị lệch quá nhiều do sở thích user (15%)
@@ -57,13 +63,63 @@ async def recommend(
 
     # Lấy candidates từ DB với semantic ordering
     retrieval = RetrievalService(db)
-    raw_candidates = retrieval.get_candidates(
-        budget=budget,
-        query_vector=final_vector,
-        query_text=query,
-        tag_name=tag_name,
-        cleaned_query=cleaned_query,
-    )
+    raw_candidates = []
+    results_contain_warnings = False
+
+    # Progressive Spatial Relaxation
+    # If the user has allergies and map search bounds exist, progressively expand radius to ensure >= 16 results
+    radius_levels = []
+    if user_allergies and map_radius_km:
+        radius_levels = [map_radius_km]
+        for r_lvl in [15.0, 30.0, 50.0]:
+            if r_lvl > map_radius_km:
+                radius_levels.append(r_lvl)
+
+    if radius_levels:
+        for r_lvl in radius_levels:
+            raw_candidates = retrieval.get_candidates(
+                budget=budget,
+                query_vector=final_vector,
+                query_text=query,
+                tag_name=tag_name,
+                cleaned_query=cleaned_query,
+                viewport_bounds=viewport_bounds,
+                map_center=map_center,
+                map_radius_km=r_lvl,
+                user_allergies=user_allergies,
+            )
+            if len(raw_candidates) >= 16:
+                break
+        
+        # High warning fallback mode: if still < 16, query WITHOUT allergy filter at max radius
+        if len(raw_candidates) < 16:
+            unfiltered_candidates = retrieval.get_candidates(
+                budget=budget,
+                query_vector=final_vector,
+                query_text=query,
+                tag_name=tag_name,
+                cleaned_query=cleaned_query,
+                viewport_bounds=viewport_bounds,
+                map_center=map_center,
+                map_radius_km=radius_levels[-1],
+                user_allergies=None,
+            )
+            if len(unfiltered_candidates) >= 16:
+                raw_candidates = unfiltered_candidates
+                results_contain_warnings = True
+    else:
+        # No radius search or no allergies: basic query with inline filter if allergies exist
+        raw_candidates = retrieval.get_candidates(
+            budget=budget,
+            query_vector=final_vector,
+            query_text=query,
+            tag_name=tag_name,
+            cleaned_query=cleaned_query,
+            viewport_bounds=viewport_bounds,
+            map_center=map_center,
+            map_radius_km=map_radius_km,
+            user_allergies=user_allergies,
+        )
 
     if not raw_candidates:
         return {
@@ -73,10 +129,12 @@ async def recommend(
             "fallback_applied": False,
         }
 
-    # Pre-fetch allergens từ dishes cho tất cả restaurant candidates
+    # Pre-fetch allergens từ dishes cho tất cả restaurant candidates (combined query)
     restaurant_ids = [c.id for c in raw_candidates]
-    allergen_map = fetch_allergen_map(db, restaurant_ids) if user_allergies else {}
-    dish_detail_map = fetch_dish_detail_map(db, restaurant_ids) if user_allergies else {}
+    if user_allergies:
+        allergen_map, dish_detail_map = fetch_allergy_data(db, restaurant_ids)
+    else:
+        allergen_map, dish_detail_map = {}, {}
     
     # Thay vì filter (loại bỏ), ta annotate (gắn nhãn)
     safe_candidates, flagged_count = annotate_allergy(
@@ -123,41 +181,34 @@ async def recommend(
     )
     
     try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
-            payload = {
-                "user_id": user_id or "anonymous",
-                "candidates": featured,
-                "top_k": len(featured),
-            }
-            resp = await client.post(
-                f"{settings.AI_ENGINE_BASE_URL}/api/v1/ml/rank",
-                json=payload,
-            )
-            if resp.status_code == 200:
-                data = resp.json()
-                ranked_ids = data.get("ranked_ids", [])
-                scores = data.get("scores", [])
+        from app.services.ai_client import get_ai_client
+        ai_client = await get_ai_client()
+        data = await ai_client.rank_candidates(
+            user_id=user_id or "anonymous",
+            candidates=featured,
+            top_k=len(featured),
+        )
+        ranked_ids = data.get("ranked_ids", [])
+        scores = data.get("scores", [])
+        
+        id_to_candidate = {str(c.id): c for c in top_candidates}
+        reranked = []
+        for i, rid in enumerate(ranked_ids):
+            if rid in id_to_candidate:
+                c = id_to_candidate[rid]
+                c.ranking_score = scores[i] if i < len(scores) else None
+                reranked.append(c)
+        
+        # Xử lý các ứng viên bị miss (nếu có)
+        for c in top_candidates:
+            if str(c.id) not in {str(r.id) for r in reranked}:
+                c.ranking_score = None
+                reranked.append(c)
                 
-                id_to_candidate = {str(c.id): c for c in top_candidates}
-                reranked = []
-                for i, rid in enumerate(ranked_ids):
-                    if rid in id_to_candidate:
-                        c = id_to_candidate[rid]
-                        c.ranking_score = scores[i] if i < len(scores) else None
-                        reranked.append(c)
-                
-                # Xử lý các ứng viên bị miss (nếu có)
-                for c in top_candidates:
-                    if str(c.id) not in {str(r.id) for r in reranked}:
-                        c.ranking_score = None
-                        reranked.append(c)
-                        
-                # Merge an toàn vào danh sách ban đầu
-                reranked_ids = {str(c.id) for c in reranked}
-                remaining_candidates = [c for c in safe_candidates if str(c.id) not in reranked_ids]
-                safe_candidates = reranked + remaining_candidates
-            else:
-                logger.warning("Ranking API returned %s: %s", resp.status_code, resp.text)
+        # Merge an toàn vào danh sách ban đầu
+        reranked_ids = {str(c.id) for c in reranked}
+        remaining_candidates = [c for c in safe_candidates if str(c.id) not in reranked_ids]
+        safe_candidates = reranked + remaining_candidates
     except Exception as exc:
         logger.warning("Ranking rerank failed, keeping cosine order: %s", exc)
 
@@ -169,6 +220,7 @@ async def recommend(
         "filtered_out_count": len(removed),
         "allergen_flagged_count": flagged_count,
         "fallback_applied": False,
+        "results_contain_warnings": results_contain_warnings,
     }
 
 
@@ -217,7 +269,9 @@ def _apply_distance_decay(candidates):
         dist_km = (getattr(c, "distance_m", 0) or 0) / 1000.0
         score = getattr(c, "ranking_score", None)
         if score is not None:
-            c.ranking_score = score * math.exp(-dist_km / decay_scale)
+            # Map raw score to positive range (0, 1) using sigmoid to prevent negative score invert bugs
+            pos_score = 1.0 / (1.0 + math.exp(-score))
+            c.ranking_score = pos_score * math.exp(-dist_km / decay_scale)
 
     # Sắp xếp lại: quán có ranking_score cao nhất lên đầu
     # Quán không có ranking_score (fallback cosine) xuống cuối

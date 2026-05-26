@@ -1,15 +1,62 @@
 from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
+import requests
+from cachetools import TTLCache
 
 from app.core.dependencies import get_db, get_optional_current_user, get_current_user
 from app.domains.users.models import UserAccount
 from app.domains.search.schemas import RecommendResult
-from .schemas import HomeRecommendationResponse
+from .schemas import HomeRecommendationResponse, GroupRecommendationRequest, GroupRecommendationResponse
 from .service import RecommendationService
 from app.services.ai_client import get_ai_client
 
 router = APIRouter()
+
+# In-memory cache for geocoded addresses (up to 1000 entries, TTL 24 hours)
+location_cache = TTLCache(maxsize=1000, ttl=86400)
+
+@router.get("/location/reverse")
+def reverse_geocode(
+    lat: float = Query(..., description="Latitude"),
+    lng: float = Query(..., description="Longitude")
+):
+    """
+    Dịch tọa độ thành địa chỉ chi tiết sử dụng OpenStreetMap Nominatim API (Backend proxy).
+    Tuân thủ chính sách Nominatim:
+    - Gửi Header User-Agent của ứng dụng.
+    - Sử dụng bộ nhớ đệm cache (cachetools TTLCache) để giảm thiểu số lượng cuộc gọi trùng lặp (tối đa 1req/s).
+    """
+    # Làm tròn tọa độ tới 5 chữ số thập phân (~1.1m sai số) để tăng tỉ lệ trúng cache
+    cache_key = (round(lat, 5), round(lng, 5))
+    if cache_key in location_cache:
+        return {"address": location_cache[cache_key]}
+
+    try:
+        url = "https://nominatim.openstreetmap.org/reverse"
+        params = {
+            "lat": lat,
+            "lon": lng,
+            "format": "jsonv2",
+            "accept-language": "vi"
+        }
+        headers = {
+            "User-Agent": "WanderbiteFoodRecommendationSystem/1.0 (contact@wanderbite.com)"
+        }
+        response = requests.get(url, params=params, headers=headers, timeout=10)
+        if response.status_code == 200:
+            data = response.json()
+            address = data.get("display_name")
+            if address:
+                location_cache[cache_key] = address
+                return {"address": address}
+        
+        fallback = f"{lat:.5f}, {lng:.5f}"
+        return {"address": fallback}
+    except Exception as e:
+        fallback = f"{lat:.5f}, {lng:.5f}"
+        return {"address": fallback}
+
 
 @router.get("/recommendations/home", response_model=HomeRecommendationResponse)
 def get_home_recommendations(
@@ -29,7 +76,8 @@ async def reload_recommendations():
     [Admin/CLI Call] Yêu cầu AI Engine nạp nóng lại mô hình gợi ý LightFM mới từ đĩa.
     """
     try:
-        result = await get_ai_client().reload_recommendation_model()
+        ai_client = await get_ai_client()
+        result = await ai_client.reload_recommendation_model()
         return result
     except Exception as e:
         raise HTTPException(
@@ -57,4 +105,39 @@ async def get_personalized_recommendations(
         lat=lat,
         lng=lng
     )
+
+
+@router.post("/recommendations/group", response_model=GroupRecommendationResponse)
+async def get_group_recommendations(
+    request: GroupRecommendationRequest,
+    current_user: UserAccount = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Lấy gợi ý quán ăn nhóm dựa trên danh sách bạn bè được chọn.
+    Tự động gộp ràng buộc ăn chay / dị ứng và trung bình hóa vector sở thích.
+    """
+    try:
+        res = await RecommendationService.get_group_recommendations(
+            user=current_user,
+            friend_ids=request.friend_ids,
+            lat=request.lat,
+            lng=request.lng,
+            limit=request.limit,
+            budget=request.budget,
+            radius=request.radius,
+            db=db
+        )
+        return GroupRecommendationResponse(
+            results=res["results"],
+            group_size=res["group_size"],
+            applied_vegetarian_filter=res["applied_vegetarian_filter"],
+            applied_allergies=res["applied_allergies"],
+            results_contain_warnings=res.get("results_contain_warnings", False)
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Lỗi khi tính toán gợi ý nhóm: {str(e)}"
+        )
 

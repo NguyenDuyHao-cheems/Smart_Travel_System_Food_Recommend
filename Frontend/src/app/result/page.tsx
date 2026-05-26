@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, Suspense, useMemo } from 'react';
+import React, { useState, useEffect, Suspense, useMemo, useRef, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -15,10 +15,15 @@ import {
   Info,
   Home,
   X,
+  Route,
+  Map as MapIcon,
+  LogOut,
+  SlidersHorizontal,
+  RotateCcw,
 } from 'lucide-react';
 import { AppShell } from '../../components/AppShell';
 import { LoadingState } from '../../components/ui/LoadingState';
-import { BudgetSelector, type BudgetOption } from '../../components/BudgetSelector';
+import { BudgetSelector, type BudgetOption, budgetToRange } from '../../components/BudgetSelector';
 import { DistanceFilter } from '../../components/DistanceFilter';
 import { SearchLoadingOverlay } from '../../components/ui/SearchLoadingOverlay';
 import { SearchBar } from '../../components/SearchBar';
@@ -30,6 +35,14 @@ import { AddToCollectionModal } from '../../components/AddToCollectionModal';
 import { toast } from 'sonner';
 import { interactionService } from '../../services/interactionService';
 import { useOptimizedLocation } from '../../hooks/useOptimizedLocation';
+import { useSelector, useDispatch } from 'react-redux';
+import { RootState } from '../../store';
+import { addItem, removeItem } from '../../store/slices/itinerarySlice';
+import { setRawResults } from '../../store/slices/searchSlice';
+import { SortSelector, type SortOption } from '../../components/SortSelector';
+import { AdvancedFilters, type AdvancedFilterState } from '../../components/AdvancedFilters';
+import { ResultMapView, type MapViewport } from '../../components/ResultMapView';
+import { useLanguage } from '../../components/LanguageProvider';
 
 export interface AllergenDishWarning {
   dish_name: string;
@@ -41,6 +54,8 @@ export interface RecommendResult {
   match: string;
   dist: string;
   distance_km?: number;
+  lat?: number;
+  lng?: number;
   price: string;
   rating: string;
   reason: string;
@@ -50,6 +65,7 @@ export interface RecommendResult {
   restaurantName?: string;
   google_maps_url?: string;
   allergen_warning?: AllergenDishWarning[];
+  is_vegetarian?: boolean;
 }
 
 interface VibeTag {
@@ -80,15 +96,65 @@ const DEFAULT_TAG_STYLES = [
   { emoji: '🌿', bgLight: 'bg-emerald-50', bgDark: 'dark:bg-emerald-500/10', text: 'text-emerald-600 dark:text-emerald-400', border: 'border-emerald-100 dark:border-emerald-500/20' }
 ];
 
+const RESULT_TAG_LABELS_EN: Record<string, string> = {
+  'trà sữa': 'milk tea',
+  'bò': 'beef',
+  'đánh giá cao': 'highly rated',
+  'cao cấp': 'premium',
+  'cà phê': 'coffee',
+  'mở khuya': 'open late',
+  'hải sản': 'seafood',
+  'nướng': 'grill',
+  'gà': 'chicken',
+  'heo': 'pork',
+  'cơm': 'rice',
+  'phở': 'pho',
+  'bún': 'vermicelli',
+  'mì': 'noodles',
+  'lẩu': 'hotpot',
+  'món chay': 'vegetarian',
+  'giá rẻ': 'budget',
+  'tầm trung': 'mid-range',
+};
+
+function translateResultTag(label: string, language: 'vi' | 'en') {
+  return language === 'en' ? RESULT_TAG_LABELS_EN[label.toLowerCase()] || label : label;
+}
+
+function translateResultReason(reason: string, language: 'vi' | 'en') {
+  if (language !== 'en') return reason;
+  return reason
+    .replace(/Đánh giá xuất sắc/g, 'Excellent rating')
+    .replace(/Đánh giá cao/g, 'Highly rated');
+}
+
+const TAG_EMOJI_MAP: Record<string, string> = {
+  'gà': '🍗', 'bò': '🥩', 'heo': '🐷',
+  'cơm': '🍚', 'phở': '🍜', 'bún': '🍜', 'mì': '🍝',
+  'hải sản': '🦐', 'lẩu': '🫕', 'nướng': '🔥',
+  'trà sữa': '🧋', 'cà phê': '☕', 'đồ uống': '🥤',
+  'sushi': '🍣', 'pizza': '🍕', 'burger': '🍔',
+  'tráng miệng': '🍰', 'dessert': '🍰',
+  'cháo': '🥣', 'healthy': '🥗', 'món chay': '🌿',
+  'ăn sáng': '🌅', 'ăn trưa': '☀️', 'ăn tối': '🌙',
+  'ăn vặt': '🍿', 'ăn khuya': '🌃',
+  'đánh giá cao': '⭐', 'nhiều đánh giá': '💬',
+  'giá rẻ': '💰', 'tầm trung': '💵', 'cao cấp': '💎',
+  'chiên': '🍤', 'fastfood': '🍔', 'xào': '🍝', 'mì xào': '🍝',
+  'hấp': '🥟', 'luộc': '🥟', 'trộn': '🥗', 'gỏi': '🥗', 'salad': '🥗', 'chay': '🌿',
+};
+
 function getTagsForItem(item: RecommendResult, index: number): VibeTag[] {
   if (item.tags && Array.isArray(item.tags) && item.tags.length > 0) {
     return item.tags.map((t: string, i: number) => {
       const found = VIBE_TAGS.find(v => v.label.toLowerCase() === t.toLowerCase());
       if (found) return found;
       const defaultStyle = DEFAULT_TAG_STYLES[i % DEFAULT_TAG_STYLES.length];
+      const emoji = TAG_EMOJI_MAP[t.toLowerCase()] || defaultStyle.emoji;
       return {
         label: t,
-        ...defaultStyle
+        ...defaultStyle,
+        emoji
       };
     });
   }
@@ -104,9 +170,24 @@ function getMatchColor(match: string): string {
 }
 
 /* ─────────────────────────────────────────────────────────────
+   Helper to parse price and rating for client-side sorting
+   ───────────────────────────────────────────────────────────── */
+function parsePrice(priceStr: string): number {
+  if (!priceStr) return 0;
+  // E.g. "50.000đ - 100.000đ" -> "50000đ - 100000đ"
+  let clean = priceStr.toLowerCase().replace(/\./g, '');
+  // E.g. "50k" -> "50000"
+  clean = clean.replace(/(\d+)k/g, '$1000');
+  const matches = clean.match(/\d+/g);
+  if (!matches || matches.length === 0) return 0;
+  return parseInt(matches[0], 10);
+}
+
+/* ─────────────────────────────────────────────────────────────
    Hero Result Card (#1 — AI TOP PICK)
    ───────────────────────────────────────────────────────────── */
 function HeroResultCard({ item, sessionId, searchMode, onAddCollection, isModalOpen }: { item: RecommendResult; sessionId?: string; searchMode?: SearchMode; onAddCollection: (item: RecommendResult) => void; isModalOpen: boolean }) {
+  const { language, t } = useLanguage();
   const router = useRouter();
   const generateSlug = (name: string) => {
     return name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
@@ -139,6 +220,37 @@ function HeroResultCard({ item, sessionId, searchMode, onAddCollection, isModalO
   const [isInColl, setIsInColl] = useState(false);
   const userId = typeof window !== 'undefined' ? localStorage.getItem('user_id') : null;
 
+  const dispatch = useDispatch();
+  const itineraryItems = useSelector((state: RootState) => state.itinerary.items);
+  const isInItinerary = itineraryItems.some(i => i.id === item.id);
+
+  const toggleItinerary = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isInItinerary) {
+      dispatch(removeItem(item.id));
+      toast.success(t('result.removedItineraryToast'));
+    } else {
+      dispatch(addItem({
+        id: item.id,
+        name: item.name,
+        lat: item.lat,
+        lng: item.lng,
+        address: item.restaurantName || item.reason || '',
+        img: item.img,
+        rating: item.rating,
+        price: item.price,
+        reason: item.reason,
+        google_maps_url: item.google_maps_url
+      }));
+      toast.success(t('result.addedItineraryToast'), {
+        action: {
+          label: t('result.view'),
+          onClick: () => router.push('/itinerary')
+        }
+      });
+    }
+  };
+
   useEffect(() => {
     if (userId) {
       setIsFav(favoriteService.isFavorite(userId, item.name));
@@ -155,13 +267,13 @@ function HeroResultCard({ item, sessionId, searchMode, onAddCollection, isModalO
   const toggleFav = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!userId) {
-      toast.error('Vui lòng đăng nhập để lưu yêu thích');
+      toast.error(t('result.loginToSaveFavorite'));
       return;
     }
     if (isFav) {
       favoriteService.removeFavorite(userId, item.name);
       setIsFav(false);
-      toast.success('Đã xóa khỏi yêu thích');
+      toast.success(t('result.removedFavoriteToast'));
 
       interactionService.logInteraction({
         res_id: item.id,
@@ -171,7 +283,7 @@ function HeroResultCard({ item, sessionId, searchMode, onAddCollection, isModalO
     } else {
       favoriteService.addFavorite(userId, item);
       setIsFav(true);
-      toast.success('Đã thêm vào yêu thích');
+      toast.success(t('result.addedFavoriteToast'));
 
       interactionService.logInteraction({
         res_id: item.id,
@@ -204,7 +316,7 @@ function HeroResultCard({ item, sessionId, searchMode, onAddCollection, isModalO
             </span>
             {item.allergen_warning && item.allergen_warning.length > 0 && (
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-500/30">
-                <AlertTriangle className="w-3.5 h-3.5" /> {item.allergen_warning.length} món cần lưu ý
+                <AlertTriangle className="w-3.5 h-3.5" /> {item.allergen_warning.length} {t('result.itemsToNote')}
               </span>
             )}
           </div>
@@ -229,7 +341,7 @@ function HeroResultCard({ item, sessionId, searchMode, onAddCollection, isModalO
               </span>
               {item.total_reviews !== undefined && item.total_reviews > 0 && (
                 <span className="text-xs text-gray-400 dark:text-[#7A6A5A] font-medium">
-                  ({item.total_reviews} đánh giá)
+                  ({item.total_reviews} {t('result.reviews')})
                 </span>
               )}
             </div>
@@ -237,14 +349,14 @@ function HeroResultCard({ item, sessionId, searchMode, onAddCollection, isModalO
 
           {item.reason && (
             <p className="text-sm text-gray-500 dark:text-[#9A8A7A] leading-relaxed mb-6 max-w-md">
-              {item.reason}
+              {translateResultReason(item.reason, language)}
             </p>
           )}
 
           <div className="flex flex-wrap gap-2">
             {getTagsForItem(item, 0).map(tag => (
               <span key={tag.label} className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium ${tag.bgLight} ${tag.bgDark} ${tag.text} border ${tag.border}`}>
-                {tag.emoji} {tag.label}
+                {tag.emoji} {translateResultTag(tag.label, language)}
               </span>
             ))}
           </div>
@@ -264,11 +376,18 @@ function HeroResultCard({ item, sessionId, searchMode, onAddCollection, isModalO
           </div>
           <div className="absolute top-6 right-6 flex gap-2">
             <button
+              onClick={toggleItinerary}
+              className={`w-10 h-10 rounded-full bg-white/90 dark:bg-[#2A2420]/80 border border-gray-200 dark:border-[#4D3D32] flex items-center justify-center hover:scale-110 transition-all cursor-pointer shadow-sm ${isInItinerary ? 'bg-orange-50 dark:bg-orange-950/40 border-orange-200 dark:border-orange-500/30' : ''}`}
+              title={isInItinerary ? t('result.removeItinerary') : t('result.addItinerary')}
+            >
+              <Route className={`w-5 h-5 ${isInItinerary ? 'text-orange-500 fill-current' : 'text-gray-400'}`} />
+            </button>
+            <button
               onClick={(e) => {
                 e.stopPropagation();
                 // [FIX-CONFLICT]: Ngăn không cho mở Modal nếu món ăn đã có trong bộ sưu tập (tránh thêm trùng lặp), hiển thị toast với icon Bookmark
                 if (isInColl) {
-                  toast.info("Món ăn này đã có trong bộ sưu tập của bạn.", {
+                  toast.info(t('result.alreadyInCollection'), {
                     icon: <Bookmark className="w-4 h-4" />
                   });
                   return;
@@ -276,7 +395,7 @@ function HeroResultCard({ item, sessionId, searchMode, onAddCollection, isModalO
                 onAddCollection(item);
               }}
               className={`w-10 h-10 rounded-full bg-white/90 dark:bg-[#2A2420]/80 border border-gray-200 dark:border-[#4D3D32] flex items-center justify-center hover:scale-110 transition-all cursor-pointer shadow-sm ${isInColl ? 'hover:bg-yellow-50' : 'hover:bg-brand-muted'}`}
-              title={isInColl ? "Đã có trong bộ sưu tập" : "Thêm vào bộ sưu tập"}
+              title={isInColl ? t('result.alreadyInCollectionShort') : t('result.addCollection')}
             >
               <Bookmark className={`w-5 h-5 ${isInColl ? 'text-yellow-500 fill-current' : 'text-brand dark:text-[#E8735A]'}`} />
             </button>
@@ -297,7 +416,8 @@ function HeroResultCard({ item, sessionId, searchMode, onAddCollection, isModalO
    Small Result Card (#2-#5)
    ───────────────────────────────────────────────────────────── */
 // [FIX-CONFLICT]: Tương tự HeroResultCard, bổ sung prop isModalOpen và state isInColl cho SmallResultCard
-function SmallResultCard({ item, index, sessionId, searchMode, onAddCollection, isModalOpen }: { item: RecommendResult; index: number; sessionId?: string; searchMode?: SearchMode; onAddCollection: (item: RecommendResult) => void; isModalOpen: boolean }) {
+function SmallResultCard({ item, index, rank, sessionId, searchMode, onAddCollection, isModalOpen }: { item: RecommendResult; index: number; rank?: number; sessionId?: string; searchMode?: SearchMode; onAddCollection: (item: RecommendResult) => void; isModalOpen: boolean }) {
+  const { language, t } = useLanguage();
   const router = useRouter();
   const tags = getTagsForItem(item, index);
   const matchColor = getMatchColor(item.match);
@@ -333,6 +453,37 @@ function SmallResultCard({ item, index, sessionId, searchMode, onAddCollection, 
   const [isInColl, setIsInColl] = useState(false);
   const userId = typeof window !== 'undefined' ? localStorage.getItem('user_id') : null;
 
+  const dispatch = useDispatch();
+  const itineraryItems = useSelector((state: RootState) => state.itinerary.items);
+  const isInItinerary = itineraryItems.some(i => i.id === item.id);
+
+  const toggleItinerary = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isInItinerary) {
+      dispatch(removeItem(item.id));
+      toast.success(t('result.removedItineraryToast'));
+    } else {
+      dispatch(addItem({
+        id: item.id,
+        name: item.name,
+        lat: item.lat,
+        lng: item.lng,
+        address: item.restaurantName || item.reason || '',
+        img: item.img,
+        rating: item.rating,
+        price: item.price,
+        reason: item.reason,
+        google_maps_url: item.google_maps_url
+      }));
+      toast.success(t('result.addedItineraryToast'), {
+        action: {
+          label: t('result.view'),
+          onClick: () => router.push('/itinerary')
+        }
+      });
+    }
+  };
+
   useEffect(() => {
     if (userId) {
       setIsFav(favoriteService.isFavorite(userId, item.name));
@@ -349,13 +500,13 @@ function SmallResultCard({ item, index, sessionId, searchMode, onAddCollection, 
   const toggleFav = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!userId) {
-      toast.error('Vui lòng đăng nhập để lưu yêu thích');
+      toast.error(t('result.loginToSaveFavorite'));
       return;
     }
     if (isFav) {
       favoriteService.removeFavorite(userId, item.name);
       setIsFav(false);
-      toast.success('Đã xóa khỏi yêu thích');
+      toast.success(t('result.removedFavoriteToast'));
 
       interactionService.logInteraction({
         res_id: item.id,
@@ -365,7 +516,7 @@ function SmallResultCard({ item, index, sessionId, searchMode, onAddCollection, 
     } else {
       favoriteService.addFavorite(userId, item);
       setIsFav(true);
-      toast.success('Đã thêm vào yêu thích');
+      toast.success(t('result.addedFavoriteToast'));
 
       interactionService.logInteraction({
         res_id: item.id,
@@ -380,7 +531,7 @@ function SmallResultCard({ item, index, sessionId, searchMode, onAddCollection, 
       initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.05 }}
-      className="bg-white dark:bg-[#3D312A] rounded-2xl border border-gray-100 dark:border-[#4D3D32] shadow-sm dark:shadow-none overflow-hidden hover:shadow-lg dark:hover:border-gray-600 transition-all duration-300 cursor-pointer group"
+      className="bg-white dark:bg-[#3D312A] rounded-2xl border border-gray-100 dark:border-[#4D3D32] shadow-sm dark:shadow-none overflow-hidden hover:shadow-lg dark:hover:border-gray-600 transition-all duration-300 cursor-pointer group shrink-0"
       onClick={handleNavigate}
     >
       <div className="relative h-[180px] overflow-hidden">
@@ -392,15 +543,22 @@ function SmallResultCard({ item, index, sessionId, searchMode, onAddCollection, 
         <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent pointer-events-none" />
 
         <span className="absolute top-3 left-3 inline-flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold bg-gray-700/90 text-white backdrop-blur-sm">
-          {index + 2}
+          {rank !== undefined ? rank : index + 2}
         </span>
 
-        {/* Heart & Bookmark */}
+        {/* Heart, Bookmark & Route */}
         <div className="absolute top-3 right-3 flex flex-col gap-2">
+          <button
+            onClick={toggleItinerary}
+            className={`w-8 h-8 rounded-full bg-white/90 dark:bg-[#2A2420]/80 flex items-center justify-center hover:scale-110 transition-all cursor-pointer shadow-sm ${isInItinerary ? 'bg-orange-50 dark:bg-orange-950/40 border-orange-200 dark:border-orange-500/30' : ''}`}
+            title={isInItinerary ? t('result.removeItinerary') : t('result.addItinerary')}
+          >
+            <Route className={`w-4 h-4 ${isInItinerary ? 'text-orange-500 fill-current' : 'text-gray-400'}`} />
+          </button>
           <button
             onClick={toggleFav}
             className="w-8 h-8 rounded-full bg-white/90 dark:bg-[#2A2420]/80 flex items-center justify-center hover:scale-110 transition-all cursor-pointer shadow-sm"
-            title="Lưu yêu thích"
+            title={t('result.saveFavorite')}
           >
             <Heart className={`w-4 h-4 ${isFav ? 'text-red-500 fill-current' : 'text-gray-400'}`} />
           </button>
@@ -409,7 +567,7 @@ function SmallResultCard({ item, index, sessionId, searchMode, onAddCollection, 
               e.stopPropagation();
               // [FIX-CONFLICT]: Ngăn không cho mở Modal nếu món ăn đã có trong bộ sưu tập (tránh thêm trùng lặp), hiển thị toast với icon Bookmark
               if (isInColl) {
-                toast.info("Món ăn này đã có trong bộ sưu tập của bạn.", {
+                toast.info(t('result.alreadyInCollection'), {
                   icon: <Bookmark className="w-4 h-4" />
                 });
                 return;
@@ -417,7 +575,7 @@ function SmallResultCard({ item, index, sessionId, searchMode, onAddCollection, 
               onAddCollection(item);
             }}
             className={`w-8 h-8 rounded-full bg-white/90 dark:bg-[#2A2420]/80 flex items-center justify-center hover:scale-110 transition-all cursor-pointer shadow-sm ${isInColl ? 'hover:bg-yellow-50' : 'hover:bg-brand-muted'}`}
-            title={isInColl ? "Đã có trong bộ sưu tập" : "Thêm vào bộ sưu tập"}
+            title={isInColl ? t('result.alreadyInCollectionShort') : t('result.addCollection')}
           >
             <Bookmark className={`w-4 h-4 ${isInColl ? 'text-yellow-500 fill-current' : 'text-brand dark:text-[#E8735A]'}`} />
           </button>
@@ -429,7 +587,7 @@ function SmallResultCard({ item, index, sessionId, searchMode, onAddCollection, 
           </span>
           {item.allergen_warning && item.allergen_warning.length > 0 && (
             <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-500 text-white shadow-sm border border-amber-600">
-              ⚠️ {item.allergen_warning.length} lưu ý
+              ⚠️ {item.allergen_warning.length} {t('result.notes')}
             </span>
           )}
           {item.dist && (
@@ -451,13 +609,13 @@ function SmallResultCard({ item, index, sessionId, searchMode, onAddCollection, 
         )}
         {item.reason && (
           <p className="text-xs text-gray-500 dark:text-[#9A8A7A] leading-relaxed mb-3 line-clamp-2">
-            {item.reason}
+            {translateResultReason(item.reason, language)}
           </p>
         )}
         <div className="flex flex-wrap gap-1.5">
           {tags.map(tag => (
             <span key={tag.label} className={`px-2 py-1 rounded-full text-[10px] font-medium ${tag.bgLight} ${tag.bgDark} ${tag.text} border ${tag.border}`}>
-              {tag.emoji} {tag.label}
+              {tag.emoji} {translateResultTag(tag.label, language)}
             </span>
           ))}
         </div>
@@ -499,14 +657,51 @@ function FeatureBar() {
   );
 }
 
+const isPriceInRange = (priceStr: string, min: number, max: number): boolean => {
+  if (!priceStr || priceStr.toLowerCase().includes('liên hệ')) return false;
+
+  // Trường hợp 1: Có chứa ký tự 'k' (ví dụ: "30k - 50k")
+  const matches = priceStr.match(/(\d+)k/gi);
+  if (matches) {
+    const values = matches.map(m => parseInt(m.replace(/k/i, '')) * 1000);
+    const itemMin = Math.min(...values);
+    const itemMax = Math.max(...values);
+    return itemMax >= min && itemMin <= max;
+  }
+
+  // Trường hợp 2: Số đầy đủ (ví dụ: "30.000 - 50.000", "30,000đ")
+  // Xoá bỏ dấu chấm, phẩy phân cách hàng nghìn
+  const normalizedStr = priceStr.replace(/[.,]/g, '');
+  const digitMatches = normalizedStr.match(/\d+/g);
+  
+  if (digitMatches) {
+    const values = digitMatches.map(m => parseInt(m)).filter(v => v >= 1000);
+    if (values.length > 0) {
+      const itemMin = Math.min(...values);
+      const itemMax = Math.max(...values);
+      return itemMax >= min && itemMin <= max;
+    }
+  }
+
+  return false;
+};
+
 function ResultPageContent() {
+  const { t } = useLanguage();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const urlQuery = searchParams.get('q') || '';
   let sessionIdFromUrl = searchParams.get('session_id') || '';
+  const isMapEntryWithoutSearch = searchParams.get('map') === '1' && !urlQuery && !sessionIdFromUrl;
   // [FIX-CONFLICT]: Lấy session_id từ sessionStorage (nếu URL không có) vì ta đã giấu nó đi
-  if (typeof window !== 'undefined' && !sessionIdFromUrl) {
+  if (typeof window !== 'undefined' && !sessionIdFromUrl && !isMapEntryWithoutSearch) {
     sessionIdFromUrl = sessionStorage.getItem('current_search_session_id') || '';
   }
+
+  const dispatch = useDispatch();
+  const rawResults = useSelector((state: RootState) => state.search.rawResults);
+  const coords = useSelector((state: RootState) => state.location.coords);
+  const lastSearchCoordsRef = useRef<{ lat: number; lng: number } | null>(null);
 
   // Check for cache instantly to avoid flicker
   const [mounted, setMounted] = useState(false);
@@ -520,6 +715,8 @@ function ResultPageContent() {
     const searchParams = new URLSearchParams(window.location.search);
     const q = searchParams.get('q');
     let sessionId = searchParams.get('session_id');
+    const mapEntryWithoutSearch = searchParams.get('map') === '1' && !q && !sessionId;
+    if (mapEntryWithoutSearch) return false;
     if (!sessionId) {
       sessionId = sessionStorage.getItem('current_search_session_id');
     }
@@ -535,7 +732,14 @@ function ResultPageContent() {
 
   const [searchQuery, setSearchQuery] = useState('');
   const { query: inputValue, setQuery: setInputValue, searchMode, setSearchMode } = useSearchState("");
-  const [budget, setBudget] = useState<BudgetOption>('auto');
+  const [budget, setBudget] = useState<BudgetOption>(() => {
+    if (typeof window === 'undefined') return 'auto';
+    const b = searchParams.get('budget');
+    if (b && ['30000', '50000', '100000', '200000'].includes(b)) {
+      return b as BudgetOption;
+    }
+    return 'auto';
+  });
   const { getOptimizedLocation } = useOptimizedLocation();
 
   const [fallbackApplied, setFallbackApplied] = useState(false);
@@ -545,6 +749,19 @@ function ResultPageContent() {
   const [filteredCount, setFilteredCount] = useState(0);
   const [allergenFlaggedCount, setAllergyFlaggedCount] = useState(0);
   const [allergyWarning, setAllergyWarning] = useState<string>('');
+
+  // Sync budget to URL when it changes
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      if (budget === 'auto') {
+        url.searchParams.delete('budget');
+      } else {
+        url.searchParams.set('budget', budget);
+      }
+      window.history.replaceState({}, '', url.pathname + url.search);
+    }
+  }, [budget]);
 
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
@@ -559,33 +776,192 @@ function ResultPageContent() {
     }
   }, [searchParams]);
 
+  // Sync budget from URL
+  useEffect(() => {
+    const urlBudget = searchParams.get('budget');
+    if (urlBudget && urlBudget !== 'auto') {
+      setBudget(urlBudget as BudgetOption);
+    }
+  }, [searchParams]);
+
   const [showGuestNotice, setShowGuestNotice] = useState(true);
 
   const [distanceFilterEnabled, setDistanceFilterEnabled] = useState(false);
   const [distanceRadius, setDistanceRadius] = useState(2);
+  const [mapViewEnabled, setMapViewEnabled] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return new URLSearchParams(window.location.search).get('map') === '1';
+  });
+  const [showMapFilters, setShowMapFilters] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (selectedId) {
+      const element = document.getElementById(`restaurant-card-${selectedId}`);
+      if (element) {
+        element.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center',
+        });
+      }
+    }
+  }, [selectedId]);
+
+  useEffect(() => {
+    if (searchParams.get('map') === '1') {
+      setMapViewEnabled(true);
+    }
+  }, [searchParams]);
+
+
 
   const [collectionModalItem, setCollectionModalItem] = useState<RecommendResult | null>(null);
 
-  const [results, setResults] = useState<RecommendResult[]>(() => {
-    if (typeof window === 'undefined') return [];
-    const searchParams = new URLSearchParams(window.location.search);
-    let sessionId = searchParams.get('session_id');
-    if (!sessionId) {
-      sessionId = sessionStorage.getItem('current_search_session_id');
+  useEffect(() => {
+    if (rawResults.length === 0 && typeof window !== 'undefined') {
+      const searchParams = new URLSearchParams(window.location.search);
+      let sessionId = searchParams.get('session_id');
+      const q = searchParams.get('q');
+      const mapEntryWithoutSearch = searchParams.get('map') === '1' && !q && !sessionId;
+      if (!mapEntryWithoutSearch) {
+        if (!sessionId) {
+          sessionId = sessionStorage.getItem('current_search_session_id');
+        }
+        if (sessionId) {
+          const cached = sessionStorage.getItem(`session_data_${sessionId}`);
+          if (cached) {
+            const parsed = JSON.parse(cached);
+            if (parsed.results) {
+              dispatch(setRawResults(parsed.results));
+            }
+          }
+        }
+      }
     }
-    if (sessionId) {
-      const cached = sessionStorage.getItem(`session_data_${sessionId}`);
-      if (cached) return JSON.parse(cached).results || [];
-    }
-    return [];
+  }, [dispatch]);
+const [sortBy, setSortBy] = useState<SortOption>('recommend');
+  const [advFilters, setAdvFilters] = useState<AdvancedFilterState>({
+    minPrice: null,
+    maxPrice: null,
+    minRating: null,
+    vegetarianOnly: false,
   });
+  const [isAdvancedFiltersOpen, setIsAdvancedFiltersOpen] = useState(false);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const activeAdvFilterCount = [
+    advFilters.minPrice !== null || advFilters.maxPrice !== null,
+    advFilters.minRating !== null,
+    advFilters.vegetarianOnly,
+  ].filter(Boolean).length + selectedTags.length;
+  const hasActiveAdvFilters = activeAdvFilterCount > 0;
   const [apiError, setApiError] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (mapViewEnabled) {
+      setIsAdvancedFiltersOpen(false);
+    }
+  }, [mapViewEnabled]);
+
+  const [isRestored, setIsRestored] = useState(false);
+
+  // Restore filter state from sessionStorage on mount
+  useEffect(() => {
+    if (typeof window === 'undefined' || !sessionIdFromUrl) return;
+
+    const saved = sessionStorage.getItem(`search_state_${sessionIdFromUrl}`);
+    if (saved) {
+      try {
+        const state = JSON.parse(saved);
+        if (state.advFilters) setAdvFilters(state.advFilters);
+        if (state.selectedTags) {
+          setSelectedTags(state.selectedTags);
+        } else if (state.selectedTag) {
+          setSelectedTags([state.selectedTag]);
+        }
+        if (state.isAdvancedFiltersOpen !== undefined) setIsAdvancedFiltersOpen(state.isAdvancedFiltersOpen);
+        if (state.sortBy) setSortBy(state.sortBy);
+        if (state.distanceFilterEnabled !== undefined) setDistanceFilterEnabled(state.distanceFilterEnabled);
+        if (state.distanceRadius !== undefined) setDistanceRadius(state.distanceRadius);
+        if (state.budget) setBudget(state.budget);
+      } catch (e) {
+        console.error("Error restoring filter state:", e);
+      }
+    }
+    setIsRestored(true);
+  }, [sessionIdFromUrl]);
+
+  // Save filter state to sessionStorage when parameters change
+  useEffect(() => {
+    if (!isRestored || !sessionIdFromUrl || typeof window === 'undefined') return;
+
+    const state = {
+      advFilters,
+      selectedTags,
+      isAdvancedFiltersOpen,
+      sortBy,
+      distanceFilterEnabled,
+      distanceRadius,
+      budget,
+    };
+    sessionStorage.setItem(`search_state_${sessionIdFromUrl}`, JSON.stringify(state));
+  }, [
+    isRestored,
+    sessionIdFromUrl,
+    advFilters,
+    selectedTags,
+    isAdvancedFiltersOpen,
+    sortBy,
+    distanceFilterEnabled,
+    distanceRadius,
+    budget,
+  ]);
+
+  const results = useMemo(() => {
+    if (budget === 'auto') return rawResults;
+    const range = budgetToRange(budget);
+    if (!range) return rawResults;
+    return rawResults.filter(item => isPriceInRange(item.price, range.min, range.max));
+  }, [rawResults, budget]);
+
+  // Tự động thu thập tất cả tag duy nhất có trong kết quả trả về từ API
+  const availableTags = useMemo(() => {
+    const tagsSet = new Set<string>();
+    rawResults.forEach((r) => {
+      r.tags?.forEach((t) => tagsSet.add(t));
+    });
+    return Array.from(tagsSet);
+  }, [rawResults]);
+
   const [isSearching, setIsSearching] = useState(false);
-  const [searchLoadingMsg, setSearchLoadingMsg] = useState("Đang phân tích sở thích của bạn...");
+  const [searchLoadingMsg, setSearchLoadingMsg] = useState(t('result.loadingAnalyzing'));
+  const [lastSearchElapsedMs, setLastSearchElapsedMs] = useState<number | null>(null);
+
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const searchStartedAtRef = useRef<number | null>(null);
+  const mapDragRef = useRef(false);
+
+  const handleCancelSearch = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    setIsSearching(false);
+    searchStartedAtRef.current = null;
+  };
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !sessionIdFromUrl) return;
+    const storedElapsed = sessionStorage.getItem(`search_elapsed_ms_${sessionIdFromUrl}`);
+    setLastSearchElapsedMs(storedElapsed ? Number(storedElapsed) : null);
+  }, [sessionIdFromUrl]);
 
   useEffect(() => {
     if (!sessionIdFromUrl) {
+      if (isMapEntryWithoutSearch) {
+        setSearchQuery('');
+        setInputValue('');
+        dispatch(setRawResults([]));
+      }
       setIsLoading(false);
       return;
     }
@@ -597,7 +973,7 @@ function ResultPageContent() {
         const data = JSON.parse(cached);
         setSearchQuery(data.query);
         setInputValue(data.query);
-        setResults(data.results || []);
+        dispatch(setRawResults(data.results || []));
         setFallbackApplied(data.fallback_applied || false);
         setFallbackReason(data.fallback_reason || '');
         setAppliedBudget(data.applied_budget ?? null);
@@ -620,7 +996,7 @@ function ResultPageContent() {
           sessionStorage.setItem(`session_data_${sessionIdFromUrl}`, JSON.stringify(data));
           setSearchQuery(data.query);
           setInputValue(data.query);
-          setResults(data.results || []);
+          dispatch(setRawResults(data.results || []));
           setFallbackApplied(data.fallback_applied || false);
           setFallbackReason(data.fallback_reason || '');
           setAppliedBudget(data.applied_budget ?? null);
@@ -628,44 +1004,88 @@ function ResultPageContent() {
           setAllergyFlaggedCount(data.allergen_flagged_count || 0);
           setAllergyWarning(data.warning || '');
         } else if (res.status === 404) {
-          setApiError('Không tìm thấy phiên tìm kiếm. Link có thể đã hết hạn hoặc không tồn tại.');
+          setApiError(t('result.sessionNotFound'));
         } else {
-          setApiError('Lỗi khi tải kết quả. Vui lòng thử lại.');
+          setApiError(t('result.loadResultsError'));
         }
       } catch (err) {
         console.error("Load session error:", err);
-        setApiError('Không thể kết nối đến máy chủ.');
+        setApiError(t('result.serverConnectionError'));
       } finally {
         setIsLoading(false);
       }
     };
 
     loadSession();
-  }, [sessionIdFromUrl, setInputValue]);
+  }, [isMapEntryWithoutSearch, sessionIdFromUrl, setInputValue]);
 
-  const handleSearch = async (overrideQuery?: string, overrideBudget?: BudgetOption) => {
+  // Sync coords ref when coords are initially fetched/loaded
+  useEffect(() => {
+    if (coords && !lastSearchCoordsRef.current) {
+      lastSearchCoordsRef.current = coords;
+    }
+  }, [coords]);
+
+  // Listen for manual/auto location updates to refresh search results
+  useEffect(() => {
+    if (!coords) return;
+
+    // If ref is not initialized, set it and do not trigger search
+    if (!lastSearchCoordsRef.current) {
+      lastSearchCoordsRef.current = coords;
+      return;
+    }
+
+    // Check if coordinates have actually changed
+    const coordsChanged =
+      coords.lat !== lastSearchCoordsRef.current.lat ||
+      coords.lng !== lastSearchCoordsRef.current.lng;
+
+    if (coordsChanged && searchQuery) {
+      // Update ref to prevent multiple triggers for the same coordinates
+      lastSearchCoordsRef.current = coords;
+      // Re-run the search with the new coordinates
+      handleSearch(searchQuery);
+    }
+  }, [coords, searchQuery]);
+
+  const handleSearch = async (
+    overrideQuery?: string,
+    overrideBudget?: BudgetOption,
+    options?: { viewport?: MapViewport; stayOnPage?: boolean }
+  ) => {
     const finalQuery = (overrideQuery ?? inputValue).trim();
     const finalBudget = overrideBudget ?? budget;
 
     if (finalQuery === '') return;
 
+    searchStartedAtRef.current = performance.now();
     setIsSearching(true);
     setApiError(null);
 
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     try {
-      setSearchLoadingMsg("Đang xác định vị trí của bạn...");
+      setSearchLoadingMsg(t('result.loadingLocation'));
 
       const gps = await getOptimizedLocation();
-      if (!gps) {
-        setApiError("Không thể xác định vị trí thực tế của bạn. Vui lòng kiểm tra quyền truy cập GPS để tiếp tục.");
+      if (controller.signal.aborted) return;
+      if (!gps && !options?.viewport) {
+        setApiError(t('result.gpsRequiredError'));
         setIsSearching(false);
         return;
       }
 
-      setSearchLoadingMsg("AI đang phân tích khẩu vị của bạn...");
+      setSearchLoadingMsg(t('result.loadingAnalyzing'));
       const token = localStorage.getItem('access_token');
       const userId = localStorage.getItem('user_id');
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      const requestLat = gps?.lat ?? options?.viewport?.centerLat;
+      const requestLng = gps?.lng ?? options?.viewport?.centerLng;
 
       const res = await fetch(`${apiUrl}/api/v1/search/recommend`, {
         method: 'POST',
@@ -673,19 +1093,31 @@ function ResultPageContent() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
+        signal: controller.signal,
         body: JSON.stringify({
           query: finalQuery,
-          lat: gps.lat,
-          lng: gps.lng,
+          lat: requestLat,
+          lng: requestLng,
           user_id: userId || undefined,
-          budget: finalBudget === 'auto' ? undefined : parseInt(finalBudget, 10),
+          // Bỏ qua budget ở Backend để lấy mảng dữ liệu lớn
           search_mode: searchMode,
-          top_k: 24, // Xin dư ra 24 món để bù trừ khi lọc trùng tên
+          map_center_lat: options?.viewport?.centerLat,
+          map_center_lng: options?.viewport?.centerLng,
+          map_north: options?.viewport?.north,
+          map_south: options?.viewport?.south,
+          map_east: options?.viewport?.east,
+          map_west: options?.viewport?.west,
+          map_radius_km: options?.viewport?.radiusKm,
+          top_k: 100, // Lấy 1 mẻ lớn 100 món để lọc trên Frontend
         }),
       });
 
       if (res.ok) {
         const data = await res.json();
+        const elapsedMs = searchStartedAtRef.current === null
+          ? null
+          : Math.round(performance.now() - searchStartedAtRef.current);
+        setLastSearchElapsedMs(elapsedMs);
         if (userId) {
           historyService.addHistory(
             userId,
@@ -696,28 +1128,111 @@ function ResultPageContent() {
             searchMode
           );
         }
-        setSearchLoadingMsg("Đã có kết quả mới! Đang chuẩn bị...");
+        setSearchLoadingMsg(t('result.loadingPreparing'));
         // [FIX-CONFLICT]: Ẩn session_id và mode vào sessionStorage, đẩy query q lên URL
         if (typeof window !== 'undefined') {
           sessionStorage.setItem('current_search_session_id', data.session_id);
           sessionStorage.setItem('current_search_mode', searchMode);
+          if (elapsedMs !== null) {
+            sessionStorage.setItem('current_search_elapsed_ms', String(elapsedMs));
+            sessionStorage.setItem(`search_elapsed_ms_${data.session_id}`, String(elapsedMs));
+          }
+          sessionStorage.setItem(`session_data_${data.session_id}`, JSON.stringify({
+            query: finalQuery,
+            results: data.results || [],
+            fallback_applied: data.fallback_applied || false,
+            fallback_reason: data.fallback_reason || '',
+            applied_budget: data.applied_budget ?? null,
+            filtered_out_count: data.filtered_out_count || 0,
+            allergen_flagged_count: data.allergen_flagged_count || 0,
+            warning: data.warning || '',
+          }));
         }
-        window.location.href = `/result?q=${encodeURIComponent(finalQuery)}`;
+        if (options?.stayOnPage) {
+          setSearchQuery(finalQuery);
+          setInputValue(finalQuery);
+          dispatch(setRawResults(data.results || []));
+          setFallbackApplied(data.fallback_applied || false);
+          setFallbackReason(data.fallback_reason || '');
+          setAppliedBudget(data.applied_budget ?? null);
+          setFilteredCount(data.filtered_out_count || 0);
+          setAllergyFlaggedCount(data.allergen_flagged_count || 0);
+          setAllergyWarning(data.warning || '');
+          if (typeof window !== 'undefined') {
+            const params = new URLSearchParams(window.location.search);
+            params.set('q', finalQuery);
+            if (mapViewEnabled) {
+              params.set('map', '1');
+            }
+            window.history.replaceState(null, '', `/result?${params.toString()}`);
+          }
+        } else {
+          const params = new URLSearchParams();
+          params.set('q', finalQuery);
+          if (finalBudget !== 'auto') {
+            params.set('budget', String(finalBudget));
+          }
+          window.location.href = `/result?${params.toString()}`;
+        }
       } else {
-        throw new Error("Không thể kết nối với hệ thống AI.");
+        throw new Error(t('result.aiConnectionError'));
       }
     } catch (err: any) {
-      const msg = err?.message || "Lỗi kết nối AI. Vui lòng thử lại.";
+      if (err.name === 'AbortError') return;
+      const msg = err?.message || t('result.aiConnectionRetry');
       setApiError(msg);
     } finally {
+      if (abortControllerRef.current === controller) {
+        abortControllerRef.current = null;
+      }
       setIsSearching(false);
     }
   };
 
+  const handleViewportSearch = useCallback((viewport: MapViewport) => {
+    const queryForMap = (inputValue || searchQuery).trim();
+    if (!queryForMap) return;
+    handleSearch(queryForMap, budget, { viewport, stayOnPage: true });
+  }, [budget, inputValue, searchMode, searchQuery]);
+
   const displayResults = useMemo(() => {
     let filtered = results;
+
+    // Apply tag filter (client-side)
+    if (selectedTags.length > 0) {
+      filtered = filtered.filter((r) =>
+        selectedTags.every((selTag) =>
+          r.tags?.some((t) => t.toLowerCase() === selTag.toLowerCase())
+        )
+      );
+    }
+
     if (distanceFilterEnabled) {
       filtered = filtered.filter((r) => (r.distance_km ?? 0) <= distanceRadius);
+    }
+
+    // Apply vegetarian filter
+    if (advFilters.vegetarianOnly) {
+      filtered = filtered.filter((r) => r.is_vegetarian === true);
+    }
+
+    // Apply rating filter
+    if (advFilters.minRating !== null) {
+      filtered = filtered.filter((r) => {
+        const rate = parseFloat(r.rating);
+        return !isNaN(rate) && rate >= advFilters.minRating!;
+      });
+    }
+
+    // Apply price range filter
+    if (advFilters.minPrice !== null || advFilters.maxPrice !== null) {
+      filtered = filtered.filter((r) => {
+        const priceVal = parsePrice(r.price);
+        if (priceVal === 0) return advFilters.minPrice === null || advFilters.minPrice === 0;
+        const matchesMin = advFilters.minPrice === null || priceVal >= advFilters.minPrice;
+        const matchesMax = advFilters.maxPrice === null || priceVal <= advFilters.maxPrice;
+        return matchesMin && matchesMax;
+      });
     }
 
     // [FIX-CONFLICT]: Thêm logic lọc bỏ các kết quả bị trùng lặp tên (remove duplicates by name) để hiển thị danh sách sạch hơn
@@ -729,39 +1244,220 @@ function ResultPageContent() {
       return !duplicate;
     });
 
+    let sorted = [...unique];
+    if (sortBy === 'distance') {
+      sorted.sort((a, b) => {
+        const distA = a.distance_km ?? Infinity;
+        const distB = b.distance_km ?? Infinity;
+        return distA - distB;
+      });
+    } else if (sortBy === 'price_asc') {
+      sorted.sort((a, b) => {
+        const valA = parsePrice(a.price);
+        const valB = parsePrice(b.price);
+        const priceA = valA === 0 ? Infinity : valA;
+        const priceB = valB === 0 ? Infinity : valB;
+        return priceA - priceB;
+      });
+    } else if (sortBy === 'price_desc') {
+      sorted.sort((a, b) => {
+        const priceA = parsePrice(a.price);
+        const priceB = parsePrice(b.price);
+        return priceB - priceA;
+      });
+    } else if (sortBy === 'rating') {
+      sorted.sort((a, b) => {
+        const rateA = parseFloat(a.rating) || 0;
+        const rateB = parseFloat(b.rating) || 0;
+        return rateB - rateA;
+      });
+    }
+
     // Cắt lấy đúng 16 món để hiển thị (1 hero + 15 small)
-    return unique.slice(0, 16);
-  }, [results, distanceFilterEnabled, distanceRadius]);
+    return sorted.slice(0, 16);
+  }, [results, distanceFilterEnabled, distanceRadius, sortBy, advFilters, selectedTags]);
 
   const heroItem = displayResults[0];
   const gridItems = displayResults.slice(1);
+  const fallbackMapCenter = coords || lastSearchCoordsRef.current;
+
+  const renderResultCards = (compact = false) => (
+    <>
+      {heroItem && (
+        <HeroResultCard
+          item={heroItem}
+          sessionId={sessionIdFromUrl}
+          searchMode={searchMode}
+          onAddCollection={setCollectionModalItem}
+          isModalOpen={!!collectionModalItem}
+        />
+      )}
+
+      {gridItems.length > 0 && (
+        <div className={`grid grid-cols-1 sm:grid-cols-2 ${compact ? 'lg:grid-cols-2' : 'lg:grid-cols-3'} gap-5`}>
+          {gridItems.map((item, idx) => (
+            <SmallResultCard
+              key={item.id || idx}
+              item={item}
+              index={idx}
+              sessionId={sessionIdFromUrl}
+              searchMode={searchMode}
+              onAddCollection={setCollectionModalItem}
+              isModalOpen={!!collectionModalItem}
+            />
+          ))}
+        </div>
+      )}
+
+      <FeatureBar />
+    </>
+  );
+  const mapFloatingButton = (
+    <motion.button
+      drag
+      dragMomentum={false}
+      onDragStart={() => {
+        mapDragRef.current = true;
+      }}
+      onDragEnd={() => {
+        setTimeout(() => {
+          mapDragRef.current = false;
+        }, 100);
+      }}
+      type="button"
+      onClick={() => {
+        if (mapDragRef.current) return;
+        const next = !mapViewEnabled;
+        setMapViewEnabled(next);
+        if (typeof window !== 'undefined') {
+          const params = new URLSearchParams(window.location.search);
+          if (next) {
+            params.set('map', '1');
+          } else {
+            params.delete('map');
+          }
+          const queryString = params.toString();
+          window.history.replaceState(null, '', queryString ? `/result?${queryString}` : '/result');
+        }
+      }}
+      className={`fixed right-4 top-28 z-[100] inline-flex items-center justify-center gap-2 h-11 px-4 rounded-full border-2 border-[#3D312A] shadow-[4px_4px_0px_rgba(61,49,42,1)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-[2px_2px_0px_rgba(61,49,42,1)] transition-colors duration-150 cursor-grab active:cursor-grabbing font-black text-xs uppercase tracking-wide ${
+        mapViewEnabled
+          ? 'bg-brand text-white hover:bg-brand-hover'
+          : 'bg-white dark:bg-[#3D312A] text-[#3D312A] dark:text-[#E6DFD5] hover:text-brand'
+      }`}
+      title={mapViewEnabled ? t('result.exitMapTitle') : t('result.showMapTitle')}
+      aria-label={mapViewEnabled ? t('result.exitMapTitle') : t('result.showMapTitle')}
+    >
+      <LogOut className={`w-4 h-4 pointer-events-none ${mapViewEnabled ? 'block' : 'hidden'}`} />
+      <MapIcon className={`w-4 h-4 pointer-events-none ${mapViewEnabled ? 'hidden' : 'block'}`} />
+      <span className="pointer-events-none">{mapViewEnabled ? t('result.exitMap') : t('result.map')}</span>
+    </motion.button>
+  );
 
   return (
     <AppShell>
-      {isSearching && <SearchLoadingOverlay message={searchLoadingMsg} />}
+      {isSearching && (
+        <SearchLoadingOverlay
+          message={searchLoadingMsg}
+          onCancel={handleCancelSearch}
+          startedAt={searchStartedAtRef.current ?? undefined}
+        />
+      )}
+      {mounted && mapFloatingButton}
 
-      <div className="border-b border-[#E6DFD5]/60 dark:border-[#3D312A]/60 bg-[#FDFBF7]/80 dark:bg-[#2A2420]/80 backdrop-blur-sm">
-        <div className="max-w-7xl mx-auto px-4 md:px-8 py-4 flex flex-wrap items-center gap-x-4 gap-y-3">
-          <BudgetSelector
-            value={budget}
-            onChange={(newBudget) => {
-              setBudget(newBudget);
-              handleSearch(inputValue, newBudget);
-            }}
-          />
-          <DistanceFilter
-            enabled={distanceFilterEnabled}
-            onToggle={setDistanceFilterEnabled}
-            radius={distanceRadius}
-            onRadiusChange={setDistanceRadius}
-            totalCount={results.length}
-            filteredCount={displayResults.length}
-          />
+      {!mapViewEnabled && (
+        <div className="border-b border-[#E6DFD5]/60 dark:border-[#3D312A]/60 bg-[#FDFBF7]/80 dark:bg-[#2A2420]/80 backdrop-blur-sm">
+          <div className="max-w-7xl mx-auto px-4 md:px-8 py-4 flex flex-col gap-3">
+            {/* Row 1: Budget and Distance Filters */}
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
+              <BudgetSelector
+                value={budget}
+                onChange={(newBudget) => {
+                  setBudget(newBudget);
+                }}
+              />
+              <DistanceFilter
+                enabled={distanceFilterEnabled}
+                onToggle={setDistanceFilterEnabled}
+                radius={distanceRadius}
+                onRadiusChange={setDistanceRadius}
+                totalCount={mounted ? results.length : 0}
+                filteredCount={mounted ? displayResults.length : 0}
+              />
+            </div>
+
+            <div className="h-px bg-gray-200/50 dark:bg-[#3D312A]/50" />
+
+            {/* Row 2: Sort Selector */}
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
+              <SortSelector
+                value={sortBy}
+                onChange={setSortBy}
+                hasCoordinates={mounted ? !!coords : false}
+              />
+            </div>
+
+            <div className="h-px bg-gray-200/50 dark:bg-[#3D312A]/50" />
+
+            {/* Row 3: Advanced Filter Toggle Button and Reset */}
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setIsAdvancedFiltersOpen(prev => !prev)}
+                className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-semibold border transition-all duration-200 cursor-pointer ${
+                  isAdvancedFiltersOpen || hasActiveAdvFilters
+                    ? 'bg-brand-muted dark:bg-brand/10 border-brand/40 dark:border-brand/30 text-brand-hover dark:text-[#E6DFD5] shadow-sm shadow-brand/5 dark:shadow-none'
+                    : 'bg-white dark:bg-[#3D312A] border-gray-200 dark:border-[#4D3D32] text-gray-600 dark:text-[#9A8A7A] hover:border-brand/70 hover:text-brand-hover'
+                }`}
+              >
+                <SlidersHorizontal className="w-3.5 h-3.5" />
+                {t('result.advancedFilters')}
+                {activeAdvFilterCount > 0 && (
+                  <span className="bg-brand text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-bold ml-0.5">
+                    {activeAdvFilterCount}
+                  </span>
+                )}
+              </button>
+              {hasActiveAdvFilters && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAdvFilters({ minPrice: null, maxPrice: null, minRating: null, vegetarianOnly: false });
+                    setSelectedTags([]);
+                  }}
+                  className="inline-flex items-center gap-1 text-[11px] font-bold text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 px-2.5 py-1 rounded-lg transition-all"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                  {t('result.reset')}
+                </button>
+              )}
+            </div>
+          </div>
         </div>
-      </div>
+      )}
 
-      <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 md:py-12 w-full">
-        <AnimatePresence mode="wait">
+      <div className="max-w-7xl mx-auto px-4 md:px-8 w-full flex flex-col lg:flex-row gap-0 lg:gap-8 items-start py-8 md:py-12">
+        {/* Left Sidebar for Filters (Collapsible) */}
+        <div className={`transition-all duration-300 overflow-hidden flex-shrink-0 ${isAdvancedFiltersOpen ? 'w-full lg:w-[320px] opacity-100 mb-8 lg:mb-0' : 'w-0 opacity-0 h-0 lg:h-auto'}`}>
+          <div className="lg:sticky lg:top-24 w-full lg:w-[320px]">
+            <AdvancedFilters
+              filters={advFilters}
+              onChange={setAdvFilters}
+              totalCount={mounted ? results.length : 0}
+              filteredCount={mounted ? displayResults.length : 0}
+              availableTags={mounted ? availableTags : []}
+              selectedTags={selectedTags}
+              onTagsChange={setSelectedTags}
+              isOpen={true} // The component itself is always 'open' visually, the container hides it
+            />
+          </div>
+        </div>
+
+        {/* Right Content for Results */}
+        <div className={`flex-1 min-w-0 w-full transition-all duration-300 ${
+          mapViewEnabled ? 'xl:flex xl:flex-col xl:h-full' : ''
+        }`}>
+          <AnimatePresence mode="wait">
           {(!mounted || isLoading) ? (
             <LoadingState
               searchQuery={searchQuery}
@@ -774,23 +1470,26 @@ function ResultPageContent() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.3 }}
+              className={mapViewEnabled ? "xl:flex xl:flex-col xl:h-full xl:min-h-0" : ""}
             >
               <motion.div
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="mb-10 max-w-4xl mx-auto"
+                className={`max-w-4xl mx-auto w-full ${
+                  mapViewEnabled ? 'xl:mb-6 xl:flex-shrink-0' : 'mb-10'
+                }`}
               >
                 {fallbackApplied && (
                   <div className="mb-6 flex items-start gap-3 p-4 rounded-xl bg-yellow-50 dark:bg-yellow-500/10 border border-yellow-200 dark:border-yellow-500/20">
                     <Info className="w-5 h-5 text-yellow-600 dark:text-yellow-500 flex-shrink-0 mt-0.5" />
                     <div>
                       <p className="text-sm text-yellow-800 dark:text-yellow-200 leading-relaxed mb-2">
-                        <strong>AI đã mở rộng phạm vi tìm kiếm:</strong> {fallbackReason || 'Không tìm thấy kết quả chính xác theo yêu cầu khắt khe, chúng tôi đã mở rộng phạm vi và ngân sách để gợi ý cho bạn!'}
+                        <strong>{t('result.fallbackTitle')}</strong> {fallbackReason || t('result.fallbackDesc')}
                       </p>
                       <div className="flex flex-wrap gap-2">
                         {appliedBudget != null && (
                           <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-yellow-100 dark:bg-yellow-500/20 text-yellow-700 dark:text-yellow-300">
-                            💰 Ngân sách: {appliedBudget.toLocaleString('vi-VN')}đ
+                            💰 {t('result.budget')}: {appliedBudget.toLocaleString('vi-VN')}đ
                           </span>
                         )}
                       </div>
@@ -801,27 +1500,27 @@ function ResultPageContent() {
                   <div className="mb-6 flex items-start gap-3 p-4 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 shadow-sm">
                     <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-500 flex-shrink-0 mt-0.5" />
                     <p className="text-sm text-amber-900 dark:text-amber-200 leading-relaxed">
-                      <strong>Lưu ý Dị ứng:</strong> Có {allergenFlaggedCount} quán ăn có chứa thành phần gây dị ứng cho bạn. AI đã đánh dấu rõ <strong>"⚠️ Cảnh báo"</strong> trên từng quán để bạn dễ dàng nhận biết.
+                      <strong>{t('result.allergyNoticeTitle')}</strong> {t('result.allergyNoticeDesc').replace('{count}', String(allergenFlaggedCount))}
                     </p>
                   </div>
                 )}
 
                 {!isLoggedIn && showGuestNotice && (
-                  <div className="mb-6 px-5 py-3 rounded-full bg-[#F0F7FF] dark:bg-blue-500/5 border border-[#E1EFFE] dark:border-blue-500/20 flex items-center gap-3 relative shadow-sm">
-                    <Sparkles className="w-5 h-5 text-blue-500 flex-shrink-0" />
-                    <p className="text-[13px] md:text-sm text-gray-600 dark:text-blue-200 pr-10 whitespace-nowrap">
-                      Bạn đang tìm kiếm với tư cách khách.{" "}
+                  <div className="mb-6 px-5 py-3 rounded-2xl bg-[#F0F7FF] dark:bg-blue-500/5 border border-[#E1EFFE] dark:border-blue-500/20 flex items-start sm:items-center gap-3 relative shadow-sm">
+                    <Sparkles className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5 sm:mt-0" />
+                    <p className="text-[13px] md:text-sm text-gray-600 dark:text-blue-200 pr-8 sm:pr-12 leading-relaxed">
+                      {t('result.guestSearching')}{" "}
                       <button
                         onClick={() => router.push('/auth')}
-                        className="font-bold text-blue-600 dark:text-blue-400 underline hover:text-blue-700 transition-colors"
+                        className="font-bold text-blue-600 dark:text-blue-400 underline decoration-blue-400/50 hover:decoration-blue-600 hover:text-blue-700 dark:hover:text-blue-300 transition-all cursor-pointer inline-block hover:-translate-y-[1px] active:translate-y-0"
                       >
-                        Đăng nhập ngay
+                        {t('result.loginNow')}
                       </button>
-                      {" "}để AI đề xuất món ăn chính xác theo khẩu vị và chế độ ăn của riêng bạn!
+                      {" "}{t('result.loginBenefit')}
                     </p>
                     <button
                       onClick={() => setShowGuestNotice(false)}
-                      className="absolute right-5 p-1 text-gray-400 hover:text-gray-600 dark:hover:text-blue-300 transition-colors"
+                      className="absolute right-3 top-3 sm:right-4 sm:top-1/2 sm:-translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 dark:hover:text-blue-300 transition-colors"
                     >
                       <X className="w-4 h-4" />
                     </button>
@@ -831,8 +1530,13 @@ function ResultPageContent() {
                 <div className="flex flex-col gap-3 mb-5">
                   <div className="flex justify-between items-center px-1">
                     <button onClick={() => router.push('/')} className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-brand transition-colors">
-                      <Home className="w-4 h-4" /> Quay lại trang chủ
+                      <Home className="w-4 h-4" /> {t('result.backHome')}
                     </button>
+                    {lastSearchElapsedMs !== null && (
+                      <span className="inline-flex items-center rounded-full border border-brand/20 bg-brand/5 px-3 py-1 text-xs font-semibold text-brand dark:text-[#E8735A]">
+                        {t('result.searchElapsed')}: {lastSearchElapsedMs.toLocaleString()} ms ({(lastSearchElapsedMs / 1000).toFixed(3)} s)
+                      </span>
+                    )}
                   </div>
                   <div className="relative group flex">
                     <SearchBar
@@ -840,7 +1544,7 @@ function ResultPageContent() {
                       setQuery={setInputValue}
                       searchMode={searchMode}
                       setSearchMode={setSearchMode}
-                      onSearch={() => handleSearch()}
+                      onSearch={() => handleSearch(inputValue, undefined, mapViewEnabled ? { stayOnPage: true } : undefined)}
                       compact={true}
                     />
                   </div>
@@ -857,16 +1561,130 @@ function ResultPageContent() {
                     <Brain className="w-8 h-8 text-red-500" />
                   </div>
                   <h2 className="text-xl font-bold text-red-600 dark:text-red-400 mb-2">
-                    Lỗi kết nối
+                    {t('result.connectionError')}
                   </h2>
                   <p className="text-red-500 dark:text-red-300/60 max-w-sm mx-auto mb-6">{apiError}</p>
                   <button
                     onClick={() => window.location.reload()}
                     className="px-6 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-full transition-all font-medium shadow-md"
                   >
-                    Thử kết nối lại
+                    {t('result.retryConnection')}
                   </button>
                 </motion.div>
+              ) : mapViewEnabled ? (
+                <div className="flex flex-col xl:flex-row gap-6 items-stretch min-h-[calc(100vh-12rem)] w-full">
+                  <div className="w-full xl:w-[450px] xl:shrink-0 flex flex-col gap-4">
+                    {results.length === 0 ? (
+                      <div className="py-16 text-center bg-white dark:bg-[#3D312A] rounded-3xl border border-gray-100 dark:border-[#4D3D32] shadow-sm">
+                        <div className="w-16 h-16 bg-gray-50 dark:bg-[#2A2420] rounded-full flex items-center justify-center mx-auto mb-5">
+                          <Search className="w-8 h-8 text-gray-400 dark:text-[#7A6A5A]" />
+                        </div>
+                        <h2 className="text-xl font-bold text-gray-800 dark:text-[#E6DFD5] mb-2">
+                          {t('result.mapEmptyTitle')}
+                        </h2>
+                        <p className="text-sm text-gray-500 dark:text-[#9A8A7A] max-w-md mx-auto leading-relaxed">
+                          {t('result.mapEmptyDesc')}
+                        </p>
+                      </div>
+                    ) : (
+                      <>
+                        {/* Sort & Filter Controls Inside Left Panel */}
+                        <div className={`flex items-center justify-between gap-3 bg-white dark:bg-[#3D312A] p-4 rounded-2xl border border-gray-100 dark:border-[#4D3D32] shadow-sm ${mapViewEnabled ? 'xl:flex-shrink-0' : ''}`}>
+                          <div className="flex-1">
+                            <SortSelector
+                              value={sortBy}
+                              onChange={setSortBy}
+                              hasCoordinates={!!coords}
+                            />
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setShowMapFilters(!showMapFilters)}
+                            className={`h-10 px-4 rounded-xl text-xs font-bold border transition-all flex items-center gap-2 ${
+                              showMapFilters
+                                ? 'bg-[#123D2A] border-[#123D2A] text-white'
+                                : 'bg-gray-50 dark:bg-[#3D312A] text-gray-600 dark:text-[#C8BFB0] border-gray-200 dark:border-[#4D3D32] hover:border-[#123D2A]/50'
+                            }`}
+                          >
+                            <SlidersHorizontal className="w-4 h-4" />
+                            <span>{t('result.filters')}</span>
+                          </button>
+                        </div>
+
+                        {/* Collapsible Advanced Filters panel */}
+                        {showMapFilters && (
+                          <div className={`p-4 bg-white dark:bg-[#3D312A] rounded-2xl border border-gray-100 dark:border-[#4D3D32] shadow-sm flex flex-col gap-4 ${mapViewEnabled ? 'xl:flex-shrink-0 xl:overflow-y-auto xl:max-h-[50%]' : ''}`}>
+                            <div className="flex flex-col gap-2">
+                              <p className="text-[11px] font-bold text-gray-400 dark:text-[#9A8A7A] uppercase tracking-wide">{t('result.budgetDistance')}</p>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <BudgetSelector
+                                  value={budget}
+                                  onChange={(newBudget) => {
+                                    setBudget(newBudget);
+                                  }}
+                                />
+                                <DistanceFilter
+                                  enabled={distanceFilterEnabled}
+                                  onToggle={setDistanceFilterEnabled}
+                                  radius={distanceRadius}
+                                  onRadiusChange={setDistanceRadius}
+                                  totalCount={results.length}
+                                  filteredCount={displayResults.length}
+                                />
+                              </div>
+                            </div>
+                            <div className="h-px bg-gray-100 dark:bg-[#4D3D32]/40" />
+                            <div className="flex flex-col gap-2">
+                              <p className="text-[11px] font-bold text-gray-400 dark:text-[#9A8A7A] uppercase tracking-wide">{t('result.advancedFilterShort')}</p>
+                              <AdvancedFilters
+                                filters={advFilters}
+                                onChange={setAdvFilters}
+                                totalCount={results.length}
+                                filteredCount={displayResults.length}
+                              />
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Vertical list of restaurants */}
+                        <div className="flex flex-col gap-5 pr-1">
+                          {displayResults.map((item, idx) => (
+                            <div
+                              key={item.id || idx}
+                              id={`restaurant-card-${item.id}`}
+                              onClick={() => setSelectedId(item.id)}
+                              className={`transition-all duration-300 rounded-2xl ${
+                                selectedId === item.id
+                                  ? 'ring-2 ring-brand ring-offset-2 dark:ring-offset-[#2A2420]'
+                                  : ''
+                              }`}
+                            >
+                              <SmallResultCard
+                                item={item}
+                                index={idx}
+                                rank={idx + 1}
+                                sessionId={sessionIdFromUrl}
+                                searchMode={searchMode}
+                                onAddCollection={setCollectionModalItem}
+                                isModalOpen={!!collectionModalItem}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                  <div className="w-full xl:flex-1 order-first xl:order-none xl:sticky xl:top-24 xl:h-[calc(100vh-120px)] h-[600px]">
+                    <ResultMapView
+                      results={displayResults}
+                      fallbackCenter={fallbackMapCenter}
+                      isSearching={isSearching}
+                      onViewportSearch={handleViewportSearch}
+                      selectedId={selectedId}
+                      onSelectId={setSelectedId}
+                    />
+                  </div>
+                </div>
               ) : results.length === 0 ? (
                 <motion.div
                   initial={{ opacity: 0, scale: 0.95 }}
@@ -877,10 +1695,10 @@ function ResultPageContent() {
                     <Search className="w-10 h-10 text-gray-400 dark:text-[#7A6A5A]" />
                   </div>
                   <h2 className="text-2xl font-bold text-gray-800 dark:text-[#E6DFD5] mb-3">
-                    Không tìm thấy món nào!
+                    {t('result.noResultsTitle')}
                   </h2>
                   <p className="text-gray-500 dark:text-[#9A8A7A] max-w-md mx-auto mb-8 leading-relaxed">
-                    Rất tiếc, AI không tìm thấy kết quả nào phù hợp với yêu cầu hiện tại. Thử thay đổi từ khóa hoặc mở rộng ngân sách xem sao nhé?
+                    {t('result.noResultsDesc')}
                   </p>
                   <button
                     onClick={() => {
@@ -890,29 +1708,14 @@ function ResultPageContent() {
                     }}
                     className="px-6 py-2.5 bg-brand-muted dark:bg-brand/10 hover:bg-brand-muted dark:hover:bg-brand/20 text-brand-hover dark:text-[#E6DFD5] rounded-full transition-all font-semibold"
                   >
-                    Thử tìm từ khóa khác
+                    {t('result.tryAnotherKeyword')}
                   </button>
                 </motion.div>
-              ) : (
-                <>
-                  {/* Hero Card #1 */}
-                  {heroItem && <HeroResultCard item={heroItem} sessionId={sessionIdFromUrl} searchMode={searchMode} onAddCollection={setCollectionModalItem} isModalOpen={!!collectionModalItem} />}
-
-                  {/* Small Cards Grid #2+ */}
-                  {gridItems.length > 0 && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                      {gridItems.map((item, idx) => (
-                        <SmallResultCard key={item.id || idx} item={item} index={idx} sessionId={sessionIdFromUrl} searchMode={searchMode} onAddCollection={setCollectionModalItem} isModalOpen={!!collectionModalItem} />
-                      ))}
-                    </div>
-                  )}
-
-                  <FeatureBar />
-                </>
-              )}
+              ) : renderResultCards(false)}
             </motion.div>
           )}
-        </AnimatePresence>
+          </AnimatePresence>
+        </div>
       </div>
       <AddToCollectionModal
         isOpen={!!collectionModalItem}
@@ -927,7 +1730,7 @@ export default function ResultPage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen bg-white dark:bg-[#2A2420] flex items-center justify-center">
-        <div className="text-[#9A8A7A] dark:text-[#7A6A5A] animate-pulse font-medium">Đang tải dữ liệu...</div>
+        <div className="text-[#9A8A7A] dark:text-[#7A6A5A] animate-pulse font-medium">Loading data...</div>
       </div>
     }>
       <ResultPageContent />

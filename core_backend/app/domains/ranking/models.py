@@ -1,5 +1,5 @@
 from sqlalchemy import Column, Integer, String, Float, Boolean, ForeignKey, JSON, DateTime
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, deferred
 from app.core.database import Base
 from pgvector.sqlalchemy import Vector
 from app.core.config import settings
@@ -18,6 +18,8 @@ class RestaurantModel(Base):
 
     # Tên field khớp ERD bản NEW
     price_range = Column(String, nullable=True)     # giá dạng string, vd "50000-100000"
+    price_min = Column(Integer, nullable=True)
+    price_max = Column(Integer, nullable=True)
     rating_avg = Column(Float, nullable=True)        # rating trung bình (0–5)
     sentiment_score = Column(Float, nullable=True)  # normalized aggregate review sentiment (-1 to 1)
     positive_review_count = Column(Integer, nullable=True, default=0)
@@ -30,7 +32,7 @@ class RestaurantModel(Base):
     is_vegetarian = Column(Boolean, default=False)  # nhà hàng chuyên chay hoặc có menu chay
 
     # Cột vector embedding (pgvector) cho semantic search
-    embedding_vector = Column(Vector(settings.VECTOR_DIM), nullable=True)
+    embedding_vector = deferred(Column(Vector(settings.VECTOR_DIM), nullable=True))
 
     image_url = Column(String, nullable=True)
     opening_hours = Column(String, nullable=True)
@@ -54,7 +56,7 @@ class DishModel(Base):
     image_url = Column(String, nullable=True)
     allergens = Column(JSON, default=[])
     is_vegetarian = Column(Boolean, default=False)
-    embedding_vector = Column(Vector(settings.VECTOR_DIM), nullable=True)
+    embedding_vector = deferred(Column(Vector(settings.VECTOR_DIM), nullable=True))
 
     restaurant = relationship("RestaurantModel", back_populates="dishes")
 

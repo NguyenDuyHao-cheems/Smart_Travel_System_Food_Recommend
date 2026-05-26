@@ -1,3 +1,4 @@
+from typing import Optional
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
 import uuid as _uuid
@@ -9,7 +10,11 @@ from .schema import RestaurantDetailResponse, DishResponse, ReviewCreate, Review
 
 class RestaurantService:
     @staticmethod
-    async def get_restaurant_detail(db: Session, restaurant_id: str) -> RestaurantDetailResponse:
+    async def get_restaurant_detail(
+        db: Session,
+        restaurant_id: str,
+        current_user: Optional[UserAccount] = None
+    ) -> RestaurantDetailResponse:
         uid = None
         try:
             if len(restaurant_id) < 36:
@@ -26,7 +31,23 @@ class RestaurantService:
         if not restaurant:
             raise HTTPException(status_code=404, detail="Không tìm thấy nhà hàng này.")
         
-        dishes = RestaurantRepository.get_dishes_by_restaurant_id(db, uid)
+        user_allergies = []
+        if current_user:
+            from app.services.user_services import get_user_allergies
+            user_allergies = get_user_allergies(db, current_user.id)
+
+        from app.domains.ranking.models import DishModel
+        dishes_query = db.query(DishModel).filter(DishModel.res_id == uid)
+        if user_allergies:
+            from app.services.allergy_filter import get_allergy_keywords, get_unsafe_dish_filter
+            from sqlalchemy import not_
+            keywords = get_allergy_keywords(user_allergies)
+            if keywords:
+                unsafe_clause = get_unsafe_dish_filter(db, keywords)
+                if unsafe_clause is not None:
+                    dishes_query = dishes_query.filter(not_(unsafe_clause))
+        
+        dishes = dishes_query.all()
         tags = [tag.name for tag in (restaurant.tags or [])]
         reviews = RestaurantRepository.get_reviews_by_restaurant_id(db, uid, limit=50)
         
@@ -175,8 +196,15 @@ class RestaurantService:
             )
             
             # Increment reviews_count in user's profile_stats if initialized
-            if current_user.profile_stats:
-                stats = dict(current_user.profile_stats)
+            stats = current_user.profile_stats
+            if isinstance(stats, str):
+                import json
+                try:
+                    stats = json.loads(stats)
+                except Exception:
+                    stats = None
+            if stats:
+                stats = dict(stats)
                 stats["reviews_count"] = stats.get("reviews_count", 0) + 1
                 current_user.profile_stats = dict(stats)
                 from sqlalchemy.orm.attributes import flag_modified
@@ -229,8 +257,15 @@ class RestaurantService:
         
         # Decrement reviews_count in user's profile_stats if initialized
         try:
-            if current_user.profile_stats:
-                stats = dict(current_user.profile_stats)
+            stats = current_user.profile_stats
+            if isinstance(stats, str):
+                import json
+                try:
+                    stats = json.loads(stats)
+                except Exception:
+                    stats = None
+            if stats:
+                stats = dict(stats)
                 stats["reviews_count"] = max(0, stats.get("reviews_count", 0) - 1)
                 current_user.profile_stats = dict(stats)
                 from sqlalchemy.orm.attributes import flag_modified

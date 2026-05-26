@@ -18,12 +18,17 @@ import {
   Trash2,
   MessageSquarePlus,
   Send,
-  Eye
+  Eye,
+  Route
 } from 'lucide-react';
 import Image from 'next/image';
 import { interactionService } from '../../../services/interactionService';
 import { AppShell } from '../../../components/AppShell';
 import { toast } from 'sonner';
+import { useDispatch, useSelector } from 'react-redux';
+import { RootState } from '../../../store';
+import { addItem, removeItem } from '../../../store/slices/itinerarySlice';
+import { useLanguage } from '../../../components/LanguageProvider';
 
 interface Dish {
   id: string;
@@ -63,10 +68,102 @@ interface Restaurant {
   dishes: Dish[];
 }
 
+const RESTAURANT_COPY = {
+  vi: {
+    deleteReviewSuccess: "Xóa bình luận thành công!",
+    deleteReviewError: "Không thể xóa bình luận. Vui lòng thử lại!",
+    deleteReviewConnectionError: "Lỗi kết nối hệ thống khi xóa bình luận!",
+    fetchError: "Không thể lấy thông tin nhà hàng.",
+    noData: "Không tìm thấy dữ liệu.",
+    noRating: "Chưa có đánh giá",
+    removeItineraryTitle: "Xóa khỏi lộ trình",
+    addItineraryTitle: "Thêm vào lộ trình",
+    removeItinerary: "Xóa lộ trình",
+    itinerary: "Lộ trình",
+    allergyNote: "Lưu ý dị ứng của bạn",
+    noMenu: "Chưa có thực đơn",
+    updating: "Đang cập nhật",
+    openNow: "Đang mở cửa",
+    comments: "Bình luận",
+    reviews: "Đánh giá",
+    noContent: "Không có nội dung.",
+    noComments: "Chưa có bình luận nào.",
+    map: "Bản đồ",
+    errorTitle: "Oops! Có lỗi xảy ra",
+    back: "Quay lại",
+    reviewDetail: "Chi tiết bình luận",
+    noCommentsPrompt: "Chưa có bình luận nào. Hãy là người đầu tiên!",
+    submitReviewError: "Không thể gửi đánh giá. Vui lòng thử lại!",
+    submitReviewConnectionError: "Lỗi kết nối hệ thống khi gửi đánh giá!",
+    notSelected: "Chưa chọn",
+    anonymousReview: "Đánh giá ẩn danh:",
+    anonymousPreview: "Bạn sẽ bình luận dưới tên: Người ẩn danh số {number}",
+    anonymousNew: "Bạn sẽ bình luận dưới tên: Người ẩn danh mới",
+    writeReview: "Viết đánh giá",
+    ratingLabel: "Điểm:",
+    reviewPlaceholder: "Chia sẻ trải nghiệm của bạn...",
+    submitReviewSuccess: "Gửi đánh giá thành công!",
+    submitting: "Đang gửi...",
+    submitReview: "Gửi đánh giá",
+    loginToReview: "Vui lòng đăng nhập để viết đánh giá.",
+    login: "Đăng nhập",
+    deleteReviewTitle: "Xóa bình luận?",
+    cannotUndo: "Hành động này không thể hoàn tác.",
+    cancel: "Hủy",
+    deleteNow: "Xóa ngay",
+  },
+  en: {
+    deleteReviewSuccess: "Comment deleted successfully!",
+    deleteReviewError: "Unable to delete the comment. Please try again!",
+    deleteReviewConnectionError: "System connection error while deleting the comment!",
+    fetchError: "Unable to fetch restaurant information.",
+    noData: "No data found.",
+    noRating: "No ratings yet",
+    removeItineraryTitle: "Remove from itinerary",
+    addItineraryTitle: "Add to itinerary",
+    removeItinerary: "Remove route",
+    itinerary: "Itinerary",
+    allergyNote: "Your allergy note",
+    noMenu: "No menu yet",
+    updating: "Updating",
+    openNow: "Open now",
+    comments: "Comments",
+    reviews: "Reviews",
+    noContent: "No content.",
+    noComments: "No comments yet.",
+    map: "Map",
+    errorTitle: "Oops! Something went wrong",
+    back: "Back",
+    reviewDetail: "Comment details",
+    noCommentsPrompt: "No comments yet. Be the first!",
+    submitReviewError: "Unable to submit your review. Please try again!",
+    submitReviewConnectionError: "System connection error while submitting your review!",
+    notSelected: "Not selected",
+    anonymousReview: "Anonymous review:",
+    anonymousPreview: "You will comment as: Anonymous user #{number}",
+    anonymousNew: "You will comment as: New anonymous user",
+    writeReview: "Write a review",
+    ratingLabel: "Rating:",
+    reviewPlaceholder: "Share your experience...",
+    submitReviewSuccess: "Review submitted successfully!",
+    submitting: "Submitting...",
+    submitReview: "Submit review",
+    loginToReview: "Please log in to write a review.",
+    login: "Log in",
+    deleteReviewTitle: "Delete comment?",
+    cannotUndo: "This action cannot be undone.",
+    cancel: "Cancel",
+    deleteNow: "Delete now",
+  },
+};
+
 export default function RestaurantDetailPage() {
   const params = useParams();
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { language } = useLanguage();
+  const copy = RESTAURANT_COPY[language];
+
   const [activeRestaurantId, setActiveRestaurantId] = useState<string | null>(null);
   const sessionId = searchParams.get('session_id');
 
@@ -76,6 +173,36 @@ export default function RestaurantDetailPage() {
   const [isMapModalOpen, setIsMapModalOpen] = useState(false);
   const [userAllergies, setUserAllergies] = useState<string[]>([]);
   const [isAllergenSectionOpen, setIsAllergenSectionOpen] = useState(true);
+
+  const dispatch = useDispatch();
+  const itineraryItems = useSelector((state: RootState) => state.itinerary.items);
+  const isInItinerary = restaurant ? itineraryItems.some(i => i.id === restaurant.id) : false;
+
+  const toggleItinerary = () => {
+    if (!restaurant) return;
+    if (isInItinerary) {
+      dispatch(removeItem(restaurant.id));
+      toast.success('Đã xóa khỏi lộ trình');
+    } else {
+      dispatch(addItem({
+        id: restaurant.id,
+        name: restaurant.name,
+        lat: restaurant.lat,
+        lng: restaurant.lng,
+        address: restaurant.address,
+        img: restaurant.image_url,
+        rating: restaurant.rating_avg ? String(restaurant.rating_avg) : undefined,
+        price: restaurant.price_range || undefined,
+        google_maps_url: restaurant.google_maps_url
+      }));
+      toast.success('Đã thêm vào lộ trình', {
+        action: {
+          label: 'Xem',
+          onClick: () => router.push('/itinerary')
+        }
+      });
+    }
+  };
 
   // Auth & reviews state
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -120,7 +247,7 @@ export default function RestaurantDetailPage() {
       });
       if (res.ok || res.status === 204) {
         setReviews(prev => prev.filter(r => r.id !== reviewId));
-        toast.success("Xóa bình luận thành công!");
+        toast.success(copy.deleteReviewSuccess);
         
         // Ghi nhận tương tác xóa bình luận
         interactionService.logInteraction({
@@ -131,11 +258,11 @@ export default function RestaurantDetailPage() {
       } else if (res.status === 401) {
         window.dispatchEvent(new Event("auth-session-expired"));
       } else {
-        toast.error("Không thể xóa bình luận. Vui lòng thử lại!");
+        toast.error(copy.deleteReviewError);
       }
     } catch (err) {
       console.error("Failed to delete review:", err);
-      toast.error("Lỗi kết nối hệ thống khi xóa bình luận!");
+      toast.error(copy.deleteReviewConnectionError);
     } finally {
       setPendingDeleteId(null);
       setIsDeleting(false);
@@ -176,7 +303,7 @@ export default function RestaurantDetailPage() {
       try {
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
         const res = await fetch(`${apiUrl}/api/v1/restaurants/${activeRestaurantId}`);
-        if (!res.ok) throw new Error('Không thể lấy thông tin nhà hàng.');
+        if (!res.ok) throw new Error(copy.fetchError);
         const data = await res.json();
         setRestaurant(data);
 
@@ -262,7 +389,7 @@ export default function RestaurantDetailPage() {
   };
 
   if (isLoading) return <AppShell><LoadingSkeleton /></AppShell>;
-  if (error || !restaurant) return <AppShell><ErrorState message={error || 'Không tìm thấy dữ liệu.'} onBack={handleBack} /></AppShell>;
+  if (error || !restaurant) return <AppShell><ErrorState message={error || copy.noData} onBack={handleBack} /></AppShell>;
   // Allergen detection logic
   const ALLERGY_MAP: Record<string, string[]> = {
     "peanut": ["peanut", "groundnut", "satay", "lạc", "đậu phộng", "sa tế"],
@@ -350,7 +477,7 @@ export default function RestaurantDetailPage() {
                   <span className="font-semibold">
                     {restaurant.total_reviews > 0
                       ? restaurant.rating_avg.toFixed(1)
-                      : "Chưa có đánh giá"}
+                      : copy.noRating}
                     {restaurant.total_reviews > 0 && (
                       <span className="font-normal text-gray-200 ml-1">
                         ({restaurant.total_reviews} đánh giá)
@@ -364,7 +491,9 @@ export default function RestaurantDetailPage() {
                 </div>
                 {restaurant.price_range && (
                   <div className="flex items-center gap-1">
-                    <span className="w-5 h-5 flex items-center justify-center text-green-400 font-bold text-lg">$</span>
+                    <span className="w-5 h-5 flex items-center justify-center text-green-400">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-banknote"><rect width="20" height="12" x="2" y="6" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/></svg>
+                    </span>
                     <span className="font-medium">{restaurant.price_range}</span>
                   </div>
                 )}
@@ -395,6 +524,18 @@ export default function RestaurantDetailPage() {
                   <Navigation className="w-5 h-5" />
                   Chỉ đường ngay
                 </button>
+                <button
+                  onClick={toggleItinerary}
+                  className={`flex items-center justify-center gap-2 px-6 py-4 font-bold rounded-2xl border-2 transition-all transform hover:-translate-y-1 ${
+                    isInItinerary
+                      ? 'bg-orange-50 dark:bg-orange-950/30 border-orange-400 text-orange-600 dark:text-orange-400 shadow-xl shadow-orange-200/40'
+                      : 'bg-white dark:bg-[#3D312A] border-gray-200 dark:border-[#4D3D32] text-gray-700 dark:text-[#C8BFB0] hover:border-orange-400 hover:text-orange-600 shadow-md'
+                  }`}
+                  title={isInItinerary ? copy.removeItineraryTitle : copy.addItineraryTitle}
+                >
+                  <Route className={`w-5 h-5 ${isInItinerary ? 'fill-current' : ''}`} />
+                  {isInItinerary ? copy.removeItinerary : copy.itinerary}
+                </button>
               </div>
 
               {/* Allergen Warning Section */}
@@ -409,7 +550,7 @@ export default function RestaurantDetailPage() {
                         <AlertTriangle className="w-6 h-6 text-amber-600 dark:text-amber-500" />
                       </div>
                       <div className="text-left">
-                        <h2 className="text-lg font-bold text-amber-900 dark:text-amber-200">Lưu ý dị ứng của bạn</h2>
+                        <h2 className="text-lg font-bold text-amber-900 dark:text-amber-200">{copy.allergyNote}</h2>
                         <p className="text-sm text-amber-700 dark:text-amber-400">Nhà hàng này có {dishesWithAllergens.length} món chứa thành phần bạn bị dị ứng</p>
                       </div>
                     </div>
@@ -505,8 +646,14 @@ export default function RestaurantDetailPage() {
                       </motion.div>
                     ))
                   ) : (
-                    <div className="col-span-full py-10 text-center bg-gray-100 dark:bg-[#3D312A]/50 rounded-3xl">
-                      <p className="text-gray-500">Đang cập nhật thực đơn...</p>
+                    <div className="col-span-full py-16 flex flex-col items-center justify-center text-center bg-white dark:bg-[#3D312A] rounded-3xl border border-dashed border-gray-200 dark:border-[#4D3D32]">
+                      <div className="w-20 h-20 mb-4 bg-gray-50 dark:bg-[#2A2420] rounded-full flex items-center justify-center">
+                        <UtensilsCrossed className="w-10 h-10 text-gray-300 dark:text-gray-600" />
+                      </div>
+                      <h4 className="text-lg font-bold text-gray-800 dark:text-[#E6DFD5] mb-2">{copy.noMenu}</h4>
+                      <p className="text-sm text-gray-500 max-w-sm">
+                        Quán ăn này hiện chưa cung cấp danh sách món ăn chi tiết trên hệ thống. Bạn có thể đến trực tiếp để khám phá nhé!
+                      </p>
                     </div>
                   )}
                 </div>
@@ -531,11 +678,11 @@ export default function RestaurantDetailPage() {
                         <p className="text-xs text-gray-500">
                           {restaurant.open_time && restaurant.close_time
                             ? `${restaurant.open_time} - ${restaurant.close_time}`
-                            : 'Đang cập nhật'}
+                            : copy.updating}
                         </p>
                         {restaurant.is_open_now ? (
                           <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400">
-                            Đang mở cửa
+                            {copy.openNow}
                           </span>
                         ) : (
                           <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400">
@@ -569,13 +716,13 @@ export default function RestaurantDetailPage() {
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-base font-bold flex items-center gap-2 text-gray-900 dark:text-[#E6DFD5]">
                     <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-                    Bình luận
+                    {copy.comments}
                   </h3>
                   <div className="flex gap-1.5">
                     {authToken && (
                       <button onClick={() => setIsWriteReviewOpen(true)} className="flex items-center gap-1 px-3 py-1.5 text-xs font-bold rounded-xl bg-brand text-white hover:bg-brand-hover transition-colors shadow-sm shadow-brand/10">
                         <MessageSquarePlus className="w-3.5 h-3.5" />
-                        Đánh giá
+                        {copy.reviews}
                       </button>
                     )}
                   </div>
@@ -612,11 +759,11 @@ export default function RestaurantDetailPage() {
                           )}
                         </div>
                       </div>
-                      <p className="text-[11px] text-gray-500 dark:text-[#9A8A7A] line-clamp-2">{review.text || 'Không có nội dung.'}</p>
+                      <p className="text-[11px] text-gray-500 dark:text-[#9A8A7A] line-clamp-2">{review.text || copy.noContent}</p>
                     </div>
                   ))}
                   {reviews.length === 0 && (
-                    <p className="text-center text-xs text-gray-400 py-4">Chưa có bình luận nào.</p>
+                    <p className="text-center text-xs text-gray-400 py-4">{copy.noComments}</p>
                   )}
                 </div>
                 {reviews.length > 0 && (
@@ -691,7 +838,7 @@ export default function RestaurantDetailPage() {
                 <div className="p-4 border-b border-gray-100 dark:border-[#3D312A] flex justify-between items-center bg-gray-50 dark:bg-[#2A2420]">
                   <h3 className="text-lg md:text-xl font-bold flex items-center gap-2 text-gray-900 dark:text-[#E6DFD5]">
                     <MapPin className="w-6 h-6 text-brand dark:text-[#E8735A]" />
-                    Bản đồ: {restaurant.name}
+                    {copy.map}: {restaurant.name}
                   </h3>
                   <button
                     onClick={() => setIsMapModalOpen(false)}
@@ -788,19 +935,21 @@ function LoadingSkeleton() {
 }
 
 function ErrorState({ message, onBack }: { message: string; onBack: () => void }) {
+  const { language } = useLanguage();
+  const copy = RESTAURANT_COPY[language];
   return (
     <div className="min-h-screen flex items-center justify-center p-6 bg-[#FAF7F2] dark:bg-[#2A2420]">
       <div className="text-center max-w-sm">
         <div className="w-20 h-20 bg-red-100 dark:bg-red-950 rounded-full flex items-center justify-center mx-auto mb-6">
           <Info className="w-10 h-10 text-red-500" />
         </div>
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-[#E6DFD5] mb-2">Oops! Có lỗi xảy ra</h2>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-[#E6DFD5] mb-2">{copy.errorTitle}</h2>
         <p className="text-gray-500 mb-8">{message}</p>
         <button
           onClick={onBack}
           className="px-8 py-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-full font-bold hover:scale-105 transition-transform"
         >
-          Quay lại
+          {copy.back}
         </button>
       </div>
     </div>
@@ -824,6 +973,8 @@ interface AllReviewsModalProps {
 function AllReviewsModal({ restaurantId, restaurantName, reviews, currentUserId, authToken, onClose, onReviewDeleted, onWriteReview, isDetailView }: AllReviewsModalProps) {
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const router = useRouter();
+  const { language } = useLanguage();
+  const copy = RESTAURANT_COPY[language];
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
   const handleDelete = async (reviewId: string) => {
@@ -836,7 +987,7 @@ function AllReviewsModal({ restaurantId, restaurantName, reviews, currentUserId,
       if (res.ok || res.status === 204) {
         onReviewDeleted(reviewId);
         setPendingDeleteId(null);
-        toast.success("Xóa bình luận thành công!");
+        toast.success(copy.deleteReviewSuccess);
         
         // Ghi nhận tương tác xóa bình luận
         interactionService.logInteraction({
@@ -847,11 +998,11 @@ function AllReviewsModal({ restaurantId, restaurantName, reviews, currentUserId,
       } else if (res.status === 401) {
         window.dispatchEvent(new Event("auth-session-expired"));
       } else {
-        toast.error("Không thể xóa bình luận. Vui lòng thử lại!");
+        toast.error(copy.deleteReviewError);
       }
     } catch (err) {
       console.error("Failed to delete review in modal:", err);
-      toast.error("Lỗi kết nối hệ thống khi xóa bình luận!");
+      toast.error(copy.deleteReviewConnectionError);
     }
   };
 
@@ -866,7 +1017,7 @@ function AllReviewsModal({ restaurantId, restaurantName, reviews, currentUserId,
         <div className="p-5 border-b border-gray-100 dark:border-[#3D312A] flex justify-between items-center">
           <div>
             <h3 className="text-xl font-bold text-gray-900 dark:text-[#E6DFD5] flex items-center gap-2">
-              <Star className="w-5 h-5 text-yellow-500 fill-yellow-500" /> {isDetailView ? 'Chi tiết bình luận' : 'Bình luận'}
+              <Star className="w-5 h-5 text-yellow-500 fill-yellow-500" /> {isDetailView ? copy.reviewDetail : copy.comments}
             </h3>
             <p className="text-xs text-gray-400 mt-0.5">{restaurantName}</p>
           </div>
@@ -874,7 +1025,7 @@ function AllReviewsModal({ restaurantId, restaurantName, reviews, currentUserId,
             {authToken && onWriteReview && (
               <button onClick={onWriteReview} className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl bg-brand text-white hover:bg-brand-hover transition-colors shadow-md shadow-brand/10 mr-1">
                 <MessageSquarePlus className="w-4 h-4" />
-                Viết đánh giá
+                {copy.writeReview}
               </button>
             )}
             <button onClick={onClose} className="p-2 bg-gray-100 hover:bg-gray-200 dark:bg-[#3D312A] dark:hover:bg-[#4D3D32] rounded-full transition-colors">
@@ -888,7 +1039,7 @@ function AllReviewsModal({ restaurantId, restaurantName, reviews, currentUserId,
           {reviews.length === 0 && (
             <div className="py-12 text-center text-gray-400">
               <Star className="w-10 h-10 mx-auto mb-3 opacity-30" />
-              <p>Chưa có bình luận nào. Hãy là người đầu tiên!</p>
+              <p>{copy.noCommentsPrompt}</p>
             </div>
           )}
           {reviews.map((review, idx) => (
@@ -917,7 +1068,7 @@ function AllReviewsModal({ restaurantId, restaurantName, reviews, currentUserId,
                   )}
                 </div>
               </div>
-              <p className="text-sm text-gray-600 dark:text-[#C8BFB0] leading-relaxed">{review.text || 'Không có nội dung.'}</p>
+              <p className="text-sm text-gray-600 dark:text-[#C8BFB0] leading-relaxed">{review.text || copy.noContent}</p>
             </motion.div>
           ))}
         </div>
@@ -949,6 +1100,8 @@ function WriteReviewModal({ restaurantId, restaurantName, authToken, onClose, on
   const [anonymousPreview, setAnonymousPreview] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
+  const { language } = useLanguage();
+  const copy = RESTAURANT_COPY[language];
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
   const handleToggleAnonymous = async () => {
@@ -986,15 +1139,15 @@ function WriteReviewModal({ restaurantId, restaurantName, authToken, onClose, on
         setIsAnonymous(false);
         setAnonymousPreview(null);
         onClose();
-        toast.success("Gửi đánh giá thành công!");
+        toast.success(copy.submitReviewSuccess);
       } else if (res.status === 401) {
         window.dispatchEvent(new Event("auth-session-expired"));
       } else {
-        toast.error("Không thể gửi đánh giá. Vui lòng thử lại!");
+        toast.error(copy.submitReviewError);
       }
     } catch (err) {
       console.error("Failed to submit review:", err);
-      toast.error("Lỗi kết nối hệ thống khi gửi đánh giá!");
+      toast.error(copy.submitReviewConnectionError);
     } finally {
       setIsSubmitting(false);
     }
@@ -1011,7 +1164,7 @@ function WriteReviewModal({ restaurantId, restaurantName, authToken, onClose, on
         <div className="flex justify-between items-center border-b border-gray-100 dark:border-[#3D312A] pb-3">
           <div>
             <h3 className="text-xl font-bold text-gray-900 dark:text-[#E6DFD5] flex items-center gap-2">
-              <MessageSquarePlus className="w-5 h-5 text-brand" /> Viết đánh giá
+              <MessageSquarePlus className="w-5 h-5 text-brand" /> {copy.writeReview}
             </h3>
             <p className="text-xs text-gray-400 mt-0.5">{restaurantName}</p>
           </div>
@@ -1024,7 +1177,7 @@ function WriteReviewModal({ restaurantId, restaurantName, authToken, onClose, on
         {authToken ? (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-semibold text-gray-600 dark:text-[#C8BFB0] mr-2">Điểm:</span>
+              <span className="text-sm font-semibold text-gray-600 dark:text-[#C8BFB0] mr-2">{copy.ratingLabel}</span>
               <div className="flex items-center gap-1" onMouseLeave={() => setHoverRating(0)}>
                 {[1, 2, 3, 4, 5].map(s => (
                   <div key={s} className="relative w-7 h-7 transition-transform hover:scale-125 flex-shrink-0">
@@ -1041,14 +1194,14 @@ function WriteReviewModal({ restaurantId, restaurantName, authToken, onClose, on
                     <button type="button" aria-label={`Rate ${s} stars`} className="absolute top-0 right-0 w-1/2 h-full z-10 cursor-pointer focus:outline-none" onMouseEnter={() => setHoverRating(s)} onClick={() => setRating(s)} />
                   </div>
                 ))}
-                <span className="ml-2 text-xs text-gray-400">{rating > 0 ? `${rating * 2}/10` : 'Chưa chọn'}</span>
+                <span className="ml-2 text-xs text-gray-400">{rating > 0 ? `${rating * 2}/10` : copy.notSelected}</span>
               </div>
             </div>
 
             {/* Toggle Switch "Đánh giá ẩn danh" */}
             <div className="flex flex-col gap-1 bg-gray-50 dark:bg-[#3D312A] p-3 rounded-2xl border border-gray-100 dark:border-[#4D3D32] transition-colors duration-300">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-gray-700 dark:text-[#C8BFB0]">Đánh giá ẩn danh:</span>
+                <span className="text-xs font-bold text-gray-700 dark:text-[#C8BFB0]">{copy.anonymousReview}</span>
                 <button
                   type="button"
                   onClick={handleToggleAnonymous}
@@ -1065,27 +1218,27 @@ function WriteReviewModal({ restaurantId, restaurantName, authToken, onClose, on
               {isAnonymous && (
                 <p className="text-[11px] text-brand dark:text-[#E8735A] font-semibold mt-1">
                   {anonymousPreview !== null
-                    ? `Bạn sẽ bình luận dưới tên: Người ẩn danh số ${anonymousPreview}`
-                    : 'Bạn sẽ bình luận dưới tên: Người ẩn danh mới'}
+                    ? copy.anonymousPreview.replace("{number}", String(anonymousPreview))
+                    : copy.anonymousNew}
                 </p>
               )}
             </div>
 
             <textarea value={text} onChange={e => setText(e.target.value)} maxLength={500}
-              placeholder="Chia sẻ trải nghiệm của bạn..." rows={4}
+              placeholder={copy.reviewPlaceholder} rows={4}
               className="w-full px-4 py-3 rounded-2xl bg-white dark:bg-[#3D312A] border border-gray-200 dark:border-[#4D3D32] text-sm text-gray-800 dark:text-[#E6DFD5] placeholder-gray-400 resize-none focus:outline-none focus:ring-2 focus:ring-brand/40" />
 
             <div className="flex justify-end pt-2">
               <button onClick={handleSubmit} disabled={rating === 0 || isSubmitting}
                 className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-brand text-white text-sm font-bold hover:bg-brand-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed w-full justify-center md:w-auto shadow-md shadow-brand/15">
-                <Send className="w-4 h-4" />{isSubmitting ? 'Đang gửi...' : 'Gửi đánh giá'}
+                <Send className="w-4 h-4" />{isSubmitting ? copy.submitting : copy.submitReview}
               </button>
             </div>
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center py-6 text-center">
-            <p className="text-sm text-gray-500 mb-4">Vui lòng đăng nhập để viết đánh giá.</p>
-            <a href="/auth" className="px-6 py-2 rounded-xl bg-brand text-white text-sm font-bold hover:bg-brand-hover transition-colors">Đăng nhập</a>
+            <p className="text-sm text-gray-500 mb-4">{copy.loginToReview}</p>
+            <a href="/auth" className="px-6 py-2 rounded-xl bg-brand text-white text-sm font-bold hover:bg-brand-hover transition-colors">{copy.login}</a>
           </div>
         )}
       </motion.div>
@@ -1095,6 +1248,8 @@ function WriteReviewModal({ restaurantId, restaurantName, authToken, onClose, on
 
 /* ── DeleteConfirmModal ── */
 function DeleteConfirmModal({ onConfirm, onCancel }: { onConfirm: () => void; onCancel: () => void }) {
+  const { language } = useLanguage();
+  const copy = RESTAURANT_COPY[language];
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
       className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={onCancel}>
@@ -1107,11 +1262,11 @@ function DeleteConfirmModal({ onConfirm, onCancel }: { onConfirm: () => void; on
           </div>
         </div>
         <div className="px-7 pt-3 pb-7 text-center">
-          <h3 className="text-lg font-bold text-gray-900 dark:text-[#E6DFD5] mb-2">Xóa bình luận?</h3>
-          <p className="text-sm text-gray-500 dark:text-[#9A8A7A] leading-relaxed mb-7">Hành động này không thể hoàn tác.</p>
+          <h3 className="text-lg font-bold text-gray-900 dark:text-[#E6DFD5] mb-2">{copy.deleteReviewTitle}</h3>
+          <p className="text-sm text-gray-500 dark:text-[#9A8A7A] leading-relaxed mb-7">{copy.cannotUndo}</p>
           <div className="flex gap-3">
-            <button onClick={onCancel} className="flex-1 py-3 rounded-2xl text-sm font-semibold bg-gray-100 hover:bg-gray-200 dark:bg-[#3D312A] dark:hover:bg-[#4D3D32] text-gray-700 dark:text-[#C8BFB0] transition-all">Hủy</button>
-            <button onClick={onConfirm} className="flex-1 py-3 rounded-2xl text-sm font-bold bg-red-500 hover:bg-red-600 text-white transition-all shadow-lg shadow-red-500/25 hover:-translate-y-0.5">Xóa ngay</button>
+            <button onClick={onCancel} className="flex-1 py-3 rounded-2xl text-sm font-semibold bg-gray-100 hover:bg-gray-200 dark:bg-[#3D312A] dark:hover:bg-[#4D3D32] text-gray-700 dark:text-[#C8BFB0] transition-all">{copy.cancel}</button>
+            <button onClick={onConfirm} className="flex-1 py-3 rounded-2xl text-sm font-bold bg-red-500 hover:bg-red-600 text-white transition-all shadow-lg shadow-red-500/25 hover:-translate-y-0.5">{copy.deleteNow}</button>
           </div>
         </div>
       </motion.div>

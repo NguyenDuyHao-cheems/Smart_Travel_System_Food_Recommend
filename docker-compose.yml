@@ -23,6 +23,7 @@ services:
     container_name: ai_engine
     ports:
       - "8001:8001"
+      - "50051:50051"
     env_file:
       - ./ai_engine/.env
     volumes:
@@ -52,6 +53,8 @@ services:
     environment:
       # Override localhost fallback → use Docker service name resolution
       - AI_ENGINE_BASE_URL=http://ai_engine:8001
+      - ENABLE_GRPC=true
+      - AI_ENGINE_GRPC_TARGET=ai_engine:50051
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     depends_on:
       ai_engine:

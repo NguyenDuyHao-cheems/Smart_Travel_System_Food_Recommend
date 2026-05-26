@@ -35,6 +35,7 @@ blockquote {
 }
 </style>
 ![bg](bg1.png)
+
 # <span style="font-size: 3em;">Wanderbite</span>
 ## FINAL PRESENTATION
 
@@ -42,6 +43,7 @@ blockquote {
 
 ---
 ![bg](bg2.png)
+
 
 # Mục lục
 
@@ -54,10 +56,12 @@ blockquote {
 ---
 ![bg](bg3.png)
 
+
 # Nhắc lại bài toán
 > Hệ thống gợi ý quán ăn cho khách du lịch, sử dụng AI để hiểu câu tìm kiếm tiếng Việt. Cá nhân hóa kết quả theo người dùng.
 ---
-![bg](bg3.png)
+![bg](bg1.png)
+
 
 # Nhắc lại bài toán
 **Bài toán con**
@@ -65,7 +69,8 @@ blockquote {
 - Gợi ý đa tiêu chí 
 - Xếp hạng thông minh 
 ---
-![bg](bg3.png)
+![bg](bg2.png)
+
 
 # Nhắc lại bài toán
 ## ví dụ
@@ -73,11 +78,12 @@ Người dùng nhập vào thanh tìm kiếm
 > "Hôm nay trời lạnh, thèm ăn món nóng."
 
 ---
+![bg](bg3.png)
 
 
 
 # Nhắc lại bài toán
-![bg](bg1.png)
+
 
 * **Input:**
   - Câu truy vấn người dùng.
@@ -88,14 +94,16 @@ Người dùng nhập vào thanh tìm kiếm
   - Thông tin chi tiết mỗi quán (khoảng cách, điểm đánh giá, danh sách món, giá)
   - Điểm số đánh giá mức độ phù hợp
 ---
+![bg](bg1.png)
 # Nhắc lại bài toán
-![bg](bg3.png)
+
 **Ràng buộc:**
 - Tối thiểu trả về 16 kết quả cho người dùng
 - Tốc độ phản hồi trong khoảng 5 giây
 
 ---
 ![bg](bg2.png)
+
 
 # Luồng xử lí của hệ thống
 1. **Nhận input**: câu văn tiếng Việt, tọa độ GPS, ID người dùng, ngân sách, chế độ tìm kiếm (bình thường hoặc cảm xúc)
@@ -104,7 +112,8 @@ Người dùng nhập vào thanh tìm kiếm
 4. Tạo vector 768 chiều bằng mô hình **vietnamese-bi-encoder**
 
 ---
-![bg](bg2.png)
+![bg](bg3.png)
+
 
 # Luồng xử lí của hệ thống
 5. Kết hợp vector người dùng và vector câu truy vấn (theo tỉ lệ 85% truy vấn hiện tại-15% sở thích người dùng)
@@ -112,7 +121,8 @@ Người dùng nhập vào thanh tìm kiếm
 7. Lọc theo ngân sách (lấy quán có khoảng giá <= ngân sách)
 8. Lọc món chay (nếu truy vấn không chứa từ khóa chay -> loại quán thuần chay)
 ---
-![bg](bg2.png)
+![bg](bg1.png)
+
 
 # Luồng xử lí của hệ thống
 9. Lọc theo tags
@@ -122,6 +132,7 @@ Người dùng nhập vào thanh tìm kiếm
 13. Sắp xếp lại theo khoảng cách cosine tăng dần
 ---
 ![bg](bg2.png)
+
 
 # Luồng xử lí của hệ thống
 14. Gán nhãn cảnh báo dị ứng
@@ -134,21 +145,18 @@ Người dùng nhập vào thanh tìm kiếm
 20. **Output**: trả về top 16 quán đã sắp xếp.
 
 ---
-
-# Flowchart
 ![bg](bg3.png)
-
----
 # Tính năng chính
-![bg](bg2.png)
+
 
 * Tìm kiếm quán ăn
 - Lưu, tạo bộ sưu tập, xem lại lịch sử tìm kiếm
 * Hồ sơ cá nhân 
 - Cảnh báo dị ứng
 ---
-
 ![bg](bg1.png)
+
+
 # Kiểm thử
 
 > Câu truy vấn sau khi làm sạch bằng gemini
@@ -156,14 +164,16 @@ Người dùng nhập vào thanh tìm kiếm
 ![w:1000 center](image-1.png)
 
 ---
-![bg](bg1.png)
+![bg](bg2.png)
+
 # Kiểm thử
 > Thứ tự kết quả khi mô hình xếp hạng lambdaMART bị lỗi
 
 ![alt text](image-2.png)
 
 ---
-![bg](bg1.png)
+![bg](bg3.png)
+
 # Đánh giá - Cải tiến
 ## Đánh giá
 - **Khoảng cách** từ người dùng đến quán ăn đang tính theo đường chim bay.
@@ -171,15 +181,18 @@ Người dùng nhập vào thanh tìm kiếm
 - **Dị ứng** chỉ hỗ trợ 8 loại cố định, không cho phép người dùng tự thêm
 ---
 ![bg](bg1.png)
+
 # Đánh giá - Cải tiến
 ## Cải tiến
 - **Khoảng cách** từ người dùng đến quán ăn theo tuyến đường
 -  Tích hợp cổng **API OpenRouter** để linh hoạt chuyển đổi giữa nhiều mô hình AI 
 - **Dị ứng** cho phép người dùng tự thêm
 ---
+![bg](bg2.png)
 
 # Demo dự án qua video
 
 ---
-![bg](bg1.png)
+![bg](bg3.png)
+
 # Kết thúc

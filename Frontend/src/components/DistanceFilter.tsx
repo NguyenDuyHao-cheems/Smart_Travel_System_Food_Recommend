@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MapPin, ChevronDown, SlidersHorizontal } from 'lucide-react';
+import { useLanguage } from './LanguageProvider';
 
 const PRESET_RADII = [
   { label: '≤ 2 km', value: 2 },
@@ -27,6 +28,7 @@ export function DistanceFilter({
   totalCount,
   filteredCount,
 }: DistanceFilterProps) {
+  const { t } = useLanguage();
   const [customInput, setCustomInput] = useState('');
   const [showPanel, setShowPanel] = useState(false);
 
@@ -64,7 +66,7 @@ export function DistanceFilter({
           }`}
         >
           <MapPin className="w-4 h-4" />
-          Lọc quán ở gần tôi
+          {t('distance.nearMe')}
           {enabled && (
             <span className="bg-brand/10 dark:bg-brand/20 rounded-full px-2 py-0.5 text-[10px] font-bold text-brand-hover dark:text-[#E6DFD5] ml-1">
               {radius} km
@@ -78,7 +80,7 @@ export function DistanceFilter({
             className="inline-flex items-center gap-1 text-xs font-bold text-brand-hover dark:text-[#E6DFD5] hover:bg-brand-muted dark:hover:bg-brand/10 px-2 py-1 rounded-lg transition-colors"
           >
             <SlidersHorizontal className="w-3.5 h-3.5" />
-            Tuỳ chỉnh
+            {t('distance.customize')}
             <ChevronDown
               className={`w-3.5 h-3.5 transition-transform duration-200 ${showPanel ? 'rotate-180' : ''}`}
             />
@@ -87,11 +89,11 @@ export function DistanceFilter({
 
         {enabled && (
           <span className="text-[11px] text-gray-500 dark:text-[#9A8A7A] whitespace-nowrap ml-auto">
-            Hiển thị{' '}
+            {t('distance.showing')}{' '}
             <span className="font-bold text-brand-hover dark:text-[#E6DFD5]">
               {filteredCount}
             </span>
-            /{totalCount} quán
+            /{totalCount} {t('distance.restaurants')}
           </span>
         )}
       </div>
@@ -133,7 +135,7 @@ export function DistanceFilter({
                     value={customInput}
                     onChange={(e) => setCustomInput(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleCustomCommit()}
-                    placeholder="Tự nhập"
+                    placeholder={t('distance.customPlaceholder')}
                     className={`w-24 px-2 py-1.5 text-xs rounded-lg border transition-all focus:outline-none focus:ring-1 focus:ring-brand/50 dark:bg-[#4D3D32] dark:text-[#E6DFD5]
                       ${isCustom ? 'border-brand/70 bg-brand-muted dark:bg-brand/10' : 'border-gray-200 dark:border-[#5A4A3A] bg-gray-50'}`}
                   />
@@ -143,7 +145,7 @@ export function DistanceFilter({
                   onClick={handleCustomCommit}
                   className="px-3 py-1.5 text-xs font-bold rounded-lg bg-brand text-white hover:bg-brand-hover transition-colors shadow-sm"
                 >
-                  Áp dụng
+                  {t('distance.apply')}
                 </button>
               </div>
             </div>

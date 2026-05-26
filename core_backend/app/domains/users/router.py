@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
+from typing import List
 
-from .models import UserAccount, UserFavorite, UserCollection, UserCollectionItem
+from .models import UserAccount, UserFriend, UserFavorite, UserCollection, UserCollectionItem, FriendRequest
 from .schemas import (
     OnboardingRequest, OnboardingResponse, SignUpRequest, SignInRequest, 
     GoogleAuthRequest, AuthResponse, UserUpdateRequest,
@@ -9,7 +10,8 @@ from .schemas import (
     BadgeProgress, CulinaryVibe, RecentActivityResponse,
     FavoriteCreateRequest, FavoriteResponse, CollectionCreateRequest,
     CollectionUpdateRequest, CollectionItemCreateRequest, CollectionItemResponse,
-    CollectionResponse
+    CollectionResponse, AddFriendRequest, FriendResponse,
+    FriendRequestResponse, FriendRequestsListResponse
 )
 from .service import OnboardingService, AuthService, UserInteractionService
 from .repository import UserOnboardingRepository, UserAccountRepository, UserInteractionRepository
@@ -171,7 +173,15 @@ def get_current_user_profile(
 
     # 2. Truy vấn lịch sử tìm kiếm để tính toán tiến độ và gu ẩm thực
     user_uuid = uuid.UUID(str(current_user.id))
-    sessions = db.query(SearchSession).filter(SearchSession.user_id == user_uuid).all()
+    from sqlalchemy.orm import load_only
+    sessions = (
+        db.query(SearchSession)
+        .filter(SearchSession.user_id == user_uuid)
+        .options(load_only(SearchSession.query, SearchSession.created_at))
+        .order_by(SearchSession.created_at.desc())
+        .limit(500)
+        .all()
+    )
 
     # 3. Tính toán đếm số lần theo từ khóa cho Huy hiệu
     pho_count = 0
@@ -259,8 +269,15 @@ def get_current_user_profile(
         "🧘": BadgeProgress(unlocked=is_vegetarian, progress=1 if is_vegetarian else 0, target=1)
     }
 
-    if current_user.profile_stats:
-        unlocked_list = current_user.profile_stats.get("unlocked_badges", [])
+    stats = current_user.profile_stats
+    if isinstance(stats, str):
+        import json
+        try:
+            stats = json.loads(stats)
+        except Exception:
+            stats = {}
+    if stats:
+        unlocked_list = stats.get("unlocked_badges", [])
         for badgeIcon, info in badges_data.items():
             if badgeIcon in unlocked_list:
                 info.unlocked = True
@@ -380,6 +397,13 @@ def get_current_user_profile(
     favorites_count = db.query(UserFavorite).filter(UserFavorite.user_id == str(current_user.id)).count()
 
     stats = current_user.profile_stats
+    if isinstance(stats, str):
+        import json
+        try:
+            stats = json.loads(stats)
+        except Exception:
+            stats = None
+
     if stats is None:
         stats = initialize_profile_stats(db, current_user)
         # Sync unlocked badges right after initialization (exclude zen master "🧘" from database persistence)
@@ -583,6 +607,12 @@ def log_user_interaction(
             db_user = db.query(UserAccount).filter(UserAccount.id == current_user.id).first()
             if db_user:
                 stats = db_user.profile_stats
+                if isinstance(stats, str):
+                    import json
+                    try:
+                        stats = json.loads(stats)
+                    except Exception:
+                        stats = None
                 if stats is None:
                     stats = initialize_profile_stats(db, db_user)
                 
@@ -683,25 +713,42 @@ def get_favorites(
     current_user: UserAccount = Depends(get_current_user),
 ):
     try:
-        favs = db.query(UserFavorite).filter(UserFavorite.user_id == str(current_user.id)).all()
+        from sqlalchemy.orm import joinedload
+        import uuid
+        
+        # Optimize by joining RestaurantModel and UserFavorite directly and eager-loading tags
+        restaurants = (
+            db.query(RestaurantModel)
+            .join(UserFavorite, RestaurantModel.id == UserFavorite.res_id)
+            .filter(UserFavorite.user_id == str(current_user.id))
+            .options(joinedload(RestaurantModel.tags))
+            .all()
+        )
+        
         results = []
-        for fav in favs:
-            res = db.query(RestaurantModel).filter(RestaurantModel.id == fav.res_id).first()
-            if res:
-                results.append({
-                    "id": shortuuid.encode(res.id),
-                    "name": res.name,
-                    "match": "100%",
-                    "dist": "",
-                    "distance_km": 0.0,
-                    "price": res.price_range or "0",
-                    "rating": str(res.rating_avg or 0.0),
-                    "reason": "Món ăn đã được thêm vào mục yêu thích của bạn.",
-                    "img": res.image_url or "",
-                    "total_reviews": res.total_reviews or 0,
-                    "google_maps_url": res.google_maps_url or "",
-                    "tags": [tag.name for tag in res.tags] if res.tags else [],
-                })
+        for res in restaurants:
+            try:
+                raw_uuid = uuid.UUID(str(res.id))
+                obfuscated_id = shortuuid.encode(raw_uuid)
+            except Exception:
+                obfuscated_id = shortuuid.encode(res.id) if res.id else ""
+                
+            results.append({
+                "id": obfuscated_id,
+                "name": res.name,
+                "match": "100%",
+                "dist": "",
+                "distance_km": 0.0,
+                "lat": float(res.lat) if res.lat is not None else None,
+                "lng": float(res.lng) if res.lng is not None else None,
+                "price": res.price_range or "0",
+                "rating": str(res.rating_avg or 0.0),
+                "reason": "Món ăn đã được thêm vào mục yêu thích của bạn.",
+                "img": res.image_url or "",
+                "total_reviews": res.total_reviews or 0,
+                "google_maps_url": res.google_maps_url or "",
+                "tags": [tag.name for tag in res.tags] if res.tags else [],
+            })
         return results
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed to get favorites: {exc}")
@@ -739,6 +786,7 @@ def create_collection(
     db: Session = Depends(get_db),
     current_user: UserAccount = Depends(get_current_user),
 ):
+    from sqlalchemy.exc import IntegrityError
     try:
         coll = UserCollection(
             user_id=str(current_user.id),
@@ -757,6 +805,9 @@ def create_collection(
             "updated_at": coll.updated_at,
             "items": []
         }
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Tên bộ sưu tập đã tồn tại. Vui lòng chọn tên khác.")
     except Exception as exc:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Failed to create collection: {exc}")
@@ -768,20 +819,60 @@ def list_collections(
     current_user: UserAccount = Depends(get_current_user),
 ):
     try:
+        from sqlalchemy.orm import joinedload
+        import uuid
+        
+        # 1. Fetch all collections
         colls = db.query(UserCollection).filter(UserCollection.user_id == str(current_user.id)).all()
+        if not colls:
+            return []
+            
+        coll_ids = [c.id for c in colls]
+        
+        # 2. Fetch all collection items in a single query
+        items = db.query(UserCollectionItem).filter(UserCollectionItem.collection_id.in_(coll_ids)).all()
+        
+        # 3. Gather all distinct restaurant IDs and load them with their tags in a single batch query
+        res_ids = list(set([it.res_id for it in items if it.res_id]))
+        res_map = {}
+        if res_ids:
+            restaurants = (
+                db.query(RestaurantModel)
+                .filter(RestaurantModel.id.in_(res_ids))
+                .options(joinedload(RestaurantModel.tags))
+                .all()
+            )
+            res_map = {r.id: r for r in restaurants}
+            
+        # 4. Group items by collection ID in memory
+        items_by_coll = {}
+        for it in items:
+            if it.collection_id not in items_by_coll:
+                items_by_coll[it.collection_id] = []
+            items_by_coll[it.collection_id].append(it)
+            
         results = []
         for coll in colls:
-            items = db.query(UserCollectionItem).filter(UserCollectionItem.collection_id == coll.id).all()
             formatted_items = []
-            for item in items:
-                res = db.query(RestaurantModel).filter(RestaurantModel.id == item.res_id).first()
+            coll_items = items_by_coll.get(coll.id, [])
+            
+            for item in coll_items:
+                res = res_map.get(item.res_id)
                 if res:
+                    try:
+                        raw_uuid = uuid.UUID(str(res.id))
+                        obfuscated_id = shortuuid.encode(raw_uuid)
+                    except Exception:
+                        obfuscated_id = shortuuid.encode(res.id) if res.id else ""
+                        
                     formatted_items.append({
-                        "id": shortuuid.encode(res.id),
+                        "id": obfuscated_id,
                         "name": res.name,
                         "match": "100%",
                         "dist": "",
                         "distance_km": 0.0,
+                        "lat": float(res.lat) if res.lat is not None else None,
+                        "lng": float(res.lng) if res.lng is not None else None,
                         "price": res.price_range or "0",
                         "rating": str(res.rating_avg or 0.0),
                         "reason": item.note or "Được lưu trong bộ sưu tập.",
@@ -790,6 +881,7 @@ def list_collections(
                         "google_maps_url": res.google_maps_url or "",
                         "tags": [tag.name for tag in res.tags] if res.tags else [],
                     })
+                    
             results.append({
                 "id": coll.id,
                 "user_id": coll.user_id,
@@ -812,6 +904,9 @@ def update_collection(
     current_user: UserAccount = Depends(get_current_user),
 ):
     try:
+        from sqlalchemy.orm import joinedload
+        import uuid
+        
         coll = db.query(UserCollection).filter(
             UserCollection.id == collection_id,
             UserCollection.user_id == str(current_user.id)
@@ -825,18 +920,39 @@ def update_collection(
         db.commit()
         db.refresh(coll)
         
-        # Get items for returning full response
+        # 1. Fetch collection items
         items = db.query(UserCollectionItem).filter(UserCollectionItem.collection_id == coll.id).all()
+        
+        # 2. Gather distinct restaurant IDs and bulk load with tags in a single query
+        res_ids = list(set([it.res_id for it in items if it.res_id]))
+        res_map = {}
+        if res_ids:
+            restaurants = (
+                db.query(RestaurantModel)
+                .filter(RestaurantModel.id.in_(res_ids))
+                .options(joinedload(RestaurantModel.tags))
+                .all()
+            )
+            res_map = {r.id: r for r in restaurants}
+            
         formatted_items = []
         for item in items:
-            res = db.query(RestaurantModel).filter(RestaurantModel.id == item.res_id).first()
+            res = res_map.get(item.res_id)
             if res:
+                try:
+                    raw_uuid = uuid.UUID(str(res.id))
+                    obfuscated_id = shortuuid.encode(raw_uuid)
+                except Exception:
+                    obfuscated_id = shortuuid.encode(res.id) if res.id else ""
+                    
                 formatted_items.append({
-                    "id": shortuuid.encode(res.id),
+                    "id": obfuscated_id,
                     "name": res.name,
                     "match": "100%",
                     "dist": "",
                     "distance_km": 0.0,
+                    "lat": float(res.lat) if res.lat is not None else None,
+                    "lng": float(res.lng) if res.lng is not None else None,
                     "price": res.price_range or "0",
                     "rating": str(res.rating_avg or 0.0),
                     "reason": item.note or "Được lưu trong bộ sưu tập.",
@@ -967,3 +1083,343 @@ def remove_item_from_collection(
     except Exception as exc:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Failed to remove item from collection: {exc}")
+
+
+@router.post("/friends", response_model=dict)
+def add_friend(
+    payload: AddFriendRequest,
+    db: Session = Depends(get_db),
+    current_user: UserAccount = Depends(get_current_user),
+):
+    try:
+        from app.domains.social.models import SocialNotification
+
+        # 1. Search for user by username (case-insensitive)
+        target_user = db.query(UserAccount).filter(
+            UserAccount.username.ilike(payload.username)
+        ).first()
+        
+        if not target_user:
+            raise HTTPException(status_code=404, detail="Không tìm thấy người dùng này")
+            
+        # 2. Check if adding self
+        if target_user.id == current_user.id:
+            raise HTTPException(status_code=400, detail="Không thể kết bạn với chính mình")
+            
+        # 3. Check if already friends (A -> B)
+        existing_friend = db.query(UserFriend).filter(
+            UserFriend.user_id == str(current_user.id),
+            UserFriend.friend_id == str(target_user.id)
+        ).first()
+        
+        if existing_friend:
+            raise HTTPException(status_code=400, detail="Hai người đã là bạn bè")
+            
+        # 4. Check for incoming request (target_user -> current_user)
+        incoming_req = db.query(FriendRequest).filter(
+            FriendRequest.sender_id == str(target_user.id),
+            FriendRequest.receiver_id == str(current_user.id)
+        ).first()
+        
+        if incoming_req and incoming_req.status == "pending":
+            # Auto-accept the request
+            incoming_req.status = "accepted"
+            
+            link1 = UserFriend(user_id=str(current_user.id), friend_id=str(target_user.id))
+            link2 = UserFriend(user_id=str(target_user.id), friend_id=str(current_user.id))
+            db.add(link1)
+            db.add(link2)
+            
+            # Notify the sender
+            notif = SocialNotification(
+                user_id=str(target_user.id),
+                actor_id=str(current_user.id),
+                type="friend_accept"
+            )
+            db.add(notif)
+            db.commit()
+            return {"status": "success", "message": "Đã chấp nhận lời mời kết bạn và trở thành bạn bè"}
+
+        # 5. Check for outgoing request (current_user -> target_user)
+        outgoing_req = db.query(FriendRequest).filter(
+            FriendRequest.sender_id == str(current_user.id),
+            FriendRequest.receiver_id == str(target_user.id)
+        ).first()
+        
+        if outgoing_req:
+            if outgoing_req.status == "pending":
+                raise HTTPException(status_code=400, detail="Yêu cầu kết bạn đang chờ duyệt")
+            elif outgoing_req.status == "accepted":
+                raise HTTPException(status_code=400, detail="Hai người đã là bạn bè")
+            elif outgoing_req.status == "declined":
+                # Resend the declined request
+                outgoing_req.status = "pending"
+                from datetime import datetime, timezone
+                outgoing_req.created_at = datetime.now(timezone.utc)
+                
+                notif = SocialNotification(
+                    user_id=str(target_user.id),
+                    actor_id=str(current_user.id),
+                    type="friend_request"
+                )
+                db.add(notif)
+                db.commit()
+                return {"status": "success", "message": "Gửi yêu cầu kết bạn thành công"}
+        
+        # 6. Create new request
+        new_req = FriendRequest(
+            sender_id=str(current_user.id),
+            receiver_id=str(target_user.id),
+            status="pending"
+        )
+        db.add(new_req)
+        
+        notif = SocialNotification(
+            user_id=str(target_user.id),
+            actor_id=str(current_user.id),
+            type="friend_request"
+        )
+        db.add(notif)
+        db.commit()
+        
+        return {"status": "success", "message": "Gửi yêu cầu kết bạn thành công"}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to add friend: {exc}")
+
+
+@router.get("/friends/requests", response_model=FriendRequestsListResponse)
+def get_friend_requests(
+    db: Session = Depends(get_db),
+    current_user: UserAccount = Depends(get_current_user),
+) -> FriendRequestsListResponse:
+    try:
+        # Received pending requests (no join, direct filter)
+        received_reqs = db.query(FriendRequest).filter(
+            FriendRequest.receiver_id == str(current_user.id),
+            FriendRequest.status == "pending"
+        ).all()
+        
+        # Sent requests (pending or declined, no join, direct filter)
+        sent_reqs = db.query(FriendRequest).filter(
+            FriendRequest.sender_id == str(current_user.id),
+            FriendRequest.status.in_(["pending", "declined"])
+        ).all()
+        
+        received = []
+        for req in received_reqs:
+            sender = db.query(UserAccount).filter(UserAccount.id == req.sender_id).first()
+            if sender:
+                received.append(FriendRequestResponse(
+                    id=str(req.id),
+                    sender_id=str(req.sender_id),
+                    receiver_id=str(req.receiver_id),
+                    status=req.status,
+                    created_at=req.created_at,
+                    sender_username=sender.username,
+                    sender_fullname=sender.full_name,
+                    sender_avatar=sender.avatar_url
+                ))
+        
+        sent = []
+        for req in sent_reqs:
+            receiver = db.query(UserAccount).filter(UserAccount.id == req.receiver_id).first()
+            if receiver:
+                sent.append(FriendRequestResponse(
+                    id=str(req.id),
+                    sender_id=str(req.sender_id),
+                    receiver_id=str(req.receiver_id),
+                    status=req.status,
+                    created_at=req.created_at,
+                    receiver_username=receiver.username,
+                    receiver_fullname=receiver.full_name,
+                    receiver_avatar=receiver.avatar_url
+                ))
+        
+        return FriendRequestsListResponse(received=received, sent=sent)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to get friend requests: {exc}")
+
+
+@router.post("/friends/requests/{request_id}/accept", response_model=dict)
+def accept_friend_request(
+    request_id: str,
+    db: Session = Depends(get_db),
+    current_user: UserAccount = Depends(get_current_user),
+):
+    try:
+        from app.domains.social.models import SocialNotification
+
+        req = db.query(FriendRequest).filter(FriendRequest.id == request_id).first()
+        if not req:
+            raise HTTPException(status_code=404, detail="Yêu cầu kết bạn không tồn tại")
+            
+        if req.receiver_id != str(current_user.id):
+            raise HTTPException(status_code=403, detail="Không có quyền chấp nhận yêu cầu này")
+            
+        if req.status != "pending":
+            raise HTTPException(status_code=400, detail="Yêu cầu không còn ở trạng thái chờ duyệt")
+            
+        req.status = "accepted"
+        
+        # Create mutual friends
+        link1 = UserFriend(user_id=str(current_user.id), friend_id=str(req.sender_id))
+        link2 = UserFriend(user_id=str(req.sender_id), friend_id=str(current_user.id))
+        db.add(link1)
+        db.add(link2)
+        
+        # Send notification to the sender
+        notif = SocialNotification(
+            user_id=str(req.sender_id),
+            actor_id=str(current_user.id),
+            type="friend_accept"
+        )
+        db.add(notif)
+        db.commit()
+        
+        return {"status": "success", "message": "Đã chấp nhận kết bạn"}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to accept friend request: {exc}")
+
+
+@router.post("/friends/requests/{request_id}/decline", response_model=dict)
+def decline_friend_request(
+    request_id: str,
+    db: Session = Depends(get_db),
+    current_user: UserAccount = Depends(get_current_user),
+):
+    try:
+        from app.domains.social.models import SocialNotification
+
+        req = db.query(FriendRequest).filter(FriendRequest.id == request_id).first()
+        if not req:
+            raise HTTPException(status_code=404, detail="Yêu cầu kết bạn không tồn tại")
+            
+        if req.receiver_id != str(current_user.id):
+            raise HTTPException(status_code=403, detail="Không có quyền từ chối yêu cầu này")
+            
+        if req.status != "pending":
+            raise HTTPException(status_code=400, detail="Yêu cầu không còn ở trạng thái chờ duyệt")
+            
+        req.status = "declined"
+        
+        # Send notification to the sender
+        notif = SocialNotification(
+            user_id=str(req.sender_id),
+            actor_id=str(current_user.id),
+            type="friend_decline"
+        )
+        db.add(notif)
+        db.commit()
+        
+        return {"status": "success", "message": "Đã từ chối kết bạn"}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to decline friend request: {exc}")
+
+
+@router.delete("/friends/requests/{request_id}", response_model=dict)
+def delete_friend_request(
+    request_id: str,
+    db: Session = Depends(get_db),
+    current_user: UserAccount = Depends(get_current_user),
+):
+    try:
+        req = db.query(FriendRequest).filter(FriendRequest.id == request_id).first()
+        if not req:
+            raise HTTPException(status_code=404, detail="Yêu cầu kết bạn không tồn tại")
+            
+        if req.sender_id != str(current_user.id):
+            raise HTTPException(status_code=403, detail="Không có quyền hủy yêu cầu này")
+            
+        db.delete(req)
+        db.commit()
+        
+        return {"status": "success", "message": "Đã hủy yêu cầu kết bạn"}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to delete friend request: {exc}")
+
+
+@router.get("/friends", response_model=List[FriendResponse])
+def list_friends(
+    db: Session = Depends(get_db),
+    current_user: UserAccount = Depends(get_current_user),
+) -> List[FriendResponse]:
+    try:
+        # Query all UserFriend records where user_id is the current user
+        friend_relations = db.query(UserFriend).filter(
+            UserFriend.user_id == str(current_user.id)
+        ).all()
+        
+        results = []
+        for rel in friend_relations:
+            # Query details of the friend
+            friend_profile = db.query(UserAccount).filter(UserAccount.id == rel.friend_id).first()
+            if friend_profile:
+                results.append(FriendResponse(
+                    friend_id=str(friend_profile.id),
+                    username=friend_profile.username,
+                    full_name=friend_profile.full_name,
+                    avatar_url=friend_profile.avatar_url,
+                    created_at=rel.created_at
+                ))
+        return results
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to list friends: {exc}")
+
+
+@router.delete("/friends/{friend_id}", response_model=dict)
+def remove_friend(
+    friend_id: str,
+    db: Session = Depends(get_db),
+    current_user: UserAccount = Depends(get_current_user),
+):
+    try:
+        from sqlalchemy import or_
+
+        # 1. Query A -> B
+        link1 = db.query(UserFriend).filter(
+            UserFriend.user_id == str(current_user.id),
+            UserFriend.friend_id == friend_id
+        ).first()
+        
+        # 2. Query B -> A
+        link2 = db.query(UserFriend).filter(
+            UserFriend.user_id == friend_id,
+            UserFriend.friend_id == str(current_user.id)
+        ).first()
+        
+        if not link1 and not link2:
+            raise HTTPException(status_code=404, detail="Friendship not found")
+            
+        if link1:
+            db.delete(link1)
+        if link2:
+            db.delete(link2)
+            
+        # 3. Clean up any friend requests between these two users
+        db.query(FriendRequest).filter(
+            or_(
+                (FriendRequest.sender_id == str(current_user.id)) & (FriendRequest.receiver_id == friend_id),
+                (FriendRequest.sender_id == friend_id) & (FriendRequest.receiver_id == str(current_user.id))
+            )
+        ).delete(synchronize_session=False)
+            
+        db.commit()
+        return {"status": "success", "message": "Friend removed successfully"}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to remove friend: {exc}")
+

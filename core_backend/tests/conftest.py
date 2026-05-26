@@ -22,9 +22,10 @@ def set_sqlite_pragma(dbapi_connection, connection_record):
 
 
 # Set dummy DATABASE_URL and SECRET_KEY before any imports from app
-os.environ["DATABASE_URL"] = "sqlite:///./test_temp.db"
-
+_CORE_BACKEND_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+os.environ["DATABASE_URL"] = f"sqlite:///{os.path.join(_CORE_BACKEND_DIR, 'test_temp.db')}"
 os.environ["SECRET_KEY"] = "test_secret_key_123"
+os.environ["ENABLE_GRPC"] = "False"
 
 
 import sys

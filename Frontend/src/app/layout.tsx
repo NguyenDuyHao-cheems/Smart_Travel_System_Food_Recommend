@@ -5,6 +5,7 @@ import { ThemeProvider } from "../components/ThemeProvider";
 import { Toaster } from "sonner";
 import { StoreProvider } from "../store/StoreProvider";
 import { LocationInitializer } from "../components/LocationInitializer";
+import { LanguageProvider } from "../components/LanguageProvider";
 
 const beVietnamPro = Be_Vietnam_Pro({
   subsets: ["latin", "vietnamese"],
@@ -12,9 +13,16 @@ const beVietnamPro = Be_Vietnam_Pro({
   variable: "--font-be-vietnam-pro",
 });
 
+import { Lora } from "next/font/google";
+const lora = Lora({
+  subsets: ["latin", "vietnamese"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-lora",
+});
+
 export const metadata: Metadata = {
-  title: "Wanderbite — Khám phá ẩm thực thông minh",
-  description: "Tìm kiếm món ăn và nhà hàng phù hợp với khẩu vị của bạn bằng AI.",
+  title: "Wanderbite - Smart Food Discovery",
+  description: "Find food and restaurants that match your taste with AI.",
 };
 
 export default function RootLayout({
@@ -23,24 +31,27 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="vi" suppressHydrationWarning className={beVietnamPro.variable}>
+    <html lang="vi" suppressHydrationWarning className={`${beVietnamPro.variable} ${lora.variable}`}>
       <body
         suppressHydrationWarning
         className={`${beVietnamPro.className} antialiased text-slate-800 dark:text-[#E6DFD5] bg-slate-50 dark:bg-[#2A2420]`}
       >
         <StoreProvider>
-          <LocationInitializer />
-          <ThemeProvider
-            attribute="class"
-            defaultTheme="system"
-            enableSystem
-            disableTransitionOnChange
-          >
-            {children}
-            <Toaster position="top-center" richColors />
-          </ThemeProvider>
+          <LanguageProvider>
+            <LocationInitializer />
+            <ThemeProvider
+              attribute="class"
+              defaultTheme="system"
+              enableSystem
+              disableTransitionOnChange
+            >
+              {children}
+              <Toaster position="top-center" richColors />
+            </ThemeProvider>
+          </LanguageProvider>
         </StoreProvider>
       </body>
     </html>
   );
 }
+
