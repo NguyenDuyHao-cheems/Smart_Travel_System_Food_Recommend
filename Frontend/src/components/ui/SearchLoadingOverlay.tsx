@@ -1,16 +1,27 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Sparkles } from 'lucide-react';
 import { useLanguage } from '../LanguageProvider';
 
 interface SearchLoadingOverlayProps {
   message: string;
   onCancel?: () => void;
+  startedAt?: number;
 }
 
-export function SearchLoadingOverlay({ message, onCancel }: SearchLoadingOverlayProps) {
+export function SearchLoadingOverlay({ message, onCancel, startedAt }: SearchLoadingOverlayProps) {
   const { t } = useLanguage();
+  const [elapsedMs, setElapsedMs] = useState(0);
+
+  useEffect(() => {
+    const started = startedAt ?? performance.now();
+    const updateElapsed = () => setElapsedMs(Math.round(performance.now() - started));
+    updateElapsed();
+    const interval = window.setInterval(updateElapsed, 50);
+    return () => window.clearInterval(interval);
+  }, [startedAt]);
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
       <div className="flex flex-col items-center gap-5 bg-white dark:bg-[#3D312A] rounded-3xl px-10 py-10 shadow-2xl border border-gray-100 dark:border-[#4D3D32] max-w-sm w-full mx-4">
@@ -23,6 +34,9 @@ export function SearchLoadingOverlay({ message, onCancel }: SearchLoadingOverlay
         </div>
         <div className="text-center">
           <p className="text-base font-semibold text-gray-800 dark:text-[#E6DFD5]">{message}</p>
+          <p className="mt-2 text-sm font-mono font-bold text-brand dark:text-[#E8735A]">
+            {elapsedMs.toLocaleString()} ms ({(elapsedMs / 1000).toFixed(3)} s)
+          </p>
           <p className="text-sm text-gray-400 dark:text-[#7A6A5A] mt-1">{t('searchOverlay.keepOpen')}</p>
         </div>
         {onCancel && (
