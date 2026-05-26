@@ -369,7 +369,11 @@ export function PostCard({ post, onLikeToggle, onDelete }: PostCardProps) {
   const handleEditPost = async () => {
     const content = editPostText.trim();
     const token = localStorage.getItem('access_token');
-    if (!content || !token) return;
+    if (!content) return;
+    if (!token) {
+      toast.error(t('socialPost.loginRequired'));
+      return;
+    }
 
     setIsSavingPost(true);
     try {
