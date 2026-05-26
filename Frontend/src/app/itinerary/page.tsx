@@ -280,7 +280,7 @@ export default function ItineraryPage() {
     () => items.filter((it) => it.lat && it.lng).map((it) => ({ id: it.id, lat: it.lat, lng: it.lng })),
     [items]
   );
-  const { weatherMap, loading: weatherLoading } = useWeather(weatherCoords);
+  const { weatherMap, loading: weatherLoading } = useWeather(weatherCoords, language);
   const rainyStops = items.filter((it) => weatherMap[it.id]?.isRaining);
 
   const handleReorder = useCallback(

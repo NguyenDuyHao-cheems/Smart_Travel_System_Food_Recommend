@@ -172,7 +172,7 @@ export function StoryViewer({ stories, initialIndex, onClose, onDelete }: StoryV
     const token = localStorage.getItem('access_token');
     if (!token) return;
 
-    if (!window.confirm("Bạn có chắc chắn muốn xóa Story này?")) return;
+    if (!window.confirm(t('storyViewer.deleteConfirm'))) return;
 
     setIsDeleting(true);
     try {
@@ -194,7 +194,7 @@ export function StoryViewer({ stories, initialIndex, onClose, onDelete }: StoryV
   const handleReaction = (emoji: string) => {
     const id = Date.now().toString() + Math.random();
     setFloatingReactions(prev => [...prev, { id, emoji }]);
-    toast.success(`Đã gửi cảm xúc ${emoji}`);
+    toast.success(t('storyViewer.reactionSent').replace('{emoji}', emoji));
     
     // Auto remove after animation
     setTimeout(() => {

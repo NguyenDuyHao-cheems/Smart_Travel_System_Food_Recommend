@@ -1,5 +1,6 @@
 fastapi>=0.100.0
 uvicorn
+# GPU is optional; SentenceTransformer falls back to CPU when CUDA is unavailable.
 torch>=2.0.0
 sentence-transformers>=3.0.0
 lightgbm>=4.0.0

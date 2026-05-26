@@ -3,6 +3,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { Tag, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useLanguage } from './LanguageProvider';
+import { translateRestaurantTag } from '../lib/recommendationText';
 
 /* ── Emoji mapping for common Vietnamese food tags ── */
 const TAG_EMOJI_MAP: Record<string, string> = {
@@ -19,45 +20,6 @@ const TAG_EMOJI_MAP: Record<string, string> = {
   'giá rẻ': '💰', 'tầm trung': '💵', 'cao cấp': '💎',
   'chiên': '🍤', 'fastfood': '🍔', 'xào': '🍝', 'mì xào': '🍝',
   'hấp': '🥟', 'luộc': '🥟', 'trộn': '🥗', 'gỏi': '🥗', 'salad': '🥗', 'chay': '🌿',
-};
-
-const TAG_LABELS_EN: Record<string, string> = {
-  'gà': 'chicken',
-  'bò': 'beef',
-  'heo': 'pork',
-  'cơm': 'rice',
-  'cháo': 'porridge',
-  'phở': 'pho',
-  'bún': 'vermicelli',
-  'mì': 'noodles',
-  'lẩu': 'hotpot',
-  'hải sản': 'seafood',
-  'nướng': 'grill',
-  'trà sữa': 'milk tea',
-  'cà phê': 'coffee',
-  'đồ uống': 'drinks',
-  'tráng miệng': 'dessert',
-  'món chay': 'vegetarian',
-  'ăn sáng': 'breakfast',
-  'ăn trưa': 'lunch',
-  'ăn tối': 'dinner',
-  'ăn vặt': 'snacks',
-  'ăn khuya': 'late-night',
-  'đánh giá cao': 'highly rated',
-  'nhiều đánh giá': 'many reviews',
-  'giá rẻ': 'budget',
-  'tầm trung': 'mid-range',
-  'cao cấp': 'premium',
-  'chiên': 'fried',
-  'fastfood': 'fast food',
-  'xào': 'stir-fried',
-  'mì xào': 'fried noodles',
-  'hấp': 'steamed',
-  'luộc': 'boiled',
-  'trộn': 'mixed',
-  'gỏi': 'salad',
-  'salad': 'salad',
-  'chay': 'vegetarian',
 };
 
 function getTagEmoji(tagName: string): string {
@@ -155,7 +117,7 @@ export function TagFilter({ tags, selectedTag, onSelect }: TagFilterProps) {
                   : 'bg-white dark:bg-[#3D312A] text-gray-600 dark:text-[#C8BFB0] border-gray-100 dark:border-[#4D3D32] hover:border-brand/40 hover:text-brand'
               }`}
             >
-              {emoji} {language === 'en' ? TAG_LABELS_EN[tag.toLowerCase()] || tag : tag}
+              {emoji} {translateRestaurantTag(tag, language)}
             </button>
           );
         })}

@@ -15,7 +15,7 @@ interface LocationModalProps {
 }
 
 export function LocationModal({ isOpen, onClose }: LocationModalProps) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const dispatch = useDispatch();
   const coords = useSelector((state: RootState) => state.location.coords);
   const address = useSelector((state: RootState) => state.location.address);
@@ -28,7 +28,7 @@ export function LocationModal({ isOpen, onClose }: LocationModalProps) {
   const gpsSuccessHandledRef = useRef<boolean>(true);
   const gpsErrorHandledRef = useRef<boolean>(true);
 
-  const { location: gpsLocation, error: gpsError, isLoading: gpsLoading, getLocation } = useGeolocation();
+  const { location: gpsLocation, error: gpsError, isLoading: gpsLoading, getLocation } = useGeolocation(language);
   const isUpdatingGPS = gpsLoading;
 
   // Sync inputs with redux store coordinates when modal opens or coordinates change
@@ -168,7 +168,7 @@ export function LocationModal({ isOpen, onClose }: LocationModalProps) {
               </p>
             )}
             <p className="text-[10px] text-gray-400/80 dark:text-[#9A8A7A]/60 mt-1.5">
-              Dữ liệu bản đồ & địa chỉ © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer" className="underline hover:text-brand dark:hover:text-[#E8735A]">OpenStreetMap contributors</a>
+              {t('locationModal.mapAttribution')} © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer" className="underline hover:text-brand dark:hover:text-[#E8735A]">OpenStreetMap contributors</a>
             </p>
             
             {/* Status indicator */}
