@@ -317,5 +317,5 @@
 | `avatar_url`         | `varchar`     | Nullable    |
 | `email`              | `varchar`     | Nullable    |
 | `status`             | `varchar`     | Nullable    |
-| `profile_stats`      | `json`        | Nullable    |
+| `profile_stats`      | `jsonb`       | Nullable    |
 | `cover_url`          | `varchar`     | Nullable    |

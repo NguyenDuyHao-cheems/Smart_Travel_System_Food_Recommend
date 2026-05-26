@@ -20,7 +20,8 @@ def update_schema():
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS full_name VARCHAR;",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url VARCHAR;",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS cover_url VARCHAR;",
-        "ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_stats JSON;",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_stats JSONB;",
+        "ALTER TABLE users ALTER COLUMN profile_stats TYPE JSONB USING profile_stats::jsonb;",
         """CREATE TABLE IF NOT EXISTS social_posts (
             id VARCHAR PRIMARY KEY,
             user_id VARCHAR NOT NULL REFERENCES users(id),
@@ -90,6 +91,10 @@ def update_schema():
                 print("Success!")
             except Exception as e:
                 print(f"Failed or already exists: {e}")
+                try:
+                    conn.rollback()
+                except Exception:
+                    pass
 
 if __name__ == "__main__":
     update_schema()

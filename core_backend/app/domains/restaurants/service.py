@@ -196,8 +196,15 @@ class RestaurantService:
             )
             
             # Increment reviews_count in user's profile_stats if initialized
-            if current_user.profile_stats:
-                stats = dict(current_user.profile_stats)
+            stats = current_user.profile_stats
+            if isinstance(stats, str):
+                import json
+                try:
+                    stats = json.loads(stats)
+                except Exception:
+                    stats = None
+            if stats:
+                stats = dict(stats)
                 stats["reviews_count"] = stats.get("reviews_count", 0) + 1
                 current_user.profile_stats = dict(stats)
                 from sqlalchemy.orm.attributes import flag_modified
@@ -250,8 +257,15 @@ class RestaurantService:
         
         # Decrement reviews_count in user's profile_stats if initialized
         try:
-            if current_user.profile_stats:
-                stats = dict(current_user.profile_stats)
+            stats = current_user.profile_stats
+            if isinstance(stats, str):
+                import json
+                try:
+                    stats = json.loads(stats)
+                except Exception:
+                    stats = None
+            if stats:
+                stats = dict(stats)
                 stats["reviews_count"] = max(0, stats.get("reviews_count", 0) - 1)
                 current_user.profile_stats = dict(stats)
                 from sqlalchemy.orm.attributes import flag_modified
