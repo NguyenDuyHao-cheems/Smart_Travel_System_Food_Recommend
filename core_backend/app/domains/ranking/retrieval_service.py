@@ -35,6 +35,27 @@ _BROAD_EXACT_TOKENS = {
     "quan",
     "re",
 }
+_SPECIFIC_EXACT_TOKENS = {
+    "chay",
+    "burger",
+    "pizza",
+    "pho",
+    "salad",
+    "sushi",
+}
+_PREFERRED_EXACT_PHRASES = (
+    "gà nướng",
+    "phở bò",
+    "phở gà",
+    "bún bò",
+    "bún chả",
+    "trà sữa",
+    "món chay",
+    "cơm chay",
+    "lẩu thái",
+    "lẩu bò",
+    "lẩu gà",
+)
 
 logger = logging.getLogger(__name__)
 
@@ -86,6 +107,15 @@ def extract_tag(query_text: str) -> Optional[str]:
 
 def _build_exact_dish_search_terms(search_term: str) -> list[str]:
     """Prefer dish phrases and avoid broad single-token ILIKE scans."""
+    normalized_search_term = _normalize_vietnamese(search_term)
+    preferred_phrases = [
+        phrase
+        for phrase in _PREFERRED_EXACT_PHRASES
+        if _normalize_vietnamese(phrase) in normalized_search_term
+    ]
+    if preferred_phrases:
+        return preferred_phrases[:_MAX_EXACT_DISH_QUERIES]
+
     segments = [
         " ".join(segment.strip().split())
         for segment in re.split(r"[,;|]+", search_term or "")
@@ -103,7 +133,11 @@ def _build_exact_dish_search_terms(search_term: str) -> list[str]:
     for segment in segments:
         for token in re.findall(r"\w+", segment, flags=re.UNICODE):
             normalized_token = _normalize_vietnamese(token)
-            if len(normalized_token) < 3 or normalized_token in _BROAD_EXACT_TOKENS:
+            if (
+                len(normalized_token) < 3
+                or normalized_token in _BROAD_EXACT_TOKENS
+                or normalized_token not in _SPECIFIC_EXACT_TOKENS
+            ):
                 continue
             if token not in terms:
                 terms.append(token)

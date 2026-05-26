@@ -1,6 +1,11 @@
-import pytest
-from unittest.mock import MagicMock
-from app.services.user_services import get_user_preferences_vector, get_user_allergies
+from unittest.mock import MagicMock, patch
+
+from app.domains.users.models import UserAccount, UserOnboarding
+from app.services.user_services import (
+    get_user_allergies,
+    get_user_preferences_vector,
+    get_user_recommendation_context,
+)
 
 def test_get_user_preferences_vector_profile_first():
     db = MagicMock()
@@ -52,4 +57,68 @@ def test_get_user_preferences_vector_none():
         vector = get_user_preferences_vector(db, user_id)
         assert vector is None
 
-from unittest.mock import patch
+def test_get_user_recommendation_context_reads_allergies_and_profile_vector_once(db_session):
+    user_id = "context-user"
+    profile_vector = [0.3] * 768
+    onboarding_vector = [0.2] * 768
+    db_session.add(
+        UserAccount(
+            id=user_id,
+            username="context-user",
+            password_hash="hash",
+            preferences_vector=profile_vector,
+        )
+    )
+    db_session.add(
+        UserOnboarding(
+            user_id=user_id,
+            favorite_dishes=[],
+            spicy_level="medium",
+            allergies=["peanut"],
+            budget="medium",
+            location="HCM",
+            age=25,
+            preferences_vector=onboarding_vector,
+        )
+    )
+    db_session.flush()
+
+    statements = []
+    original_execute = db_session.execute
+
+    def count_execute(*args, **kwargs):
+        statements.append(args[0])
+        return original_execute(*args, **kwargs)
+
+    with patch.object(db_session, "execute", side_effect=count_execute):
+        allergies, vector = get_user_recommendation_context(db_session, user_id)
+
+    assert allergies == ["peanut"]
+    assert vector == profile_vector
+    assert len(statements) == 1
+
+
+def test_get_user_recommendation_context_uses_onboarding_vector_fallback(db_session):
+    user_id = "context-fallback-user"
+    onboarding_vector = [0.2] * 768
+    db_session.add(
+        UserAccount(id=user_id, username="context-fallback-user", password_hash="hash")
+    )
+    db_session.add(
+        UserOnboarding(
+            user_id=user_id,
+            favorite_dishes=[],
+            spicy_level="medium",
+            allergies=[],
+            budget="medium",
+            location="HCM",
+            age=25,
+            preferences_vector=onboarding_vector,
+        )
+    )
+    db_session.flush()
+
+    allergies, vector = get_user_recommendation_context(db_session, user_id)
+
+    assert allergies == []
+    assert vector == onboarding_vector

@@ -203,6 +203,45 @@ class TestCleanQueryWithGemini:
         assert result == "phở bò 50k"
 
     @pytest.mark.asyncio
+    async def test_http_error_log_does_not_expose_api_key(self, caplog):
+        """HTTP exception request URLs must not place Gemini credentials in logs."""
+        from app.nlp.llm_parser import clean_query_with_gemini
+        import httpx
+
+        request = httpx.Request(
+            "POST",
+            "https://generativelanguage.googleapis.com/v1beta/models/test:generateContent?key=secret-key",
+        )
+        response = httpx.Response(429, request=request)
+        mock_client = AsyncMock()
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+        mock_client.post = AsyncMock(
+            side_effect=httpx.HTTPStatusError("rate limited", request=request, response=response)
+        )
+
+        caplog.set_level(logging.WARNING, logger="app.nlp.llm_parser")
+        with patch("app.nlp.llm_parser.httpx.AsyncClient", return_value=mock_client):
+            with patch("app.nlp.llm_parser.settings") as mock_settings:
+                mock_settings.GEMINI_API_KEY = "secret-key"
+                mock_settings.GEMINI_MODEL_NAME = "gemini-2.0-flash"
+                result = await clean_query_with_gemini("phở bò 50k")
+
+        assert result == "phở bò 50k"
+        assert "HTTP 429" in caplog.text
+        assert "secret-key" not in caplog.text
+        assert "generateContent?key=" not in caplog.text
+
+    def test_safe_log_redacts_key_parameter(self):
+        from app.nlp.llm_parser import _safe_for_log
+
+        message = "request failed: https://example.test/path?key=secret-key&x=1"
+        safe_message = _safe_for_log(message)
+
+        assert "secret-key" not in safe_message
+        assert "[REDACTED]" in safe_message
+
+    @pytest.mark.asyncio
     async def test_success_returns_cleaned_query(self):
         """Khi gọi Gemini thành công, trả về cleaned_query."""
         from app.nlp.llm_parser import clean_query_with_gemini

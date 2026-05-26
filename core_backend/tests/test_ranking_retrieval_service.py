@@ -198,3 +198,15 @@ def test_exact_dish_terms_limit_number_of_database_queries():
     terms = _build_exact_dish_search_terms("gà nướng, phở bò, bún bò, trà sữa, món chay")
 
     assert terms == ["gà nướng", "phở bò", "bún bò"]
+
+
+def test_exact_dish_terms_extract_food_phrase_from_raw_fallback_query():
+    terms = _build_exact_dish_search_terms("Tôi muốn ăn gà nướng ngon gần đây giá rẻ")
+
+    assert terms == ["gà nướng"]
+
+
+def test_exact_dish_terms_do_not_query_non_food_tokens_from_raw_fallback_query():
+    terms = _build_exact_dish_search_terms("Tôi muốn ăn ngon gần đây giá rẻ")
+
+    assert terms == []
