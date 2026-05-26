@@ -1,10 +1,12 @@
 import asyncio
+import logging
 from fastapi import APIRouter, Request
 from .schemas import ExtractIntentRequest, ExtractIntentResponse, EmbedRequest, EmbedResponse
 from .llm_parser import clean_query_with_gemini
 from .service import generate_mean_pooled_embedding
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 @router.post("/extract-intent", response_model=ExtractIntentResponse)
@@ -14,8 +16,11 @@ async def extract_intent(request_data: ExtractIntentRequest, request: Request):
     """
     # Step 1: Gemini reformulates raw query
     cleaned_query = await clean_query_with_gemini(request_data.text, request)
-    print("request.text", request_data.text)
-    print("cleaned_query", cleaned_query)
+    logger.debug(
+        "Extract intent input=%s cleaned_query=%s",
+        ascii(request_data.text),
+        ascii(cleaned_query),
+    )
     # Step 2: Embed the CLEANED query (not raw text!)
     # generate_mean_pooled_embedding already calls word_tokenize internally
     vector = await asyncio.to_thread(generate_mean_pooled_embedding, cleaned_query)

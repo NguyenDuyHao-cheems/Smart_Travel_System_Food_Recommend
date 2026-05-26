@@ -3,6 +3,8 @@ test_llm_parser.py — Unit tests for llm_parser.py (Gemini NLP parser).
 """
 
 import json
+import io
+import logging
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from typing import Optional
@@ -155,6 +157,31 @@ class TestCleanQueryWithGemini:
             result = await clean_query_with_gemini("phở bò 50k")
 
         assert result == "phở bò 50k"
+
+    @pytest.mark.asyncio
+    async def test_vietnamese_logging_is_safe_for_cp1252_console(self):
+        """Vietnamese user text must not break Windows console logging."""
+        from app.nlp.llm_parser import clean_query_with_gemini, logger
+
+        output = io.BytesIO()
+        handler = logging.StreamHandler(
+            io.TextIOWrapper(output, encoding="cp1252", errors="strict", write_through=True)
+        )
+        old_level = logger.level
+        logger.addHandler(handler)
+        logger.setLevel(logging.DEBUG)
+        try:
+            with patch("app.nlp.llm_parser.settings") as mock_settings:
+                mock_settings.GEMINI_API_KEY = ""
+                result = await clean_query_with_gemini(
+                    "Hôm nay trời lạnh, thèm ăn món lẩu nóng hổi ngon rẻ"
+                )
+        finally:
+            logger.removeHandler(handler)
+            logger.setLevel(old_level)
+            handler.close()
+
+        assert result == "Hôm nay trời lạnh, thèm ăn món lẩu nóng hổi ngon rẻ"
 
     @pytest.mark.asyncio
     async def test_gemini_error_falls_back_to_original(self):

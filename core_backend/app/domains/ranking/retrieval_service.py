@@ -8,6 +8,7 @@ Tách ra từ service.py monolithic để dễ test và maintain.
 import unicodedata
 import logging
 import math
+import re
 from typing import List, Optional
 
 from sqlalchemy.orm import Session, joinedload
@@ -16,6 +17,24 @@ from sqlalchemy import cast, func, Integer, case, or_, and_
 from .models import RestaurantModel, DishModel
 
 _MAX_RETRIEVAL = 500
+_MAX_EXACT_DISH_QUERIES = 3
+_BROAD_EXACT_TOKENS = {
+    "an",
+    "bo",
+    "bun",
+    "ca",
+    "com",
+    "ga",
+    "gan",
+    "heo",
+    "lau",
+    "mi",
+    "mon",
+    "ngon",
+    "nuong",
+    "quan",
+    "re",
+}
 
 logger = logging.getLogger(__name__)
 
@@ -63,6 +82,34 @@ def extract_tag(query_text: str) -> Optional[str]:
         if norm_kw in q or q in norm_kw:
             return tag
     return None
+
+
+def _build_exact_dish_search_terms(search_term: str) -> list[str]:
+    """Prefer dish phrases and avoid broad single-token ILIKE scans."""
+    segments = [
+        " ".join(segment.strip().split())
+        for segment in re.split(r"[,;|]+", search_term or "")
+        if segment.strip()
+    ]
+    phrases: list[str] = []
+    for segment in segments:
+        words = segment.split()
+        if 2 <= len(words) <= 4 and segment not in phrases:
+            phrases.append(segment)
+    if phrases:
+        return phrases[:_MAX_EXACT_DISH_QUERIES]
+
+    terms: list[str] = []
+    for segment in segments:
+        for token in re.findall(r"\w+", segment, flags=re.UNICODE):
+            normalized_token = _normalize_vietnamese(token)
+            if len(normalized_token) < 3 or normalized_token in _BROAD_EXACT_TOKENS:
+                continue
+            if token not in terms:
+                terms.append(token)
+            if len(terms) >= _MAX_EXACT_DISH_QUERIES:
+                return terms
+    return terms
 
 
 class RetrievalService:
@@ -186,16 +233,12 @@ class RetrievalService:
                 exact_match_res_ids = []
                 search_term = cleaned_query if cleaned_query else query_text
                 if search_term:
-                    tokens = [t.strip() for t in search_term.split() if len(t.strip()) > 0]
-                    if tokens:
+                    exact_terms = _build_exact_dish_search_terms(search_term)
+                    if exact_terms:
                         res_ids_set = set()
-                        for t in tokens:
-                            # Tránh query keyword quá ngắn (1 ký tự) gây tốn tài nguyên
-                            if len(t) <= 1:
-                                continue
-                            # Thực hiện query riêng rẽ từng token có LIMIT rõ ràng để kích hoạt GIN trigram index idx_dishes_name_trgm
+                        for term in exact_terms:
                             exact_dishes = self.db.query(DishModel.res_id).filter(
-                                DishModel.name.ilike(f"%{t}%")
+                                DishModel.name.ilike(f"%{term}%")
                             ).limit(100).all()
                             for r in exact_dishes:
                                 res_ids_set.add(str(r[0]))

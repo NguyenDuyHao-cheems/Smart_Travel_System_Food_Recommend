@@ -1,6 +1,9 @@
 from sqlalchemy.dialects import postgresql
 
-from app.domains.ranking.retrieval_service import RetrievalService
+from app.domains.ranking.retrieval_service import (
+    RetrievalService,
+    _build_exact_dish_search_terms,
+)
 
 
 class DummyQuery:
@@ -167,3 +170,31 @@ def test_get_candidates_without_query_vector_orders_by_rating():
 
     filter_sql = _compiled_filter_sql(db.query_obj)
     assert "embedding_vector" not in filter_sql
+
+
+# -------------------------------------------------------------------
+# Dish exact match query selection
+# -------------------------------------------------------------------
+
+
+def test_exact_dish_terms_prefer_phrases_over_broad_tokens():
+    terms = _build_exact_dish_search_terms("gà nướng, phở bò, món chay")
+
+    assert terms == ["gà nướng", "phở bò", "món chay"]
+    assert "gà" not in terms
+
+
+def test_exact_dish_terms_skip_broad_single_food_tokens():
+    terms = _build_exact_dish_search_terms("gà, bò, heo, cá, ăn, món, ngon, rẻ, gần, quán, cơm")
+
+    assert terms == []
+
+
+def test_exact_dish_terms_keep_specific_single_tokens():
+    assert _build_exact_dish_search_terms("phở, chay") == ["phở", "chay"]
+
+
+def test_exact_dish_terms_limit_number_of_database_queries():
+    terms = _build_exact_dish_search_terms("gà nướng, phở bò, bún bò, trà sữa, món chay")
+
+    assert terms == ["gà nướng", "phở bò", "bún bò"]
