@@ -167,10 +167,14 @@ export function FoodCard({ item, userId, onRemove, showRemove, showAddCollection
         <div className="absolute top-3 right-3 flex flex-col gap-2">
           <button
             onClick={toggleItinerary}
-            className="w-8 h-8 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center hover:scale-110 transition-all shadow-sm hover:bg-black/60"
+            className={`w-8 h-8 rounded-full flex items-center justify-center transition-all shadow-md ${
+              isInItinerary
+                ? 'bg-brand hover:bg-brand-hover ring-2 ring-white/80 scale-110'
+                : 'bg-black/40 backdrop-blur-md hover:bg-black/60 hover:scale-110'
+            }`}
             title={isInItinerary ? (t("result.removeItinerary") || "Xóa khỏi lộ trình") : (t("result.addItinerary") || "Thêm vào lộ trình")}
           >
-            <Route className={`w-4 h-4 ${isInItinerary ? 'text-brand dark:text-[#E8735A]' : 'text-white/90'}`} />
+            <Route className="w-4 h-4 text-white" />
           </button>
           {!showRemove && (
             <button 

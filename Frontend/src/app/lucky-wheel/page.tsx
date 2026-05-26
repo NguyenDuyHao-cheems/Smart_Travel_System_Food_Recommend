@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { PageLayout } from "../../components/PageLayout";
 import { useOptimizedLocation } from "../../hooks/useOptimizedLocation";
-import { Sparkles, Dices, ArrowRight, RefreshCw, Volume2, VolumeX, AlertCircle } from "lucide-react";
+import { Sparkles, ArrowRight, RefreshCw, Volume2, VolumeX, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLanguage } from "../../components/LanguageProvider";
@@ -227,54 +227,68 @@ export default function LuckyWheelPage() {
     setShowWinnerModal(false);
     void playRetroSound("spin");
 
-    // Number of full rotations (e.g. 5 to 8 rounds) plus random angle
+    // Number of full rotations (5 to 8 rounds) plus random angle
     const minRounds = 5;
     const maxRounds = 8;
     const randomRounds = minRounds + Math.random() * (maxRounds - minRounds);
     const addedAngle = randomRounds * 360;
 
-    const newRotation = currentRotationRef.current + addedAngle;
+    const startRotation = currentRotationRef.current;
+    const newRotation = startRotation + addedAngle;
     currentRotationRef.current = newRotation;
     setRotation(newRotation);
 
-    // Track ticks during rotation (approximate simulation based on deceleration curve)
-    let tickCount = 0;
-    const duration = 6000; // matches transition duration (6s)
-    const totalTicks = Math.floor(randomRounds * 12);
-    const spinEndsAt = Date.now() + duration;
-    
-    const playTicks = () => {
-      if (
-        spinRunIdRef.current !== spinRunId ||
-        tickCount >= totalTicks ||
-        Date.now() >= spinEndsAt ||
-        !soundEnabledRef.current
-      ) return;
-      
-      void playRetroSound("tick");
-      tickCount++;
-      
-      // Calculate delay based on cubic-bezier slow-down: delay gets progressively larger
-      const progress = tickCount / totalTicks;
-      // standard cubic-bezier deceleration curve simulation
-      const factor = Math.pow(progress, 3); 
-      const nextDelay = 30 + factor * 700;
-      const remainingMs = spinEndsAt - Date.now();
-      if (remainingMs <= 0) return;
+    const duration = 6000; // must match CSS transition duration
+    const startTime = Date.now();
 
-      queueSpinTimer(playTicks, Math.min(nextDelay, remainingMs));
+    // cubic-bezier(0.15, 0.85, 0.1, 1) approximation using numerical integration
+    // We'll use a simple ease-out cubic for the position curve: p(t) = 1 - (1-t)^3
+    // but matching the actual bezier: cubic-bezier(0.15, 0.85, 0.1, 1)
+    // Position at normalized time t (0-1): approximate with ease-out quintic
+    const easedPosition = (t: number) => {
+      // Approximate cubic-bezier(0.15, 0.85, 0.1, 1) — fast start, slow end
+      return 1 - Math.pow(1 - t, 3.5);
     };
 
-    queueSpinTimer(playTicks, 100);
+    // Schedule ticks exactly when the wheel crosses each 30° segment boundary
+    // Total segments crossed = totalTicks = floor(randomRounds * 12)
+    const totalTicks = Math.floor(randomRounds * 12);
+
+    for (let tick = 1; tick <= totalTicks; tick++) {
+      // What fraction of total angle has been covered when this tick fires?
+      const angleFraction = (tick * 30) / addedAngle; // 0..1 fraction of total added angle
+      if (angleFraction >= 1) break;
+
+      // Invert easing: find t such that easedPosition(t) = angleFraction
+      // Binary search for the time fraction
+      let lo = 0, hi = 1;
+      for (let iter = 0; iter < 20; iter++) {
+        const mid = (lo + hi) / 2;
+        if (easedPosition(mid) < angleFraction) lo = mid;
+        else hi = mid;
+      }
+      const timeFraction = (lo + hi) / 2;
+      const tickDelay = timeFraction * duration;
+
+      const capturedTick = tick;
+      queueSpinTimer(() => {
+        if (spinRunIdRef.current !== spinRunId || !soundEnabledRef.current) return;
+        // Only play if we haven't exceeded the duration
+        if (Date.now() - startTime < duration) {
+          void playRetroSound("tick");
+        }
+        // Suppress unused var warning
+        void capturedTick;
+      }, tickDelay);
+    }
 
     // Spin complete callback
     queueSpinTimer(() => {
       clearSpinTimers();
       stopAudioContext();
       setIsSpinning(false);
-      
+
       // Compute winning index
-      // Formula: ((360 - (rotation % 360)) % 360 + 360) % 360 / 30
       const finalAngle = newRotation % 360;
       const normalizedAngle = ((360 - finalAngle) % 360 + 360) % 360;
       const winningIndex = Math.floor(normalizedAngle / 30) % 12;
@@ -282,6 +296,7 @@ export default function LuckyWheelPage() {
       const winningDish = dishes[winningIndex];
       setWinner(winningDish);
       setShowWinnerModal(true);
+      void playRetroSound("win");
     }, duration);
   };
 
@@ -382,16 +397,6 @@ export default function LuckyWheelPage() {
       <div className="relative w-full max-w-4xl mx-auto flex flex-col items-center">
         {/* Retro Header Section */}
         <div className="text-center mb-8 flex flex-col items-center gap-3">
-          <div className="relative">
-            <span className="absolute -inset-1 rounded-lg bg-brand blur-sm opacity-20 group-hover:opacity-40 transition duration-1000 group-hover:duration-200"></span>
-            <div className="relative bg-[#3D312A] dark:bg-[#1E1916] border-2 border-brand/50 px-6 py-2 rounded-2xl shadow-lg flex items-center gap-2">
-              <Dices className="w-5 h-5 text-brand animate-pulse" />
-              <span className="text-xs font-black uppercase text-brand tracking-widest">
-                Wanderbite Arcade
-              </span>
-            </div>
-          </div>
-          
           <h1 className="text-3xl md:text-5xl font-black tracking-tight text-[#3D312A] dark:text-[#E6DFD5] uppercase drop-shadow-sm">
             {t("luckyWheelPage.titlePrefix")} <span className="text-brand dark:text-[#E8735A]">{t("luckyWheelPage.titleHighlight")}</span>
           </h1>
@@ -439,7 +444,7 @@ export default function LuckyWheelPage() {
           /* Lucky Wheel Section */
           <div className="relative flex flex-col items-center gap-10">
             {/* The Cabinet Board */}
-            <div className="relative p-6 md:p-8 rounded-[40px] bg-gradient-to-b from-[#2A2420] to-[#1E1916] border-4 border-[#3D312A] shadow-[0_20px_50px_rgba(0,0,0,0.5),0_0_30px_rgba(232,115,90,0.15)] flex flex-col items-center">
+            <div className="relative p-6 md:p-8 rounded-[40px] bg-gradient-to-b from-[#F5F0E8] to-[#EDE8DE] dark:from-[#2A2420] dark:to-[#1E1916] border-4 border-[#D5C9B8] dark:border-[#3D312A] shadow-[0_20px_50px_rgba(0,0,0,0.15),0_0_30px_rgba(232,115,90,0.08)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.5),0_0_30px_rgba(232,115,90,0.15)] flex flex-col items-center">
               {/* LED Ring simulation around the wheel */}
               <div className="absolute inset-4 rounded-full border-4 border-dashed border-brand/50 opacity-60 animate-[spin_20s_linear_infinite]"></div>
 
@@ -459,7 +464,7 @@ export default function LuckyWheelPage() {
               </div>
 
               {/* Wheel Container */}
-              <div className="relative w-[300px] h-[300px] md:w-[380px] md:h-[380px] rounded-full border-8 border-[#3D312A] bg-[#1E1916] overflow-hidden shadow-[inset_0_0_20px_rgba(0,0,0,0.8)] z-10">
+              <div className="relative w-[340px] h-[340px] md:w-[460px] md:h-[460px] rounded-full border-8 border-[#C8BFB0] dark:border-[#3D312A] bg-[#F0EBE3] dark:bg-[#1E1916] overflow-hidden shadow-[inset_0_0_20px_rgba(0,0,0,0.15)] dark:shadow-[inset_0_0_20px_rgba(0,0,0,0.8)] z-10">
                 <div
                   style={{
                     transform: `rotate(${rotation}deg)`,
@@ -476,9 +481,9 @@ export default function LuckyWheelPage() {
                       const endAngle = (i + 1) * 30;
                       const color = NEON_COLORS[i % NEON_COLORS.length];
                       
-                      // Calculate position for text — placed at ~72% of radius
+                      // Calculate position for text — placed at ~68% of radius
                       const midAngle = startAngle + 15;
-                      const textRadius = 135; // Slightly further out from center for readability
+                      const textRadius = 130; // mid-radius for readable labels
                       const rad = ((midAngle - 90) * Math.PI) / 180;
                       const tx = 200 + textRadius * Math.cos(rad);
                       const ty = 200 + textRadius * Math.sin(rad);
@@ -505,43 +510,29 @@ export default function LuckyWheelPage() {
                             opacity={0.35}
                           />
 
-                          {/* Dish label text — rotated along radius, flipped in lower half so always readable */}
+                          {/* Dish label — single line, truncated to fit segment */}
                           {(() => {
-                            // Flip text 180° for lower-left half so it reads outward (not upside-down)
                             const needsFlip = midAngle > 90 && midAngle <= 270;
                             const textRotation = needsFlip ? midAngle + 180 : midAngle;
-
-                            // For flipped text, anchor is still "middle" but we reverse reading direction
-                            // by shifting along the radius from center outward
-                            const words = dish.split(" ");
-                            const line1 = words.slice(0, Math.ceil(words.length / 2)).join(" ");
-                            const line2 = words.slice(Math.ceil(words.length / 2)).join(" ");
-                            const hasTwoLines = words.length > 1 && dish.length > 10;
-                            const fontSize = dish.length > 16 ? "8px" : dish.length > 11 ? "9.5px" : "11px";
-
+                            // Truncate: max 8 chars, take first word if too long
+                            const firstWord = dish.split(" ")[0];
+                            const label = firstWord.length > 9 ? firstWord.slice(0, 8) + "…" : firstWord;
                             return (
                               <text
                                 x={tx}
                                 y={ty}
                                 fill="#FFFFFF"
-                                fontSize={fontSize}
+                                fontSize="15px"
                                 fontWeight="900"
                                 textAnchor="middle"
                                 dominantBaseline="middle"
                                 transform={`rotate(${textRotation}, ${tx}, ${ty})`}
                                 style={{
-                                  filter: "drop-shadow(1px 1px 1px rgba(0,0,0,0.9))",
-                                  letterSpacing: "0.02em",
+                                  filter: "drop-shadow(1px 1px 2px rgba(0,0,0,0.9))",
+                                  letterSpacing: "0.01em",
                                 }}
                               >
-                                {hasTwoLines ? (
-                                  <>
-                                    <tspan x={tx} dy="-0.6em">{line1}</tspan>
-                                    <tspan x={tx} dy="1.25em">{line2}</tspan>
-                                  </>
-                                ) : (
-                                  dish
-                                )}
+                                {label}
                               </text>
                             );
                           })()}
@@ -550,8 +541,8 @@ export default function LuckyWheelPage() {
                     })}
 
                     {/* Centered Decorative Inner Circle */}
-                    <circle cx="200" cy="200" r="42" fill="#1E1916" stroke="#FFFFFF" strokeWidth="4" />
-                    <circle cx="200" cy="200" r="30" fill="#2A2420" />
+                    <circle cx="200" cy="200" r="42" fill="white" fillOpacity="0.15" stroke="#FFFFFF" strokeWidth="3" />
+                    <circle cx="200" cy="200" r="28" fill="white" fillOpacity="0.1" />
                   </svg>
                 </div>
               </div>
@@ -596,18 +587,18 @@ export default function LuckyWheelPage() {
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.85, opacity: 0 }}
               transition={{ type: "spring", damping: 25, stiffness: 350 }}
-              className="relative w-full max-w-md rounded-3xl bg-gradient-to-b from-[#2A2420] to-[#1E1916] border-4 border-brand p-6 md:p-8 text-center shadow-[0_0_50px_rgba(232,115,90,0.35)] overflow-hidden"
+              className="relative w-full max-w-md rounded-3xl bg-white dark:bg-gradient-to-b dark:from-[#2A2420] dark:to-[#1E1916] border-4 border-brand p-6 md:p-8 text-center shadow-[0_0_50px_rgba(232,115,90,0.25)] dark:shadow-[0_0_50px_rgba(232,115,90,0.35)] overflow-hidden"
             >
               {/* Decorative grid pattern background */}
               <div className="absolute inset-0 bg-[linear-gradient(rgba(232,115,90,0.03)_1.5px,transparent_1.5px),linear-gradient(90deg,rgba(232,115,90,0.03)_1.5px,transparent_1.5px)] bg-[size:16px_16px] pointer-events-none"></div>
 
               {/* Sparkles visual */}
               <div className="flex justify-center mb-4 text-brand">
-                <Sparkles className="w-12 h-12 text-[#FFFF33] animate-pulse" />
+                <Sparkles className="w-12 h-12 text-brand dark:text-[#FFFF33] animate-pulse" />
               </div>
 
               {/* Congratulation label */}
-              <h3 className="text-xs font-black uppercase tracking-widest text-[#FFFF33] mb-2">
+              <h3 className="text-xs font-black uppercase tracking-widest text-brand dark:text-[#FFFF33] mb-2">
                 {t("luckyWheelPage.winnerTitle")}
               </h3>
 
@@ -649,7 +640,7 @@ export default function LuckyWheelPage() {
                     // allow spinning again
                   }}
                   disabled={isSearching}
-                  className="w-full py-3 rounded-2xl border border-[#4D3D32] hover:bg-white/5 text-gray-400 hover:text-white font-bold text-xs uppercase tracking-widest transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full py-3 rounded-2xl border border-gray-200 dark:border-[#4D3D32] hover:bg-gray-50 dark:hover:bg-white/5 text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-white font-bold text-xs uppercase tracking-widest transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {t("luckyWheelPage.backToWheel")}
                 </button>

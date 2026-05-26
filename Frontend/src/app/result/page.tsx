@@ -795,6 +795,25 @@ function ResultPageContent() {
     }
   }, [searchParams]);
 
+  useEffect(() => {
+    if (mapViewEnabled) {
+      const handleResize = () => {
+        if (window.innerWidth >= 1280) {
+          document.body.style.overflow = 'hidden';
+        } else {
+          document.body.style.overflow = '';
+        }
+      };
+      
+      handleResize();
+      window.addEventListener('resize', handleResize);
+      return () => {
+        document.body.style.overflow = '';
+        window.removeEventListener('resize', handleResize);
+      };
+    }
+  }, [mapViewEnabled]);
+
   const [collectionModalItem, setCollectionModalItem] = useState<RecommendResult | null>(null);
 
   useEffect(() => {
@@ -1392,7 +1411,11 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
         </div>
       )}
 
-      <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 md:py-12 w-full flex flex-col lg:flex-row gap-0 lg:gap-8 items-start">
+      <div className={`max-w-7xl mx-auto px-4 md:px-8 w-full flex flex-col lg:flex-row gap-0 lg:gap-8 items-start ${
+        mapViewEnabled
+          ? 'xl:h-[calc(100vh-64px)] xl:py-4 xl:overflow-hidden py-8 md:py-12'
+          : 'py-8 md:py-12'
+      }`}>
         {/* Left Sidebar for Filters (Collapsible) */}
         <div className={`transition-all duration-300 overflow-hidden flex-shrink-0 ${isAdvancedFiltersOpen ? 'w-full lg:w-[320px] opacity-100 mb-8 lg:mb-0' : 'w-0 opacity-0 h-0 lg:h-auto'}`}>
           <div className="lg:sticky lg:top-24 w-full lg:w-[320px]">
@@ -1410,7 +1433,9 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
         </div>
 
         {/* Right Content for Results */}
-        <div className="flex-1 min-w-0 w-full transition-all duration-300">
+        <div className={`flex-1 min-w-0 w-full transition-all duration-300 ${
+          mapViewEnabled ? 'xl:flex xl:flex-col xl:h-full' : ''
+        }`}>
           <AnimatePresence mode="wait">
           {(!mounted || isLoading) ? (
             <LoadingState
@@ -1424,11 +1449,14 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.3 }}
+              className={mapViewEnabled ? "xl:flex xl:flex-col xl:h-full xl:min-h-0" : ""}
             >
               <motion.div
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="mb-10 max-w-4xl mx-auto"
+                className={`max-w-4xl mx-auto w-full ${
+                  mapViewEnabled ? 'xl:mb-6 xl:flex-shrink-0' : 'mb-10'
+                }`}
               >
                 {fallbackApplied && (
                   <div className="mb-6 flex items-start gap-3 p-4 rounded-xl bg-yellow-50 dark:bg-yellow-500/10 border border-yellow-200 dark:border-yellow-500/20">
@@ -1518,8 +1546,8 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
                   </button>
                 </motion.div>
               ) : mapViewEnabled ? (
-                <div className="flex flex-col xl:flex-row gap-6 items-stretch min-h-[calc(100vh-12rem)]">
-                  <div className="w-full xl:w-[450px] xl:shrink-0 flex flex-col gap-4">
+                <div className={`flex flex-col xl:flex-row gap-6 items-stretch ${mapViewEnabled ? 'xl:flex-1 xl:h-0 xl:min-h-0' : 'min-h-[calc(100vh-12rem)]'}`}>
+                  <div className={`w-full xl:w-[450px] xl:shrink-0 flex flex-col gap-4 ${mapViewEnabled ? 'xl:h-full xl:min-h-0' : ''}`}>
                     {results.length === 0 ? (
                       <div className="py-16 text-center bg-white dark:bg-[#3D312A] rounded-3xl border border-gray-100 dark:border-[#4D3D32] shadow-sm">
                         <div className="w-16 h-16 bg-gray-50 dark:bg-[#2A2420] rounded-full flex items-center justify-center mx-auto mb-5">
@@ -1535,7 +1563,7 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
                     ) : (
                       <>
                         {/* Sort & Filter Controls Inside Left Panel */}
-                        <div className="flex items-center justify-between gap-3 bg-white dark:bg-[#3D312A] p-4 rounded-2xl border border-gray-100 dark:border-[#4D3D32] shadow-sm">
+                        <div className={`flex items-center justify-between gap-3 bg-white dark:bg-[#3D312A] p-4 rounded-2xl border border-gray-100 dark:border-[#4D3D32] shadow-sm ${mapViewEnabled ? 'xl:flex-shrink-0' : ''}`}>
                           <div className="flex-1">
                             <SortSelector
                               value={sortBy}
@@ -1559,7 +1587,7 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
 
                         {/* Collapsible Advanced Filters panel */}
                         {showMapFilters && (
-                          <div className="p-4 bg-white dark:bg-[#3D312A] rounded-2xl border border-gray-100 dark:border-[#4D3D32] shadow-sm flex flex-col gap-4">
+                          <div className={`p-4 bg-white dark:bg-[#3D312A] rounded-2xl border border-gray-100 dark:border-[#4D3D32] shadow-sm flex flex-col gap-4 ${mapViewEnabled ? 'xl:flex-shrink-0 xl:overflow-y-auto xl:max-h-[50%]' : ''}`}>
                             <div className="flex flex-col gap-2">
                               <p className="text-[11px] font-bold text-gray-400 dark:text-[#9A8A7A] uppercase tracking-wide">{t('result.budgetDistance')}</p>
                               <div className="flex flex-wrap items-center gap-2">
@@ -1593,7 +1621,7 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
                         )}
 
                         {/* Vertical list of restaurants */}
-                        <div className="flex flex-col gap-5 overflow-y-auto max-h-[70vh] pr-1 scrollbar-thin">
+                        <div className={`flex flex-col gap-5 overflow-y-auto pr-1 scrollbar-thin ${mapViewEnabled ? 'xl:flex-1 xl:h-0 xl:min-h-0' : 'max-h-[70vh]'}`}>
                           {displayResults.map((item, idx) => (
                             <div
                               key={item.id || idx}
@@ -1620,7 +1648,7 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
                       </>
                     )}
                   </div>
-                  <div className="w-full xl:flex-1 h-[600px] xl:h-[750px] xl:sticky xl:top-24 order-first xl:order-none">
+                  <div className={`w-full xl:flex-1 order-first xl:order-none ${mapViewEnabled ? 'xl:h-full' : 'h-[600px] xl:h-[750px] xl:sticky xl:top-24'}`}>
                     <ResultMapView
                       results={displayResults}
                       fallbackCenter={fallbackMapCenter}

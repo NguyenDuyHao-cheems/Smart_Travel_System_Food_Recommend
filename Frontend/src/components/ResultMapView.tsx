@@ -92,6 +92,7 @@ export function ResultMapView({
   const [selectedRadiusKm, setSelectedRadiusKm] = useState<number | null>(null);
   const [circleCenter, setCircleCenter] = useState<{ lat: number; lng: number } | null>(null);
   const [hoverCircleCenter, setHoverCircleCenter] = useState<{ lat: number; lng: number } | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
 
   const selectedId = propSelectedId !== undefined ? propSelectedId : localSelectedId;
   const onSelectId = propOnSelectId || setLocalSelectedId;
@@ -202,6 +203,54 @@ export function ResultMapView({
     return () => observer.disconnect();
   }, []);
 
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container || size.width === 0 || size.height === 0) return;
+
+    const handleWheelEvent = (event: WheelEvent) => {
+      // Don't zoom if target is inside a map control (like zoom buttons, radius buttons)
+      if ((event.target as HTMLElement).closest('[data-map-control="true"]')) {
+        return;
+      }
+      
+      event.preventDefault();
+
+      const delta = event.deltaY < 0 ? 1 : -1;
+      const newZoom = clamp(zoom + delta, MIN_ZOOM, MAX_ZOOM);
+
+      if (newZoom !== zoom) {
+        const rect = container.getBoundingClientRect();
+        const mouseX = event.clientX - rect.left;
+        const mouseY = event.clientY - rect.top;
+
+        const currentCenterPoint = project(center.lat, center.lng, zoom);
+        const currentTopLeft = {
+          x: currentCenterPoint.x - size.width / 2,
+          y: currentCenterPoint.y - size.height / 2,
+        };
+
+        const mouseLatLng = unproject(currentTopLeft.x + mouseX, currentTopLeft.y + mouseY, zoom);
+        const mousePointAtNewZoom = project(mouseLatLng.lat, mouseLatLng.lng, newZoom);
+        
+        const newCenterPoint = {
+          x: mousePointAtNewZoom.x - mouseX + size.width / 2,
+          y: mousePointAtNewZoom.y - mouseY + size.height / 2,
+        };
+
+        const newCenterLatLng = unproject(newCenterPoint.x, newCenterPoint.y, newZoom);
+        
+        hasInteractedRef.current = true;
+        setZoom(newZoom);
+        setCenter(newCenterLatLng);
+      }
+    };
+
+    container.addEventListener('wheel', handleWheelEvent, { passive: false });
+    return () => {
+      container.removeEventListener('wheel', handleWheelEvent);
+    };
+  }, [zoom, center, size]);
+
   const centerPoint = project(center.lat, center.lng, zoom);
   const topLeft = {
     x: centerPoint.x - size.width / 2,
@@ -245,6 +294,7 @@ export function ResultMapView({
       center,
       moved: false,
     };
+    setIsDragging(true);
   };
 
   const getPointerLatLng = (event: React.PointerEvent<HTMLDivElement>) => {
@@ -281,6 +331,7 @@ export function ResultMapView({
   };
 
   const handlePointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
+    setIsDragging(false);
     if ((event.target as HTMLElement).closest('[data-map-control="true"]')) {
       dragRef.current = null;
       return;
@@ -360,12 +411,19 @@ export function ResultMapView({
 
       <div
         ref={containerRef}
-        className={`relative flex-1 overflow-hidden bg-[#E6DFD5] dark:bg-[#2A2420] touch-none ${selectedRadiusKm ? 'cursor-crosshair active:cursor-grabbing' : 'cursor-grab active:cursor-grabbing'}`}
+        className={`relative flex-1 overflow-hidden bg-[#E6DFD5] dark:bg-[#2A2420] touch-none select-none ${
+          isDragging
+            ? 'cursor-grabbing'
+            : selectedRadiusKm
+            ? 'cursor-crosshair active:cursor-grabbing'
+            : 'cursor-grab active:cursor-grabbing'
+        }`}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerUp}
         onPointerLeave={() => setHoverCircleCenter(null)}
+        onDragStart={(e) => e.preventDefault()}
       >
         {tiles.map((tile) => (
           <img
@@ -448,32 +506,19 @@ export function ResultMapView({
         )}
 
         {fallbackCenter && typeof fallbackCenter.lat === 'number' && typeof fallbackCenter.lng === 'number' && (
-          <button
-            type="button"
+          <div
             data-map-control="true"
-            onClick={(event) => {
-              event.stopPropagation();
-              const radius = selectedRadiusKm || 2;
-              const bounds = getCircleBounds(fallbackCenter.lat, fallbackCenter.lng, radius);
-              onViewportSearch({
-                centerLat: fallbackCenter.lat,
-                centerLng: fallbackCenter.lng,
-                radiusKm: radius,
-                ...bounds,
-              });
-            }}
-            className="absolute -translate-x-1/2 -translate-y-1/2 z-40 group hover:scale-110 transition-transform cursor-pointer"
+            className="absolute -translate-x-1/2 -translate-y-1/2 z-40 pointer-events-none"
             style={{
               left: project(fallbackCenter.lat, fallbackCenter.lng, zoom).x - topLeft.x,
               top: project(fallbackCenter.lat, fallbackCenter.lng, zoom).y - topLeft.y,
             }}
-            title={t('resultMap.yourLocationTitle')}
           >
             <span className="absolute inset-0 rounded-full bg-[#FFD700]/30 animate-ping" />
             <span className="flex items-center justify-center w-8 h-8 rounded-full bg-[#FFD700] border-2 border-black shadow-lg text-black relative z-10">
               <Star className="w-4 h-4 fill-black" />
             </span>
-          </button>
+          </div>
         )}
 
         {mapResults.map((item, index) => {
@@ -491,7 +536,7 @@ export function ResultMapView({
                 event.stopPropagation();
                 onSelectId(item.id === selectedId ? null : item.id);
               }}
-              className={`absolute -translate-x-1/2 -translate-y-1/2 group transition-all duration-200 ${
+              className={`absolute -translate-x-1/2 -translate-y-1/2 group ${
                 selected ? 'z-30 scale-110' : 'z-20 hover:scale-105'
               }`}
               style={{ left, top }}
