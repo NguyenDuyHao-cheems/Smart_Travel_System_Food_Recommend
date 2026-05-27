@@ -24,6 +24,8 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     )
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        if payload.get("type") == "refresh":
+            raise credentials_exception
         user_id: str = payload.get("sub")
         if user_id is None:
             raise credentials_exception
@@ -40,6 +42,8 @@ def get_optional_current_user(token: str = Depends(oauth2_scheme_optional), db: 
         return None
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        if payload.get("type") == "refresh":
+            return None
         user_id: str = payload.get("sub")
         if user_id is None:
             return None

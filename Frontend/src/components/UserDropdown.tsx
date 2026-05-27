@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { User, LogOut, ChevronDown, UserCircle } from "lucide-react";
 import { useLanguage } from "./LanguageProvider";
+import { isTokenValid } from "../utils/authStorage";
 
 export function UserDropdown({
   username: propUsername,
@@ -23,7 +24,7 @@ export function UserDropdown({
   useEffect(() => {
     const checkAuth = () => {
       const token = localStorage.getItem("access_token");
-      if (!token) {
+      if (!token || !isTokenValid(token)) {
         setUsername(null);
         setAvatar(null);
         return;
@@ -49,10 +50,12 @@ export function UserDropdown({
     };
 
     window.addEventListener("storage", handleStorageChange);
+    window.addEventListener("auth-silent-logout", handleStorageChange);
     document.addEventListener("mousedown", handleClickOutside);
     
     return () => {
       window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("auth-silent-logout", handleStorageChange);
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [propUsername, propAvatar]);

@@ -20,6 +20,7 @@ import { RootState } from "../store";
 import NewspaperMenu from "../components/NewspaperMenu";
 import { useLanguage } from "../components/LanguageProvider";
 import { makeAuthenticatedRequest } from "../utils/apiClient";
+import { isTokenValid } from "../utils/authStorage";
 
 /* ── Types ── */
 type HealthStatus = "loading" | "ok" | "degraded" | "error";
@@ -60,6 +61,7 @@ function HomeContent() {
   const [searchLoadingMsg, setSearchLoadingMsg] = useState("");
   const [apiError, setApiError] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   const coords = useSelector((state: RootState) => state.location.coords);
   const [recommendations, setRecommendations] = useState<RecommendResult[]>(() => {
@@ -122,8 +124,13 @@ function HomeContent() {
           setIsLoadingRecs(true);
         }
         const token = localStorage.getItem("access_token");
+        
+        if (!token || userId === "guest") {
+          setIsLoadingRecs(false);
+          return;
+        }
 
-        const url = new URL(`${BACKEND_URL}/api/v1/restaurants/recommendations`);
+        const url = new URL(`${BACKEND_URL}/api/v1/recommendations/home`);
         url.searchParams.append("lat", coords.lat.toString());
         url.searchParams.append("lng", coords.lng.toString());
         url.searchParams.append("limit", "6");
@@ -134,8 +141,8 @@ function HomeContent() {
 
         if (res.ok) {
           const data = await res.json();
-          // Endpoint /api/v1/restaurants/recommendations returns an array directly
-          const resultsArray = Array.isArray(data) ? data : (data.results || []);
+          // Endpoint /api/v1/recommendations/home returns { results: [...] }
+          const resultsArray = data.results || [];
           
           if (resultsArray && resultsArray.length > 0) {
             // Filter out exact duplicates by name
@@ -190,6 +197,17 @@ function HomeContent() {
     setMounted(true);
     checkHealth();
     localStorage.removeItem("last_search_url");
+    const token = localStorage.getItem("access_token");
+    const uId = localStorage.getItem("user_id");
+    
+    const valid = isTokenValid(token);
+    setIsLoggedIn(!!(valid && uId && uId !== "guest"));
+    
+    const handleSilentLogout = () => {
+      setIsLoggedIn(false);
+    };
+    window.addEventListener("auth-silent-logout", handleSilentLogout);
+    return () => window.removeEventListener("auth-silent-logout", handleSilentLogout);
   }, [checkHealth]);
 
   useEffect(() => {
@@ -531,7 +549,25 @@ function HomeContent() {
                 </Link>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                {isLoadingRecs && recommendations.length === 0 ? (
+                {!isLoggedIn ? (
+                  <div className="col-span-full flex flex-col items-center justify-center py-16 bg-white/50 dark:bg-[#2A2420]/50 rounded-3xl border-2 border-dashed border-[#3D312A]/10 dark:border-[#E6DFD5]/10">
+                    <div className="bg-brand/10 dark:bg-[#E8735A]/10 p-4 rounded-full mb-4">
+                      <Sparkles className="w-8 h-8 text-brand dark:text-[#E8735A]" />
+                    </div>
+                    <h3 className="text-xl md:text-2xl font-bold text-[#3D312A] dark:text-[#E6DFD5] mb-2 text-center">
+                      Đăng nhập để nhận được gợi ý phù hợp
+                    </h3>
+                    <p className="text-[#3D312A]/60 dark:text-[#E6DFD5]/60 text-sm md:text-base mb-6 text-center max-w-md px-4">
+                      Chúng tôi sẽ dựa vào sở thích và lịch sử tìm kiếm của bạn để đưa ra những gợi ý món ăn tuyệt vời nhất.
+                    </p>
+                    <Link
+                      href="/auth"
+                      className="px-8 py-3 bg-brand hover:bg-rose-600 text-white font-bold rounded-full shadow-lg shadow-brand/30 hover:shadow-xl hover:shadow-brand/40 transition-all hover:-translate-y-1 cursor-pointer"
+                    >
+                      Đăng Nhập Ngay
+                    </Link>
+                  </div>
+                ) : isLoadingRecs && recommendations.length === 0 ? (
                   Array.from({ length: 6 }).map((_, i) => (
                     <div key={i} className="animate-pulse bg-gray-200 dark:bg-[#4D3D32] h-[320px] rounded-2xl w-full"></div>
                   ))

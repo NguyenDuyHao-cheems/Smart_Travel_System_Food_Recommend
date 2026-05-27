@@ -64,17 +64,13 @@ export function AppShell({ children, healthStatus = "loading", headerAction }: A
 
     // Tự động kiểm tra token hết hạn khi người dùng mở trang hoặc tải lại trang
     const token = localStorage.getItem("access_token");
-    if (token) {
-      try {
-        const arrayToken = token.split('.');
-        if (arrayToken.length === 3) {
-          const payload = JSON.parse(atob(arrayToken[1]));
-          // Let api/v1/users/refresh handle expiration when a request is made
-        }
-      } catch (e) {
-        console.error("Error checking token:", e);
+    import("../utils/authStorage").then(({ isTokenValid, clearAuthData }) => {
+      if (token && !isTokenValid(token)) {
+        clearAuthData();
+        // Dispatch event so other components (like UserDropdown) update immediately
+        window.dispatchEvent(new Event("auth-silent-logout"));
       }
-    }
+    });
 
     const handleAuthExpired = () => {
       // Clear localStorage immediately
