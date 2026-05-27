@@ -24,6 +24,8 @@ import { AttendanceCalendarModal } from "../../components/AttendanceCalendarModa
 import { toast } from "sonner";
 import { useLanguage } from "../../components/LanguageProvider";
 import { ProfileOwnSkeleton } from "../../components/ui/LoadingState";
+import { LoginRequiredModal } from "../../components/LoginRequiredModal";
+import { makeAuthenticatedRequest } from "../../utils/apiClient";
 
 interface RecentActivity {
   title: string;
@@ -110,6 +112,7 @@ export default function ProfilePage() {
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [activeBadge, setActiveBadge] = useState<string | null>(null);
   const [isBadgeModalOpen, setIsBadgeModalOpen] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
 
   // Dynamic User Profile Statistics
   const [favoritesCount, setFavoritesCount] = useState<number>(0);
@@ -243,8 +246,7 @@ export default function ProfilePage() {
       try {
         const token = localStorage.getItem("access_token");
         if (!token) {
-          toast.error(t("profile.loginRequired"));
-          router.push("/auth");
+          setShowLoginModal(true);
           return;
         }
 
@@ -253,22 +255,16 @@ export default function ProfilePage() {
 
         // Chạy song song 3 API calls thay vì tuần tự
         const [meResult, socialResult, onboardingResult] = await Promise.allSettled([
-          fetch(`${API_BASE}/api/v1/users/me`, {
-            headers: { "Authorization": `Bearer ${token}` }
-          }),
-          userId ? fetch(`${API_BASE}/api/v1/social/users/${userId}/profile`, {
-            headers: { "Authorization": `Bearer ${token}` }
-          }) : Promise.resolve(null),
-          userId ? fetch(`${API_BASE}/api/v1/users/${userId}/onboarding`, {
-            headers: { "Authorization": `Bearer ${token}` }
-          }) : Promise.resolve(null),
+          makeAuthenticatedRequest(`/api/v1/users/me`),
+          userId ? makeAuthenticatedRequest(`/api/v1/social/users/${userId}/profile`) : Promise.resolve(null),
+          userId ? makeAuthenticatedRequest(`/api/v1/users/${userId}/onboarding`) : Promise.resolve(null),
         ]);
 
         // Xử lý kết quả /users/me
         if (meResult.status === "fulfilled" && meResult.value) {
           const res = meResult.value;
           if (res.status === 401) {
-            window.dispatchEvent(new Event("auth-session-expired"));
+            setShowLoginModal(true);
             return;
           }
           if (res.ok) {
@@ -349,7 +345,10 @@ export default function ProfilePage() {
 
   return (
     <AppShell>
-      <div className="max-w-5xl mx-auto px-4 md:px-8 py-8 animate-fade-in-up">
+      <LoginRequiredModal isOpen={showLoginModal} message={t("profile.loginRequired")} />
+      {!showLoginModal && (
+        <>
+          <div className="max-w-5xl mx-auto px-4 md:px-8 py-8 animate-fade-in-up">
         {/* Profile content unchanged below */}
             
             {/* Profile Header Card */}
@@ -962,6 +961,8 @@ export default function ProfilePage() {
           </div>
         )}
       </AnimatePresence>
+        </>
+      )}
     </AppShell>
   );
 }

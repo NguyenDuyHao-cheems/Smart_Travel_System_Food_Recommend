@@ -29,6 +29,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../../store';
 import { addItem, removeItem } from '../../../store/slices/itinerarySlice';
 import { useLanguage } from '../../../components/LanguageProvider';
+import { makeAuthenticatedRequest } from "../../../utils/apiClient";
 
 interface Dish {
   id: string;
@@ -241,9 +242,8 @@ export default function RestaurantDetailPage() {
     setIsDeleting(true);
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
     try {
-      const res = await fetch(`${apiUrl}/api/v1/restaurants/${activeRestaurantId}/reviews/${reviewId}`, {
+      const res = await makeAuthenticatedRequest(`/api/v1/restaurants/${activeRestaurantId}/reviews/${reviewId}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${authToken}` },
       });
       if (res.ok || res.status === 204) {
         setReviews(prev => prev.filter(r => r.id !== reviewId));
@@ -301,8 +301,7 @@ export default function RestaurantDetailPage() {
 
     const fetchDetail = async () => {
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-        const res = await fetch(`${apiUrl}/api/v1/restaurants/${activeRestaurantId}`);
+        const res = await makeAuthenticatedRequest(`/api/v1/restaurants/${activeRestaurantId}`);
         if (!res.ok) throw new Error(copy.fetchError);
         const data = await res.json();
         setRestaurant(data);
@@ -327,8 +326,7 @@ export default function RestaurantDetailPage() {
     if (userId) {
       const fetchAllergies = async () => {
         try {
-          const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-          const res = await fetch(`${apiUrl}/api/v1/users/${userId}/allergies`);
+          const res = await makeAuthenticatedRequest(`/api/v1/users/${userId}/allergies`);
           if (res.ok) {
             const data = await res.json();
             console.log("Fetched user allergies for detail page:", data.allergies);
@@ -980,9 +978,8 @@ function AllReviewsModal({ restaurantId, restaurantName, reviews, currentUserId,
   const handleDelete = async (reviewId: string) => {
     if (!authToken) return;
     try {
-      const res = await fetch(`${apiUrl}/api/v1/restaurants/${restaurantId}/reviews/${reviewId}`, {
+      const res = await makeAuthenticatedRequest(`/api/v1/restaurants/${restaurantId}/reviews/${reviewId}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${authToken}` },
       });
       if (res.ok || res.status === 204) {
         onReviewDeleted(reviewId);
@@ -1109,9 +1106,7 @@ function WriteReviewModal({ restaurantId, restaurantName, authToken, onClose, on
     setIsAnonymous(newVal);
     if (newVal && authToken) {
       try {
-        const res = await fetch(`${apiUrl}/api/v1/reviews/check-anonymous?restaurant_id=${restaurantId}`, {
-          headers: { Authorization: `Bearer ${authToken}` }
-        });
+        const res = await makeAuthenticatedRequest(`/api/v1/reviews/check-anonymous?restaurant_id=${restaurantId}`);
         if (res.ok) {
           const data = await res.json();
           setAnonymousPreview(data.anonymous_number);
@@ -1126,9 +1121,9 @@ function WriteReviewModal({ restaurantId, restaurantName, authToken, onClose, on
     if (rating === 0 || !authToken) return;
     setIsSubmitting(true);
     try {
-      const res = await fetch(`${apiUrl}/api/v1/restaurants/${restaurantId}/reviews`, {
+      const res = await makeAuthenticatedRequest(`/api/v1/restaurants/${restaurantId}/reviews`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ rating: rating * 2, text: text.trim() || null, is_anonymous: isAnonymous }),
       });
       if (res.ok) {

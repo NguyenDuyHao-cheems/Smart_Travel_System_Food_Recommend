@@ -8,6 +8,7 @@ import { Sparkles, ArrowRight, RefreshCw, Volume2, VolumeX, AlertCircle } from "
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLanguage } from "../../components/LanguageProvider";
+import { makeAuthenticatedRequest } from '../../utils/apiClient';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -174,7 +175,7 @@ export default function LuckyWheelPage() {
         url.searchParams.append("user_id", userId);
       }
 
-      const res = await fetch(url.toString());
+      const res = await makeAuthenticatedRequest(url.toString());
       if (res.ok) {
         const data = await res.json();
         if (data && data.length >= 12) {
@@ -316,17 +317,13 @@ export default function LuckyWheelPage() {
 
       setSearchStatus(t("luckyWheelPage.aiSearching").replace("{dish}", winner));
 
-      const token = localStorage.getItem("access_token");
       const userId = localStorage.getItem("user_id");
 
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
       };
-      if (token) {
-        headers["Authorization"] = `Bearer ${token}`;
-      }
 
-      const res = await fetch(`${BACKEND_URL}/api/v1/search/recommend`, {
+      const res = await makeAuthenticatedRequest(`${BACKEND_URL}/api/v1/search/recommend`, {
         method: "POST",
         headers,
         body: JSON.stringify({

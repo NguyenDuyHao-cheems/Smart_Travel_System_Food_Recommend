@@ -1,3 +1,6 @@
+import { getAccessToken } from "../utils/authStorage";
+import { makeAuthenticatedRequest } from "../utils/apiClient";
+
 export interface Friend {
   friend_id: string;
   username: string;
@@ -10,21 +13,12 @@ export const friendService = {
   fetchFriends: async (): Promise<Friend[]> => {
     if (typeof window === "undefined") return [];
 
-    const token = localStorage.getItem("access_token");
+    const token = getAccessToken();
     if (!token) return [];
 
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
-    const res = await fetch(`${apiUrl}/api/v1/users/friends`, {
-      headers: {
-        "Authorization": `Bearer ${token}`
-      }
-    });
+    const res = await makeAuthenticatedRequest(`/api/v1/users/friends`);
 
     if (res.status === 401) {
-      localStorage.removeItem("access_token");
-      localStorage.removeItem("user_id");
-      localStorage.removeItem("username");
-      window.location.href = "/auth?expired=1";
       return [];
     }
 
@@ -38,24 +32,18 @@ export const friendService = {
   addFriend: async (username: string): Promise<void> => {
     if (typeof window === "undefined") return;
 
-    const token = localStorage.getItem("access_token");
+    const token = getAccessToken();
     if (!token) throw new Error("Not signed in");
 
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
-    const res = await fetch(`${apiUrl}/api/v1/users/friends`, {
+    const res = await makeAuthenticatedRequest(`/api/v1/users/friends`, {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`
+        "Content-Type": "application/json"
       },
       body: JSON.stringify({ username })
     });
 
     if (res.status === 401) {
-      localStorage.removeItem("access_token");
-      localStorage.removeItem("user_id");
-      localStorage.removeItem("username");
-      window.location.href = "/auth?expired=1";
       return;
     }
 
@@ -68,22 +56,14 @@ export const friendService = {
   removeFriend: async (friendId: string): Promise<void> => {
     if (typeof window === "undefined") return;
 
-    const token = localStorage.getItem("access_token");
+    const token = getAccessToken();
     if (!token) throw new Error("Not signed in");
 
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
-    const res = await fetch(`${apiUrl}/api/v1/users/friends/${friendId}`, {
-      method: "DELETE",
-      headers: {
-        "Authorization": `Bearer ${token}`
-      }
+    const res = await makeAuthenticatedRequest(`/api/v1/users/friends/${friendId}`, {
+      method: "DELETE"
     });
 
     if (res.status === 401) {
-      localStorage.removeItem("access_token");
-      localStorage.removeItem("user_id");
-      localStorage.removeItem("username");
-      window.location.href = "/auth?expired=1";
       return;
     }
 
@@ -96,21 +76,12 @@ export const friendService = {
   fetchFriendRequests: async (): Promise<FriendRequestsList> => {
     if (typeof window === "undefined") return { received: [], sent: [] };
 
-    const token = localStorage.getItem("access_token");
+    const token = getAccessToken();
     if (!token) return { received: [], sent: [] };
 
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
-    const res = await fetch(`${apiUrl}/api/v1/users/friends/requests`, {
-      headers: {
-        "Authorization": `Bearer ${token}`
-      }
-    });
+    const res = await makeAuthenticatedRequest(`/api/v1/users/friends/requests`);
 
     if (res.status === 401) {
-      localStorage.removeItem("access_token");
-      localStorage.removeItem("user_id");
-      localStorage.removeItem("username");
-      window.location.href = "/auth?expired=1";
       return { received: [], sent: [] };
     }
 
@@ -124,22 +95,14 @@ export const friendService = {
   acceptFriendRequest: async (requestId: string): Promise<void> => {
     if (typeof window === "undefined") return;
 
-    const token = localStorage.getItem("access_token");
+    const token = getAccessToken();
     if (!token) throw new Error("Not signed in");
 
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
-    const res = await fetch(`${apiUrl}/api/v1/users/friends/requests/${requestId}/accept`, {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${token}`
-      }
+    const res = await makeAuthenticatedRequest(`/api/v1/users/friends/requests/${requestId}/accept`, {
+      method: "POST"
     });
 
     if (res.status === 401) {
-      localStorage.removeItem("access_token");
-      localStorage.removeItem("user_id");
-      localStorage.removeItem("username");
-      window.location.href = "/auth?expired=1";
       return;
     }
 
@@ -152,22 +115,14 @@ export const friendService = {
   declineFriendRequest: async (requestId: string): Promise<void> => {
     if (typeof window === "undefined") return;
 
-    const token = localStorage.getItem("access_token");
+    const token = getAccessToken();
     if (!token) throw new Error("Not signed in");
 
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
-    const res = await fetch(`${apiUrl}/api/v1/users/friends/requests/${requestId}/decline`, {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${token}`
-      }
+    const res = await makeAuthenticatedRequest(`/api/v1/users/friends/requests/${requestId}/decline`, {
+      method: "POST"
     });
 
     if (res.status === 401) {
-      localStorage.removeItem("access_token");
-      localStorage.removeItem("user_id");
-      localStorage.removeItem("username");
-      window.location.href = "/auth?expired=1";
       return;
     }
 
@@ -180,22 +135,14 @@ export const friendService = {
   cancelFriendRequest: async (requestId: string): Promise<void> => {
     if (typeof window === "undefined") return;
 
-    const token = localStorage.getItem("access_token");
+    const token = getAccessToken();
     if (!token) throw new Error("Not signed in");
 
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
-    const res = await fetch(`${apiUrl}/api/v1/users/friends/requests/${requestId}`, {
-      method: "DELETE",
-      headers: {
-        "Authorization": `Bearer ${token}`
-      }
+    const res = await makeAuthenticatedRequest(`/api/v1/users/friends/requests/${requestId}`, {
+      method: "DELETE"
     });
 
     if (res.status === 401) {
-      localStorage.removeItem("access_token");
-      localStorage.removeItem("user_id");
-      localStorage.removeItem("username");
-      window.location.href = "/auth?expired=1";
       return;
     }
 

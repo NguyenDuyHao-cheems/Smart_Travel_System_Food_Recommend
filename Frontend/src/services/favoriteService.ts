@@ -1,4 +1,6 @@
 import { RecommendResult } from "../app/result/page";
+import { getAccessToken } from "../utils/authStorage";
+import { makeAuthenticatedRequest } from "../utils/apiClient";
 
 const FAVORITES_KEY = "wanderbite_favorites";
 
@@ -14,20 +16,12 @@ export const favoriteService = {
   fetchAndSyncFavorites: async (userId: string): Promise<RecommendResult[]> => {
     if (typeof window === "undefined") return [];
     try {
-      const token = localStorage.getItem("access_token");
+      const token = getAccessToken();
       if (!token) return favoriteService.getFavorites(userId);
 
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
-      const res = await fetch(`${apiUrl}/api/v1/users/favorites`, {
-        headers: {
-          "Authorization": `Bearer ${token}`
-        }
-      });
+      const res = await makeAuthenticatedRequest(`/api/v1/users/favorites`);
 
       if (res.status === 401) {
-        localStorage.removeItem("access_token");
-        localStorage.removeItem("user_id");
-        window.location.href = "/auth?expired=1";
         return [];
       }
 
@@ -48,19 +42,15 @@ export const favoriteService = {
             // Guard: Do not sync mock items to the DB
             if (localFav.id && !localFav.id.startsWith("mock-")) {
               try {
-                const addRes = await fetch(`${apiUrl}/api/v1/users/favorites`, {
+                const addRes = await makeAuthenticatedRequest(`/api/v1/users/favorites`, {
                   method: "POST",
                   headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${token}`
+                    "Content-Type": "application/json"
                   },
                   body: JSON.stringify({ res_id: localFav.id })
                 });
                 
                 if (addRes.status === 401) {
-                  localStorage.removeItem("access_token");
-                  localStorage.removeItem("user_id");
-                  window.location.href = "/auth?expired=1";
                   return [];
                 }
                 
@@ -99,15 +89,13 @@ export const favoriteService = {
 
     // 2. Persist to Database
     try {
-      const token = localStorage.getItem("access_token");
+      const token = getAccessToken();
       if (!token) return;
 
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
-      await fetch(`${apiUrl}/api/v1/users/favorites`, {
+      await makeAuthenticatedRequest(`/api/v1/users/favorites`, {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
+          "Content-Type": "application/json"
         },
         body: JSON.stringify({ res_id: item.id })
       });
@@ -136,15 +124,11 @@ export const favoriteService = {
 
     // 2. Persist delete to Database
     try {
-      const token = localStorage.getItem("access_token");
+      const token = getAccessToken();
       if (!token) return;
 
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
-      await fetch(`${apiUrl}/api/v1/users/favorites/${item.id}`, {
-        method: "DELETE",
-        headers: {
-          "Authorization": `Bearer ${token}`
-        }
+      await makeAuthenticatedRequest(`/api/v1/users/favorites/${item.id}`, {
+        method: "DELETE"
       });
     } catch (err) {
       console.error("Failed to delete favorite from DB:", err);

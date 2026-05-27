@@ -11,29 +11,34 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { interactionService } from "../../services/interactionService";
 
 import { useLanguage } from "../../components/LanguageProvider";
+import { LoginRequiredModal } from "../../components/LoginRequiredModal";
 
 function FavoritesPageInner() {
   const { t } = useLanguage();
   const [favorites, setFavorites] = useState<RecommendResult[]>([]);
   const [userId, setUserId] = useState<string | null>(null);
   const [highlightedName, setHighlightedName] = useState<string | null>(null);
+  const [showLoginModal, setShowLoginModal] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
 
   useEffect(() => {
-    const id = localStorage.getItem("user_id");
-    if (!id) {
-      toast.error(t("favorites.pleaseLogin"));
-      router.push("/auth");
+    const token = localStorage.getItem("access_token");
+    if (!token) {
+      setShowLoginModal(true);
       return;
     }
-    setUserId(id);
-    setFavorites(favoriteService.getFavorites(id));
     
-    // Sync with DB in the background
-    favoriteService.fetchAndSyncFavorites(id).then(dbFavs => {
-      setFavorites(dbFavs);
-    });
+    const id = localStorage.getItem("user_id");
+    if (id) {
+      setUserId(id);
+      setFavorites(favoriteService.getFavorites(id));
+      
+      // Sync with DB in the background
+      favoriteService.fetchAndSyncFavorites(id).then(dbFavs => {
+        setFavorites(dbFavs);
+      });
+    }
   }, [router, t]);
 
   useEffect(() => {
@@ -62,8 +67,11 @@ function FavoritesPageInner() {
 
   return (
     <PageLayout>
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-[#E6DFD5] flex items-center gap-3">
+      <LoginRequiredModal isOpen={showLoginModal} message={t("favorites.pleaseLogin")} />
+      {!showLoginModal && (
+        <>
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-[#E6DFD5] flex items-center gap-3">
           <Heart className="w-8 h-8 text-red-500 fill-red-500/20" />
           {t("favorites.title")}
         </h1>
@@ -104,6 +112,8 @@ function FavoritesPageInner() {
             </div>
           ))}
         </div>
+      )}
+        </>
       )}
     </PageLayout>
   );

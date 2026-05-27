@@ -27,3 +27,10 @@ def create_access_token(data: Dict[str, Any], expires_delta: timedelta | None = 
     )
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+
+def create_refresh_token(data: Dict[str, Any]) -> str:
+    to_encode = data.copy()
+    to_encode.update({"type": "refresh"})
+    expire = datetime.now(timezone.utc) + timedelta(minutes=settings.REFRESH_TOKEN_EXPIRE_MINUTES)
+    to_encode.update({"exp": expire})
+    return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)

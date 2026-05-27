@@ -11,7 +11,9 @@ class Settings:
     DATABASE_URL: str = os.getenv("DATABASE_URL", "")
     SECRET_KEY: str = os.environ["SECRET_KEY"]
     ALGORITHM: str = os.getenv("ALGORITHM", "HS256")
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "10080"))  # 7 ngày cho dev
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "15"))  # 15 phút
+    REFRESH_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("REFRESH_TOKEN_EXPIRE_MINUTES", "60"))  # Idle Timeout 1 giờ
+    COOKIE_SECURE: bool = not is_testing and os.getenv("ENVIRONMENT", "dev") == "production"
     VECTOR_DIM: int = int(os.getenv("VECTOR_DIM", "768"))
     
     # Supabase (For background tasks)

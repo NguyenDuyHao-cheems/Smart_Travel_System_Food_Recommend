@@ -19,6 +19,7 @@ import { useSelector } from "react-redux";
 import { RootState } from "../store";
 import NewspaperMenu from "../components/NewspaperMenu";
 import { useLanguage } from "../components/LanguageProvider";
+import { makeAuthenticatedRequest } from "../utils/apiClient";
 
 /* ── Types ── */
 type HealthStatus = "loading" | "ok" | "degraded" | "error";
@@ -127,11 +128,8 @@ function HomeContent() {
         url.searchParams.append("lng", coords.lng.toString());
         url.searchParams.append("limit", "6");
 
-        const res = await fetch(url.toString(), {
+        const res = await makeAuthenticatedRequest(url.toString(), {
           method: "GET",
-          headers: {
-            Authorization: token ? `Bearer ${token}` : "",
-          },
         });
 
         if (res.ok) {
@@ -246,7 +244,7 @@ function HomeContent() {
         headers["Authorization"] = `Bearer ${token}`;
       }
 
-      const res = await fetch(`${BACKEND_URL}/api/v1/search/recommend`, {
+      const res = await makeAuthenticatedRequest(`${BACKEND_URL}/api/v1/search/recommend`, {
         method: "POST",
         headers,
         signal: controller.signal,

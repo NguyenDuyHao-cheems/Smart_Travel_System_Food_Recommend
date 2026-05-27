@@ -113,3 +113,41 @@ def test_sign_up_missing_body_returns_422(client: TestClient):
     resp = client.post(SIGN_UP_URL)
     assert resp.status_code == 422
 
+def test_refresh_token_success(client: TestClient):
+    username = f"user_{uuid.uuid4().hex[:8]}"
+    payload = {"username": username, "password": "strongpass123"}
+    # Đăng ký và Đăng nhập để lấy refresh_token từ cookie
+    client.post(SIGN_UP_URL, json=payload)
+    resp = client.post(SIGN_IN_URL, json=payload)
+    
+    # Lấy refresh_token từ cookies của TestClient
+    refresh_token = client.cookies.get("refresh_token")
+    assert refresh_token is not None, "refresh_token cookie should be set"
+    
+    # Gọi refresh
+    refresh_resp = client.post("/api/v1/users/refresh")
+    assert refresh_resp.status_code == 200
+    body = refresh_resp.json()
+    assert "access_token" in body
+    assert body["username"] == username
+
+def test_refresh_token_missing_returns_401(client: TestClient):
+    client.cookies.clear()
+    refresh_resp = client.post("/api/v1/users/refresh")
+    assert refresh_resp.status_code == 401
+
+def test_sign_out_clears_cookie(client: TestClient):
+    username = f"user_{uuid.uuid4().hex[:8]}"
+    payload = {"username": username, "password": "strongpass123"}
+    client.post(SIGN_UP_URL, json=payload)
+    client.post(SIGN_IN_URL, json=payload)
+    
+    assert client.cookies.get("refresh_token") is not None
+    
+    signout_resp = client.post("/api/v1/users/sign_out")
+    assert signout_resp.status_code == 200
+    
+    # FastAPI deletes a cookie by setting it to empty string/expired
+    cookie_value = client.cookies.get("refresh_token")
+    # Tùy thuộc vào TestClient implementation, giá trị có thể là "" hoặc bị xoá khỏi jar
+    assert not cookie_value or cookie_value == '""'
