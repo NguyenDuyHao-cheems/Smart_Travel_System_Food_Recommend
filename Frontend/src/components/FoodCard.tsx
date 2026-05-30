@@ -12,6 +12,7 @@ import { useRouter } from "next/navigation";
 import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "../store";
 import { addItem, removeItem } from "../store/slices/itinerarySlice";
+import { translateRecommendationReason, translateRestaurantTag } from "../lib/recommendationText";
 
 import { useLanguage } from "./LanguageProvider";
 
@@ -34,23 +35,6 @@ export function FoodCard({ item, userId, onRemove, showRemove, showAddCollection
   const dispatch = useDispatch();
   const itineraryItems = useSelector((state: RootState) => state.itinerary?.items || []);
   const isInItinerary = itineraryItems.some(i => i.id === item.id);
-
-  const translateReason = (reason: string): string => {
-    if (language !== 'en') return reason;
-    return reason
-      .replace(/Đánh giá xuất sắc/g, 'Excellent rating')
-      .replace(/Đánh giá cao/g, 'Highly rated')
-      .replace(/Nhà hàng xuất sắc/g, 'Top restaurant')
-      .replace(/Rất gần bạn/g, 'Very close to you')
-      .replace(/Gần bạn/g, 'Near you')
-      .replace(/Rất gần nhóm/g, 'Very close to group')
-      .replace(/Gần nhóm/g, 'Near group')
-      .replace(/Gợi ý cho bạn/g, 'Recommended for you')
-      .replace(/Quán ngọn phù hợp/g, 'Great match')
-      .replace(/Phù hợp với nhóm/g, 'Great fit for group')
-      .replace(/Quán ăn nổi bật/g, 'Trending restaurant')
-      .replace(/Thịnh Hành/g, 'Trending');
-  };
 
   React.useEffect(() => {
     if (userId) {
@@ -223,7 +207,7 @@ export function FoodCard({ item, userId, onRemove, showRemove, showAddCollection
         <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between pointer-events-none">
           {item.match && (
             <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-brand text-white whitespace-nowrap">
-              ⭐ {/^\d+%?$/.test(item.match) ? `${item.match} Match` : item.match}
+              ⭐ {/^\d+%?$/.test(item.match) ? `${item.match} Match` : translateRecommendationReason(item.match, language)}
             </span>
           )}
           {item.dist && (
@@ -245,14 +229,14 @@ export function FoodCard({ item, userId, onRemove, showRemove, showAddCollection
         )}
         {item.reason && (
           <p className="text-xs text-gray-500 dark:text-[#9A8A7A] leading-relaxed mb-3 line-clamp-2 flex-1">
-            {translateReason(item.reason)}
+            {translateRecommendationReason(item.reason, language)}
           </p>
         )}
         {item.tags && item.tags.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mt-auto pt-2">
             {item.tags.map(tag => (
               <span key={tag} className="px-2 py-1 rounded-full text-[10px] font-medium bg-gray-100 dark:bg-[#4D3D32] text-gray-600 dark:text-[#C8BFB0]">
-                {tag}
+                {translateRestaurantTag(tag, language)}
               </span>
             ))}
           </div>

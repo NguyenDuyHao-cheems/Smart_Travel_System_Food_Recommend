@@ -3,8 +3,8 @@
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Bell, HelpCircle } from 'lucide-react';
-import { ThemeToggle } from '../ThemeToggle';
 import { UserDropdown } from '../UserDropdown';
+import { useLanguage } from '../LanguageProvider';
 
 interface HeaderProps {
   showBack?: boolean;
@@ -15,6 +15,7 @@ interface HeaderProps {
 
 export function Header({ showBack = false, backPath, username, avatar }: HeaderProps) {
   const router = useRouter();
+  const { t } = useLanguage();
 
   const handleBack = () => {
     if (backPath) {
@@ -34,22 +35,22 @@ export function Header({ showBack = false, backPath, username, avatar }: HeaderP
             className="flex items-center gap-2 px-4 py-2 rounded-full border border-gray-200 dark:border-[#4D3D32] bg-white dark:bg-[#3D312A] text-sm font-medium text-gray-700 dark:text-[#C8BFB0] hover:bg-gray-50 dark:hover:bg-gray-700 transition-all cursor-pointer shadow-sm"
           >
             <ArrowLeft className="w-4 h-4" />
-            Back
+            {t('simpleHeader.back')}
           </button>
         )}
       </div>
 
-      {/* Right: ThemeToggle */}
+      {/* Right: account controls */}
       <div className="flex items-center gap-4">
         {/* ══════════════════════════════════════════════════════
             Top Bar Buttons
             ══════════════════════════════════════════════════════ */}
-        <button className="relative w-9 h-9 rounded-full flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer">
+        <button aria-label={t('simpleHeader.notifications')} className="relative w-9 h-9 rounded-full flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer">
           <Bell className="w-[18px] h-[18px] text-gray-500 dark:text-[#9A8A7A]" />
         </button>
         <button className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-[#9A8A7A] hover:text-gray-700 dark:hover:text-gray-200 transition-colors cursor-pointer">
           <HelpCircle className="w-[18px] h-[18px]" />
-          <span className="font-medium">Hỗ trợ</span>
+          <span className="font-medium">{t('simpleHeader.support')}</span>
         </button>
         <UserDropdown username={username} avatar={avatar} />
       </div>

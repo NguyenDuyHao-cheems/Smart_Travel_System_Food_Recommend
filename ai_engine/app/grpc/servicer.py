@@ -33,8 +33,11 @@ class AIServiceServicer(ai_service_pb2_grpc.AIServiceServicer):
         try:
             # Step 1: LLM clean query
             cleaned_query = await clean_query_with_gemini(request.text)
-            print("request.text", request.text)
-            print("cleaned_query", cleaned_query)
+            logger.debug(
+                "gRPC extract intent input=%s cleaned_query=%s",
+                ascii(request.text),
+                ascii(cleaned_query),
+            )
             # Step 2: Generate PhoBERT embedding
             vector = await asyncio.to_thread(generate_mean_pooled_embedding, cleaned_query)
             return ai_service_pb2.ExtractIntentResponse(

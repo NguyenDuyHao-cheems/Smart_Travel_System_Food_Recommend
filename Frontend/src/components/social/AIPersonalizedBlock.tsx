@@ -1,6 +1,10 @@
+'use client';
+
 import React from 'react';
 import { Sparkles, MapPin } from 'lucide-react';
 import Link from 'next/link';
+import { useLanguage } from '../LanguageProvider';
+import { translateRecommendationReason } from '../../lib/recommendationText';
 
 interface AIPersonalizedBlockProps {
   restaurant: {
@@ -14,6 +18,7 @@ interface AIPersonalizedBlockProps {
 }
 
 export function AIPersonalizedBlock({ restaurant }: AIPersonalizedBlockProps) {
+  const { t, language } = useLanguage();
   if (!restaurant) return null;
 
   return (
@@ -25,7 +30,7 @@ export function AIPersonalizedBlock({ restaurant }: AIPersonalizedBlockProps) {
         <div className="w-8 h-8 rounded-full bg-brand/20 flex items-center justify-center">
           <Sparkles className="w-4 h-4 text-brand animate-pulse" />
         </div>
-        <h3 className="font-bold text-foreground text-sm tracking-tight">AI gợi ý cho bạn</h3>
+        <h3 className="font-bold text-foreground text-sm tracking-tight">{t('aiPersonalized.title')}</h3>
       </div>
       
       <div className="space-y-3 relative z-10">
@@ -40,12 +45,12 @@ export function AIPersonalizedBlock({ restaurant }: AIPersonalizedBlockProps) {
           </div>
           
           {restaurant.reason && (
-             <p className="text-xs text-muted-foreground line-clamp-2 mt-2 italic">"{restaurant.reason}"</p>
+             <p className="text-xs text-muted-foreground line-clamp-2 mt-2 italic">"{translateRecommendationReason(restaurant.reason, language)}"</p>
           )}
         </div>
         
         <Link href={`/restaurant/${restaurant.id}`} className="block w-full py-2 bg-brand text-white text-center rounded-lg text-xs font-bold shadow-sm shadow-brand/30 hover:bg-brand/90 hover:scale-[1.02] transition-all">
-          Xem chi tiết
+          {t('aiPersonalized.viewDetails')}
         </Link>
       </div>
     </div>

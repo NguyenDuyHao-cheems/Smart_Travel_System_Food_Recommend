@@ -377,7 +377,9 @@ export default function NewspaperMenu() {
             {t("newspaper.empty")}
           </h3>
           <p className="text-sm italic text-[#3D312A]/80 dark:text-[#E6DFD5]/80 max-w-md">
-            {menu.message || (language === 'en' ? "No suitable restaurants found within your search radius." : "Không tìm thấy quán ăn nào phù hợp trong bán kính hoạt động quanh vị trí của bạn.")}
+            {language === 'en'
+              ? "No suitable restaurants found within your search radius."
+              : (menu.message || "Không tìm thấy quán ăn nào phù hợp trong bán kính hoạt động quanh vị trí của bạn.")}
           </p>
           <p className="text-xs font-mono text-[#3D312A]/60 dark:text-[#E6DFD5]/60 mt-4">
             {t("newspaper.gpsHint")}

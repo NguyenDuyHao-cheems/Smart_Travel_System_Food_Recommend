@@ -81,12 +81,35 @@ const RESTAURANT_COPY = {
     addItineraryTitle: "Thêm vào lộ trình",
     removeItinerary: "Xóa lộ trình",
     itinerary: "Lộ trình",
+    removedItineraryToast: "Đã xóa khỏi lộ trình",
+    addedItineraryToast: "Đã thêm vào lộ trình",
+    viewItinerary: "Xem",
     allergyNote: "Lưu ý dị ứng của bạn",
     noMenu: "Chưa có thực đơn",
     updating: "Đang cập nhật",
     openNow: "Đang mở cửa",
     comments: "Bình luận",
     reviews: "Đánh giá",
+    reviewsCount: "{count} đánh giá",
+    directionsNow: "Chỉ đường ngay",
+    allergyCountWarning: "Nhà hàng này có {count} món chứa thành phần bạn bị dị ứng",
+    contains: "Chứa:",
+    safeMenuNotice: "Các món còn lại trong thực đơn an toàn để bạn thưởng thức.",
+    featuredMenu: "Thực đơn nổi bật",
+    dishDescription: "Hương vị đậm đà, tươi ngon",
+    allergyBadge: "⚠️ Dị ứng",
+    safeBadge: "✅ An toàn",
+    noMenuDescription: "Quán ăn này hiện chưa cung cấp danh sách món ăn chi tiết trên hệ thống. Bạn có thể đến trực tiếp để khám phá nhé!",
+    generalInfo: "Thông tin chung",
+    openingHours: "Giờ mở cửa",
+    closed: "Đã đóng cửa",
+    categories: "Phân loại",
+    anonymous: "Ẩn danh",
+    viewDetails: "Xem chi tiết",
+    viewAllComments: "Xem tất cả bình luận →",
+    restaurantLocation: "Vị trí nhà hàng",
+    enlargeMap: "Phóng to bản đồ",
+    recent: "Gần đây",
     noContent: "Không có nội dung.",
     noComments: "Chưa có bình luận nào.",
     map: "Bản đồ",
@@ -124,12 +147,35 @@ const RESTAURANT_COPY = {
     addItineraryTitle: "Add to itinerary",
     removeItinerary: "Remove route",
     itinerary: "Itinerary",
+    removedItineraryToast: "Removed from itinerary",
+    addedItineraryToast: "Added to itinerary",
+    viewItinerary: "View",
     allergyNote: "Your allergy note",
     noMenu: "No menu yet",
     updating: "Updating",
     openNow: "Open now",
     comments: "Comments",
     reviews: "Reviews",
+    reviewsCount: "{count} reviews",
+    directionsNow: "Get directions",
+    allergyCountWarning: "This restaurant has {count} dishes containing your allergens",
+    contains: "Contains:",
+    safeMenuNotice: "The remaining dishes on the menu are safe for you to enjoy.",
+    featuredMenu: "Featured menu",
+    dishDescription: "Rich, fresh flavor",
+    allergyBadge: "⚠️ Allergen",
+    safeBadge: "✅ Safe",
+    noMenuDescription: "This restaurant has not provided detailed menu items yet. Visit in person to explore its dishes.",
+    generalInfo: "General information",
+    openingHours: "Opening hours",
+    closed: "Closed",
+    categories: "Categories",
+    anonymous: "Anonymous",
+    viewDetails: "View details",
+    viewAllComments: "View all comments →",
+    restaurantLocation: "Restaurant location",
+    enlargeMap: "Enlarge map",
+    recent: "Recently",
     noContent: "No content.",
     noComments: "No comments yet.",
     map: "Map",
@@ -183,7 +229,7 @@ export default function RestaurantDetailPage() {
     if (!restaurant) return;
     if (isInItinerary) {
       dispatch(removeItem(restaurant.id));
-      toast.success('Đã xóa khỏi lộ trình');
+      toast.success(copy.removedItineraryToast);
     } else {
       dispatch(addItem({
         id: restaurant.id,
@@ -196,9 +242,9 @@ export default function RestaurantDetailPage() {
         price: restaurant.price_range || undefined,
         google_maps_url: restaurant.google_maps_url
       }));
-      toast.success('Đã thêm vào lộ trình', {
+      toast.success(copy.addedItineraryToast, {
         action: {
-          label: 'Xem',
+          label: copy.viewItinerary,
           onClick: () => router.push('/itinerary')
         }
       });
@@ -478,7 +524,7 @@ export default function RestaurantDetailPage() {
                       : copy.noRating}
                     {restaurant.total_reviews > 0 && (
                       <span className="font-normal text-gray-200 ml-1">
-                        ({restaurant.total_reviews} đánh giá)
+                        ({copy.reviewsCount.replace("{count}", String(restaurant.total_reviews))})
                       </span>
                     )}
                   </span>
@@ -520,7 +566,7 @@ export default function RestaurantDetailPage() {
                   className="flex-1 md:flex-none flex items-center justify-center gap-2 px-8 py-4 bg-brand hover:bg-brand-hover text-white font-bold rounded-2xl shadow-xl shadow-brand/20 transition-all transform hover:-translate-y-1"
                 >
                   <Navigation className="w-5 h-5" />
-                  Chỉ đường ngay
+                  {copy.directionsNow}
                 </button>
                 <button
                   onClick={toggleItinerary}
@@ -549,7 +595,7 @@ export default function RestaurantDetailPage() {
                       </div>
                       <div className="text-left">
                         <h2 className="text-lg font-bold text-amber-900 dark:text-amber-200">{copy.allergyNote}</h2>
-                        <p className="text-sm text-amber-700 dark:text-amber-400">Nhà hàng này có {dishesWithAllergens.length} món chứa thành phần bạn bị dị ứng</p>
+                        <p className="text-sm text-amber-700 dark:text-amber-400">{copy.allergyCountWarning.replace("{count}", String(dishesWithAllergens.length))}</p>
                       </div>
                     </div>
                     <ChevronRight className={`w-5 h-5 text-amber-500 transition-transform ${isAllergenSectionOpen ? 'rotate-90' : ''}`} />
@@ -571,7 +617,7 @@ export default function RestaurantDetailPage() {
                                 <span className="font-bold">{d.name}</span>
                                 <span className="text-gray-400 mx-2">→</span>
                                 <span className="text-amber-600 dark:text-amber-400 font-medium">
-                                  Chứa: {d.matchedAllergies.join(", ")}
+                                  {copy.contains} {d.matchedAllergies.join(", ")}
                                 </span>
                               </p>
                             </div>
@@ -579,7 +625,7 @@ export default function RestaurantDetailPage() {
                           <div className="mt-4 p-3 bg-green-50 dark:bg-green-500/10 rounded-xl flex items-center gap-2">
                             <ShieldCheck className="w-4 h-4 text-green-600 dark:text-green-500" />
                             <p className="text-xs text-green-700 dark:text-green-400 font-medium">
-                              Các món còn lại trong thực đơn an toàn để bạn thưởng thức.
+                              {copy.safeMenuNotice}
                             </p>
                           </div>
                         </div>
@@ -595,7 +641,7 @@ export default function RestaurantDetailPage() {
                   <div className="p-2 bg-brand-muted dark:bg-brand/20 rounded-lg">
                     <UtensilsCrossed className="w-6 h-6 text-brand dark:text-[#E8735A]" />
                   </div>
-                  <h2 className="text-2xl font-bold text-gray-900 dark:text-[#E6DFD5]">Thực đơn nổi bật</h2>
+                  <h2 className="text-2xl font-bold text-gray-900 dark:text-[#E6DFD5]">{copy.featuredMenu}</h2>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -624,14 +670,14 @@ export default function RestaurantDetailPage() {
                                 {dish.name}
                               </h3>
                               <div className="flex items-center gap-2 mt-1">
-                                <p className="text-xs text-gray-400 line-clamp-1">Hương vị đậm đà, tươi ngon</p>
+                                <p className="text-xs text-gray-400 line-clamp-1">{copy.dishDescription}</p>
                                 {getMatchedAllergies(dish.allergens).length > 0 ? (
                                   <span className="flex-shrink-0 px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400 text-[10px] font-bold border border-red-200 dark:border-red-500/30">
-                                    ⚠️ Dị ứng
+                                    {copy.allergyBadge}
                                   </span>
                                 ) : (
                                   <span className="flex-shrink-0 px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-500/10 text-green-600 dark:text-green-400 text-[10px] font-bold border border-green-200 dark:border-green-500/20">
-                                    ✅ An toàn
+                                    {copy.safeBadge}
                                   </span>
                                 )}
                               </div>
@@ -650,7 +696,7 @@ export default function RestaurantDetailPage() {
                       </div>
                       <h4 className="text-lg font-bold text-gray-800 dark:text-[#E6DFD5] mb-2">{copy.noMenu}</h4>
                       <p className="text-sm text-gray-500 max-w-sm">
-                        Quán ăn này hiện chưa cung cấp danh sách món ăn chi tiết trên hệ thống. Bạn có thể đến trực tiếp để khám phá nhé!
+                        {copy.noMenuDescription}
                       </p>
                     </div>
                   )}
@@ -665,13 +711,13 @@ export default function RestaurantDetailPage() {
               <div className="bg-white dark:bg-[#3D312A] p-6 rounded-3xl shadow-sm border border-gray-100 dark:border-[#4D3D32]">
                 <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-gray-900 dark:text-[#E6DFD5]">
                   <Info className="w-5 h-5 text-brand dark:text-[#E8735A]" />
-                  Thông tin chung
+                  {copy.generalInfo}
                 </h3>
                 <div className="space-y-5">
                   <div className="flex items-start gap-3">
                     <Clock className="w-5 h-5 text-gray-400 mt-0.5 flex-shrink-0" />
                     <div className="flex-1">
-                      <p className="text-sm font-semibold text-gray-700 dark:text-[#C8BFB0]">Giờ mở cửa</p>
+                      <p className="text-sm font-semibold text-gray-700 dark:text-[#C8BFB0]">{copy.openingHours}</p>
                       <div className="flex items-center gap-2 mt-1">
                         <p className="text-xs text-gray-500">
                           {restaurant.open_time && restaurant.close_time
@@ -684,7 +730,7 @@ export default function RestaurantDetailPage() {
                           </span>
                         ) : (
                           <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400">
-                            Đã đóng cửa
+                            {copy.closed}
                           </span>
                         )}
                       </div>
@@ -695,11 +741,11 @@ export default function RestaurantDetailPage() {
                     <div className="flex items-start gap-3 pt-4 border-t border-gray-100 dark:border-[#4D3D32]">
                       <UtensilsCrossed className="w-5 h-5 text-gray-400 mt-0.5 flex-shrink-0" />
                       <div>
-                        <p className="text-sm font-semibold text-gray-700 dark:text-[#C8BFB0] mb-2">Phân loại</p>
+                        <p className="text-sm font-semibold text-gray-700 dark:text-[#C8BFB0] mb-2">{copy.categories}</p>
                         <div className="flex flex-wrap gap-2">
                           {restaurant.tags.map((tag, i) => (
                             <span key={i} className="px-3 py-1 text-[11px] font-bold uppercase tracking-wider bg-brand-muted dark:bg-brand/10 text-brand-hover dark:text-[#E6DFD5] rounded-full border border-brand-muted dark:border-brand/20">
-                              {tag}
+                              {translateRestaurantTag(tag, language)}
                             </span>
                           ))}
                         </div>
@@ -729,7 +775,7 @@ export default function RestaurantDetailPage() {
                   {reviews.slice(0, 3).map((review, idx) => (
                     <div key={review.id || idx} className="bg-gray-50 dark:bg-[#2A2420] p-3 rounded-2xl border border-gray-100 dark:border-[#4D3D32]">
                       <div className="flex justify-between items-start mb-1">
-                        <p className="font-bold text-[11px] text-gray-800 dark:text-[#E6DFD5] line-clamp-1">{review.reviewer_name || 'Ẩn danh'}</p>
+                        <p className="font-bold text-[11px] text-gray-800 dark:text-[#E6DFD5] line-clamp-1">{review.reviewer_name || copy.anonymous}</p>
                         <div className="flex items-center gap-1.5">
                           <div className="flex items-center gap-0.5">
                             <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />
@@ -740,12 +786,12 @@ export default function RestaurantDetailPage() {
                               interactionService.logInteraction({
                                 res_id: restaurant.id,
                                 action_type: "VIEW_REVIEW_DETAIL",
-                                metadata: { review_id: review.id, reviewer_name: review.reviewer_name || 'Ẩn danh', source: "sidebar_comment_eye" }
+                                metadata: { review_id: review.id, reviewer_name: review.reviewer_name || copy.anonymous, source: "sidebar_comment_eye" }
                               });
                               setSelectedReview(review);
                             }}
                             className="p-1 rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-[#3D312A] hover:text-brand transition-colors"
-                            title="Xem chi tiết"
+                            title={copy.viewDetails}
                           >
                             <Eye className="w-3 h-3" />
                           </button>
@@ -766,7 +812,7 @@ export default function RestaurantDetailPage() {
                 </div>
                 {reviews.length > 0 && (
                   <button onClick={() => setIsAllReviewsOpen(true)} className="w-full mt-3 text-xs font-semibold text-brand hover:underline text-center">
-                    Xem tất cả bình luận →
+                    {copy.viewAllComments}
                   </button>
                 )}
               </div>
@@ -775,7 +821,7 @@ export default function RestaurantDetailPage() {
               <div className="bg-white dark:bg-[#3D312A] p-6 rounded-3xl shadow-sm border border-gray-100 dark:border-[#4D3D32]">
                 <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-gray-900 dark:text-[#E6DFD5]">
                   <MapPin className="w-5 h-5 text-blue-500" />
-                  Vị trí nhà hàng
+                  {copy.restaurantLocation}
                 </h3>
                 <div
                   className="w-full h-[300px] rounded-2xl overflow-hidden border border-gray-200 dark:border-[#4D3D32] shadow-inner bg-gray-200 dark:bg-[#3D312A] relative group cursor-pointer"
@@ -785,7 +831,7 @@ export default function RestaurantDetailPage() {
                   <div className="absolute inset-0 z-10 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
                     <div className="opacity-0 group-hover:opacity-100 bg-white dark:bg-[#3D312A] px-4 py-2 rounded-full font-bold text-sm shadow-lg transition-opacity flex items-center gap-2 text-gray-800 dark:text-[#E6DFD5]">
                       <MapPin className="w-4 h-4 text-brand dark:text-[#E8735A]" />
-                      Phóng to bản đồ
+                      {copy.enlargeMap}
                     </div>
                   </div>
                   {/* Bản đồ không còn lớp phủ mờ, hiển thị sắc nét 100% */}
@@ -798,8 +844,8 @@ export default function RestaurantDetailPage() {
                     referrerPolicy="no-referrer-when-downgrade"
                     src={
                       restaurant.lat && restaurant.lng
-                        ? `https://maps.google.com/maps?q=${restaurant.lat},${restaurant.lng}&hl=vi&z=16&output=embed`
-                        : `https://maps.google.com/maps?q=${encodeURIComponent(restaurant.address)}&hl=vi&z=16&output=embed`
+                        ? `https://maps.google.com/maps?q=${restaurant.lat},${restaurant.lng}&hl=${language}&z=16&output=embed`
+                        : `https://maps.google.com/maps?q=${encodeURIComponent(restaurant.address)}&hl=${language}&z=16&output=embed`
                     }
                   ></iframe>
 
@@ -1048,8 +1094,8 @@ function AllReviewsModal({ restaurantId, restaurantName, reviews, currentUserId,
                     {(review.reviewer_name || 'A').charAt(0).toUpperCase()}
                   </div>
                   <div>
-                    <p className="font-bold text-sm text-gray-900 dark:text-[#E6DFD5]">{review.reviewer_name || 'Ẩn danh'}</p>
-                    <p className="text-xs text-gray-400">{review.date || 'Gần đây'}</p>
+                    <p className="font-bold text-sm text-gray-900 dark:text-[#E6DFD5]">{review.reviewer_name || copy.anonymous}</p>
+                    <p className="text-xs text-gray-400">{review.date || copy.recent}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">

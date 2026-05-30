@@ -449,7 +449,7 @@ export default function GroupRecommendPage() {
                       <div className="flex justify-between text-[10px] text-gray-400 dark:text-[#9A8A7A] px-0.5">
                         <span>10k đ</span>
                         <span>500k đ</span>
-                        <span>1tr đ</span>
+                        <span>{language === "en" ? "1M ₫" : "1tr đ"}</span>
                       </div>
                       
                       {/* Quick select presets */}

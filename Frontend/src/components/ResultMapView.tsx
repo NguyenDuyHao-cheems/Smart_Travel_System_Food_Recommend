@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { LocateFixed, Minus, Plus, Radius, Utensils, Star } from 'lucide-react';
 import type { RecommendResult } from '../app/result/page';
 import { useLanguage } from './LanguageProvider';
+import { translateRecommendationReason } from '../lib/recommendationText';
 
 export interface MapViewport {
   centerLat: number;
@@ -65,13 +66,6 @@ function getCleanRating(ratingStr: string | undefined) {
   const parsed = parseFloat(cleanStr);
   if (isNaN(parsed)) return '—';
   return parsed.toFixed(1);
-}
-
-function translateMapReason(reason: string, language: 'vi' | 'en') {
-  if (language !== 'en') return reason;
-  return reason
-    .replace(/Đánh giá xuất sắc/g, 'Excellent rating')
-    .replace(/Đánh giá cao/g, 'Highly rated');
 }
 
 export function ResultMapView({
@@ -563,7 +557,7 @@ export function ResultMapView({
                   </span>
                   {item.reason && (
                     <p className="mt-1 text-[10px] text-gray-400 dark:text-[#7A6A5A] line-clamp-2 leading-relaxed">
-                      {translateMapReason(item.reason, language)}
+                      {translateRecommendationReason(item.reason, language)}
                     </p>
                   )}
                 </div>

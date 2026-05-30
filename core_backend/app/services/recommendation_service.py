@@ -5,7 +5,7 @@ from typing import Optional, List
 
 from sqlalchemy.orm import Session
 
-from app.services.user_services import get_user_allergies, get_user_preferences_vector
+from app.services.user_services import get_user_recommendation_context
 from app.services.allergy_filter import (
     handle_fallback, 
     fetch_allergy_data, annotate_allergy
@@ -41,12 +41,15 @@ async def recommend(
       2. Allergy filter loại bỏ món không an toàn.
       3. Trả về danh sách res_id đã sắp xếp.
     """
-    user_allergies = get_user_allergies(db, user_id) if user_id else []
     is_emotion_search = (search_mode or "").lower() == "emotion"
-    user_vector = (
-        None
-        if is_emotion_search
-        else get_user_preferences_vector(db, user_id) if user_id else None
+    user_allergies, user_vector = (
+        get_user_recommendation_context(
+            db,
+            user_id,
+            include_preferences=not is_emotion_search,
+        )
+        if user_id
+        else ([], None)
     )
 
     # Kết hợp vector: ưu tiên query hiện tại (85%) để tránh bị lệch quá nhiều do sở thích user (15%)

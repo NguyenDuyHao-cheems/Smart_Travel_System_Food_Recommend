@@ -11,7 +11,26 @@ interface GeolocationState {
   isLoading: boolean;
 }
 
-export function useGeolocation() {
+type Language = 'vi' | 'en';
+
+const GEOLOCATION_ERRORS = {
+  vi: {
+    unsupported: 'Trình duyệt của bạn không hỗ trợ Geolocation API.',
+    unknown: 'Không thể lấy được vị trí hiện tại.',
+    denied: 'Bạn đã từ chối yêu cầu truy cập vị trí. Vui lòng cho phép để tiếp tục.',
+    unavailable: 'Thông tin vị trí không khả dụng. Vui lòng kiểm tra cài đặt GPS.',
+    timeout: 'Yêu cầu lấy vị trí bị quá thời gian (Timeout). Hãy thử lại hoặc kiểm tra kết nối mạng.',
+  },
+  en: {
+    unsupported: 'Your browser does not support the Geolocation API.',
+    unknown: 'Unable to get your current location.',
+    denied: 'Location access was denied. Please allow it to continue.',
+    unavailable: 'Location information is unavailable. Please check your GPS settings.',
+    timeout: 'Location request timed out. Please try again or check your network connection.',
+  },
+};
+
+export function useGeolocation(language: Language = 'vi') {
   const [state, setState] = useState<GeolocationState>({
     location: null,
     error: null,
@@ -19,12 +38,13 @@ export function useGeolocation() {
   });
 
   const getLocation = useCallback(() => {
+    const copy = GEOLOCATION_ERRORS[language];
     setState({ location: null, isLoading: true, error: null });
 
     if (!navigator.geolocation) {
       setState({
         location: null,
-        error: 'Trình duyệt của bạn không hỗ trợ Geolocation API.',
+        error: copy.unsupported,
         isLoading: false,
       });
       return;
@@ -69,16 +89,16 @@ export function useGeolocation() {
     };
 
     const handleFinalError = (error: GeolocationPositionError) => {
-      let errorMessage = 'Không thể lấy được vị trí hiện tại.';
+      let errorMessage = copy.unknown;
       switch (error.code) {
         case error.PERMISSION_DENIED:
-          errorMessage = 'Bạn đã từ chối yêu cầu truy cập vị trí. Vui lòng cho phép để tiếp tục.';
+          errorMessage = copy.denied;
           break;
         case error.POSITION_UNAVAILABLE:
-          errorMessage = 'Thông tin vị trí không khả dụng. Vui lòng kiểm tra cài đặt GPS.';
+          errorMessage = copy.unavailable;
           break;
         case error.TIMEOUT:
-          errorMessage = 'Yêu cầu lấy vị trí bị quá thời gian (Timeout). Hãy thử lại hoặc kiểm tra kết nối mạng.';
+          errorMessage = copy.timeout;
           break;
       }
       setState({
@@ -89,7 +109,7 @@ export function useGeolocation() {
     };
 
     navigator.geolocation.getCurrentPosition(handleSuccess, handleError, options);
-  }, []);
+  }, [language]);
 
   return { ...state, getLocation };
 }

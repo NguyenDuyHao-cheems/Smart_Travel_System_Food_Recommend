@@ -7,9 +7,11 @@ echo ==========================================================
 
 :: 1. Check Python virtual environment
 set "PIP_CMD=pip"
+set "PYTHON_CMD=python"
 if exist "venv\Scripts\pip.exe" (
     echo [OK] Found virtual environment. Using venv's pip.
     set "PIP_CMD=venv\Scripts\pip.exe"
+    set "PYTHON_CMD=venv\Scripts\python.exe"
 ) else (
     echo [INFO] No virtual environment (venv) found in current directory. Using system pip.
 )
@@ -74,13 +76,58 @@ if exist "%SDK_DIR%" (
 )
 
 :RUN_PIP
-echo [INFO] Running pip install...
-"%PIP_CMD%" install -r requirements.txt
+:: 4. Select a PyTorch build compatible with the available NVIDIA driver.
+:: CUDA wheels bundle their runtime; a local CUDA Toolkit installation is not required.
+set "TORCH_INDEX_URL=https://download.pytorch.org/whl/cpu"
+set "TORCH_TARGET=CPU"
+set "CUDA_VERSION="
+set "CUDA_MAJOR=0"
+set "CUDA_MINOR=0"
 
+where nvidia-smi >nul 2>&1
 if %ERRORLEVEL% equ 0 (
-    echo [OK] Installation completed successfully!
-) else (
-    echo [ERROR] Installation failed.
-    echo Tip: Try running in Docker (docker compose up --build -d) or WSL to avoid Windows C++ compilation issues.
+    for /f "tokens=9" %%c in ('nvidia-smi ^| findstr /C:"CUDA Version"') do set "CUDA_VERSION=%%c"
+    for /f "tokens=1,2 delims=." %%m in ("!CUDA_VERSION!") do (
+        set "CUDA_MAJOR=%%m"
+        set "CUDA_MINOR=%%n"
+    )
+    if !CUDA_MAJOR! EQU 11 if !CUDA_MINOR! GEQ 8 (
+        set "TORCH_INDEX_URL=https://download.pytorch.org/whl/cu118"
+        set "TORCH_TARGET=NVIDIA GPU (CUDA 11.8 wheel)"
+    )
+    if !CUDA_MAJOR! EQU 12 if !CUDA_MINOR! LSS 6 (
+        set "TORCH_INDEX_URL=https://download.pytorch.org/whl/cu118"
+        set "TORCH_TARGET=NVIDIA GPU (CUDA 11.8 wheel for pre-12.6 driver)"
+    )
+    if !CUDA_MAJOR! EQU 12 if !CUDA_MINOR! GEQ 6 (
+        set "TORCH_INDEX_URL=https://download.pytorch.org/whl/cu126"
+        set "TORCH_TARGET=NVIDIA GPU (CUDA 12.6 wheel)"
+    )
+    if !CUDA_MAJOR! GEQ 13 (
+        set "TORCH_INDEX_URL=https://download.pytorch.org/whl/cu126"
+        set "TORCH_TARGET=NVIDIA GPU (CUDA 12.6 wheel compatible with CUDA 13 driver)"
+    )
 )
+
+echo [INFO] PyTorch target: !TORCH_TARGET!
+if defined CUDA_VERSION echo [INFO] NVIDIA driver reports CUDA capability: !CUDA_VERSION!
+if "!TORCH_TARGET!"=="CPU" echo [INFO] No supported NVIDIA CUDA runtime detected. AI Engine will run on CPU.
+
+echo [INFO] Installing the selected PyTorch build...
+"%PIP_CMD%" install torch --index-url "!TORCH_INDEX_URL!"
+if %ERRORLEVEL% neq 0 goto INSTALL_FAILED
+
+echo [INFO] Running pip install for remaining dependencies...
+"%PIP_CMD%" install -r requirements.txt
+if %ERRORLEVEL% neq 0 goto INSTALL_FAILED
+
+echo [OK] Installation completed successfully!
+"%PYTHON_CMD%" -c "import torch; print('[INFO] Torch CUDA available:', torch.cuda.is_available()); print('[INFO] Inference device:', torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'CPU')"
+goto END
+
+:INSTALL_FAILED
+echo [ERROR] Installation failed.
+echo Tip: Try running in Docker (docker compose up --build -d) or WSL to avoid Windows C++ compilation issues.
+
+:END
 pause

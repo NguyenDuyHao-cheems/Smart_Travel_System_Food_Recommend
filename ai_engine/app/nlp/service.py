@@ -29,7 +29,7 @@ def generate_mean_pooled_embedding(text: str) -> list[float]:
         
         # Apply Vietnamese word segmentation
         segmented_text = word_tokenize(text, format="text")
-        logger.debug("Original text: %s | Segmented text: %s", text, segmented_text)
+        logger.debug("Original text: %s | Segmented text: %s", ascii(text), ascii(segmented_text))
         
         vector = model.encode(segmented_text).tolist()
 
@@ -40,5 +40,5 @@ def generate_mean_pooled_embedding(text: str) -> list[float]:
         return [float(value) for value in vector]
 
     except Exception as exc:
-        logger.warning("Embedding model unavailable, using fallback vector: %s", exc)
+        logger.warning("Embedding model unavailable, using fallback vector: %s", ascii(str(exc)))
         return _fallback_embedding(text)

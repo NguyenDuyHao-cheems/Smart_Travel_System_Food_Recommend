@@ -181,7 +181,7 @@ export function AppShell({ children, healthStatus = "loading", headerAction }: A
             <button
               onClick={() => setIsLocationModalOpen(true)}
               className="hidden md:max-lg:flex p-2 hover:bg-[#3D312A]/10 dark:hover:bg-[#E6DFD5]/10 rounded transition-colors cursor-pointer flex-shrink-0"
-              title="Nhấp để thay đổi vị trí của bạn"
+              title={t("appshell.locationTitle")}
             >
               <MapPin className={`w-4 h-4 flex-shrink-0 ${
                 !mounted || status === 'success'

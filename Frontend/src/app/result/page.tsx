@@ -44,6 +44,7 @@ import { SortSelector, type SortOption } from '../../components/SortSelector';
 import { AdvancedFilters, type AdvancedFilterState } from '../../components/AdvancedFilters';
 import { ResultMapView, type MapViewport } from '../../components/ResultMapView';
 import { useLanguage } from '../../components/LanguageProvider';
+import { translateRecommendationReason, translateRestaurantTag } from '../../lib/recommendationText';
 
 export interface AllergenDishWarning {
   dish_name: string;
@@ -96,38 +97,6 @@ const DEFAULT_TAG_STYLES = [
   { emoji: '✨', bgLight: 'bg-brand-muted', bgDark: 'dark:bg-brand/10', text: 'text-brand-hover dark:text-[#E6DFD5]', border: 'border-indigo-100 dark:border-indigo-500/20' },
   { emoji: '🌿', bgLight: 'bg-emerald-50', bgDark: 'dark:bg-emerald-500/10', text: 'text-emerald-600 dark:text-emerald-400', border: 'border-emerald-100 dark:border-emerald-500/20' }
 ];
-
-const RESULT_TAG_LABELS_EN: Record<string, string> = {
-  'trà sữa': 'milk tea',
-  'bò': 'beef',
-  'đánh giá cao': 'highly rated',
-  'cao cấp': 'premium',
-  'cà phê': 'coffee',
-  'mở khuya': 'open late',
-  'hải sản': 'seafood',
-  'nướng': 'grill',
-  'gà': 'chicken',
-  'heo': 'pork',
-  'cơm': 'rice',
-  'phở': 'pho',
-  'bún': 'vermicelli',
-  'mì': 'noodles',
-  'lẩu': 'hotpot',
-  'món chay': 'vegetarian',
-  'giá rẻ': 'budget',
-  'tầm trung': 'mid-range',
-};
-
-function translateResultTag(label: string, language: 'vi' | 'en') {
-  return language === 'en' ? RESULT_TAG_LABELS_EN[label.toLowerCase()] || label : label;
-}
-
-function translateResultReason(reason: string, language: 'vi' | 'en') {
-  if (language !== 'en') return reason;
-  return reason
-    .replace(/Đánh giá xuất sắc/g, 'Excellent rating')
-    .replace(/Đánh giá cao/g, 'Highly rated');
-}
 
 const TAG_EMOJI_MAP: Record<string, string> = {
   'gà': '🍗', 'bò': '🥩', 'heo': '🐷',
@@ -313,7 +282,7 @@ function HeroResultCard({ item, sessionId, searchMode, onAddCollection, isModalO
                 ? 'bg-green-500 text-white'
                 : 'bg-brand-muted dark:bg-brand/15 text-brand-hover dark:text-[#E6DFD5]'
             }`}>
-              🤖 {/^\d+%?$/.test(item.match) ? `${item.match} Match` : item.match}
+              🤖 {/^\d+%?$/.test(item.match) ? `${item.match} Match` : translateRecommendationReason(item.match, language)}
             </span>
             {item.allergen_warning && item.allergen_warning.length > 0 && (
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-500/30">
@@ -350,14 +319,14 @@ function HeroResultCard({ item, sessionId, searchMode, onAddCollection, isModalO
 
           {item.reason && (
             <p className="text-sm text-gray-500 dark:text-[#9A8A7A] leading-relaxed mb-6 max-w-md">
-              {translateResultReason(item.reason, language)}
+              {translateRecommendationReason(item.reason, language)}
             </p>
           )}
 
           <div className="flex flex-wrap gap-2">
             {getTagsForItem(item, 0).map(tag => (
               <span key={tag.label} className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium ${tag.bgLight} ${tag.bgDark} ${tag.text} border ${tag.border}`}>
-                {tag.emoji} {translateResultTag(tag.label, language)}
+                {tag.emoji} {translateRestaurantTag(tag.label, language)}
               </span>
             ))}
           </div>
@@ -584,7 +553,7 @@ function SmallResultCard({ item, index, rank, sessionId, searchMode, onAddCollec
 
         <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between">
           <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold ${matchColor} text-white whitespace-nowrap`}>
-            🤖 {/^\d+%?$/.test(item.match) ? `${item.match} Match` : item.match}
+            🤖 {/^\d+%?$/.test(item.match) ? `${item.match} Match` : translateRecommendationReason(item.match, language)}
           </span>
           {item.allergen_warning && item.allergen_warning.length > 0 && (
             <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-500 text-white shadow-sm border border-amber-600">
@@ -610,13 +579,13 @@ function SmallResultCard({ item, index, rank, sessionId, searchMode, onAddCollec
         )}
         {item.reason && (
           <p className="text-xs text-gray-500 dark:text-[#9A8A7A] leading-relaxed mb-3 line-clamp-2">
-            {translateResultReason(item.reason, language)}
+            {translateRecommendationReason(item.reason, language)}
           </p>
         )}
         <div className="flex flex-wrap gap-1.5">
           {tags.map(tag => (
             <span key={tag.label} className={`px-2 py-1 rounded-full text-[10px] font-medium ${tag.bgLight} ${tag.bgDark} ${tag.text} border ${tag.border}`}>
-              {tag.emoji} {translateResultTag(tag.label, language)}
+              {tag.emoji} {translateRestaurantTag(tag.label, language)}
             </span>
           ))}
         </div>
@@ -935,8 +904,10 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
 
   const [isSearching, setIsSearching] = useState(false);
   const [searchLoadingMsg, setSearchLoadingMsg] = useState(t('result.loadingAnalyzing'));
+  const [lastSearchElapsedMs, setLastSearchElapsedMs] = useState<number | null>(null);
 
   const abortControllerRef = useRef<AbortController | null>(null);
+  const searchStartedAtRef = useRef<number | null>(null);
   const mapDragRef = useRef(false);
 
   const handleCancelSearch = () => {
@@ -945,7 +916,14 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
       abortControllerRef.current = null;
     }
     setIsSearching(false);
+    searchStartedAtRef.current = null;
   };
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !sessionIdFromUrl) return;
+    const storedElapsed = sessionStorage.getItem(`search_elapsed_ms_${sessionIdFromUrl}`);
+    setLastSearchElapsedMs(storedElapsed ? Number(storedElapsed) : null);
+  }, [sessionIdFromUrl]);
 
   useEffect(() => {
     if (!sessionIdFromUrl) {
@@ -1050,6 +1028,7 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
 
     if (finalQuery === '') return;
 
+    searchStartedAtRef.current = performance.now();
     setIsSearching(true);
     setApiError(null);
 
@@ -1101,6 +1080,10 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
 
       if (res.ok) {
         const data = await res.json();
+        const elapsedMs = searchStartedAtRef.current === null
+          ? null
+          : Math.round(performance.now() - searchStartedAtRef.current);
+        setLastSearchElapsedMs(elapsedMs);
         if (userId) {
           historyService.addHistory(
             userId,
@@ -1116,6 +1099,10 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
         if (typeof window !== 'undefined') {
           sessionStorage.setItem('current_search_session_id', data.session_id);
           sessionStorage.setItem('current_search_mode', searchMode);
+          if (elapsedMs !== null) {
+            sessionStorage.setItem('current_search_elapsed_ms', String(elapsedMs));
+            sessionStorage.setItem(`search_elapsed_ms_${data.session_id}`, String(elapsedMs));
+          }
           sessionStorage.setItem(`session_data_${data.session_id}`, JSON.stringify({
             query: finalQuery,
             results: data.results || [],
@@ -1335,7 +1322,13 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
 
   return (
     <AppShell>
-      {isSearching && <SearchLoadingOverlay message={searchLoadingMsg} onCancel={handleCancelSearch} />}
+      {isSearching && (
+        <SearchLoadingOverlay
+          message={searchLoadingMsg}
+          onCancel={handleCancelSearch}
+          startedAt={searchStartedAtRef.current ?? undefined}
+        />
+      )}
       {mounted && mapFloatingButton}
 
       {!mapViewEnabled && (
@@ -1505,6 +1498,11 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
                     <button onClick={() => router.push('/')} className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-brand transition-colors">
                       <Home className="w-4 h-4" /> {t('result.backHome')}
                     </button>
+                    {lastSearchElapsedMs !== null && (
+                      <span className="inline-flex items-center rounded-full border border-brand/20 bg-brand/5 px-3 py-1 text-xs font-semibold text-brand dark:text-[#E8735A]">
+                        {t('result.searchElapsed')}: {lastSearchElapsedMs.toLocaleString()} ms ({(lastSearchElapsedMs / 1000).toFixed(3)} s)
+                      </span>
+                    )}
                   </div>
                   <div className="relative group flex">
                     <SearchBar
