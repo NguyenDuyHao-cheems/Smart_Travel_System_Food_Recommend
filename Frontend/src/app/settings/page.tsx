@@ -34,6 +34,7 @@ import {
   Mouse
 } from "lucide-react";
 import { AppShell } from "../../components/AppShell";
+import { LoginRequiredModal } from "../../components/LoginRequiredModal";
 import { useLanguage } from "../../components/LanguageProvider";
 
 type TabType = "account" | "personalization" | "appearance" | "notifications" | "privacy" | "location" | "connections";
@@ -46,6 +47,7 @@ export default function SettingsPage() {
   const [avatar, setAvatar] = useState<string | null>(null);
   const [cover, setCover] = useState<string | null>(null);
   const [accountEmail, setAccountEmail] = useState<string | null>(null);
+  const [showLoginModal, setShowLoginModal] = useState(false);
 
 
   useEffect(() => {
@@ -54,7 +56,13 @@ export default function SettingsPage() {
     const storedUsername = localStorage.getItem("username");
     const storedAvatar = localStorage.getItem("user_avatar");
     const storedEmail = localStorage.getItem("user_email");
-    const storedUserId = localStorage.getItem("user_id") || "";
+    const storedUserId = localStorage.getItem("user_id");
+    
+    if (!storedUserId) {
+      setShowLoginModal(true);
+      return;
+    }
+    
     const storedCover = localStorage.getItem(`user_cover_${storedUserId}`);
     setUsername(storedUsername);
     setAvatar(storedAvatar);
@@ -64,15 +72,7 @@ export default function SettingsPage() {
     // 2. Refresh from backend to ensure data is consistent
     const fetchProfile = async () => {
       try {
-        const token = localStorage.getItem("access_token");
-        if (!token) return;
-
-        const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
-        const res = await fetch(`${API_BASE}/api/v1/users/me`, {
-          headers: {
-            "Authorization": `Bearer ${token}`
-          }
-        });
+        const res = await makeAuthenticatedRequest(`/api/v1/users/me`);
         if (res.ok) {
           const data = await res.json();
           setAccountEmail(data.username);
@@ -99,18 +99,10 @@ export default function SettingsPage() {
 
   const handleUpdateProfile = async (updates: { full_name?: string, avatar_url?: string, cover_url?: string, password?: string }) => {
     try {
-      const token = localStorage.getItem("access_token");
-      if (!token || token === "undefined" || token === "null") {
-        alert(t("settings.pleaseLoginAgain"));
-        return false;
-      }
-
-      const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
-      const res = await fetch(`${API_BASE}/api/v1/users/me`, {
+      const res = await makeAuthenticatedRequest(`/api/v1/users/me`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
         },
         body: JSON.stringify(updates),
       });
@@ -122,8 +114,7 @@ export default function SettingsPage() {
           localStorage.removeItem("user_avatar");
           localStorage.removeItem("user_id");
           localStorage.removeItem("login_method");
-          alert(t("settings.sessionExpiredAlert"));
-          window.location.href = "/auth";
+          setShowLoginModal(true);
           return false;
         }
         const errorData = await res.json();
@@ -160,15 +151,8 @@ export default function SettingsPage() {
 
   const handleDeleteAccount = async () => {
     try {
-      const token = localStorage.getItem("access_token");
-      if (!token) return false;
-
-      const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
-      const res = await fetch(`${API_BASE}/api/v1/users/me`, {
-        method: "DELETE",
-        headers: {
-          "Authorization": `Bearer ${token}`
-        },
+      const res = await makeAuthenticatedRequest(`/api/v1/users/me`, {
+        method: "DELETE"
       });
 
       if (!res.ok) throw new Error(t("settings.deleteAccountFailed"));
@@ -193,12 +177,14 @@ export default function SettingsPage() {
 
   return (
     <AppShell>
-      <div className="max-w-6xl mx-auto px-4 md:px-8 py-8">
-        <h1 className="text-2xl font-black text-[#3D312A] dark:text-[#E6DFD5] mb-8 tracking-tight uppercase">{t("settings.title")}</h1>
+      <LoginRequiredModal isOpen={showLoginModal} message={t("settings.pleaseLoginAgain")} />
+      {!showLoginModal && (
+        <div className="max-w-6xl mx-auto px-4 md:px-8 py-8">
+          <h1 className="text-2xl font-black text-[#3D312A] dark:text-[#E6DFD5] mb-8 tracking-tight uppercase">{t("settings.title")}</h1>
 
-        <div className="flex gap-8">
-          {/* Left Tabs */}
-          <div className="w-56 flex-shrink-0">
+          <div className="flex gap-8">
+            {/* Left Tabs */}
+            <div className="w-56 flex-shrink-0">
             <div className="bg-[#FDFBF7] dark:bg-[#2A2420]/80 rounded-3xl p-3 shadow-sm border border-[#E6DFD5] dark:border-[#3D312A]">
               {tabs.map((tab) => (
                 <button
@@ -257,6 +243,7 @@ export default function SettingsPage() {
           </div>
         </div>
       </div>
+      )}
     </AppShell>
   );
 }
@@ -1977,15 +1964,9 @@ function PersonalizationSettings() {
     const fetchPrefs = async () => {
       try {
         const userId = localStorage.getItem("user_id");
-        const token = localStorage.getItem("access_token");
-        if (!userId || !token) return;
+        if (!userId) return;
 
-        const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
-        const res = await fetch(`${API_BASE}/api/v1/users/${userId}/onboarding`, {
-          headers: {
-            "Authorization": `Bearer ${token}`
-          }
-        });
+        const res = await makeAuthenticatedRequest(`/api/v1/users/${userId}/onboarding`);
         if (res.ok) {
           const data = await res.json();
           
@@ -2098,8 +2079,7 @@ function PersonalizationSettings() {
     setSaving(true);
     try {
       const userId = localStorage.getItem("user_id");
-      const token = localStorage.getItem("access_token");
-      if (!userId || !token) return;
+      if (!userId) return;
 
       const payload = {
         ...formData,
@@ -2112,14 +2092,12 @@ function PersonalizationSettings() {
         is_vegetarian: formData.dietary_restrictions.includes('vegan') || formData.dietary_restrictions.includes('vegetarian'),
       };
 
-      const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
-      const res = await fetch(`${API_BASE}/api/v1/users/${userId}/onboarding`, {
+      const res = await makeAuthenticatedRequest(`/api/v1/users/${userId}/onboarding`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
         },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
       });
       if (res.ok) {
         toast.success(t("settings.updatePreferencesSuccess"));

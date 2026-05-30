@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { PageLayout } from "../../components/PageLayout";
+import { LoginRequiredModal } from "../../components/LoginRequiredModal";
 import { friendService, Friend, FriendRequest } from "../../services/friendService";
 import {
   Users,
@@ -32,6 +33,9 @@ import {
   DialogTitle,
 } from "../../components/ui/dialog";
 import { useLanguage } from "../../components/LanguageProvider";
+import { AppShell } from "../../components/AppShell";
+import { UserSearchPanel } from "../../components/social/UserSearchPanel";
+import { makeAuthenticatedRequest } from '../../utils/apiClient';
 
 interface MyProfile {
   id: string;
@@ -65,6 +69,7 @@ export default function FriendsPage() {
   // Copy state feedbacks
   const [copiedId, setCopiedId] = useState(false);
   const [copiedUsername, setCopiedUsername] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
 
   const loadRequests = async (showLoading = true) => {
     try {
@@ -82,8 +87,7 @@ export default function FriendsPage() {
     const userId = localStorage.getItem("user_id");
     const storedUsername = localStorage.getItem("user_email");
     if (!userId) {
-      toast.error(t("friends.pleaseLogin"));
-      router.push("/auth");
+      setShowLoginModal(true);
       return;
     }
 
@@ -99,11 +103,7 @@ export default function FriendsPage() {
         if (!token) return;
 
         const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
-        const res = await fetch(`${API_BASE}/api/v1/users/me`, {
-          headers: {
-            "Authorization": `Bearer ${token}`
-          }
-        });
+        const res = await makeAuthenticatedRequest(`${API_BASE}/api/v1/users/me`);
         if (res.ok) {
           const data = await res.json();
           setMyProfile({
@@ -296,7 +296,9 @@ export default function FriendsPage() {
 
   return (
     <PageLayout>
-      <div className="space-y-8">
+      <LoginRequiredModal isOpen={showLoginModal} message={t("friends.pleaseLogin")} />
+      {!showLoginModal && (
+        <div className="space-y-8">
         {/* Header Section */}
         <div>
           <h1 className="text-3xl font-black text-[#3D312A] dark:text-[#E6DFD5] flex items-center gap-3">
@@ -705,6 +707,7 @@ export default function FriendsPage() {
           )}
         </div>
       </div>
+      )}
 
       {/* Confirmation Dialog for Unfriend */}
       <Dialog open={!!unfriendTarget} onOpenChange={(open) => !open && setUnfriendTarget(null)}>

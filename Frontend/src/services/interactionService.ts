@@ -1,3 +1,6 @@
+import { getAccessToken } from "../utils/authStorage";
+import { makeAuthenticatedRequest } from "../utils/apiClient";
+
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
 function getAnonymousId(): string {
@@ -20,18 +23,14 @@ export const interactionService = {
   }) => {
     try {
       const anonymous_id = getAnonymousId();
-      const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
+      const token = typeof window !== "undefined" ? getAccessToken() : null;
       console.log("DEBUG INTERACTION:", { anonymous_id, hasToken: !!token, token: token ? token.substring(0, 10) + "..." : null });
       
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
       };
       
-      if (token) {
-        headers["Authorization"] = `Bearer ${token}`;
-      }
-      
-      await fetch(`${API_BASE}/api/v1/users/interaction`, {
+      await makeAuthenticatedRequest(`/api/v1/users/interaction`, {
         method: "POST",
         headers,
         keepalive: true,

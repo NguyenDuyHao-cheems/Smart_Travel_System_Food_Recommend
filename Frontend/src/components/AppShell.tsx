@@ -64,40 +64,13 @@ export function AppShell({ children, healthStatus = "loading", headerAction }: A
 
     // Tự động kiểm tra token hết hạn khi người dùng mở trang hoặc tải lại trang
     const token = localStorage.getItem("access_token");
-    if (token) {
-      try {
-        const arrayToken = token.split('.');
-        if (arrayToken.length === 3) {
-          const payload = JSON.parse(atob(arrayToken[1]));
-          if (payload.exp && Date.now() > payload.exp * 1000) {
-            // Token đã hết hạn! Dọn dẹp localStorage
-            localStorage.removeItem("access_token");
-            localStorage.removeItem("username");
-            localStorage.removeItem("user_avatar");
-            localStorage.removeItem("user_id");
-            localStorage.removeItem("login_method");
-            localStorage.removeItem("food_recsys_userid");
-            
-            // Xóa dữ liệu phiên gợi ý nhóm
-            localStorage.removeItem("group_recs");
-            localStorage.removeItem("group_rec_stats");
-            localStorage.removeItem("group_rec_has_searched");
-            localStorage.removeItem("group_rec_selected_friends");
-            localStorage.removeItem("group_rec_custom_coords");
-            localStorage.removeItem("group_rec_custom_address");
-            localStorage.removeItem("group_rec_budget");
-            localStorage.removeItem("group_rec_enable_budget");
-            localStorage.removeItem("group_rec_radius");
-            
-            // Tải lại trang để giao diện cập nhật ngay lập tức về chế độ Chưa đăng nhập (Guest)
-            window.location.reload();
-            return;
-          }
-        }
-      } catch (e) {
-        console.error("Error checking token expiration:", e);
+    import("../utils/authStorage").then(({ isTokenValid, clearAuthData }) => {
+      if (token && !isTokenValid(token)) {
+        clearAuthData();
+        // Dispatch event so other components (like UserDropdown) update immediately
+        window.dispatchEvent(new Event("auth-silent-logout"));
       }
-    }
+    });
 
     const handleAuthExpired = () => {
       // Clear localStorage immediately

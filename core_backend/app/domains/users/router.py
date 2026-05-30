@@ -1,6 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from sqlalchemy.orm import Session
 from typing import List
+from jose import jwt, JWTError
 
 from .models import UserAccount, UserFriend, UserFavorite, UserCollection, UserCollectionItem, FriendRequest
 from .schemas import (
@@ -16,6 +17,8 @@ from .schemas import (
 from .service import OnboardingService, AuthService, UserInteractionService
 from .repository import UserOnboardingRepository, UserAccountRepository, UserInteractionRepository
 from app.core.dependencies import get_db, get_current_user, get_optional_current_user
+from app.core.security import create_access_token, create_refresh_token
+from app.core.config import settings
 
 router = APIRouter()
 
@@ -40,13 +43,30 @@ def get_interaction_service(db: Session = Depends(get_db)) -> UserInteractionSer
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
+def _set_refresh_cookie(response: Response, user_id: str, username: str) -> None:
+    refresh_token = create_refresh_token(
+        data={"sub": user_id, "username": username}
+    )
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        secure=settings.COOKIE_SECURE,
+        samesite="lax",
+        max_age=settings.REFRESH_TOKEN_EXPIRE_MINUTES * 60
+    )
+
+
 @router.post("/sign_up", response_model=AuthResponse)
 def sign_up(
     payload: SignUpRequest,
+    response: Response,
     service: AuthService = Depends(get_auth_service),
 ) -> AuthResponse:
     try:
-        return service.sign_up(payload)
+        auth_data = service.sign_up(payload)
+        _set_refresh_cookie(response, auth_data.user_id, auth_data.username)
+        return auth_data
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc))
 
@@ -54,10 +74,13 @@ def sign_up(
 @router.post("/sign_in", response_model=AuthResponse)
 def sign_in(
     payload: SignInRequest,
+    response: Response,
     service: AuthService = Depends(get_auth_service),
 ) -> AuthResponse:
     try:
-        return service.sign_in(payload)
+        auth_data = service.sign_in(payload)
+        _set_refresh_cookie(response, auth_data.user_id, auth_data.username)
+        return auth_data
     except PermissionError as exc:
         raise HTTPException(status_code=401, detail=str(exc))
 
@@ -65,12 +88,59 @@ def sign_in(
 @router.post("/google_auth", response_model=AuthResponse)
 async def google_auth(
     payload: GoogleAuthRequest,
+    response: Response,
     service: AuthService = Depends(get_auth_service),
 ) -> AuthResponse:
     try:
-        return await service.google_auth(payload)
+        auth_data = await service.google_auth(payload)
+        _set_refresh_cookie(response, auth_data.user_id, auth_data.username)
+        return auth_data
     except PermissionError as exc:
         raise HTTPException(status_code=401, detail=str(exc))
+
+
+@router.post("/refresh", response_model=AuthResponse)
+def refresh_token(
+    request: Request,
+    response: Response,
+    service: AuthService = Depends(get_auth_service),
+) -> AuthResponse:
+    refresh_token = request.cookies.get("refresh_token")
+    if not refresh_token:
+        raise HTTPException(status_code=401, detail="Refresh token missing")
+
+    try:
+        payload = jwt.decode(refresh_token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        token_type = payload.get("type")
+        user_id = payload.get("sub")
+        username = payload.get("username")
+        if token_type != "refresh" or user_id is None or username is None:
+            raise HTTPException(status_code=401, detail="Invalid refresh token")
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid or expired refresh token")
+
+    # Generate a new access token and refresh cookie for a sliding session
+    access_token = create_access_token({"sub": user_id, "username": username})
+    _set_refresh_cookie(response, user_id, username)
+
+    return AuthResponse(
+        message="Token refreshed successfully",
+        user_id=user_id,
+        username=username,
+        access_token=access_token,
+        token_type="bearer",
+    )
+
+
+@router.post("/sign_out")
+def sign_out(response: Response) -> dict:
+    response.delete_cookie(
+        key="refresh_token",
+        httponly=True,
+        secure=settings.COOKIE_SECURE,
+        samesite="lax",
+    )
+    return {"message": "Signed out successfully"}
 
 
 def initialize_profile_stats(db: Session, user: UserAccount) -> dict:

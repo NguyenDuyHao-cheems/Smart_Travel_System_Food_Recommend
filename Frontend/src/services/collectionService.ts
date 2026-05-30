@@ -1,4 +1,6 @@
 import { RecommendResult } from "../app/result/page";
+import { getAccessToken } from "../utils/authStorage";
+import { makeAuthenticatedRequest } from "../utils/apiClient";
 
 export interface Collection {
   id: string;
@@ -22,22 +24,9 @@ export const collectionService = {
   fetchAndSyncCollections: async (userId: string): Promise<Collection[]> => {
     if (typeof window === "undefined") return [];
 
-    // Helper: redirect to /auth on 401
-    const handle401 = (res: Response): boolean => {
-      if (res.status === 401) {
-        localStorage.removeItem("access_token");
-        localStorage.removeItem("user_id");
-        window.location.href = "/auth?expired=1";
-        return true;
-      }
-      return false;
-    };
-
     try {
-      const token = localStorage.getItem("access_token");
+      const token = getAccessToken();
       if (!token) return collectionService.getCollections(userId);
-
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
       
       // 1. Get current local collections to check for unsynced data
       const localData = localStorage.getItem(COLLECTIONS_KEY);
@@ -45,12 +34,8 @@ export const collectionService = {
       const userLocalColls = allLocalColls[userId] || [];
 
       // 2. Fetch from DB
-      const res = await fetch(`${apiUrl}/api/v1/users/collections`, {
-        headers: {
-          "Authorization": `Bearer ${token}`
-        }
-      });
-      if (handle401(res)) return [];
+      const res = await makeAuthenticatedRequest(`/api/v1/users/collections`);
+      if (res.status === 401) return [];
       if (res.ok) {
         const dbColls = await res.json();
         // Convert to UI Collection structure
@@ -70,15 +55,14 @@ export const collectionService = {
           // A. If it's a temp collection, create it in DB
           if (localColl.id.startsWith("temp-")) {
             try {
-              const createRes = await fetch(`${apiUrl}/api/v1/users/collections`, {
+              const createRes = await makeAuthenticatedRequest(`/api/v1/users/collections`, {
                 method: "POST",
                 headers: {
-                  "Content-Type": "application/json",
-                  "Authorization": `Bearer ${token}`
+                  "Content-Type": "application/json"
                 },
                 body: JSON.stringify({ name: localColl.name, description: localColl.description })
               });
-              if (handle401(createRes)) return collectionService.getCollections(userId);
+              if (createRes.status === 401) return collectionService.getCollections(userId);
               if (createRes.ok) {
                 const savedColl = await createRes.json();
                 hasChanges = true;
@@ -94,15 +78,14 @@ export const collectionService = {
                 // Add its items to DB as well
                 for (const item of localColl.items) {
                   try {
-                    const addItemRes = await fetch(`${apiUrl}/api/v1/users/collections/${savedColl.id}/items`, {
+                    const addItemRes = await makeAuthenticatedRequest(`/api/v1/users/collections/${savedColl.id}/items`, {
                       method: "POST",
                       headers: {
-                        "Content-Type": "application/json",
-                        "Authorization": `Bearer ${token}`
+                        "Content-Type": "application/json"
                       },
                       body: JSON.stringify({ res_id: item.id })
                     });
-                    if (!handle401(addItemRes)) {
+                    if (addItemRes.ok) {
                       newSyncedColl.items.push(item);
                     }
                   } catch (e) {
@@ -124,11 +107,10 @@ export const collectionService = {
                 const alreadyInDb = dbColl.items.some(i => i.name === localItem.name);
                 if (!alreadyInDb) {
                   try {
-                    const addRes = await fetch(`${apiUrl}/api/v1/users/collections/${dbColl.id}/items`, {
+                    const addRes = await makeAuthenticatedRequest(`/api/v1/users/collections/${dbColl.id}/items`, {
                       method: "POST",
                       headers: {
-                        "Content-Type": "application/json",
-                        "Authorization": `Bearer ${token}`
+                        "Content-Type": "application/json"
                       },
                       body: JSON.stringify({ res_id: localItem.id })
                     });
@@ -176,22 +158,17 @@ export const collectionService = {
 
     // 2. Persist to Database
     try {
-      const token = localStorage.getItem("access_token");
+      const token = getAccessToken();
       if (!token) return newColl;
 
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
-      const res = await fetch(`${apiUrl}/api/v1/users/collections`, {
+      const res = await makeAuthenticatedRequest(`/api/v1/users/collections`, {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
+          "Content-Type": "application/json"
         },
         body: JSON.stringify({ name, description })
       });
       if (res.status === 401) {
-        localStorage.removeItem("access_token");
-        localStorage.removeItem("user_id");
-        window.location.href = "/auth?expired=1";
         return newColl;
       }
       if (!res.ok) {
@@ -238,15 +215,11 @@ export const collectionService = {
     // 2. Persist to Database
     if (id.startsWith("temp-")) return;
     try {
-      const token = localStorage.getItem("access_token");
+      const token = getAccessToken();
       if (!token) return;
 
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
-      await fetch(`${apiUrl}/api/v1/users/collections/${id}`, {
-        method: "DELETE",
-        headers: {
-          "Authorization": `Bearer ${token}`
-        }
+      await makeAuthenticatedRequest(`/api/v1/users/collections/${id}`, {
+        method: "DELETE"
       });
     } catch (err) {
       console.error("Failed to delete collection from DB:", err);
@@ -273,15 +246,13 @@ export const collectionService = {
     // 2. Persist to Database
     if (id.startsWith("temp-")) return;
     try {
-      const token = localStorage.getItem("access_token");
+      const token = getAccessToken();
       if (!token) return;
 
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
-      await fetch(`${apiUrl}/api/v1/users/collections/${id}`, {
+      await makeAuthenticatedRequest(`/api/v1/users/collections/${id}`, {
         method: "PUT",
         headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
+          "Content-Type": "application/json"
         },
         body: JSON.stringify({ name, description })
       });
@@ -309,15 +280,13 @@ export const collectionService = {
     // 2. Persist to Database
     if (collectionId.startsWith("temp-")) return;
     try {
-      const token = localStorage.getItem("access_token");
+      const token = getAccessToken();
       if (!token) return;
 
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
-      await fetch(`${apiUrl}/api/v1/users/collections/${collectionId}/items`, {
+      await makeAuthenticatedRequest(`/api/v1/users/collections/${collectionId}/items`, {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
+          "Content-Type": "application/json"
         },
         body: JSON.stringify({ res_id: item.id })
       });
@@ -351,15 +320,11 @@ export const collectionService = {
     // 2. Persist to Database
     if (collectionId.startsWith("temp-")) return;
     try {
-      const token = localStorage.getItem("access_token");
+      const token = getAccessToken();
       if (!token) return;
 
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
-      await fetch(`${apiUrl}/api/v1/users/collections/${collectionId}/items/${item.id}`, {
-        method: "DELETE",
-        headers: {
-          "Authorization": `Bearer ${token}`
-        }
+      await makeAuthenticatedRequest(`/api/v1/users/collections/${collectionId}/items/${item.id}`, {
+        method: "DELETE"
       });
     } catch (err) {
       console.error("Failed to remove item from collection in DB:", err);

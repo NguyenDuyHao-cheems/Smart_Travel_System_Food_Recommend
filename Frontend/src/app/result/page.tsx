@@ -24,6 +24,7 @@ import {
 import { AppShell } from '../../components/AppShell';
 import { LoadingState } from '../../components/ui/LoadingState';
 import { BudgetSelector, type BudgetOption, budgetToRange } from '../../components/BudgetSelector';
+import { makeAuthenticatedRequest } from "../utils/apiClient";
 import { DistanceFilter } from '../../components/DistanceFilter';
 import { SearchLoadingOverlay } from '../../components/ui/SearchLoadingOverlay';
 import { SearchBar } from '../../components/SearchBar';
@@ -956,8 +957,7 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
       setIsLoading(true);
       setApiError(null);
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-        const res = await fetch(`${apiUrl}/api/v1/search/sessions/${sessionIdFromUrl}`, {
+        const res = await makeAuthenticatedRequest(`/api/v1/search/sessions/${sessionIdFromUrl}`, {
           signal: AbortSignal.timeout(10000),
         });
         if (res.ok) {
@@ -1050,17 +1050,14 @@ const [sortBy, setSortBy] = useState<SortOption>('recommend');
       }
 
       setSearchLoadingMsg(t('result.loadingAnalyzing'));
-      const token = localStorage.getItem('access_token');
       const userId = localStorage.getItem('user_id');
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
       const requestLat = gps?.lat ?? options?.viewport?.centerLat;
       const requestLng = gps?.lng ?? options?.viewport?.centerLng;
 
-      const res = await fetch(`${apiUrl}/api/v1/search/recommend`, {
+      const res = await makeAuthenticatedRequest(`/api/v1/search/recommend`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
         },
         signal: controller.signal,
         body: JSON.stringify({

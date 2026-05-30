@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { ThemeToggle } from "../../components/ThemeToggle";
 import { useLanguage } from "../../components/LanguageProvider";
+import { saveAuthData, getSavedUsername, getAccessToken } from "../../utils/authStorage";
 
 const roboto = Roboto({
   subsets: ["latin", "vietnamese"],
@@ -34,14 +35,24 @@ function AuthPageContent() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
 
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
+  // Tự động điền username nếu đã chọn Remember me từ trước
+  useEffect(() => {
+    const saved = getSavedUsername();
+    if (saved) {
+      setUsername(saved);
+      setRememberMe(true);
+    }
+  }, []);
+
   // C: Không crash, bắt lỗi cẩn thận
   useEffect(() => {
     // Nếu đã đăng nhập, tự động chuyển về trang đích (chỉ khi token còn hạn)
-    const token = localStorage.getItem("access_token");
+    const token = getAccessToken();
     if (token) {
       try {
         const arrayToken = token.split('.');
@@ -95,6 +106,7 @@ function AuthPageContent() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password }),
+        credentials: "include", // [QUAN TRỌNG]: Bắt buộc phải có để trình duyệt lưu HttpOnly cookie (refresh_token)
       });
 
       if (!res.ok) {
@@ -111,10 +123,14 @@ function AuthPageContent() {
 
       const data = await res.json();
 
-      // A/B: Thành công -> Lưu token và thông tin người dùng
-      localStorage.setItem("access_token", data.access_token);
-      localStorage.setItem("user_id", data.user_id);
-      localStorage.setItem("username", data.full_name || data.username || username);
+      // Lưu token và thông tin phiên bằng hàm saveAuthData (Sliding Session)
+      saveAuthData(
+        data.access_token,
+        data.user_id,
+        data.full_name || data.username || username,
+        rememberMe
+      );
+
       localStorage.setItem("user_email", data.username || username);
       localStorage.setItem("login_method", "local");
       if (data.avatar_url) {
@@ -144,6 +160,7 @@ function AuthPageContent() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ access_token: tokenResponse.access_token }),
+          credentials: "include", // Quan trọng: Cho phép lưu HttpOnly cookie (refresh_token)
         });
 
         if (!res.ok) {
@@ -152,9 +169,14 @@ function AuthPageContent() {
         }
 
         const data = await res.json();
-        localStorage.setItem("access_token", data.access_token);
-        localStorage.setItem("user_id", data.user_id);
-        localStorage.setItem("username", data.full_name || data.username);
+
+        saveAuthData(
+          data.access_token,
+          data.user_id,
+          data.full_name || data.username,
+          rememberMe
+        );
+
         localStorage.setItem("user_email", data.username);
         localStorage.setItem("login_method", "google");
         if (data.avatar_url) {
@@ -356,7 +378,12 @@ function AuthPageContent() {
               {mode === "signin" && (
                 <div className="flex items-center justify-between mt-1">
                   <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" className="w-4 h-4 rounded text-brand dark:text-[#E8735A] border-gray-300 focus:ring-brand" />
+                    <input
+                      type="checkbox"
+                      checked={rememberMe}
+                      onChange={(e) => setRememberMe(e.target.checked)}
+                      className="w-4 h-4 rounded text-brand dark:text-[#E8735A] border-gray-300 focus:ring-brand"
+                    />
                     <span className="text-[13px] font-medium text-gray-600 dark:text-[#9A8A7A]">Remember me</span>
                   </label>
                   <a href="#" className="text-[13px] font-semibold text-brand-hover dark:text-[#E6DFD5] hover:underline">
@@ -389,14 +416,14 @@ function AuthPageContent() {
             </div>
 
             <div className="mt-8 flex flex-col gap-3">
-              <button 
+              <button
                 type="button"
                 onClick={() => handleGoogleLogin()}
                 disabled={isLoading}
                 className="flex items-center justify-center gap-3 w-full py-3 bg-white dark:bg-[#3D312A] border border-gray-200 dark:border-[#4D3D32] hover:bg-gray-50 dark:hover:bg-[#3D312A] active:scale-[0.98] rounded-xl text-[14px] font-semibold text-gray-700 dark:text-[#C8BFB0] transition-all cursor-pointer disabled:opacity-70"
               >
                 {isLoading ? (
-                   <div className="w-5 h-5 border-2 border-brand/30 border-t-brand rounded-full animate-spin" />
+                  <div className="w-5 h-5 border-2 border-brand/30 border-t-brand rounded-full animate-spin" />
                 ) : (
                   <>
                     <svg className="w-5 h-5" viewBox="0 0 24 24">

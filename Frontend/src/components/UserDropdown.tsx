@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { User, LogOut, ChevronDown, UserCircle } from "lucide-react";
 import { useLanguage } from "./LanguageProvider";
+import { isTokenValid } from "../utils/authStorage";
 
 export function UserDropdown({
   username: propUsername,
@@ -21,11 +22,22 @@ export function UserDropdown({
   const router = useRouter();
 
   useEffect(() => {
-    if (propUsername !== undefined && propUsername !== null) setUsername(propUsername);
-    else setUsername(localStorage.getItem("username"));
+    const checkAuth = () => {
+      const token = localStorage.getItem("access_token");
+      if (!token || !isTokenValid(token)) {
+        setUsername(null);
+        setAvatar(null);
+        return;
+      }
+      
+      if (propUsername !== undefined && propUsername !== null) setUsername(propUsername);
+      else setUsername(localStorage.getItem("username"));
+  
+      if (propAvatar !== undefined && propAvatar !== null) setAvatar(propAvatar);
+      else setAvatar(localStorage.getItem("user_avatar"));
+    };
 
-    if (propAvatar !== undefined && propAvatar !== null) setAvatar(propAvatar);
-    else setAvatar(localStorage.getItem("user_avatar"));
+    checkAuth();
 
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -34,19 +46,16 @@ export function UserDropdown({
     };
 
     const handleStorageChange = () => {
-      if (propUsername === undefined || propUsername === null) {
-        setUsername(localStorage.getItem("username"));
-      }
-      if (propAvatar === undefined || propAvatar === null) {
-        setAvatar(localStorage.getItem("user_avatar"));
-      }
+      checkAuth();
     };
 
     window.addEventListener("storage", handleStorageChange);
+    window.addEventListener("auth-silent-logout", handleStorageChange);
     document.addEventListener("mousedown", handleClickOutside);
     
     return () => {
       window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("auth-silent-logout", handleStorageChange);
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [propUsername, propAvatar]);

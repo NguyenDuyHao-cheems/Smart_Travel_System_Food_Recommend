@@ -2,6 +2,7 @@
 
 import React, { Suspense, useEffect, useState } from "react";
 import { PageLayout } from "../../components/PageLayout";
+import { LoginRequiredModal } from "../../components/LoginRequiredModal";
 import { collectionService, Collection } from "../../services/collectionService";
 import { FolderOpen, Plus, Trash2, ChevronLeft, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
@@ -27,6 +28,8 @@ function CollectionsPageInner() {
   const [selectedCollection, setSelectedCollection] = useState<Collection | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [newCollectionName, setNewCollectionName] = useState("");
+  const [newCollectionDesc, setNewCollectionDesc] = useState("");
+  const [showLoginModal, setShowLoginModal] = useState(false);
   const [deleteCollectionId, setDeleteCollectionId] = useState<string | null>(null);
   const [highlightedName, setHighlightedName] = useState<string | null>(null);
   const router = useRouter();
@@ -35,8 +38,7 @@ function CollectionsPageInner() {
   useEffect(() => {
     const id = localStorage.getItem("user_id");
     if (!id) {
-      toast.error(t("collections.pleaseLogin"));
-      router.push("/auth");
+      setShowLoginModal(true);
       return;
     }
     setUserId(id);
@@ -187,7 +189,10 @@ function CollectionsPageInner() {
 
   return (
     <PageLayout>
-      <div className="mb-8 flex justify-between items-end">
+      <LoginRequiredModal isOpen={showLoginModal} message={t("collections.pleaseLogin")} />
+      {!showLoginModal && (
+        <>
+          <div className="mb-8 flex justify-between items-end">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-[#E6DFD5] flex items-center gap-3">
             <FolderOpen className="w-8 h-8 text-brand dark:text-[#E8735A] fill-brand/20" />
@@ -331,6 +336,8 @@ function CollectionsPageInner() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      </>
+      )}
     </PageLayout>
   );
 }

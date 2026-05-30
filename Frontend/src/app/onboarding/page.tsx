@@ -18,6 +18,7 @@ import {
 } from '@tabler/icons-react';
 import { ThemeToggle } from '../../components/ThemeToggle';
 import { useLanguage } from '../../components/LanguageProvider';
+import { makeAuthenticatedRequest } from '../../utils/apiClient';
 
 // ==========================================
 // TYPES & INITIAL STATE
@@ -272,11 +273,7 @@ export default function OnboardingPage() {
         const token = localStorage.getItem('access_token');
         const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://127.0.0.1:8000';
         
-        const response = await fetch(`${API_BASE}/api/v1/users/${userId}/onboarding`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
+        const response = await makeAuthenticatedRequest(`/api/v1/users/${userId}/onboarding`);
 
         if (response.ok) {
           const data = await response.json();
@@ -389,7 +386,7 @@ export default function OnboardingPage() {
 
       const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://127.0.0.1:8000';
       
-      const response = await fetch(`${API_BASE}/api/v1/users/${userId}/onboarding`, {
+      const response = await makeAuthenticatedRequest(`/api/v1/users/${userId}/onboarding`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payloadToSubmit),

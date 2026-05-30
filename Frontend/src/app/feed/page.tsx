@@ -8,6 +8,7 @@ import { UserSearchPanel } from '../../components/social/UserSearchPanel';
 import { PostCardSkeleton } from '../../components/ui/LoadingState';
 import { toast } from 'sonner';
 import { useLanguage } from '../../components/LanguageProvider';
+import { makeAuthenticatedRequest } from '../../utils/apiClient';
 
 const FEED_TABS = [
   { key: 'for_you' },
@@ -34,10 +35,7 @@ export default function FeedPage() {
   const fetchFeed = async (mode = 'for_you') => {
     setIsLoading(true);
     try {
-      const token = localStorage.getItem('access_token');
-      const res = await fetch(`${BACKEND_URL}/api/v1/social/feed?mode=${mode}`, {
-        headers: { 'Authorization': token ? `Bearer ${token}` : '' }
-      });
+      const res = await makeAuthenticatedRequest(`${BACKEND_URL}/api/v1/social/feed?mode=${mode}`);
       if (res.ok) {
         const data = await res.json();
         setPosts(data);
@@ -72,11 +70,10 @@ export default function FeedPage() {
     }
 
     try {
-      const res = await fetch(`${BACKEND_URL}/api/v1/social/posts`, {
+      const res = await makeAuthenticatedRequest(`${BACKEND_URL}/api/v1/social/posts`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({ content, media_urls: mediaUrls, res_id: resId, mood: moodLabel }),
       });

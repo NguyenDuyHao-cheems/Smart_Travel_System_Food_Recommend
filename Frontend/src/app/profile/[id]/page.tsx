@@ -8,6 +8,7 @@ import { ArrowLeft, UserPlus, UserCheck } from 'lucide-react';
 import { ProfilePageSkeleton } from '../../../components/ui/LoadingState';
 import { toast } from 'sonner';
 import { useLanguage } from '../../../components/LanguageProvider';
+import { makeAuthenticatedRequest } from '../../../utils/apiClient';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -43,7 +44,7 @@ export default function PublicProfilePage() {
         }
 
         // Fetch profile
-        const profileRes = await fetch(`${BACKEND_URL}/api/v1/social/users/${id}/profile`, { headers });
+        const profileRes = await makeAuthenticatedRequest(`${BACKEND_URL}/api/v1/social/users/${id}/profile`, { headers });
         if (!profileRes.ok) {
           if (profileRes.status === 404) {
             toast.error(t('publicProfile.userNotFound'));
@@ -58,7 +59,7 @@ export default function PublicProfilePage() {
         setFollowersCount(profileData.followers_count);
 
         // Fetch posts
-        const postsRes = await fetch(`${BACKEND_URL}/api/v1/social/users/${id}/posts`, { headers });
+        const postsRes = await makeAuthenticatedRequest(`${BACKEND_URL}/api/v1/social/users/${id}/posts`, { headers });
         if (postsRes.ok) {
           const postsData = await postsRes.json();
           setPosts(postsData);
@@ -86,11 +87,8 @@ export default function PublicProfilePage() {
     setFollowersCount(prev => currentStatus ? prev - 1 : prev + 1);
 
     try {
-      const res = await fetch(`${BACKEND_URL}/api/v1/social/users/${id}/follow`, {
+      const res = await makeAuthenticatedRequest(`${BACKEND_URL}/api/v1/social/users/${id}/follow`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
       });
       if (!res.ok) {
         throw new Error('Failed to follow');
@@ -104,9 +102,7 @@ export default function PublicProfilePage() {
       }
 
       // Re-fetch chính xác số followers từ server
-      const profileRes = await fetch(`${BACKEND_URL}/api/v1/social/users/${id}/profile`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      const profileRes = await makeAuthenticatedRequest(`${BACKEND_URL}/api/v1/social/users/${id}/profile`);
       if (profileRes.ok) {
         const profileData = await profileRes.json();
         setFollowersCount(profileData.followers_count);
@@ -127,11 +123,8 @@ export default function PublicProfilePage() {
       return;
     }
     try {
-      await fetch(`${BACKEND_URL}/api/v1/social/posts/${postId}/like`, {
+      await makeAuthenticatedRequest(`${BACKEND_URL}/api/v1/social/posts/${postId}/like`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
       });
     } catch (error) {
       console.error('Like error:', error);

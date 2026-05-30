@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useRef } from "react";
 import { PageLayout } from "../../components/PageLayout";
+import { LoginRequiredModal } from "../../components/LoginRequiredModal";
 import { friendService, Friend } from "../../services/friendService";
 import { FoodCard } from "../../components/FoodCard";
 import { RecommendResult } from "../result/page";
@@ -11,6 +12,7 @@ import { RootState } from "../../store";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
+import { makeAuthenticatedRequest } from '../../utils/apiClient';
 import {
   Users,
   Sparkles,
@@ -37,6 +39,7 @@ interface GroupRecommendationResponse {
 export default function GroupRecommendPage() {
   const router = useRouter();
   const { t, language } = useLanguage();
+  const [showLoginModal, setShowLoginModal] = useState(false);
   
   // App states
   const [userId, setUserId] = useState<string | null>(null);
@@ -77,8 +80,7 @@ export default function GroupRecommendPage() {
   useEffect(() => {
     const storedUserId = localStorage.getItem("user_id");
     if (!storedUserId) {
-      toast.error(t("groupRecommend.pleaseLogin"));
-      router.push("/auth");
+      setShowLoginModal(true);
       return;
     }
     setUserId(storedUserId);
@@ -183,14 +185,12 @@ export default function GroupRecommendPage() {
       setRecommendations([]);
       setGroupStats(null);
 
-      const token = localStorage.getItem("access_token");
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
-      const response = await fetch(`${apiUrl}/api/v1/recommendations/group`, {
+      const response = await makeAuthenticatedRequest(`${apiUrl}/api/v1/recommendations/group`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           friend_ids: selectedFriendIds,
@@ -203,10 +203,9 @@ export default function GroupRecommendPage() {
       });
 
       if (response.status === 401) {
-        toast.error(t("groupRecommend.sessionExpired"));
         localStorage.removeItem("access_token");
         localStorage.removeItem("user_id");
-        router.push("/auth");
+        setShowLoginModal(true);
         return;
       }
 
@@ -236,7 +235,9 @@ export default function GroupRecommendPage() {
 
   return (
     <PageLayout>
-      <div className="space-y-8 pb-16">
+      <LoginRequiredModal isOpen={showLoginModal} message={t("groupRecommend.pleaseLogin")} />
+      {!showLoginModal && (
+        <div className="space-y-8 pb-16">
         {/* Header Title Section */}
         <div>
           <h1 className="text-3xl font-black text-[#3D312A] dark:text-[#E6DFD5] flex items-center gap-3">
@@ -644,6 +645,7 @@ export default function GroupRecommendPage() {
           </div>
         </div>
       </div>
+      )}
 
       {/* Interactive Map Modal */}
       <InteractiveMapModal
